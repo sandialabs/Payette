@@ -1,0 +1,6 @@
+#!/bin/bash
+
+SCRIPT=`stat -f $0`
+PAYETTE_DIR=`dirname $SCRIPT`
+
+$PAYETTE_DIR/testPayette -k kayenta -j4 -F

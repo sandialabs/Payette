@@ -1,0 +1,72 @@
+begin simulation test of the payette
+
+  begin boundary
+    kappa = 0
+    tstar = 1.
+    ampl = 1
+
+    begin legs
+    # leg, time, steps, type, c11 c22 c33 c12 c23 c13
+    # type definitions - 1: strain rate
+    #                    2: strain
+    #                    3: stress rate
+    #                    4: stress
+    #                    5: angle of rotation (default: 0)
+    #                    6: axis of rotation (default: 1)
+      0,     0.,   0.,  222222, 0., 0., 0., 0., 0., 0.
+      1,     1.,   10., 222222, .1, 0., 0., 0., 0., 0.
+      2,     2.,   10,  444222, 20566666666.666664, 9966666666.666689, 9966666666.666689, 0., 0., 0.
+      3,     3.,   10,  222222, 0., 0., 0., 0., 0., 0.
+    end legs
+
+  end boundary
+
+  begin material
+    constitutive model elastic
+    insert tib2.mtl
+  end material
+
+end simulation
+
+begin simulation another test of payette
+
+  begin boundary
+    kappa = 0
+    tstar = 1.
+    ampl = 1
+
+    begin legs
+    # leg, time, steps, type, c11 c22 c33 c12 c23 c13
+    # type definitions - 1: strain rate
+    #                    2: strain
+    #                    3: stress rate
+    #                    4: stress
+    #                    5: angle of rotation (default: 0)
+    #                    6: axis of rotation (default: 1)
+      0,     0.,   0.,  222222, 0., 0., 0., 0., 0., 0.  # an inline comment
+      1,     1.,   10., 222222, .1, 0., 0., 0., 0., 0.
+      2,     2.,   10,  444222, 20566666666.666664, 9966666666.666689, 9966666666.666689, 0., 0., 0.
+      3,     3.,   10,  222222, 0., 0., 0., 0., 0., 0.  # another inline comment
+    end legs
+
+  end boundary
+
+  begin material
+    constitutive model py elastic
+    material tib2
+  end material
+
+end simulation
+
+  begin boundary
+    kappa = 0
+    tstar = 1.
+    ampl = 1
+  end boundary
+
+
+  begin boundary
+    kappa = 0
+    tstar = 1.
+    ampl = 1
+  end boundary

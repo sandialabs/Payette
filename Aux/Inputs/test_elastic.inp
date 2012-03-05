@@ -1,0 +1,84 @@
+begin simulation test elastic
+
+begin boundary
+  kappa = 0
+  tstar = 1.
+  ampl = 1
+
+  begin legs
+  # leg, time, steps, type, c11 c22 c33 c12 c23 c13
+  # type definitions - 1: strain rate
+  #                    2: strain
+  #                    3: stress rate
+  #                    4: stress
+  #                    5: deformation gradient
+  #                    6: electric field rate
+  #                    7: electric field
+  #                    8: displacement
+    0,     0.,   0.,   222222, 0., 0., 0., 0., 0., 0.
+    1,     1.,   1.,   222222, .1, 0., 0., 0., 0., 0.
+    2,     2.,   1.,   222222, 0., 0., 0., 0., 0., 0.
+    3,     3.,   1.,   888, .10517091808, 0., 0.
+    4,     4.,   1.,   888, 0., 0., 0.
+    5,     5.,   1.,   555555555, 1.10517091808, 1.0, 1.0, 0., 0., 0., 0., 0., 0.
+    6,     6.,   1.,   555555555, 1.0, 1.0, 1.0, 0., 0., 0., 0., 0., 0.
+  end legs
+
+end boundary
+
+begin material
+  constitutive model hooke
+  RHO 1000
+  A1 23e6
+  G 53.e9
+  K 135.e9
+end material
+
+begin mathplot
+  sig11, sig22, sig33,
+  qssigxx
+end mathplot
+end simulation
+
+
+
+begin simulation test py elastic
+
+begin boundary
+  kappa = 0
+  tstar = 1.
+  ampl = 1
+
+  begin legs
+  # leg, time, steps, type, c11 c22 c33 c12 c23 c13
+  # type definitions - 1: strain rate
+  #                    2: strain
+  #                    3: stress rate
+  #                    4: stress
+  #                    5: angle of rotation (default: 0)
+  #                    6: axis of rotation (default: 1)
+    0,     0.,   0.,   222222, 0., 0., 0., 0., 0., 0.
+    1,     1.,   1.,   222222, .1, 0., 0., 0., 0., 0.
+    2,     2.,   1.,   222222, 0., 0., 0., 0., 0., 0.
+    3,     3.,   1.,   888, .10517091808, 0., 0.
+    4,     4.,   1.,   888, 0., 0., 0.
+    5,     5.,   1.,   555555555, 1.10517091808, 1.0, 1.0, 0., 0., 0., 0., 0., 0.
+    6,     6.,   1.,   555555555, 1.0, 1.0, 1.0, 0., 0., 0., 0., 0., 0.
+    7,     7.,   1.,   222222, .1, 0., 0., 0., 0., 0.
+    8,     8.,   1.,   222222, 0., 0., 0., 0., 0., 0.
+    9,     9.,   1.,   888, .10517091808, 0., 0.
+    10,    10.,  1.,   888, 0., 0., 0.
+    11,    11.,  1.,   555555555, 1.10517091808, 1.0, 1.0, 0., 0., 0., 0., 0., 0.
+    12,    12.,  1.,   555555555, 1.0, 1.0, 1.0, 0., 0., 0., 0., 0., 0.
+  end legs
+
+end boundary
+
+begin material
+  constitutive model py elastic
+  RHO 1000
+  A1 23e6
+  SHMOD 53.e9
+  BKMOD 135.e9
+end material
+end simulation

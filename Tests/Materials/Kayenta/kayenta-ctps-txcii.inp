@@ -1,0 +1,34 @@
+begin simulation kayenta-ctps-txcii
+begin material
+constitutive model kayenta
+B0 = 1.25e+10
+B1 = 193.258e9
+B2 = 89.5255e9
+G0 = 0.975e+11
+RK = -1
+CTPS = 166666666.66666654
+J3TYPE = 2
+FSPEED = 1
+PEAKI1I = 5.0e8
+STRENI = 3.525e9
+FSLOPEI = 0.7
+PEAKI1F = 1.0e4
+STRENF = 3.525e9
+FSLOPEF = 0.2
+end material
+begin boundary
+kappa = 0.0
+tstar = 10
+estar = 1.0
+ratfac = 1.0
+ampl = -0.04
+begin legs
+0 0. 0 222222 0.0 0.0 0.0 0. 0. 0.
+1 1. 5000 222222 1.0 -0.15 -0.15 0. 0. 0.
+end legs
+end boundary
+begin mathplot
+ strain11 strain22 strain33 timestep sig11 sig22 KAPPA EQDOT I1 ROOTJ2
+ GFUN EQPS EQPV EVOL CRACK SHEAR YIELD LODE TMPR SNDSP RHO ENRGY
+end mathplot
+end simulation

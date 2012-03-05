@@ -1,0 +1,27 @@
+begin simulation test kayenta elastic unistrain
+begin boundary
+  kappa = 1.
+  tstar = 1.
+  ampl = 1.
+  begin legs
+  # leg, time, steps, type, c11 c22 c33 c12 c23 c13
+  # type definitions - 1: strain rate
+  #                    2: strain
+  #                    3: stress rate
+  #                    4: stress
+  #                    5: angle of rotation (default: 0)
+  #                    6: axis of rotation (default: 1)
+    0,     0.,   0,  222222, 0., 0., 0., 0., 0., 0.
+    1,     .1,   10, 222222, .005, 0., 0., 0., 0., 0.
+    2,     .2,   10, 222222, 0., 0., 0., 0., 0., 0.
+  end legs
+end boundary
+
+begin material
+  constitutive model kayenta_qsfail
+  rho 2700
+  yield strength 1.e99
+  shmod 26.e9
+  bkmod 76.e9
+end material
+end simulation

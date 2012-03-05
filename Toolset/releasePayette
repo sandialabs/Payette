@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+
+'''
+NAME
+   releasePayette
+
+PURPOSE
+   creates a version of Payette suitable for public release by removing compiled
+   library files, .pyo, .pyc, .log, and .out files. If the release type is limited,
+   SNL directories are removed.
+'''
+
+import os,sys
+import optparse
+import subprocess
+import tempfile
+import shutil
+
+__version__ = '0_2'
+
+def releasePayette(argc,argv):
+    Release_Directory = os.path.join(os.getenv("HOME"),"Public/PayetteRelease")
+    # *************************************************************************
+    # -- command line option parsing
+    usage = "usage: %prog [options] <input file>"
+    parser = optparse.OptionParser(usage = usage, version = "%prog 1.0")
+    parser.add_option('-d',
+                      dest = 'DIRECTORY',
+                      action = 'store',
+                      default = Release_Directory,
+                      help = 'release directory: %default]')
+    (opts,args) = parser.parse_args(argv)
+
+    # get directories
+    exe = os.path.realpath(__file__)
+    Payette_Home = os.path.dirname(os.path.dirname(exe))
+    Payette_Root = os.path.dirname(Payette_Home)
+    if not os.path.isdir(Payette_Root): reportError(__file__,'Payette_Root DNE')
+    Release_Directory = opts.DIRECTORY
+    if not os.path.isdir(Release_Directory): os.mkdir(Release_Directory)
+    print "releasing Payette to: {0}".format(Release_Directory)
+
+    # rsync project to the version directory
+    cmd = ['rsync','-arvz','--delete',
+           '--exclude',r'.svn/',
+           '--exclude',r'*/fixlen.py',
+           '--exclude',r'*/releasePayette',
+           '--exclude',r'*/testPayette',
+           '--exclude',r'*/runPayette',
+           '--exclude',r'*/Payette_config.*',
+           '--exclude',r'*/f2py',
+           '--exclude',r'*so',
+           '--exclude',r'*out',
+           '--exclude',r'*log',
+           '--exclude',r'*math?',
+           '--exclude',r'*xout',
+           '--exclude',r'*diff',
+           '--exclude',r'*pyc',
+           '--exclude',r'*pyo',
+           '--exclude',r'f2py.d/',
+           '--exclude',r'auto/',
+           '--exclude',r'*.synctex.gz/',
+           '--exclude',r'*.synctex.gz/',
+           '--exclude',r'*.aux',
+           '--exclude',r'*.svn/',
+           '--exclude',r'*.svn/*',
+           '--exclude',r'__pycache__/',
+           '%s/'%Payette_Home,'%s'%Release_Directory]
+    rsync = subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+    rsync.wait()
+    # change permissions
+    cmd = ["chmod","-R","a+rw",Release_Directory]
+    chmod = subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+    chmod.wait()
+    print "release complete"
+
+
+    return 0
+
+if __name__ == '__main__':
+    build_Payette = releasePayette(len(sys.argv[1:]),sys.argv[1:])

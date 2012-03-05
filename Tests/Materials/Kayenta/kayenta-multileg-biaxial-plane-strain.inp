@@ -1,0 +1,50 @@
+begin simulation kayenta-multileg-biaxial-plane-strain
+begin material
+constitutive model kayenta
+B0 = 13.0e9
+B1 = 42.47e9
+B2 = 0.4107e9
+B3 = 12.0e9
+B4 = 0.021
+G0 = 9.86e9
+A1 = 8.31020e+08
+A2 = 2.731e-10
+A3 = 821.92e6
+A4 = 1.e-10
+P0 = -314.4e6
+P1 = 1.22e-10
+P2 = 1.28e-18
+P3 = 0.084
+CR = 6.0
+RK = .72
+RN = 12.e6
+HC = 100000.e6
+CTI1 = 3.e6
+CTPS = 1.e6
+T1 = 4.e-4
+T2 = 0.835
+T6 = 3.0
+J3TYPE = 3
+end material
+begin boundary
+ratfac = 1.0
+kappa = 1.0
+tstar = 0.1
+estar = 1.0
+ampl = 1.0
+begin legs
+0 0. 0 222222 0.0 0.0 0.0 0. 0. 0.
+1 1. 100 222222 -8e-4 -8e-4 0.0 0. 0. 0.
+2 2. 100 222222 3e-4 -1.2e-3 0.0 0. 0. 0.
+3 3. 100 222222 3e-4 -4e-3 0.0 0. 0. 0.
+4 4. 100 222222 -1e-3 -3.5e-3 0.0 0. 0. 0.
+5 5. 100 222222 -4.9e-3 -2e-3 0.0 0. 0. 0.
+6 6. 100 222222 -3.9e-3 -4e-3 0.0 0. 0. 0.
+7 7. 100 222222 -3.9e-3 -2e-3 0.0 0. 0. 0.
+end legs
+end boundary
+begin mathplot
+ strain11 strain22 strain33 timestep sig11 sig22 KAPPA EQDOT I1 ROOTJ2
+ GFUN EQPS EQPV EVOL CRACK SHEAR YIELD LODE TMPR SNDSP RHO ENRGY
+end mathplot
+end simulation

@@ -1,0 +1,35 @@
+begin simulation kayenta-sandler-rubin
+begin material
+constitutive model kayenta
+B0 = 40000
+G0 = 15000
+A1 = 141.42135623730950488
+A4 = 0.40824829046386301637
+P0 = -1.e11
+CR = 0.001
+RK = 1
+CTI1 = 1.e99
+CTPS = 1.e99
+J3TYPE = 1
+A4PF = 1.e-99
+end material
+begin boundary
+ratfac = 1.0
+kappa = 0.0
+tstar = 1.0
+estar = 1.0
+ampl = 1.0
+begin legs
+0 0. 0 222222 0.0 0.0 0.0 0. 0. 0.
+1 1. 80 222222 -0.002886751346 -0.002886751346 -0.002886751346 0. 0. 0.
+2 1.5 80 222222 -0.02465999350 0.007999869733 0.007999869733 0. 0. 0.
+3 2. 80 222222 -0.04643323566 0.018886490812 0.018886490812 0. 0. 0.
+4 3. 80 222222 -0.03678240517 0.018391202584 0.018391202584 0. 0. 0.
+5 4. 80 222222 -0.04643323566 0.01888649081 0.01888649081 0. 0. 0.
+end legs
+end boundary
+begin mathplot
+ strain11 strain22 strain33 timestep sig11 sig22 KAPPA EQDOT I1 ROOTJ2
+ GFUN EQPS EQPV EVOL CRACK SHEAR YIELD LODE TMPR SNDSP RHO ENRGY
+end mathplot
+end simulation

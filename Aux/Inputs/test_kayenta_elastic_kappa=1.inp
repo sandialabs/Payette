@@ -1,0 +1,27 @@
+begin simulation test kayenta elastic kappa=1
+begin boundary
+  kappa = 0.
+  tstar = 1.
+  ampl = 1.
+  begin legs
+  # leg, time, steps, type, c11 c22 c33 c12 c23 c13
+  # type definitions - 1: strain rate
+  #                    2: strain
+  #                    3: stress rate
+  #                    4: stress
+  #                    5: angle of rotation (default: 0)
+  #                    6: axis of rotation (default: 1)
+    0,     0.,   0.,    222222, 0., 0., 0., 0., 0., 0.
+    1,     1.,   1,     222222, .15, 0., 0., 0., 0., 0.
+    2,     2.,   1,     222222, 0., 0., 0., 0., 0., 0.
+  end legs
+end boundary
+
+begin material
+  constitutive model kayenta
+  rho 2700
+  yield strength 1.e99
+  shmod 26.e9
+  bkmod 76.e9
+end material
+end simulation

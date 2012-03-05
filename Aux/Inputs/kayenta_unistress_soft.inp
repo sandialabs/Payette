@@ -1,0 +1,38 @@
+begin simulation kayenta unistress softening
+  # ****************************************************************************** #
+  # Uniaxial stress softening
+  #
+  # Description: Test uniaxial stress softening
+  #
+  #              Step 1 (t=0.-1.): load in uniaxial stress to yield
+  #              Step 2 (t=1.-1.1): hold near the limit surface
+  #              Step 3 (t=1.1-2.): decrease stress while softening
+  #              Step 4 (t=2.-3.): remove stress
+  # Input: kayenta_unistress_soft.inp
+  # ****************************************************************************** #
+  begin material
+    constitutive model kayenta
+#    PEAKI1I 1.e99
+#    PEAKI1F 1.e99
+#    STRENI 9.e7
+#    STRENF 1.e6
+    A1 = 9.e7
+    B0 4.4e+10
+    G0 2.6e+10
+    SOFTENING 2.
+    FSPEED 30.
+    TFAIL .1
+  end material
+  begin boundary
+    kappa = 0.
+    tstar = 1.
+    ampl = 1
+    begin legs
+      0,     0.,   0.,   222222, 0., 0., 0., 0., 0., 0.
+      1,     1.,   1000, 444444, 155884572.68119895, 0., 0., 0., 0., 0.
+      2,     1.1,  1000, 444444, 155884572.68119895, 0., 0., 0., 0., 0.
+      3,     2.0,  1000, 444444, 155884572.68119895, 0., 0., 0., 0., 0.
+      4,     3.,   1000, 444444, 0., 0., 0., 0., 0., 0.
+    end legs
+  end boundary
+end simulation

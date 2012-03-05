@@ -1,0 +1,48 @@
+begin simulation kayenta-hugoniot-strain
+begin material
+constitutive model kayenta
+B0 = 13.0e9
+B1 = 42.47e9
+B2 = 0.4107e9
+B3 = 12.0e9
+B4 = 0.021
+G0 = 9.86e9
+STRENI = 8.31020E+08
+PEAKI1I = 4.03178E+07
+FSLOPEI = 2.26952E-01
+YSLOPEI = 1.00000E-10
+P0 = -314.4e6
+P1 = 1.22e-10
+P2 = 1.28e-18
+P3 = 0.084
+CR = 6.0
+RK = .72
+CTI1 = 3.e6
+CTPS = 1.e6
+J3TYPE = 3
+
+# kinematic hardening
+RN = 12.e6
+HC = 500000.e5
+
+# softening
+STRENF = 8.31020E+08
+PEAKI1F = 4.03178E+01
+FSLOPEF = 2.26952E-03
+YSLOPEF = 0.00000
+T1 = 4.e-2
+SOFTENING = 1
+
+end material
+begin boundary
+ratfac = 1.0
+kappa = 0.0
+tstar = 1.0
+estar = -0.396494
+ampl = 1.0
+begin legs
+0 0. 0 222222 0.0 0.0 0.0 0. 0. 0.
+1 1. 100 222222 1.0 0.0 0.0 0. 0. 0.
+end legs
+end boundary
+end simulation

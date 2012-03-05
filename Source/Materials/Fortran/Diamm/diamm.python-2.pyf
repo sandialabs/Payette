@@ -1,0 +1,70 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module payette__user__routines
+    interface payette_user_interface
+        subroutine migmessage(message)
+            intent(callback) migmessage
+            character*(*) :: message
+            real intent(callback) :: migerror
+        end subroutine migmessage
+        subroutine migerror(message)
+            intent(callback) migerror
+            character*(*) :: message
+            real intent(callback) :: migmessage
+        end subroutine migerror
+    end interface payette_user_interface
+end python module payette__user__routines
+
+python module diamm ! in
+    interface  ! in :diamm
+        subroutine diamm_calc(nblk,ninsv,dt,ui,sig,d,sv,usm) ! in :diamm:.//diamm_main.F
+            use payette__user__routines
+            integer, parameter :: nprop=47
+            integer, parameter :: nsv=35
+            integer optional,check(len(sv)>=ninsv),depend(sv) :: ninsv=len(sv)
+            double precision intent(in) :: dt
+            double precision dimension(nprop),intent(in) :: ui
+            double precision dimension(6),intent(in,out) :: sig
+            double precision dimension(6),intent(in) :: d
+            double precision dimension(nsv),intent(in,out) :: sv
+            double precision dimension(1),intent(out) :: usm
+            intent(callback) migerror
+            external migerror
+            intent(callback) migmessage
+            external migmessage
+        end subroutine diamm_calc
+        subroutine dmmchk(ui) ! in :diamm:.//diamm_mig.F
+            use payette__user__routines
+            integer, parameter :: nprop=47
+            integer, parameter :: nsv=35
+            double precision dimension(nprop),intent(in,out) :: ui
+            intent(callback) migerror
+            external migerror
+            intent(callback) migmessage
+            external migmessage
+        end subroutine dmmchk
+        subroutine dmmrxv(ui,nx,namea,keya,rinit,rdim,iadvct,itype) ! in :elastic:diamm_mig.F
+            use payette__user__routines
+            integer, parameter :: nprop=47
+            integer, parameter :: nsv=35
+            integer,parameter :: mxn=nsv*80
+            integer,parameter :: mxk=nsv*10
+            double precision dimension(nprop),intent(in) :: ui
+            integer intent(out) :: nx
+            character dimension(mxn),intent(out) :: namea
+            character dimension(mxk),intent(out) :: keya
+            double precision dimension(nsv),intent(out) :: rinit
+            double precision dimension(7,nsv),intent(out) :: rdim
+            integer dimension(nsv),intent(out) :: iadvct
+            integer dimension(nsv),intent(out) :: itype
+            intent(callback) migerror
+            external migerror
+            intent(callback) migmessage
+            external migmessage
+        end subroutine dmmrxv
+    end interface
+end python module diamm
+
+! This file was auto-generated with f2py (version:1).
+! See http://cens.ioc.ee/projects/f2py2e/

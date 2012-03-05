@@ -1,0 +1,50 @@
+$
+$ GeoModel parameters for Salem Limestone
+$
+  B0 = 13.0e9      $Pa     161.e9     $
+  B1 = 42.47e9     $Pa
+  B2 = 0.4107e9    $Pa
+  B3 = 12.0e9      $Pa
+  B4 = 0.021       $Dimensionless
+  G0 = 9.86e9      $Pa    79.3e9      $
+  G1 = 0.0         $Dimensionless
+  G2 = 0.0         $1/Pa
+  G3 = 0.0         $Pa
+  G4 = 0.0         $Dimensionless
+  RJS = 0.0        $Meters
+  RKS = 0.0        $Pa/Meter
+  RKN = 0.0        $Pa/Meter
+  A1 = 843.02e6    $Pa
+  A2 = 2.731e-10   $1/Pa
+  A3 = 821.92e6    $Pa
+  A4 = 1.e-10      $Dimensionless
+  P0 = -314.4e6    $Pa
+  P1 = 1.22e-10    $1/Pa
+  P2 = 1.28e-18    $1/Pa^2
+  P3 = 0.084       $strain
+  CR = 6.0        $Dimensionless
+  RK = .72        $Dimensionless
+  RN = 12.e6       $Pa
+  HC = 100000.e6   $Pa
+  CTI1 = 3.e6      $Pa
+  CTPS = 1.e6      $Pa
+  T1 = 4.e-4       $sec
+  T2 = 0.835       $1/sec
+  T3 = 0.0         $Dimensionless
+  T4 = 0.0         $1/sec
+  T5 = 0.0         $Pa
+  T6 = 3.0         $sec
+  T7 = 0.0         $1/Pa
+  J3TYPE = 3      $Dimensionless
+  A2PF = 0.0   $$$$$ = zero means A2PF defaults to A2 for normality
+  A4PF = 0.0   $$$$$ = zero means A4PF defaults to A4 for normality
+  CRPF = 0.0   $$$$$ = zero means CRPF defaults to CR for normality
+  RKPF = 0.0   $$$$$ = zero means RKPF defaults to RK for normality
+  SUBX = 0.       $Dimensionless
+
+$model 2 generic eos
+$ rho ref = 2300.          $ kg/m^3
+$ tref = 298.              $ K
+$ ref sound speed = 5400.0 $ m/s
+$end
+

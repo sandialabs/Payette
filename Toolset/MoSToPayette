@@ -1,0 +1,111 @@
+#!/usr/bin/env python
+
+import os,sys
+
+man_page=\
+'''
+NAME
+    MoSToPayette
+
+USAGE
+    MoSToPayette <infile> <outfile name>
+
+PURPOSE
+    Convert MED .MoS input to files Payette input files
+'''
+if '-h' in sys.argv or '--help' in sys.argv: sys.exit(man_page)
+
+try: infile = sys.argv[1]
+except: print(man_page)
+
+try: outfile = sys.argv[2]
+except: print(man_page)
+
+# check files
+infile = os.path.realpath(infile)
+if not os.path.isfile(infile): sys.exit('input file %s does not exist'%infile)
+inbase,inext = os.path.splitext(infile)
+if '091210' not in inbase: sys.exit('input file is not 091210*.MoS')
+elif inext != '.MoS': sys.exit('input file is not a .MoS file')
+if os.path.isfile(outfile): sys.exit('output file %s already exists'%outfile)
+name = os.path.splitext(os.path.basename(outfile))[0]
+
+# read in the MoS file
+mosinput = open(infile).readlines()
+i = 0
+parbeg,parend,prdefbeg,prdefend = False,False,False,False
+for line in mosinput:
+    if 'kayenta parameters' in line.lower(): parbeg = i+1
+    if parbeg and not parend and '---------' in line: parend = i
+    if 'prdef' in line.lower(): prdefbeg = i+1
+    if prdefbeg and not prdefend and '---------' in line: prdefend = i
+    i += 1
+    continue
+
+# parse the boundary and legs sections of the input
+bcntrl,lcntrl,lstart = [],[],False
+for i in range(0,len(mosinput[prdefbeg:prdefend]),2):
+    key,val = mosinput[prdefbeg+i].strip(),mosinput[prdefbeg+i+1].strip()
+    if key == 'sstar': key = 'estar'
+    if not lstart and 'time' in key: lstart = True
+    if not lstart and key not in bcntrl:
+        bcntrl.append(key)
+        bcntrl.append(val)
+    elif not lstart and key in bcntrl:
+        bcntrl[bcntrl.index(key)] = key
+        bcntrl[bcntrl.index(key)+1] = val
+    elif lstart and 'divis' in key:
+        divs = int(val)
+    else:
+        lcntrl.append(key)
+        lcntrl.append(val)
+        pass
+    continue
+if len(bcntrl)%2 != 0: sys.exit('Error parsing boundary control')
+if len(lcntrl)%8 != 0: sys.exit('Error parsing strain table')
+nlegs = len(lcntrl)/8
+nsteps = int(divs/(nlegs-1))
+
+# parse the parameters
+params = []
+for i in range(0,len(mosinput[parbeg:parend]),2):
+    key,val = mosinput[parbeg+i].strip(),mosinput[parbeg+i+1].strip()
+    if key not in params:
+        params.append(key)
+        params.append(val)
+    else:
+        params[params.index(key)] = key
+        params[params.index(key)+1] = val
+        pass
+    continue
+if len(params)%2 != 0: sys.exit('Error parsing parameters')
+
+# write it all out
+with open(outfile,'w') as f:
+    f.write('begin simulation %s\n'%name)
+    f.write('begin material\n')
+    f.write('constitutive model kayenta\n')
+    for i in range(0,len(params),2):
+        params[i+1] = params[i+1].replace('d+','e+')
+        params[i+1] = params[i+1].replace('d-','e-')
+        if float(params[i+1]) != 0.: f.write('%s = %s\n'%(params[i],params[i+1]))
+        continue
+    f.write('end material\n')
+    f.write('begin boundary\n')
+    for i in range(0,len(bcntrl),2): f.write('%s = %s\n'%(bcntrl[i],bcntrl[i+1]))
+    f.write('begin legs\n')
+    i = 0
+    while i < nlegs:
+        j = 8*i
+        t,e1,e2,e3 = lcntrl[j+1],lcntrl[j+3],lcntrl[j+5],lcntrl[j+7]
+        if i == 0:
+            f.write('%s %s %s 222222 %s %s %s 0. 0. 0.\n'%(i,t,0,e1,e2,e3))
+        else:
+            f.write('%s %s %s 222222 %s %s %s 0. 0. 0.\n'%(i,t,nsteps,e1,e2,e3))
+            pass
+        i += 1
+        continue
+    f.write('end legs\n')
+    f.write('end boundary\n')
+    f.write('end simulation\n')
+    pass

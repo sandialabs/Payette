@@ -1,0 +1,30 @@
+begin simulation kayenta-von-mises-unistrain
+begin material
+constitutive model kayenta
+B0 = 0.2e10
+G0 = 3.0e9
+A1 = 3.5e8
+P0 = -1.e99
+CR = 0.001
+RK = 1
+CTI1 = 1.e99
+CTPS = 1.e99
+J3TYPE = 1
+end material
+begin boundary
+ratfac = 1.0
+kappa = 0.0
+tstar = 1.0
+estar = -.19
+ampl = 1.0
+begin legs
+0 0. 0 222222 0.0 0.0 0.0 0. 0. 0.
+1 1. 100 222222 1.0 0.0 0.0 0. 0. 0.
+2 2. 100 222222 -1.0 0.0 0.0 0. 0. 0.
+end legs
+end boundary
+begin mathplot
+ strain11 strain22 strain33 timestep sig11 sig22 KAPPA EQDOT I1 ROOTJ2
+ GFUN EQPS EQPV EVOL CRACK SHEAR YIELD LODE TMPR SNDSP RHO ENRGY
+end mathplot
+end simulation

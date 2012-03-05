@@ -1,0 +1,50 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module kayenta_dual_soft ! in
+    interface  ! in :kayenta_dual_soft
+        subroutine kayenta_calc(nblk,ninsv,dtarg,ui,gc,dc,sigarg,d,svarg,usm) ! in :kayenta_dual_soft:Kayenta_calcs_mod.F
+            integer optional,check(shape(sigarg,1)==nblk),depend(sigarg) :: nblk=shape(sigarg,1)
+            integer optional,check(shape(svarg,0)==ninsv),depend(svarg) :: ninsv=shape(svarg,0)
+            integer,parameter :: nprop=88
+            integer,parameter :: nsv=53
+            integer,parameter :: ndc=13
+            double precision, intent(in) :: dtarg
+            double precision dimension(nprop),intent(in) :: ui
+            double precision dimension(nprop),intent(in) :: gc
+            double precision dimension(ndc),intent(in) :: dc
+            double precision dimension(6,nblk),intent(in,out) :: sigarg
+            double precision dimension(6,nblk),depend(nblk),intent(in) :: d
+            double precision dimension(ninsv,nblk),depend(nblk),intent(in,out) :: svarg
+            double precision dimension(nblk),depend(nblk),intent(out) :: usm
+        end subroutine kayenta_calc
+        subroutine kayenta_chk(ui,gc,dc) ! in :kayenta_dual_soft:Kayenta_mig_mod.F
+            integer,parameter :: nprop=88
+            integer,parameter :: nsv=53
+            integer,parameter :: ndc=13
+            double precision dimension(nprop),intent(in,out) :: ui
+            double precision dimension(nprop),intent(in) :: gc
+            double precision dimension(ndc),intent(in,out) :: dc
+        end subroutine kayenta_chk
+        subroutine kayenta_rxv(ui,gc,dc,nx,namea,keya,rinit,rdim,iadvct,itype) ! in :kayenta_dual_soft:Kayenta_mig_mod.F
+            integer,parameter :: nprop=88
+            integer,parameter :: nsv=53
+            integer,parameter :: ndc=13
+            integer,parameter :: mxn=nsv*80
+            integer,parameter :: mxk=nsv*10
+            double precision dimension(nprop),intent(in,out) :: ui
+            double precision dimension(nprop),intent(in) :: gc
+            double precision dimension(ndc),intent(in) :: dc
+            integer intent(out) :: nx
+            character dimension(mxn),intent(c,out) :: namea
+            character dimension(mxk),intent(c,out) :: keya
+            double precision dimension(nsv), intent(out) :: rinit
+            double precision dimension(nsv,7),intent(out) :: rdim
+            integer dimension(nsv),intent(out) :: iadvct
+            integer dimension(nsv),intent(out) :: itype
+        end subroutine kayenta_rxv
+    end interface
+end python module kayenta_dual_soft
+
+! This file was auto-generated with f2py (version:1).
+! See http://cens.ioc.ee/projects/f2py2e/

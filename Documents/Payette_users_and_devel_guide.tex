@@ -1,0 +1,1085 @@
+\documentclass[11pt]{article}
+\usepackage{url}
+\input{Shortcuts}
+
+\newcommand{\payette}{{\sc{Payette}}}
+\newcommand{\runPayette}{{\texttt{runPayette}}}
+\newcommand{\testPayette}{{\texttt{testPayette}}}
+\newcommand{\payettedir}{\url{$PAYETTE_HOME}}
+\newcommand{\toolset}{\url{$PAYETTE_HOME/Toolset}}
+\newcommand{\termcommand}[1]{\indent\hspace{.2in}\texttt{\% #1}\newline}
+\newcommand{\levelo}{\indent\hspace{.2in}}
+\newcommand{\levelt}{\indent\hspace{.4in}}
+\newcommand{\levelth}{\indent\hspace{.6in}}
+\newcommand{\simblock}{\Blue{\texttt{simulation}}}
+\newcommand{\bndryblock}{\Red{\texttt{boundary}}}
+\newcommand{\mtlblock}{\Green{\texttt{material}}}
+\newcommand{\legsblock}{\Orange{\texttt{legs}}}
+\newcommand{\mathpltblock}{\Purple{\texttt{mathplot}}}
+\newcommand{\summhtml}{\texttt{\$PWD/TestResults.\$OSTYPE/summary.html}}
+\newcommand{\ratfac}{\texttt{ratfac}}
+\newcommand{\shparam}{\texttt{kappa}}
+\newcommand{\emit}{\texttt{emit}}
+\newcommand{\ampl}{\texttt{ampl}}
+\newcommand{\nprints}{\texttt{nprints}}
+\newcommand{\screenout}{\texttt{screenout}}
+\newcommand{\nsteps}{\texttt{nsteps}}
+\newcommand{\tim}{\texttt{time}}
+\newcommand{\legno}{\texttt{legno}}
+\newcommand{\ltyp}{\texttt{ltyp}}
+
+% python commands
+\newcommand{\str}{\texttt{str}}
+\newcommand{\none}{\texttt{None}}
+\newcommand{\lst}{\texttt{list}}
+\newcommand{\dict}{\texttt{dict}}
+\newcommand{\true}{\texttt{True}}
+\newcommand{\false}{\texttt{False}}
+
+\title{\huge{\payette{}:} \newline
+  \huge{An Object Oriented Material Model Driver} \newline
+  \Large{Developers and Users Guide}}
+\author{Tim Fuller and Scot Swan}
+
+\begin{document}
+\maketitle
+
+% ----------------------------------------------------------------------------- %
+\section{Introduction}
+\payette{} is an object oriented material model driver written in python designed
+for rapid development and testing of material models.
+
+% --------------------------------------- %
+\subsection{Why a Single Element Driver?}
+Due to their complexity, it is often over kill to use a finite element code for
+constitutive model development. In addition, features such as artificial
+viscosity can mask the actual material response from constitutive model
+development. Single element drivers allow the constituive model developer to
+concentrate on model development and not the finite element response. Other
+advantages of the \payette{} (or, more generally, of any stand-alone
+constitutive model driver) are
+
+\begin{itemize}
+  \item \payette{} is a very small, special purpose, code.  Thus, maintaining and
+  adding new features to \payette{} is very easy.
+
+  \item Simulations are not affected by irrelevant artifacts such as artificial
+  viscosity or uncertainty in the handling of boundary conditions.
+
+  \item It is straightforward to produce supplemental output for deep analysis of
+  the results that would otherwise constitute an unnecessary overhead in a finite
+  element code.
+
+  \item Specific material benchmarks may be developed and automatically run
+  quickly any time the model is changed.
+
+  \item Specific features of a material model may be exercised easily by the
+  model developer by prescribing strains, strain rates, stresses, stress rates,
+  and deformation gradients as functions of time.
+\end{itemize}
+
+% ----------------------- %
+\subsection{Why Python?}
+Python is an interpreted, high level object oriented language. It allows for
+writing programs rapidly and, because it is an interpreted language, does not
+require a compiling step. While this might make programs written in python slower
+than those written in a compiled language, modern packages and computers make the
+speed up difference between python and a compiled language for single element
+problems almost insignificant.
+
+For numeric computations, the numpy and scipy (\url{www.scipy.org}) modules allow
+programs written in Python to leverage a large set of numerical routines provided
+by the LAPACK, BLASPACK, EIGPACK, etc. Python's APIs also allow for calling
+subroutines written in C or Fortran (in addition to a number of other languages),
+a prerequisite for model development as most legacy material models are written
+in Fortran. In fact, most modern material models are still written in Fortran to
+this day.
+
+Python's object oriented nature allows for rapid installation of new material
+models.
+
+% -------------------------------- %
+\subsection{Historical Background}
+\payette{} is an outgrowth of Tom Pucick's \texttt{MMD} and Rebecca Brannon's
+\texttt{MED} drivers.  Both these other drivers are written in Fortran.
+
+% ------------------------------ %
+\subsection{Simulation Approach}
+\payette{} exercises a material model directly by ``driving'' it through user
+specified mechanical and electrical inputs.
+
+% ---------------------------- %
+\subsubsection{Supported Drivers}
+\paragraph{Mechanical}
+\begin{itemize}
+  \item Direct
+  \begin{itemize}
+    \item Strain rate
+    \item Strain
+    \item Deformation gradient
+    \item Velocity
+    \item Displacement
+  \end{itemize}
+  \item Inverse
+  \begin{itemize}
+    \item Stress
+    \item Stress rate
+  \end{itemize}
+\end{itemize}
+
+\paragraph{Electrical}
+\begin{itemize}
+  \item Direct
+  \begin{itemize}
+    \item Electric field
+  \end{itemize}
+\end{itemize}
+
+% ----------------------------------------------------------------------------- %
+\section{\payette{} System Requirements}
+\payette{} requires Python 2.6 or later with the scipy, numpy, and matplotlib
+modules installed.
+
+% --------------------------------------------- %
+\subsection{Installing Required Python Modules}
+In the sections below, instructions are given for installing the required python
+modules via system level package management programs.  Of course, all modules can
+be installed from source, but having a package manager handle all of the build
+dependencies is infinitely easier in most cases.
+
+% --------------------------------- %
+\subsubsection{Installing on Macintosh}
+The Apple operating system does not provide a native package manager, but several
+third party package managers are available.  The two most common are Fink
+(\url{www.finkproject.org}) and MacPorts (\url{www.macports.org}).  The following
+instructions apply to MacPorts.
+
+If you do not have MacPorts installed on your system, first install the optional
+Developer Tools from the Mac OSX installation DVD that came with your computer.
+If you do not have a copy, the developer tools can be downloaded directly from
+Apple (\url{https://developer.apple.com/technologies/tools}), but it is a very
+large download ($\sim$3 GB).  After installing the Developer Tools, download the
+MacPorts binary installer (\url{http://www.macports.org/install.php}) and
+install.
+
+Once MacPorts is installed, simply execute the following command from the
+terminal (\url{/Applications/Utilities/Terminal.app}): \newline
+
+\termcommand{sudo port install pyXx-scipy pyXx-matplotlib}
+
+\noindent where \texttt{X} and \texttt{x} are the major and minor python release
+numbers, respectively.
+
+% ----------------------------- %
+\subsubsection{Installing on Linux}
+Most Linux distributions come with a native package manager installed that will
+fetch and install the required python modules.  On Ubuntu/Debian, simply execute
+in a terminal window:\newline
+
+\termcommand{sudo apt-get python-numpy python-scipy python-matplotlib}
+
+% ----------------------------------------------------------------------------- %
+\section{Getting \payette{}}
+\label{sec:getting}
+The source code for \payette{} is distributed via svn from
+\url{svn://lenny.eng.utah.edu/csm/local/svn/Payette/}.  The repository is access
+limited.  Contact Tim Fuller (\url{tjfulle@sandia.gov}) or Scot Swan
+(\url{mswan@sandia.gov}) to gain access to the repository.  Once access is
+granted, execute \newline
+
+\termcommand{svn co svn://lenny.eng.utah.edu/csm/local/svn/Payette/}
+
+\noindent at a command prompt.  Once executed, the following directories will be
+checked out on to your local machine
+
+\begin{verbatim}
+Payette/
+  branches/
+  tags/
+  trunk/
+    Aux/
+    Documents/
+    Source/
+    Tests/
+    Toolset/
+\end{verbatim}
+
+% ----------------------------------------------------------------------------- %
+\section{Building \payette{}}
+
+% -------------------------------------- %
+\subsection{Setting Up Your Environment}
+\payette{} requires the following additions to your standard environment
+\begin{itemize}
+  \item \url{PAYETTE_HOME} environment variable that points to
+  \url{/path/to/Payette/trunk/}.  \newline
+  \indent\hspace{.1in}bash: \texttt{export
+    PAYETTE\_HOME=/path/to/Payette/trunk}\\
+  \indent\hspace{.1in}csh: \texttt{setenv PAYETTE\_HOME /path/to/Payette/trunk}
+  \item Append \url{$PAYETTE_HOME/Toolset} to your \url{$PATH} \\
+  \indent\hspace{.1in}bash: \texttt{export PATH =
+    \$PATH:\$PAYETTE\_HOME/Toolset}\\
+  \indent\hspace{.1in}csh: \texttt{setenv PATH \$PATH:\$PAYETTE\_HOME/Toolset}
+
+  \item If you are authorized to work on the Kayenta material model, set the
+  environment variable \url{PAYETTE_KAYENTA} to point to the Kayenta
+  \url{trunk/src} directory.
+\end{itemize}
+
+% --------------------------------------------------- %
+\subsection{Building the \payette{} Executable Scripts}
+If all of the previous steps were successfully completed, building \payette{} is
+completed through the \texttt{buildPayette} script in the
+\url{$PAYETTE_HOME/Toolset} directory.  To build, execute \\
+
+\termcommand{cd \$PAYETTE\_HOME/Toolset}
+\termcommand{python buildPayette}
+
+\noindent at a command prompt, making sure that the python interpreter used to
+build Payette is the same interpreter that you previously installed numPy and
+sciPy support. The \url{buildPayette} script will build two additional scripts in
+\url{$PAYETTE_HOME/Toolset}: \runPayette{} and \testPayette{}, both of
+which are described later in this document.
+
+\url{buildPayette} has additional options/capabilities that can be seen by
+executing: \\
+
+\termcommand{python buildPayette -h}
+
+% ----------------------------------------------------------------------------- %
+\section{Running \payette{}}
+Interacting with \payette{} is done through the \runPayette{} script and
+properly formatted input files.  The basic usage of \runPayette{} is \\
+
+\termcommand{runPayette input\_file}
+
+For a complete list of options for \runPayette{} execute \\
+
+\termcommand{runPayette -h}
+
+% ----------------------------------------------------------------------------- %
+\subsection{Simulation Output}
+For a simulation titled ``\url{simnam}'', the following output is created by
+\runPayette{}:
+\begin{description}
+  \item[\url{simnam.log}] ascii log file
+  \item[\url{simnam.out}] ascii space delimited output file
+  \item[\url{simnam.math1}] ascii Mathematica auxiliary postprocessing file
+  \item[\url{simnam.math2}] ascii Mathematica auxiliary postprocessing file
+  \item[\url{simnam.prf}] binary restart file
+  \item[\url{simnam.props}] ascii list of checked material parameters
+\end{description}
+
+% ----------------------------------------------------------------------------- %
+\section{\payette{} Input File Formatting}
+Input files are comprised of several ``blocks'' of instruction for \runPayette{}.
+A block is a group of instructions contained in a \texttt{begin <block> [block
+  name] ... end <block>} pair:
+
+\begin{verbatim}
+begin <block> [block name]
+        .
+        .
+        .
+end <block>
+\end{verbatim}
+
+% -------------------------------------------------- %
+\paragraph{A Note on Case, Spacing, and Comment Characters}
+For the most part, the case of the text in the input file does not matter, nor
+does the indentation on each line. Indentation of input blocks is used only for
+clarity in this document. \runPayette{} supports \# and \$ as native comment
+characters and the user can pass the optional \url{--cchar=userchar} to specify
+any character ``\url{userchar}'' to be used as a comment character.
+
+% ------------------------- %
+\subsection{Required Blocks}
+The blocks required by \runPayette{} are
+
+\levelo\Blue{\texttt{begin simulation <title>}}\\
+\levelt\Green{\texttt{begin material}}\\
+\levelth\Green{\texttt{[material options]}}\\
+\levelt\Green{\texttt{end material}}\\
+\levelt\Red{\texttt{begin boundary}}\\
+\levelth\Red{\texttt{[boundary options]}}\\
+\levelt\Red{\texttt{end boundary}}\\
+\levelo\Blue{\texttt{end simulation}}\\
+
+The ordering of the blocks within the \simblock{} block does not
+matter. However, all blocks for a given simulation must be nested in the
+\simblock{} block. Details of the required content of each block
+follows.
+
+% --------------------------- %
+\subsubsection{\simblock{} Block}
+Each input file must have a \simblock{} block with title for that simulation. The
+title of the simulation will serve as the basename for all simulation output,
+with spaces replaced with underscores.
+
+% ------------------------------------- %
+\paragraph{Number of Simulations per Input File}
+\runPayette{} supports an arbitrary number of \simblock{} blocks in a single
+input file.
+
+
+% --------------------------------------------------------- %
+\subsubsection{\mtlblock{} Block}
+In the \mtlblock{} block, the constitutive model and material parameters are
+defined. A \mtlblock{} block would look like
+
+\levelo\Green{\texttt{begin material}}\\
+\levelt\Green{\texttt{constitutive model <model>}}\\
+\levelt\Green{\texttt{parameter 1 <value>}}\\
+\levelt\Green{\texttt{parameter 2 <value>}}\\
+\levelt\Green{\texttt{parameter n <value>}}\\
+\levelo\Green{\texttt{end material}}\\
+
+An important philosophical point, parameters are associated with the
+material, and not the constitutive model.  This allows different materials to be
+exercised by different constitutive models without changing parameters.
+
+An example \mtlblock{} input block for an elastic material would look like
+
+\levelo\Green{\texttt{begin material}}\\
+\levelt\Green{\texttt{constitutive model elastic}}\\
+\levelt\Green{\texttt{bkmod 130.e9}}\\
+\levelt\Green{\texttt{shmod 57.e9}}\\
+\levelo\Green{\texttt{end material}}
+
+% Another option is not specifying each parameter seperately but through a
+% parameters file, do this by
+
+% \indent\hspace{1.0in}\Green{\texttt{begin material}}\\
+% \indent\hspace{1.2in}\Green{\texttt{constitutive model <model>}}\\
+% \indent\hspace{1.2in}\Green{\texttt{material <material\_name>}}\\
+% \indent\hspace{1.0in}\Green{\texttt{end material}}\\
+
+% This directive tells \payette{} to look for the file \texttt{material\_name.py} first
+% in the current directory and then in \url{$PAYETTEDIR/Aux/Materials/Database}.
+% The \texttt{material\_name.py} contains a single python dictionary
+% \texttt{parameters} with \texttt{'parameter name':value} key:value pairs. The
+% parameter file for 6061 T6 aluminum
+% (\url{$PAYETTEDIR/Aux/Materials/Database/al_6061.py}) looks like
+
+% \begin{verbatim}
+% ``` Material properties file
+%     MATERIAL: 6061 T6 Aluminum
+%     SOURCE:   MatWeb (www.matweb.com)
+%     UNITS:    Kg/m/s/K
+% '''
+
+% parameters = {`initial density':2700,
+%               `brinell hardness':95,
+%               `knoop hardness':120,
+%               `rockwell a hardness':40,
+%               `rockwell b hardness':60,
+%               `vickers hardness':107,
+%               `tensile strength':276e6,
+%               `ultimate tensile strength':310e6,
+%               `shear strength':207e6,
+%               `ultimate bearing strength':607e6,
+%               `bearing strength':386e6,
+%                         .
+%                         .
+%                         .
+%               `bulk wave speed':5240}
+% \end{verbatim}
+
+% ------------------------------ %
+\subsubsection{\bndryblock{} Block}
+\label{sec:boundary}
+In the \bndryblock{} block, the boundary conditions for the simulation are
+defined. The \bndryblock{} block has the following format, with the default
+values being shown.
+
+\levelo\Red{\texttt{begin boundary}}\\
+\levelt\Red{\texttt{kappa = 0.}}\\
+\levelt\Red{\texttt{ampl = 1.}}\\
+\levelt\Red{\texttt{ratfac = 1.}}\\
+\levelt\Red{\texttt{tstar = 1.}}\\
+\levelt\Red{\texttt{sstar = 1.}}\\
+\levelt\Red{\texttt{estar = 1.}}\\
+\levelt\Red{\texttt{fstar = 1.}}\\
+\levelt\Red{\texttt{dstar = 1.}}\\
+\levelt\Red{\texttt{efstar = 1.}}\\
+\levelt\Red{\texttt{stepstar = 1.}}\\
+\levelt\Red{\texttt{emit = all \{all,sparce\}}}\\
+\levelt\Red{\texttt{screenout = false \{true,false\}}}\\
+\levelt\Red{\texttt{nprints = 0 \{0-nsteps\}}}\\
+\levelt\Orange{\texttt{begin legs}}\\
+\levelth\Orange{\texttt{\# leg no,  time, nsteps, ltyp,  c[ij]}}\\
+\levelt\Orange{\texttt{end legs}}\\
+\levelo\Red{\texttt{end boundary}}\\
+
+% ----------------------------------------- %
+\paragraph{Keyword ``[t,s,e,f,d,ef,step]star''}
+Multiplier on all components of time, stress, strain, deformation gradient,
+strain rate, displacement, electric field, and number of steps, respectively. All
+values of the previously listed quantities are defined in each leg will be
+multiplied by this factor. As an example, if the simulation times are given in
+microseconds, ``\url{tstar}'' could be set to ``1.0e-6'' and the times given in
+integer microsecond values.
+
+% --------------------------- %
+\paragraph{Keyword ``\emit{}''}
+Write all data (\emit{} = \url{all}) or data from only 10 timesteps (\emit{} =
+\url{sparse}) to the output file.
+
+% --------------------------- %
+\paragraph{Keyword ``\screenout{}''}
+Print out all timestep information to the console.
+
+% --------------------------- %
+\paragraph{Keyword ``\nprints{}''}
+Total number of writes to the output file during the simulation.
+
+% --------------------------- %
+\paragraph{Keyword ``\ampl{}''}
+Multiplier on all leg inputs.  \ampl{} may be used to increase or decrease the peak
+values of the given inputs without changing the rates of those inputs.
+
+% --------------------------- %
+\paragraph{Keyword ``\ratfac{}''}
+Multiplier on strain and stress rates - effectively achieved by dividing each
+time by \ratfac{}.
+
+% --------------------------- %
+\paragraph{Keyword ``\shparam{}''}
+The keyword ``\shparam{}'' is only used/defined for the purposes of strain or strain
+rate control. It refers to the coefficient used in the Seth-Hill general strain
+definition. For your convenience, the formula used is
+%
+\begin{equation}
+  [\varepsilon] = \frac{1}{\kappa}\left( [U]^\kappa - [I]\right)
+\end{equation}
+%
+Where $\kappa$ is the keyword ``\shparam{}'', $[\varepsilon]$ is the strain tensor,
+$[U]$ is the right Cauchy stretch tensor, and $[I]$ is the identity tensor. Below
+in Table \ref{table:sethhill} is a table of common values of \shparam{} and the
+associated common names for each (there is some ambiguity in the names).
+
+\begin{table}[!htb]
+  \centering
+  \begin{tabular}{|c|c|}
+    \hline
+    \multicolumn{2}{|c|}{Common Strain Names} \\
+    \hline
+    $\kappa$ & Name(s) \\ \hline
+    $-2$ & Green \\
+    $-1$ & True, Cauchy \\
+    $0$ & Logarithmic, Hencky, True \\
+    $1$ & Engineering, Swainger \\
+    $2$ & Lagrange, Almansi\\
+    \hline
+  \end{tabular}
+  \caption{Sampling of names encountered in the literature for common strain
+    measures in the Seth-Hill family of strains for integer values of $\kappa$.
+    \label{table:sethhill}}
+\end{table}
+
+\subsubsection{\legsblock{} Block}
+The \legsblock{} block defines the material states that will be applied to the
+single element throughout the simulation. In the most general case, each leg will
+be defined as follows:
+
+\levelo\Orange{\texttt{begin legs}}\\
+\levelt\Orange{\texttt{leg no,  time, nsteps, ltyp,  c[ij]}}\\
+\levelo\Orange{\texttt{end legs}}
+
+The ``\legno{}'' or leg number is always a strictly monotonically increasing
+integer, starting from zero for the first leg. There can be an arbitrary number
+of legs defined.
+
+The value ``\tim{}'' defines at what time in the simulation the material state will
+be as it is defined in that leg. Generally the first leg (leg zero) will have a
+time equal to 0 (seconds, microseconds, etc.). The values of time must increase
+strictly monotonically with leg number.
+
+The value of ``\nsteps{}'' is an integer that defines the number of steps the
+simulation will take to get from the previous leg to the current leg. Currently,
+it is not possible to explicitly define a timestep for the single element tests.
+However, by setting the time increment and value of ``\nsteps{}'' you can set the
+timestep size for that leg.
+
+The value of ``\ltyp{}'' or leg type is a little more involved. This keyword
+frequently has more features added to it, most of which are experimental.
+However, in this document only the most basic and stable options will be
+addressed.
+
+The basic form of the leg type is a string that specifies the material state for
+specific components by setting each character to one of the following:
+
+\begin{itemize}
+  \setlength{\itemsep}{0pt}
+  \setlength{\parskip}{0pt}
+  \setlength{\parsep}{0pt}
+  \item[\textbf{1}] strain rate control (mech,6)
+  \item[\textbf{2}] strain control (mech,6)
+  \item[\textbf{3}] stress rate control (mech,6)
+  \item[\textbf{4}] stress control (mech,6)
+  \item[\textbf{5}] deformation gradient control (mech,9)
+  \item[\textbf{6}] electric field (elec,3)
+  \item[\textbf{8}] displacement (mech,3)
+\end{itemize}
+
+There are two types of control here: mechanics control (mech) and electric field
+control (elec). Because these two types are seperated and handled individually
+after parsing, the mechanics and electric control characters can be mixed
+together without change in behavior. The integer given in the parentheses in the
+above list represent the maximum number of components that may be defined. The
+user must define at least three mechanics options for any given simulation. If no
+electric field options are given, they default to zero.
+
+Once the mechanics control characters are gathered, they are checked for
+compatibility. Specifically, the rules are as follows:
+
+\begin{itemize}
+  \item Deformation gradient control (5) cannot be mixed with other mechanics
+  control options and all 9 components must be defined.
+  \item Displacement control (8) cannot be mixed with other mechanics control
+  options.
+\end{itemize}
+
+Then, the component values ``c[ij]'' are read in and are assigned values based on
+the leg type string. The general case for ``c[ij]'' user input components (which
+is actually a 1D array) correlating to tensor components is
+%
+\begin{equation}
+  [C] = \left[ \begin{array}{ccc} C_{1} & C_{4} & C_{6} \\ C_{7} & C_{2} & C_{5}\\ C_{9} & C_{8} & C_{3} \end{array}\right]
+\end{equation}
+%
+Payette simply follows this pattern for assigning variables. However, at least the
+first three must be defined (the $x$, $y$, and $z$ components). If any variables
+are given beyond this, it fills in the matrix in that order up to the maximum
+number of components.
+
+\paragraph{Example 1: Deformation Gradient, Uniaxial Extension}
+This example extends the material in the $x$-direction.
+
+\levelo\Orange{\texttt{begin legs}}\\
+\levelt\Orange{\texttt{0, 0.0, 0, 555555555, 1.0, 1., 1., 0., 0., 0., 0., 0., 0.}}\\
+\levelt\Orange{\texttt{1, 1.0, 0, 555555555, 1.1, 1., 1., 0., 0., 0., 0., 0., 0.}}\\
+\levelo\Orange{\texttt{end legs}}
+
+\paragraph{Example 2: Strain Control, Uniaxial Extension}
+All of the following produce equivalent behavior (uniaxial strain extension).
+Remember to set ``\shparam{}'' to the desired value.
+
+\levelo\Orange{\texttt{begin legs}}\\
+\levelt\Orange{\texttt{0, 0.0, 0, 222, 0.0, 0., 0.}}\\
+\levelt\Orange{\texttt{1, 1.0, 0, 222, 0.1, 0., 0.}}\\
+\levelo\Orange{\texttt{end legs}}
+
+\noindent or
+
+\levelo\Orange{\texttt{begin legs}}\\
+\levelt\Orange{\texttt{0, 0.0, 0, 2222, 0.0, 0., 0., 0.}}\\
+\levelt\Orange{\texttt{1, 1.0, 0, 2222, 0.1, 0., 0., 0.}}\\
+\levelo\Orange{\texttt{end legs}}
+
+\noindent or
+
+\indent\hspace{0.2in}\Orange{\texttt{begin legs}}\\
+\indent\hspace{0.4in}\Orange{\texttt{0, 0.0, 0, 222222, 0.0, 0., 0., 0., 0., 0.}}\\
+\indent\hspace{0.4in}\Orange{\texttt{1, 1.0, 0, 222222, 0.1, 0., 0., 0., 0., 0.}}\\
+\indent\hspace{0.2in}\Orange{\texttt{end legs}}\\
+
+\paragraph{Example 3: Stress Control, Uniaxial Tension}
+Stress control can be defined in much the same way as strain control (see example
+2). Assuming that the material parameters are defined in MKS, stress will be
+defined in terms of Pa.
+
+\levelo\Orange{\texttt{begin legs}}\\
+\levelt\Orange{\texttt{0, 0.0, 0, 444444, 0.0e9, 0., 0., 0., 0., 0.}}\\
+\levelt\Orange{\texttt{1, 1.0, 0, 444444, 1.0e9, 0., 0., 0., 0., 0.}}\\
+\levelo\Orange{\texttt{end legs}}\\
+
+\paragraph{Example 4: Mixed Control}
+This example could be used to reproduce the stress state found in the standard
+tension test when the strain is known. Specifically, we prescribe the strain
+value in the $x$-direction while prescribing the lateral stresses to be held at
+zero stress.
+
+\levelo\Orange{\texttt{begin legs}}\\
+\levelt\Orange{\texttt{0, 0.0, 0, 244, 0.00, 0., 0.}}\\
+\levelt\Orange{\texttt{1, 1.0, 0, 244, 0.01, 0., 0.}}\\
+\levelo\Orange{\texttt{end legs}}\\
+
+
+\subsubsection{Notes on Stress Control}
+As prescribed stress is essentially an inverse problem, prescribed stress
+simulations take much longer than prescribed strain simulations. This is due to
+the need of using optimization routines to determine the correct strain increment
+to input to the material model.
+
+The general objective function used in the optimization routine is simply an L2
+norm of the difference of the prescribed stress components with the output stress
+components. This is of particular importance when a stress is prescribed outside
+of the limit surface for a material and the material stress simply cannot reach
+the prescribed stress. For example, if the user desired uniaxial stress but
+prescribed the stress to some value beyond the limit surface then the stress
+state might develop non-zero values in components that could reasonably be
+expected to stay zero.
+
+To alleviate this problem, Payette has a command line argument ``--proportional''
+that enforces proportional loading for prescribed stress problems. This changes
+the objective function to optimize for a stress state that is proportional to the
+prescribed stress by some factor and that is as close as possible to the
+prescribed stress. Specifically, it decomposes the output stress tensor into
+``proportional'' and ``perpendicular'' tensors with the proportional stress
+tensor begin a multiple of the prescribed stress tensor and the perpendicular
+tensor being the balance. The function takes the square of the L2 norm of the
+perpendicular tensor and the L2 norm of the difference of the proportional and
+prescribed tensors. In this way Payette weights the stress state such that being
+proportional is more important than being closer. For this objective function
+using the same simulation as described for the default objective function, we
+would maintain uniaxial stress even when the limit surface is attained.
+
+As a warning, stress control (especially proportional loading) can introduce
+excessive noise when stress states are prescribed outside of the yield surface.
+However, it can also perform flawlessly. Be aware of the limits of the objective
+functions when choosing.
+
+% ------------------------- %
+\subsection{Optional Blocks}
+The following blocks are optional: \mathpltblock{}.
+
+% ------------------------------- %
+\subsubsection{\mathpltblock{} Block}
+The \mathpltblock{} block is used to specify optional plotting information
+written to the \url{simnam.math[1,2]} output files for use in Rebecca Brannon's
+Mathematica post processing files. The basic syntax is
+
+\levelo\Purple{\texttt{begin mathplot}} \\
+\levelt\Purple{var1 var2 var3} \\
+\levelt\Purple{var4, var5, var6} \\
+\levelt\Purple{var7; ...; varn} \\
+\levelo\Purple{\texttt{end mathplot}}
+
+\noindent where var? are \payette{} and material model variables.  A complete
+list of plotable variables is listed in each simulation's log file.  Each line in
+the \mathpltblock{} block can contain an arbitrary number of space, comma, or
+semi-colon delimited variables.
+
+% -------------------------------- %
+\subsection{Inserting External Files}
+External files containing formatted \payette{} input can be included anywhere in
+the input file through the \texttt{include} and \texttt{insert} directives.  For
+example, material parameters can be kept in a separate parameter file and
+inserted in to an input file by
+
+\levelo\Green{\texttt{begin material}}\\
+\levelt\Green{\texttt{constitutive model kayenta}}\\
+\levelt\Green{\texttt{insert salem\_limestone.dat}}\\
+\levelo\Green{\texttt{end material}}
+
+
+\noindent When \payette{} encounters an [\texttt{insert,include}] directive, it
+looks for the inserted file by it's absolute path, in the current directory, and
+in the \url{$PAYETTE_HOME/Aux/MaterialsDatabase}, in that order.
+
+\clearpage
+% ----------------------------- %
+\subsection{Complete Input File}
+Below is an input file, any keywords not given take the default values shown in
+Section \label{sec:boundary}.
+
+\begin{verbatim}
+begin simulation elastic unistrain cycle
+  begin material
+    constitutive model elastic
+    shmod 53.e9
+    bkmod 135.e9
+  end material
+  begin boundary
+    kappa = 0.
+    tfac = 1.
+    amplitude = 1
+    begin legs
+#     l  t   n     ltyp       c[ij]...
+      0, 0., 0.,   222222,    0., 0., 0., 0., 0., 0.
+      1, 1., 100,  222222,    .1, 0., 0., 0., 0., 0.
+      2, 2., 100,  222222,    0., 0., 0., 0., 0., 0.
+      3, 3., 100,  444444,    20.566e9, 9.966e9, 9.966e9, 0., 0., 0.
+      4, 4., 100,  444444,    0. ,0. ,0. ,0. ,0. ,0.
+      5, 5., 100,  111111,    0.1 ,0. ,0. ,0. ,0. ,0.
+      6, 6., 100,  111111,   -0.1 ,0. ,0. ,0. ,0. ,0.
+      7, 7., 100,  333333,    20.566e9, 9.966e9, 9.966e9, 0., 0., 0.
+      8, 8., 100,  333333,   -20.566e9, -9.966e9, -9.966e9, 0., 0., 0.
+      9, 9., 100,  555555555, 1.1052, 1., 1., 0., 0., 0., 0., 0., 0.
+     10, 10.,100,  555555555, 1., 1., 1., 0., 0., 0., 0., 0., 0.
+    end legs
+  end boundary
+  begin mathplot
+    sig11 sig22 sig33
+    eps11 eps22 eps33
+  end mathplot
+end simulation
+\end{verbatim}
+
+\clearpage
+% ----------------------------------------------------------------------------- %
+\section{\testPayette{}}
+\testPayette{} is what makes \payette{} an invaluable tool to material model
+development. Simplistically, \testPayette{} is a tool that exercises
+\runPayette{} on previously setup simulations and compares the results against a
+``gold'' result, allowing model developers to instantly see if changes to a
+material model affect its results.
+
+% ----------------------------- %
+\subsection{Basic Usage of \testPayette{}}
+From a command prompt execute\\
+
+\termcommand{testPayette}
+
+\noindent \testPayette{} will then scan \url{$PAYETTE_HOME/Tests} for tests.
+After creating a lists of tests to run, \runPayette{} will create
+\url{$PWD/TestResults.$OSTYPE} directory and subdirectories in which the tests
+will be run. The subdirectories created in \url{$PWD/TestResults.$OSTYPE/} mirror
+the subdirectories of \url{$PAYETTE_HOME/Tests}. After creating the
+\url{$PWD/TestResults.$OSTYPE/} directory tree, it will then move in to the
+appropriate subdirectory to run and analyze each individual test. For example, if
+the \url{Tests/Materials/Elastic/elastic-unistrain.py} test is run,
+\testPayette{} will create a
+\url{$PWD/TestResults.$OSTYPE/Materials/Elastic/elastic-unistrain/} directory,
+move to it, and run the \url{elastic-unistrain.py} test in it.
+
+% ------------------------------- %
+\subsection{Filtering Tests to Run}
+The tests run can be filtered by keyword with the \url{-k} option. For example,
+to run only the ``fast'' ``kayenta'' material tests, execute \\
+
+\termcommand{testPayette -k kayenta -k fast} \\
+
+\noindent Or, you can run specific tests with the \url{-t} option.  For example,
+to run only the \url{elastic-unistrain.py} test, execute\\
+
+\termcommand{testPayette -t elastic-unistrain} \\
+
+% --------------------------------- %
+\subsection{Multiprocessor Support}
+By default, \testPayette{} will run all collected tests serially on a single
+processor, but supports running tests on multiple processors with the \texttt{-j
+  nproc} option, where \texttt{nproc} is the number of processors.  For example,
+to run all of the kayenta tests on 8 processors, execute \\
+
+\termcommand{testPayette -k kayenta -j8}
+
+\noindent Be warned, however, that when run on multiple processors, you cannot
+kill \testPayette{} by \texttt{ctrl-c}, but must put the job in the background
+and kill it with \texttt{kill -9 pid}, where \texttt{pid} is the process id. Any
+help from a python multiprocessor expert on getting around this limitation would
+be greatly appreciated!
+
+% ------------------------------------- %
+\subsection{Other \testPayette{} Options}
+Execute \\
+
+\termcommand{testPayette -h}
+
+\noindent for a complete list of options.
+
+% ------------------------------------------------------------- %
+\subsection{\summhtml{}}
+\testPayette{} gives a complete summary of test results in \summhtml{} viewable
+in any web browser.
+
+% ----------------------------------------------------------------------------- %
+\subsection{Mathematca Post Processing}
+For the Kayenta material model, \testPayette{} creates Prof. Brannon's
+Mathematica post processing file \url{kayenta.nb} (formerly \url{030626.nb}) in
+\url{$PWD/TestResults.$OSTYPE/Materials/Kayenta/}, that aids greatly in analyzing
+test results for the Kayenta material model.
+
+\subsection{Creating New Tests}
+\Comment{not done yet!}
+
+
+% ----------------------------------------------------------------------------- %
+\section{Installing New Materials in \payette{}}
+\payette{} was born from the need for an environment in which material
+constitutive models could be rapidly developed, tested, deployed, and maintained,
+independent of host finite element code implementation. Important prerequisites
+in the design of \payette{} were ease of model installation and support for
+constitutive routines written in Fortran. This requirement is met by providing a
+simple API with which a model developer can install a material in \payette{} as a
+new Python class and use \texttt{f2py} to compile Python extension modules from
+the material's Fortran source (if applicable). In this section, the \payette{}
+API is described through an example elastic material model and instructions for
+extending a material model to include Fortran subroutines are given.
+
+% ------------------------------------------- %
+\subsection{Material File Naming Conventions}
+Each material model must provide its Python class definition in its own file in
+the \url{$PAYETTE_HOME/Source/Materials}.  The accepted naming convention for the
+material's Python class file is \newline
+
+\url{$PAYETTE_HOME/Source/Materials/Payette_material_name.py} \newline
+
+A material's Fortran source code (if applicable) is stored in its own directory
+in the \url{$PAYETTE_HOME/Source/Materials/Fortran} directory. The accepted
+naming convention for the material's Fortran directory is \newline
+
+\url{$PAYETTE_HOME/Source/Materials/Fortran/MaterialName} \newline
+
+There is no defined naming convention for Fortran source code within the
+materials \url{Fortran/MaterialName} directory.
+
+As an example, suppose you were developing a new material model ``Porous Rock''.
+The source files and directories would be named: \newline
+
+\url{$PAYETTE_HOME/Source/Materials/Payette_porous_rock.py} \newline
+\url{$PAYETTE_HOME/Source/Materials/Fortran/PorousRock}
+
+% ------------------------------------------------- %
+\subsubsection{A Note On Including Fortran Source Code}
+The \payette{} project is an open source project, without restrictions on how the
+source code is used and/or distributed. However, many material models do have
+restrictive access controls and cannot, therefore, include their source files in
+\payette. This is the case for many materials currently being developed with
+\payette. For these materials, rather than include the source code in the
+material's Fortran directory, the Fortran build script used by \payette{} to
+build the material's Python extension module is used to direct \payette{} to the
+location of the material's source files, elsewhere in the developer's file
+system. The contents of the Fortran build script are discussed later in this
+document in the section on building Fortran source code in \payette.
+
+% ---------------------------------------------------------------------------- %
+\subsection{\texttt{ConstitutiveModel} -- Constitutive Model Base Class}
+\payette{} provides a simple interface for interacting with material models
+through the Python class structure. Material models are installed as separate
+Python classes, derived from the \texttt{ConstitutiveModel} base class. The
+\texttt{ConstitutiveModel} base class offers the following methods in its API:
+
+\subsubsection{Data}
+
+\begin{description}
+  \item{\texttt{ConstitutiveModel}.\textbf{name}} [type:\str, default:\none]\\
+  Constitutive model name, used in parsing user input.
+
+  \item{\texttt{ConstitutiveModel}.\textbf{aliases}} [type:\lst, default:[]]\\
+  Constitutive model aliases, used in parsing user input.
+
+  \item{\texttt{ConstitutiveModel}.\textbf{parameter\_table}}
+  [type:\dict, default:\{\}] \newline
+  Table of parameter names, position in material user input array, and aliases.
+  Used in parsing user input. Derived classes must return a parameter\_table of the form\\
+  \url{param_table} = \{\\
+  ``\url{param_1_name}'':\{``ui pos'':0,``aliases'':[``alias 1'',``alias 2'',...]\},\\
+  ``\url{param_2_name}'':\{``ui pos'':1,``aliases'':[``alias 1'',``alias 2'',...],\\
+  ... \\
+  ``\url{param_n_name}'':\{``ui pos'':n-1,``aliases'':[``alias 1'',``alias 2'',...]\}\\
+  \}
+  \item{\texttt{ConstitutiveModel}.\textbf{nprop}} \newline
+  type:int
+  default:0
+
+  \item{\texttt{ConstitutiveModel}.\textbf{ndc}} \newline
+  type:int
+  default:0
+
+  \item{\texttt{ConstitutiveModel}.\textbf{nsv}} \newline
+  type:int
+  default:0
+
+  \item{\texttt{ConstitutiveModel}.\textbf{ui0}} \newline
+  type:numpy.array\newline
+  default:numpy.zeros(self.nprop)
+
+  \item{\texttt{ConstitutiveModel}.\textbf{ui}} \newline
+  type:numpy.array\newline
+  default:numpy.zeros(self.nprop)
+
+  \item{\texttt{ConstitutiveModel}.\textbf{dc}} \newline
+  type:numpy.array\newline
+  default:numpy.zeros(self.ndc)
+
+  \item{\texttt{ConstitutiveModel}.\textbf{namea}} \newline
+  type:list\newline
+  default: [None]*self.nsv
+
+  \item{\texttt{ConstitutiveModel}.\textbf{keya}} \newline
+  type:list\newline
+  default: [None]*self.nsv
+
+  \item{\texttt{ConstitutiveModel}.\textbf{bulk\_modulus}} \newline
+  type:real\newline
+  default: 0.
+
+  \item{\texttt{ConstitutiveModel}.\textbf{shear\_modulus}} \newline
+  type:real\newline
+  default: 0.
+
+  \item{\texttt{ConstitutiveModel}.\textbf{multi\_level\_fail\_model}} \newline
+  type:bool\newline
+  default:False
+
+  \item{\texttt{ConstitutiveModel}.\textbf{electric\_field\_model}} \newline
+  type:bool\newline
+  default:False
+
+  \item{\texttt{ConstitutiveModel}.\textbf{cflg\_idx}}
+  default: None
+
+  \item{\texttt{ConstitutiveModel}.\textbf{fratio\_idx}} \newline
+  None
+
+\end{description}
+
+\subsubsection{Methods}
+
+\begin{verbatim}
+
+    def __init__(self, props):
+        pass
+
+    def Initialize_State(self,*args,**kwargs):
+        pass
+
+    def Set_Up(self,*args,**kwargs):
+        msg = 'Consitutive model must provide Set_Up method'
+        reportError(__file__,msg)
+        return 1
+
+    def Update_State(self,*args,**kwargs):
+        msg = 'Consitutive model must provide updateState method'
+        reportError(__file__,msg)
+        return 1
+
+    def initialParameters(self):
+        return self.ui0
+
+    def checkedParameters(self):
+        return self.ui
+
+    def modelParameters(self):
+        return self.ui
+
+    def initialJacobian(self):
+        return self.J0
+
+    def internalStateVariables(self):
+        return self.sv
+
+    def derivedConstants(self):
+        return self.dc
+
+    def isvKeys(self):
+        return self.keya
+
+    def computeInitialJacobian(self):
+\end{verbatim}
+\begin{itemize}
+  \item \texttt{def} \url{__init__(self,props)}
+  \item \texttt{def jacobian(self,dt,d,Fold,Fnew,EF,sig,sv,v,*args,**kwargs)}
+  \item \texttt{def checkProperties(self,*args,**kwargs)}
+  \item \texttt{def setField(self,*args,**kwargs)}
+  \item \texttt{def updateState(self,*args,**kwargs)}
+\end{itemize}
+
+Once a material object is instantiated by \payette{}, \payette{} interacts with
+that model by calling any of the above listed methods.
+
+\paragraph{\texttt{ConstitutiveModel.\textbf{checkProperties}(self,*args,**kwargs)}}
+\paragraph{\texttt{ConstitutiveModel.\textbf{setField}(self,*args,**kwargs)}}
+\paragraph{\texttt{ConstitutiveModel.\textbf{updateState}(self,*args,**kwargs)}}
+
+% ------------------------------- %
+\subsection{Derived Material Class}
+% ------------------------------------ %
+\subsubsection{\texttt{attributes} Dictionary}
+
+% ----------------------- %
+\subsection{Fortran Code}
+% ----------------------- %
+\subsubsection{Build Script}
+
+\begin{verbatim}
+import sys
+import os
+import numpy as np
+
+from Source.Payette_utils import *
+from Source.Payette_constitutive_model import ConstitutiveModelPrototype
+
+attributes = {"payette material":True,
+              "name":"py elastic",
+              "aliases":["python elastic","py hooke","python hook"],
+              "material type":["mechanical"]
+              }
+class PyElastic(ConstitutiveModelPrototype):
+    """
+    CLASS NAME
+       PyElastic
+
+    PURPOSE
+
+       Constitutive model for an elastic material in python. When instantiated,
+       the Elastic material initializes itself by first checking the user input
+       (checkProperties) and then initializing any internal state variables
+       (setField). Then, at each timestep, the driver update the Material state
+       by calling updateState.
+
+    METHODS
+       checkProperties
+       setField
+       updateState
+
+    AUTHORS
+       Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
+    """
+
+    imported = True
+    name = attributes["name"]
+    aliases = attributes["aliases"]
+    parameter_table = {
+    "K":{"ui pos":0,"aliases":["BKMOD"]},
+    "G":{"ui pos":1,"aliases":["SHMOD"]}}
+    nprop = len(parameter_table.keys())
+
+    def __init__(self,props):
+        self.dc = np.zeros(0)
+        self.ui0 = np.array(props)
+        self.ui = self.checkProperties(props=props)
+        (self.nsv,self.namea,self.keya,self.sv,
+         self.rdim,self.iadvct,self.itype) = self.setField()
+        self.J0 = self.computeInitialJacobian()
+
+    def jacobian(self,dt,d,Fold,Fnew,EF,sig,sv,v,*args,**kwargs):
+        return self.J0[[[x] for x in v],v]
+
+    def checkProperties(self,*args,**kwargs):
+        K,G = kwargs["props"]
+
+        msg = ""
+        if K <= 0.0: msg += "Bulk modulus K must be positive.  "
+        if G <= 0.0: msg += "Shear modulus G must be positive"
+        if msg: reportError(__file__,msg)
+
+        if 3.*K < 2.*G: msg += "neg Poisson (to avoid warning, set 3*B0>2*G0)"
+        if msg: reportWarning(__file__,msg)
+        self.bulk_modulus,self.shear_modulus = K,G
+
+        # internally, work with lame parameters
+        lam = K - 0.66666666666666666667*G
+        return np.array([G,lam])
+
+    def setField(self,*args,**kwargs):
+        nsv = 2
+        sv = np.array([0.,1.])
+        namea,keya = ["Free 01","Free 02"], ["F01","F02"]
+        rdim,iadvct,itype = [None]*3
+        return nsv,namea,keya,sv,rdim,iadvct,itype
+
+    def updateState(self,*args,**kwargs):
+        """
+           update the material state based on current state and strain increment
+        """
+        dt,d,fold,fnew,efield,sigold,svold = args
+        de, delta = d*dt, np.array([1.,1.,1.,0.,0.,0.])
+        dev = (de[0] + de[1] + de[2])
+        twog, lam = 2.*self.ui[0], self.ui[1]
+        signew = sigold + twog*de + lam*dev*delta
+        return signew, self.sv
+\end{verbatim}
+\end{document}

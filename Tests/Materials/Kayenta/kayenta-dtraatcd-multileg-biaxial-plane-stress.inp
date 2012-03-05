@@ -1,0 +1,43 @@
+begin simulation kayenta-dtraatcd-multileg-biaxial-plane-stress
+begin material
+constitutive model kayenta
+B0 = 21527.78
+G0 = 12301.59
+A1 = 18.9120527666558290503
+A4 = 0.22257159299595980275
+P0 = -1.e99
+CR = 0.001
+RK = 0.72175833226030498838
+CTI1 = 1.e99
+CTPS = 1.e99
+J3TYPE = 3
+A4PF = 0.10128333300242117194
+CRPF = 0.001
+RKPF = 0.85075402592022117432
+end material
+begin boundary
+kappa = 0.0
+ratfac = 1.0
+tstar = 0.1
+estar = 1.e-3
+ampl = 1.0
+begin legs
+0 0. 0 222222 0.0 0.0 0.0 0. 0. 0.
+1 1. 63 222222 -0.8 -0.8 0.5621620938 0. 0. 0.
+2 2. 63 222222 0.3 -1.2 0.3162161777 0. 0. 0.
+3 2.1719 63 222222 0.30000 -1.68133 0.48533 0. 0. 0.
+4 3. 63 222222 0.3 -4.0 4.283900609 0. 0. 0.
+5 4. 63 222222 -1.0 -3.5 4.564981656 0. 0. 0.
+6 4.08438 63 222222 -1.32909 -3.37343 4.63614 0. 0. 0.
+7 5. 63 222222 -4.9 -2.0 9.54409 0. 0. 0.
+8 5.85264 63 222222 -4.04736 -3.70528 9.84366 0. 0. 0.
+9 6. 63 222222 -3.9 -4.0 10.2254 0. 0. 0.
+10 6.9854 63 222222 -3.90000 -2.02920 9.53297 0. 0. 0.
+11 7. 63 222222 -3.9 -2.0 9.52648 0. 0. 0.
+end legs
+end boundary
+begin mathplot
+ strain11 strain22 strain33 timestep sig11 sig22 KAPPA EQDOT I1 ROOTJ2
+ GFUN EQPS EQPV EVOL CRACK SHEAR YIELD LODE TMPR SNDSP RHO ENRGY
+end mathplot
+end simulation

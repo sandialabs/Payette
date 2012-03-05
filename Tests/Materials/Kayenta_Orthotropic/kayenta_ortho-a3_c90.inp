@@ -1,0 +1,24 @@
+# DESCRIPTION
+# Stress driven unconfined compression of Salem Limestone using orthotropic
+# kayenta model.
+
+begin simulation kayenta_ortho-a3_c90
+begin boundary
+  kappa = 0.
+  tstar = 1.
+  ampl = 1.
+  begin legs
+     0   0.    0   111111  0.   0.  0.  0.  0.  0.
+     1  2000 1000  444111 -3.e7 0.  0.  0.  0.  0.
+  end legs
+end boundary
+begin material
+  constitutive model kayenta_ortho
+  include ./salem_limestone.dat
+  ckn01=1.5e10
+  vmax1=7.5e-5
+  space1=1.27e-2
+  subx=2
+end material
+end simulation
+
