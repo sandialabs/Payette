@@ -5,3 +5,4 @@ tests_common.py
 *.log
 *.math?
 *.out
+Payette_config.py

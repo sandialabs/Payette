@@ -52,7 +52,7 @@ optokens = [ "+", "-", "*", "/", "**", "^" ]
 tokens = optokens + [kwtoken] + [coltoken]
 opchoices = ["","print"]
 
-def main(argv):
+def extractPayette(argc,argv):
 
     def col2int(col):
         if col[0] == coltoken: return int(col[1:])
@@ -209,17 +209,18 @@ def args2dict(args,sep):
         return
 
     def kw2col(kw):
-        nam = kw
-        try: col = coltoken + str(head_dict[kw.lower()])
+        try:
+            col = head_dict[kw.lower()]["col"]
+            nam = head_dict[kw.lower()]["nam"]
         except: error("keyword {0} not in {1}, choose from: {2}"
-                      .format(x,argf,header))
-        return col, kw
+                      .format(kw,argf,header))
+        return col, nam
 
     def col2col(col):
         """ return true column number (requested - 1) and column name """
         try:
             col = int(col) - 1
-            kw = header.split()[col]
+            nam = header.split()[col]
         except ValueError:
             error("non integer column number {0}".format(col))
         except IndexError:
@@ -229,7 +230,7 @@ def args2dict(args,sep):
             error("error processing {0} in {1}" .format(arg,args))
             pass
         col = coltoken + str(col)
-        return col, kw
+        return col, nam
 
     iarg = 0
     parsed_args = []
@@ -356,7 +357,8 @@ def args2dict(args,sep):
 def header2dict(header):
     dicthead = {}
     for i,item in enumerate(header.split()):
-        dicthead[item.lower()] = i
+        dicthead[item.lower()] = {"col":"{0}{1}".format(coltoken,i),
+                                  "nam":item}
         continue
     return dicthead
 
@@ -415,4 +417,4 @@ class Logger(object):
         self.stdout.write(data + "\n")
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    extractPayette(len(sys.argv[1:]),sys.argv[1:])

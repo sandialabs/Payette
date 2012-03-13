@@ -1,5 +1,4 @@
 begin simulation elastic-mtl-unistrain-cycle
-  title Uniaxial strain cycle test
   begin material
     constitutive model elastic
     shmod 53.e9

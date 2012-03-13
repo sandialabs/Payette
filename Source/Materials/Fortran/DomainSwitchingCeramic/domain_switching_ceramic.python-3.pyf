@@ -4,14 +4,14 @@
 python module domain_switching_ceramic
     interface
         subroutine qseck7(ui,gc,dc)
-            integer,parameter :: nui=41
+            integer,parameter :: nui=44
             integer,parameter :: ndc=13
             double precision dimension(nui),intent(in,out) :: ui
             double precision dimension(nui),intent(in) :: gc
             double precision dimension(ndc),intent(in,out) :: dc
         end subroutine qseck7
         subroutine qsexv7(ui,gc,dc,nx,namea,keya,rinit,rdim,iadvct,itype,iscal)
-            integer,parameter :: nui=41
+            integer,parameter :: nui=44
             integer,parameter :: nsv=27
             integer,parameter :: ndc=13
             integer,parameter :: mxn=nsv*80
@@ -29,7 +29,7 @@ python module domain_switching_ceramic
             integer dimension(nsv),intent(out) :: iscal
         end subroutine qsexv7
         subroutine dsc_init(ibflg,idb,ui,gc,dc,nx,bkd,lbd,permtv,polrzn,sv )
-          integer,parameter :: nui=41
+          integer,parameter :: nui=44
           integer,parameter :: nsv=27
           integer,parameter :: ndc=13
           integer intent(in) :: ibflg,idb,lbd,nx
@@ -44,7 +44,7 @@ python module domain_switching_ceramic
         subroutine qsedr7(nc,ui,gc,dc,nx,sv,u,r,efield,permtv,polrzn,edisp,sig)
             integer intent(in) :: nx
             integer intent(in) :: nc
-            integer,parameter :: nui=41
+            integer,parameter :: nui=44
             integer,parameter :: nsv=27
             integer,parameter :: ndc=13
             double precision dimension(nui),intent(in) :: ui

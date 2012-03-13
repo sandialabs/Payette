@@ -27,6 +27,14 @@ class Build(MaterialBuilder):
         # fortran files
         self.source_files = [osp.join(self.fdir,x) for x in os.listdir(self.fdir)
                              if x.endswith(".F")]
+        kerleyd = Payette_Kayenta
+        if kerleyd:
+            kerley = osp.join(kerleyd,"Kerley_eos.F")
+            if os.path.isfile(kerley):
+                self.pre_directives.append("-DKERLEY_EOS_RTNS")
+                self.source_files.append(kerley)
+                pass
+            pass
 
         self.build_extension_module_with_f2py()
 

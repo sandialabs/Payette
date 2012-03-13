@@ -1,27 +1,37 @@
 #!/usr/bin/env python
 
-import sys,subprocess,linecache,os
-import time
-import math
-import numpy as np
+from Payette_config import *
+from Source.Payette_test import PayetteTest
+from Toolset.Payette import runPayette
 
-from tests_common import *
-import Payette
+class Test(PayetteTest):
 
-Payette_test = True   # change to true
-name = "payette-test-input-str"
-keywords = ["payette","input_str","regression","fast"] # add keywords
-owner = "Tim Fuller"
-date = "February 25, 2012"
+    def __init__(self):
 
-fdir = os.path.dirname(os.path.realpath(__file__))
-infile = "%s.py"%(os.path.join(fdir,name))
-restartfile = "%s.prf"%(os.path.join(fdir,name))
-outfile = "%s.out"%(name)
-executable = runPayette
-baseline = "%s.gold"%(os.path.join(fdir,name))
+        # initialize the base class
+        PayetteTest.__init__(self)
 
-mtl_props= """
+        self.enabled = True
+
+        self.name = os.path.splitext(os.path.basename(__file__))[0]
+        self.tdir = os.path.dirname(os.path.realpath(__file__))
+
+        self.outfile = "{0}.out".format(self.name)
+        self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
+        self.input_string = self.get_input_string()
+        self.runcommand = ["--no-restart","--no-writeprops","-v","0",
+                           "--input-str={0}".format(self.input_string)]
+        self.keywords = ["payette","input_str","regression","fast"]
+
+        self.owner = "Tim Fuller"
+        self.date = "February 25, 2012"
+        self.description = """ Test of input string capabilities """
+
+        pass
+
+    def get_input_string(self):
+
+        mtl_props= """
 AN=1.
 B0=11.634e9
 G0=10.018e9
@@ -38,9 +48,9 @@ IDK=1
 IDG=1
 """
 
-inp="""begin simulation payette-test-input-str
+        input_string = """begin simulation payette-test-input-str
   begin material
-    constitutive model diamm
+    constitutive model elastic_plastic
     {0}
   end material
   begin boundary
@@ -58,7 +68,7 @@ end simulation
 
 begin simulation payette-test-input-str-1
   begin material
-    constitutive model diamm
+    constitutive model elastic_plastic
     {0}
   end material
   begin boundary
@@ -74,65 +84,38 @@ begin simulation payette-test-input-str-1
   end boundary
 end simulation
 """.format(mtl_props)
-runcommand = ["--no-restart","--no-writeprops","-v","0","--input-str=%s"%inp]
+        return input_string
 
-description = """
-    Test of input string capabilities
-"""
+    def runTest(self):
 
-def performCalcs():
-    """
-    NAME
-       performCalcs
+        """ run the test """
 
-    PURPOSE
-       run the benchmark problem
+        # run the test directly through runPayette
 
-    OUTPUT
-       stat   0: problem ran successfully
-           != 0: problem did not run successfully
-    """
-    # run the problem
-    run = Payette.runPayette(1,runcommand)
-    return run
+        perform_calcs = runPayette(len(self.runcommand),self.runcommand)
 
-def analyzeTest():
-    return 0
+        if perform_calcs != 0:
+            return self.failtoruncode
 
+        compare = self.compare_method()
 
-def runTest():
-    perform_calcs = performCalcs()
-    if perform_calcs != 0: return 2
-    return analyzeTest()
-
-    return input_string
+        return compare
 
 
 if __name__ == "__main__":
     import time
-    if "--cleanup" in sys.argv:
-        for ext in ["out","res","log","prf","pyc","echo"]:
-            try: os.remove("%s.%s"%(name,ext))
-            except: pass
-            continue
+
+    test = Test()
+
+    print("RUNNING: {0}".format(test.name))
+    run_test = test.runTest()
+
+    if run_test == test.passcode:
+        print("PASSED")
+    elif run_test == test.diffcode:
+        print("DIFF")
+    elif run_test == test.failcode:
+        print("FAIL")
         pass
-    else:
-        t0 = time.time()
-        print("%s RUNNING"%name)
-        perform_calcs = performCalcs()
-        dtp = time.time()-t0
-        if perform_calcs != 0:
-            print("%s FAILED TO RUN TO COMPLETION"%(name))
-            sys.exit()
-            pass
-        print("%s FINISHED"%name)
-        print("%s ANALYZING"%name)
-        t1 = time.time()
-        run_test = analyzeTest()
-        dta = time.time()-t1
-        if run_test == 0:
-            print("%s PASSED(%fs)"%(name,dtp+dta))
-        elif run_test == 1:
-            print("%s DIFFED(%fs)"%(name,dtp+dta))
-        else:
-            print("%s FAILED(%fs)"%(name,dtp+dta))
+
+

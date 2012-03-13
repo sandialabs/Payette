@@ -1,127 +1,61 @@
 #!/usr/bin/env python
-import sys,subprocess,linecache,os
-import time
-import math
-import numpy as np
 
-from tests_common import *
+from Payette_config import *
+from Source.Payette_test import PayetteTest
 
-Payette_test = True
-name = "payette-test-write-vandd"
-keywords = ["payette","regression","fast","vtable","dtable"]
-owner = "Tim Fuller"
-date = "February 26, 2012"
+class Test(PayetteTest):
 
-fdir = os.path.dirname(os.path.realpath(__file__))
-infile = "%s.inp"%(os.path.join(fdir,name))
-outfile = "%s.out"%(name)
-executable = runPayette
-runcommand = [executable,"--no-restart","--no-writeprops","-w",infile]
-baseline = ["%s.dgold"%(os.path.join(fdir,name)),
-            "%s.vgold"%(os.path.join(fdir,name))]
+    def __init__(self):
 
-description = """
-    Test of velocity and displacement table creation
-"""
+        # initialize the base class
+        PayetteTest.__init__(self)
 
-def performCalcs():
-    """
-    NAME
-       performCalcs
+        self.enabled = True
 
-    PURPOSE
-       run the benchmark problem
+        self.name = os.path.splitext(os.path.basename(__file__))[0]
+        self.tdir = os.path.dirname(os.path.realpath(__file__))
 
-    OUTPUT
-       stat   0: problem ran successfully
-           != 0: problem did not run successfully
-    """
-    # run the problem
-    with open("%s.echo"%(name),"w") as f:
-        run = subprocess.Popen(runcommand,stdout=f,stderr=subprocess.STDOUT)
-        run.wait()
+        self.infile = "{0}.inp".format(os.path.join(self.tdir,self.name))
+        self.outfile = "{0}.out".format(self.name)
+        self.baseline = ["{0:s}.dgold".format(os.path.join(self.tdir,self.name)),
+                         "{0:s}.vgold".format(os.path.join(self.tdir,self.name))]
+        self.tables = ["{0:s}.dtable".format(os.path.join(self.tdir,self.name)),
+                       "{0:s}.vtable".format(os.path.join(self.tdir,self.name))]
+        self.keywords = ["payette","regression","fast","vtable","dtable"]
+        self.runcommand = ["runPayette","--no-writeprops","--no-restart",
+                           "-w",self.infile]
+
+        self.owner = "Tim Fuller"
+        self.date = "February 26, 2012"
+        self.description = """ Test of velocity and displacement table creation """
         pass
-    return run.returncode
 
-def analyzeTest():
-    """
-    NAME
-       analyzeTest
+    def runTest(self):
 
-    PURPOSE
-       analyze the test results from performCalcs
+        """ run the test """
+        perform_calcs = self.run_command(self.runcommand)
 
-    OUTPUT
-       stat  0: passed
-             1: diffed
-             2: failed
-       message
-    """
-    import difflib
+        if perform_calcs != 0:
+            return self.failcode
 
-    errors = 0
+        diff = self.diff_files(self.baseline,self.tables)
 
-    # open the log file
-    LOG = open('%s.diff'%name,'w')
+        if diff:
+            return self.failcode
 
-    # compare the displacement table
-    dtable = open(name + ".dtable").readlines()
-    dgold = open(baseline[0]).readlines()
-    if dtable != dgold:
-        ddiff = difflib.ndiff(dtable,dgold)
-        errors += 1
-        LOG.write("ERROR: Displacement tables diffed:\n\n")
-        LOG.write("".join(ddiff))
-    else:
-        LOG.write("dtable PASSED")
-
-    # compare the velocity table
-    vtable = open(name + ".vtable").readlines()
-    vgold = open(baseline[1]).readlines()
-    if vtable != vgold:
-        vdiff = difflib.ndiff(vtable,vgold)
-        errors += 2
-        LOG.write("ERROR: Velocity tables diffed:\n\n")
-        LOG.write("".join(vdiff))
-    else:
-        LOG.write("vtable PASSED")
-
-    return errors
-
-def runTest():
-    perform_calcs = performCalcs()
-    if perform_calcs != 0: return 2
-    return analyzeTest()
+        return self.passcode
 
 if __name__ == "__main__":
     import time
-    if "--cleanup" in sys.argv:
-        for ext in ["props","vtable","dtable","out","diff","log","prf","pyc","echo"]:
-            try: os.remove("%s.%s"%(name,ext))
-            except: pass
-            continue
-        pass
+
+    test = Test()
+
+    t0 = time.time()
+    print("%s RUNNING"%test.name)
+    run_test = test.run_command(test.runcommand)
+    dtp = time.time()-t0
+
+    if run_test == test.passcode:
+        print("%s PASSED(%fs)"%(test.name,dtp))
     else:
-        t0 = time.time()
-        print("%s RUNNING"%name)
-        perform_calcs = performCalcs()
-        dtp = time.time()-t0
-        if perform_calcs == 1:
-            print("%s FAILED TO RUN TO COMPLETION"%(name))
-            sys.exit()
-            pass
-        print("%s FINISHED"%name)
-        print("%s ANALYZING"%name)
-        t1 = time.time()
-        run_test = analyzeTest()
-        dta = time.time()-t1
-        if run_test == 0:
-            print("%s PASSED(%fs)"%(name,dtp+dta))
-        elif run_test == 1:
-            print("%s DISPLACEMENT TABLES DIFFED(%fs)"%(name,dtp+dta))
-        elif run_test == 2:
-            print("%s VELOCITY TABLES DIFFED(%fs)"%(name,dtp+dta))
-        elif run_test == 3:
-            print("%s DISPLACEMENT & VELOCITY TABLES DIFFED(%fs)"%(name,dtp+dta))
-        else:
-            print("%s FAILED(%fs)"%(name,dtp+dta))
+        print("%s FAILED(%fs)"%(test.name,dtp))

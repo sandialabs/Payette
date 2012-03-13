@@ -59,7 +59,6 @@ class ConstitutiveModelPrototype:
         self.J0 = np.zeros((6,6))
         self.ui = np.zeros(self.nprop)
         self.dc = np.zeros(self.ndc)
-        self.namea, self.keya = [None]*self.nsv, [None]*self.nsv
         self.bulk_modulus, self.shear_modulus = 0., 0.
         self.electric_field_model = False
         self.multi_level_fail = False
@@ -99,18 +98,10 @@ class ConstitutiveModelPrototype:
             reportError(iam,"shear modulus not defined")
             pass
 
-        if self.nsv:
-            if not any( self.namea ):
-                reportError(iam,"empty namea array")
-                pass
-
-            if not any( self.keya ):
-                reportError(iam,"empty keya array")
-                pass
-            pass
-
-        if not any( x for y in self.J0 for x in y ):
+        if self.J0 == None:
             reportError(iam,"iniatial Jacobian not defined by {0}".format(name))
+        elif not any( x for y in self.J0 for x in y ):
+            reportError(iam,"iniatial Jacobian is empty")
             pass
 
         pass
@@ -219,7 +210,7 @@ class ConstitutiveModelPrototype:
             self.ui0[ui_idx] = val
             continue
 
-        return np.array(self.ui0)
+        return
 
     def _parse_param_line(self,caller,param_line):
         # we want to return a name, value pair for a string that comes in as
@@ -252,7 +243,7 @@ class ConstitutiveModelPrototype:
     def intializeState(self,*args,**kwargs):
         pass
 
-    def updateState(self,*args,**kwargs):
+    def updateState(self,material_data):
         reportError(__file__,'Consitutive model must provide updateState method')
         return 1
 
@@ -277,7 +268,7 @@ class ConstitutiveModelPrototype:
     def isvKeys(self):
         return self.keya
 
-    def computeInitialJacobian(self):
+    def computeInitialJacobian(self,simdat=None,matdat=None,isotropic=True):
         '''
         NAME
            computeInitialJacobian
@@ -286,17 +277,29 @@ class ConstitutiveModelPrototype:
            compute the initial material Jacobian J = dsig/deps, assuming
            isotropy
         '''
-        J0 = np.zeros((6,6))
-        threek,twog = 3.*self.bulk_modulus,2.*self.shear_modulus
-        pr = (threek-twog)/(2.*threek+twog)
-        c1,c2 = (1-pr)/(1+pr), pr/(1+pr)
-        for i in range(3): J0[i,i] = threek*c1
-        for i in range(3,6): J0[i,i] = twog
-        J0[0,1],J0[0,2],J0[1,2],J0[1,0],J0[2,0],J0[2,1] = [threek*c2]*6
-        self.J0 = np.array(J0)
-        return self.J0
+        if isotropic:
+            J0 = np.zeros((6,6))
+            threek,twog = 3.*self.bulk_modulus,2.*self.shear_modulus
+            pr = (threek-twog)/(2.*threek+twog)
+            c1,c2 = (1-pr)/(1+pr), pr/(1+pr)
+            for i in range(3): J0[i,i] = threek*c1
+            for i in range(3,6): J0[i,i] = twog
+            J0[0,1],J0[0,2],J0[1,2],J0[1,0],J0[2,0],J0[2,1] = [threek*c2]*6
+            self.J0 = np.array(J0)
+            return
 
-    def jacobian(self,dt,d,Fold,Fnew,efield,sig,sv,v,*args,**kwargs):
+        else:
+            # material is not isotropic, numerically compute the jacobian
+            simdat.stashData("prescribed stress components")
+            simdat.storeData("prescribed stress components",[0,1,2,3,4,5])
+            self.J0 = self.jacobian(simdat,matdat)
+            simdat.unstashData("prescribed stress components")
+            return
+
+        return
+
+
+    def jacobian(self,simdat,matdat):
         '''
         NAME
            jacobian
@@ -338,28 +341,46 @@ class ConstitutiveModelPrototype:
         '''
     # local variables
         epsilon = 2.2e-16
-        nsv, nv = len(sv), len(v)
+        v = simdat.getData("prescribed stress components")
+        nv = len(v)
         deps,Jsub = math.sqrt(epsilon),np.zeros((nv,nv))
 
-        for n in range(nv):
-            dp = np.array(d)
-            dp[v[n]] = d[v[n]] + (deps/dt)/2.
-            fp = toArray( toMatrix(Fold) + np.dot(toMatrix(dp),toMatrix(Fold)),
-                          symmetric=False )*dt
-            arg_us = ( dt,np.array(dp),np.array(Fold),np.array(fp),np.array(efield),
-                       np.array(sig),np.array(sv) )
-            sigp,svp = self.updateState(*arg_us)[0:2]
+        d = simdat.getData("rate of deformation")
+        Fold = simdat.getData("deformation gradient",form="Matrix")
+        dt = simdat.getData("time step")
+        dtime = 1 if dt == 0. else dt
 
+        # stash the data
+        simdat.stashData("time step")
+        simdat.stashData("rate of deformation")
+        simdat.stashData("deformation gradient")
+
+        for n in range(nv):
+            # perturb forward
+            dp = np.array(d)
+            dp[v[n]] = d[v[n]] + (deps/dtime)/2.
+            fp = Fold + np.dot(toMatrix(dp),Fold)*dtime
+            simdat.storeData("rate of deformation",dp,old=True)
+            simdat.storeData("deformation gradient",fp,old=True)
+            self.updateState(simdat,matdat)
+            sigp = matdat.getData("stress",cur=True)
+
+            # perturb backward
             dm = np.array(d)
-            dm[v[n]] = d[v[n]] - (deps/dt)/2.
-            fm = toArray( toMatrix(Fold) + np.dot(toMatrix(dm),toMatrix(Fold)),
-                          symmetric=False )*dt
-            arg_us = ( dt,np.array(dm),np.array(Fold),np.array(fm),np.array(efield),
-                       np.array(sig),np.array(sv) )
-            sigm,svm = self.updateState(*arg_us)[0:2]
+            dm[v[n]] = d[v[n]] - (deps/dtime)/2.
+            fm = Fold + np.dot(toMatrix(dm),Fold)*dtime
+            simdat.storeData("rate of deformation",dm,old=True)
+            simdat.storeData("deformation gradient",fm,old=True)
+            self.updateState(simdat,matdat)
+            sigm = matdat.getData("stress",cur=True)
 
             Jsub[n,:] = (sigp[v] - sigm[v])/deps
             continue
+
+        # restore data
+        simdat.unstashData("time step")
+        simdat.unstashData("deformation gradient")
+        simdat.unstashData("rate of deformation")
 
         return Jsub
 

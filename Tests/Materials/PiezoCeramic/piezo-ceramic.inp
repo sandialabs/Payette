@@ -1,0 +1,34 @@
+begin simulation piezo-ceramic
+
+  begin boundary
+    kappa = 0.
+    estar = -.05
+    begin legs
+    $ leg  time  nsteps  lcntrl     c[ij]
+      0    0.    0       222222666  0. 0. 0. 0. 0. 0. 0. 0. 0.
+      1    1.    100     222222666  1. 0. 0. 0. 0. 0. 0. 0. 0.
+    end legs
+  end boundary
+
+  begin material
+
+    constitutive model piezo_ceramic
+
+    C11  =  121.0E9
+    C33  =  111.0E9
+    C12  =   75.4E9
+    C13  =   75.2E9
+    C44  =   21.1E9
+    E311 =    -5.40
+    E113 =    12.30
+    E333 =    15.80
+    EP11 =  8.11E-9
+    EP33 =  7.35E-9
+    DXR  =      1.0
+    DYR  =      0.0
+    DZR  =      0.0
+    SMF  =      0.0
+
+  end material
+
+end simulation

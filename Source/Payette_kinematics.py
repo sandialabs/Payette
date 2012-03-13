@@ -34,7 +34,7 @@ from Source.Payette_tensor import *
 # global identity matrix
 I = np.eye(3)
 
-def velGradCompFromE(dt,k,E0,Ef,dEdt,R,dRdt,strict,*args,**kwargs):
+def velGradCompFromE(simdat):
     '''
     NAME
        velGradCompFromE
@@ -44,15 +44,7 @@ def velGradCompFromE(dt,k,E0,Ef,dEdt,R,dRdt,strict,*args,**kwargs):
                 velocity gradient
 
     INPUT:
-       dt:    timestep
-       k:     Seth-Hill parameter
-       E0:    strain at beginning of step
-       Ef:    strain at end of step
-       dEdt:  strain rate
-       R:     rotation
-       dRdt:  rate of rotation
-       args:  not used
-       kwargs:not used
+       simdat: simulation data container
 
     OUTPUT:
        d:     symmetric part of the velocity gradient
@@ -93,12 +85,17 @@ def velGradCompFromE(dt,k,E0,Ef,dEdt,R,dRdt,strict,*args,**kwargs):
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     '''
     # convert passed arrays to matrices
-    E0,Ef,dEdt = toMatrix(E0), toMatrix(Ef), toMatrix(dEdt)
-    R,dRdt = toMatrix(R), toMatrix(dRdt)
+    k = simdat.kappa
+    dt = simdat.getData("time step")
+    E0 = simdat.getData("strain",form="Matrix")
+    Ef = simdat.getData("prescribed strain",form="Matrix")
+    dEdt = (Ef - E0)/dt
+    R = simdat.getData("rotation",form="Matrix")
+    dRdt = simdat.getData("rotation rate",form="Matrix")
     Ri = R.T
 
     # stretch and its rate
-    U = rightStretch(k,Ef,strict)
+    U = rightStretch(k,Ef,simdat.strict)
     Ui = la.inv(U)
     X = 0.5*(la.inv(k*Ef + I) + la.inv(k*E0 + I)) # center X on half step
     dUdt = U*X*dEdt
@@ -107,9 +104,12 @@ def velGradCompFromE(dt,k,E0,Ef,dEdt,R,dRdt,strict,*args,**kwargs):
     L = dRdt*Ri + R*dUdt*Ui*Ri
     d = 0.5*( L + L.T )
     w = L - d
-    return toArray(d),toArray(w,symmetric=False)
 
-def velGradCompFromF(F,dFdt,strict,*args,**kwargs):
+    simdat.storeData("rate of deformation",d)
+    simdat.storeData("vorticity",w)
+    return
+
+def velGradCompFromF(simdat):
     '''
     NAME
        velGradCompFromF
@@ -119,10 +119,7 @@ def velGradCompFromF(F,dFdt,strict,*args,**kwargs):
        skew parts of the velocity gradient
 
     INPUT:
-       F:     deformation gradient
-       dFdt:  deformation gradient rate
-       args:  not used
-       kwargs:not used
+       simdat: simulation data container
 
     OUTPUT:
        d:     symmetric part of velocity gradient
@@ -142,16 +139,20 @@ def velGradCompFromF(F,dFdt,strict,*args,**kwargs):
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     '''
 
-    F = toMatrix(F)
-    Finv = la.inv(F)
-    dFdt = toMatrix(dFdt)
+    dt = simdat.getData("time step")
+    F_beg = simdat.getData("deformation gradient",form="Matrix")
+    F_end = simdat.getData("prescribed deformation gradient",form="Matrix")
+    dFdt = (F_end - F_beg)/dt
 
-    L = dFdt*Finv
+    L = 0.5*dFdt*(la.inv(F_end) + la.inv(F_beg))
     d = 0.5*( L + L.T )
     w = L - d
-    return toArray(d),toArray(w,symmetric=False)
 
-def velGradCompFromP(cmod,dt,dEdt,Fold,EF,P,Ppres,sv,v,strict,*args,**kwargs):
+    simdat.storeData("vorticity",w)
+    simdat.storeData("rate of deformation",d)
+    return
+
+def velGradCompFromP(material,simdat,matdat):
     '''
     NAME
        velGradCompFromP
@@ -168,7 +169,7 @@ def velGradCompFromP(cmod,dt,dEdt,Fold,EF,P,Ppres,sv,v,strict,*args,**kwargs):
        prescribed values at the current time.
 
     INPUT
-       cmod:   constiutive model instance
+       material:   constiutive model instance
        dEdt:   symmetric part of the velocity gradient
        dt:     timestep
        P:      current stress
@@ -198,35 +199,37 @@ def velGradCompFromP(cmod,dt,dEdt,Fold,EF,P,Ppres,sv,v,strict,*args,**kwargs):
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
                    python implementation
     '''
-    proportional = kwargs["proportional"]
-    nv,nsym = len(v),len(P)
-    w = np.zeros(9)
 
-    # save current values of dedt,P,sv
-    dedtsave = np.array(dEdt)
-    if not proportional:
-        argv = [cmod,dt,np.array(dEdt),np.array(Fold),np.array(EF),
-                np.array(P),np.array(Ppres),np.array(sv),np.array(v)]
-        dEdt,converged = piter.newton(*argv)
-        if converged: return dEdt,w
+    depsdt_old = simdat.getData("strain rate")
+    v = simdat.getData("prescribed stress components")
+    nv = len(v)
+
+    if not simdat.proportional:
+
+        converged = piter.newton(material,simdat,matdat)
+
+        if converged:
+            return
 
         # --- didn't converge, try Newton's method with initial d[v]=0.
-        dEdt = np.array(dedtsave)
+        dEdt = simdat.getData("strain rate")
         dEdt[v] = np.zeros(nv)
-        argv = [cmod,dt,np.array(dEdt),np.array(Fold),np.array(EF),
-                np.array(P),np.array(Ppres),np.array(sv),np.array(v)]
-        dEdt,converged = piter.newton(*argv)
-        if converged: return dEdt,w
+        simdat.storeData("strain rate",dEdt,old=True)
+
+        converged = piter.newton(material,simdat,matdat)
+
+        if converged:
+            return
+
+        pass
 
     # --- Still didn't converge. Try downhill simplex method and accept whatever
     #     answer it returns:
-    dEdt = np.array(dedtsave)
-    argv = [cmod,dt,np.array(dEdt),np.array(Fold),np.array(EF),
-            np.array(P),np.array(Ppres),np.array(sv),np.array(v)]
-    dEdt = piter.simplex(*argv,**kwargs)
-    return dEdt,w
+    simdat.restoreData("strain rate",depsdt_old)
+    piter.simplex(material,simdat,matdat)
+    return
 
-def updateDeformation(k,dt,d,w,F,strict):
+def updateDeformation(simdat):
     '''
     NAME
        updateDeformation
@@ -237,11 +240,7 @@ def updateDeformation(k,dt,d,w,F,strict):
        update the strain and deformation gradient.
 
     INPUT
-       k:    Seth-Hill parameter
-       F:    deformation gradient at beginning of step
-       d:    symmetric part of velocity gradient
-       R:    rotation
-       dRdt: rate of rotation
+       simdat: simulation data container
 
     OUTPUT
        E:    strain at end of step
@@ -276,12 +275,31 @@ def updateDeformation(k,dt,d,w,F,strict):
     AUTHORS
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     '''
-    F0,d,w = toMatrix(F), toMatrix(d), toMatrix(w)
-    Ff = expm((d + w)*dt,strict)*F0
-    U = sqrtm((Ff.T)*Ff,strict)
-    if k == 0: E = logm(U,strict)
-    else: E = 1./k*(powm(U,k,strict) - I)
-    return toArray(E),toArray(Ff,symmetric=False)
+    iam = "updateDeformation(simdat,matdat)"
+
+    k = simdat.kappa
+    dt = simdat.getData("time step")
+    F0 = simdat.getData("deformation gradient",form="Matrix")
+    d = simdat.getData("rate of deformation",form="Matrix")
+    w = simdat.getData("vorticity",form="Matrix")
+
+    Ff = expm((d + w)*dt,simdat.strict)*F0
+    U = sqrtm((Ff.T)*Ff,simdat.strict)
+    if k == 0: E = logm(U,simdat.strict)
+    else: E = 1./k*(powm(U,k,simdat.strict) - I)
+
+    if np.linalg.det(Ff) <= 0.:
+        reportError(iam,"negative Jacobian encountered")
+
+    simdat.storeData("strain",E)
+    simdat.storeData("deformation gradient",Ff)
+
+    # compute the equivalent strain
+    eps = toArray(E,symmetric=True)
+    eqveps = np.sqrt( 2./3.*( sum(eps[:3]**2) + 2.*sum(eps[3:]**2)) )
+    simdat.storeData("equivalent strain",eqveps)
+
+    return
 
 def rightStretch(k,E,strict=False):
     '''
@@ -310,8 +328,8 @@ def rightStretch(k,E,strict=False):
     AUTHORS
        Tim Fuller, Sandial National Laboratories, tjfulle@sandia.gov
     '''
-    if k == 0.: return expm(E,strict)
-    else: return powm(k*E + I,1./k,strict)
+    if k == 0.: return expm(np.matrix(E),strict)
+    else: return powm(k*np.matrix(E) + I,1./k,strict)
 
 def leftStretch(k,e,strict=False):
     '''
@@ -340,6 +358,6 @@ def leftStretch(k,e,strict=False):
     AUTHORS
        Tim Fuller, Sandial National Laboratories, tjfulle@sandia.gov
     '''
-    if k == 0.: return expm(e,strict)
-    else: return powm(k*e + I,1./k,strict)
+    if k == 0.: return expm(np.matrix(e),strict)
+    else: return powm(k*np.matrix(e) + I,1./k,strict)
 

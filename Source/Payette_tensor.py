@@ -30,6 +30,9 @@ from Source.Payette_utils import *
 
 di3 = [[0,1,2],[0,1,2]]
 I = np.eye(3)
+I9 = np.array([1.,1.,1.,0.,0.,0.,0.,0.,0.,])
+Z6 = np.zeros(6)
+Z3 = np.zeros(3)
 
 '''
 NAME
@@ -110,3 +113,8 @@ def logm(a,strict=False):
 def isDiagonal(a):
     return bool(a[0,1] == 0. and a[1,2] == 0. and a[0,2] == 0. and
                 a[1,0] == 0. and a[2,1] == 0. and a[2,0] == 0.)
+
+def toMig(a):
+    if len(a) == 6 or len(a) == 3: return np.array(a)
+    if len(a) == 9:
+        return np.array([a[0], a[3], a[5], a[6], a[1], a[4], a[8], a[7], a[2]])

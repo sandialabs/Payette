@@ -75,7 +75,7 @@ def reportWarning(f,msg,limit=False):
         if wcount != wthresh: return
         pass
     msg = 'WARNING: {0} (reported from [{1}])\n'.format(msg,f)
-    log.write(msg)
+    simlog.write(msg)
     sys.stderr.write(msg)
     return
 
@@ -88,14 +88,15 @@ def writeWarning(f,msg):
     return
 
 def reportMessage(f,msg):
-    msg = "INFO: {0} \n".format(msg)
-    log.write(msg)
+#    msg = 'INFO: {0} (reported from [{1}])\n'.format(msg,f)
+    msg = 'INFO: {0}\n'.format(msg)
+    simlog.write(msg)
     if loglevel > 0: sys.stderr.write(msg)
     return
 
 def writeToLog(msg):
     msg = "{0:s}\n".format(msg)
-    log.write(msg)
+    simlog.write(msg)
     return
 
 def migMessage(msg):
@@ -161,13 +162,13 @@ def checkPythonVersion():
         raise SystemExit("Payette requires Python >= 2.6\n")
 
 def shutdownLogger():
-    log.close()
+    simlog.close()
     return
 
 def setupLogger(logfile,level):
-    global loglevel,log
+    global loglevel,simlog
     loglevel = level
-    log = open(logfile,"w")
+    simlog = open(logfile,"w")
     return
 
 def readUserInput(user_input,user_cchar=None):
@@ -231,6 +232,7 @@ def removeComments(aline,cchars):
         while cchar in aline:
             i = aline.index(cchar)
             aline = aline[0:i].strip()
+            continue
         continue
     return aline
 
@@ -321,22 +323,23 @@ def textformat(var):
     else:
         return "{0:>20}".format(str(var))
 
-def setupOutputFile(payette_model,restart):
+def setupOutputFile(simdat,matdat,restart):
 
     global ofile,vtable,dtable,plot_keys
-    if restart: ofile = open(payette_model.outfile,'a')
-    else: ofile = open(payette_model.outfile,'w')
+    if restart: ofile = open(simdat.outfile,'a')
+    else: ofile = open(simdat.outfile,'w')
 
-    # get the plot keys from the payette_model
-    plot_keys = payette_model.plotKeys()
+    # get the plot keys from the simvars
+    plot_keys = simdat.plotKeys()
+    plot_keys.extend(matdat.plotKeys())
 
     #    outfile.write('# ')
     for head in plot_keys: ofile.write(textformat(head))
     ofile.write('\n')
 
-    if payette_model.write_vandd_table:
-        vname = os.path.splitext(payette_model.outfile)[0] + ".vtable"
-        dname = os.path.splitext(payette_model.outfile)[0] + ".dtable"
+    if simdat.write_vandd_table:
+        vname = os.path.splitext(simdat.outfile)[0] + ".vtable"
+        dname = os.path.splitext(simdat.outfile)[0] + ".dtable"
 
         # set up velocity and displacement table files
         if restart: vtable = open(vname,'a')
@@ -357,50 +360,32 @@ def setupOutputFile(payette_model,restart):
 
     return
 
-def writeState(payette_model):
+def writeState(simdat,matdat):
 
-    plotable_data = payette_model.plotableData()
+    """ write the simulation and material data to the output file """
+    plot_data = simdat.plotData()
+    plot_data.extend(matdat.plotData())
 
-    for x in plotable_data:
+    for x in plot_data:
         ofile.write(textformat(x))
         continue
     ofile.write('\n')
 
     return None
 
-def writeMathPlot(math1,math2,outfile,plotable,has_efield,paramkeys,ui0,ui,
-                  time,sig,dsigdt,eps,d,defgrad,sv,keys,names,efield,polrzn,edisp):
+def writeMathPlot(simdat,matdat):
+
     """
     Write the $SIMNAME.math1 file for mathematica post processing
     """
 
+    math1 = simdat.math1
+    math2 = simdat.math2
+    outfile = simdat.outfile
+    plotable = simdat.mathplot_vars
+    parameter_table = matdat.parameter_table
+
     # private functions
-    def mapping(ii, sym = True):
-        # return the 2D cartesian component of 1D array
-        comp = None
-        if sym:
-            if ii == 0: comp = "11"
-            elif ii == 1: comp = "22"
-            elif ii == 2: comp = "33"
-            elif ii == 3: comp = "12"
-            elif ii == 4: comp = "23"
-            elif ii == 5: comp = "13"
-        else:
-            if ii == 0: comp = "11"
-            elif ii == 1: comp = "22"
-            elif ii == 2: comp = "33"
-            elif ii == 3: comp = "12"
-            elif ii == 4: comp = "23"
-            elif ii == 5: comp = "13"
-            elif ii == 6: comp = "21"
-            elif ii == 7: comp = "32"
-            elif ii == 8: comp = "31"
-            pass
-
-        if comp: return comp
-        else: reportError(__file__,"bad mapping")
-        pass
-
     def writePlotable(idx,key,isplotable,name,val):
         # write to the logfile the available variables
         if isplotable: token = "plotable"
@@ -413,26 +398,34 @@ def writeMathPlot(math1,math2,outfile,plotable,has_efield,paramkeys,ui0,ui,
     # for mathematica to use
     with open( math1, "w" ) as f:
         # write out user given input
-        for i, key in enumerate(paramkeys):
-            val = "{0:12.5E}".format(ui0[i]).replace("E","*^")
+        for item in parameter_table:
+            key = item["name"]
+            val = "{0:12.5E}".format(item["initial value"]).replace("E","*^")
             f.write("{0:s}U={1:s}\n".format(key,val))
             continue
 
         # write out checked, possibly modified, input
-        for i, key in enumerate(paramkeys):
-            val = "{0:12.5E}".format(ui[i]).replace("E","*^")
+        for item in parameter_table:
+            key = item["name"]
+            val = "{0:12.5E}".format(item["adjusted value"]).replace("E","*^")
             f.write("{0:s}M={1:s}\n".format(key,val))
             continue
 
         # write out user requested plotable output
         f.write('simdat = Delete[Import["{0:s}", "Table"],-1];\n'.format(outfile))
+        sig_idx = None
         for i, item in enumerate(plot_keys):
+            if item == "SIG11": sig_idx = i + 1
             f.write('{0:s}=simdat[[2;;,{1:d}]];\n'.format(item,i+1))
             continue
 
         # a few last ones...
-        f.write('PRES=-(simdat[[2;;,2]]+simdat[[2;;,3]]+simdat[[2;;,4]])/3;\n')
-        f.write("lastep=Length[time]\n")
+        if sig_idx != None:
+            pres=('-(simdat[[2;;,{0:d}]]+simdat[[2;;,{1:d}]]+simdat[[2;;,{2:d}]])/3;'
+                  .format(sig_idx,sig_idx+1,sig_idx+2))
+            f.write('PRES={0}\n'.format(pres))
+            pass
+        f.write("lastep=Length[{0}]\n".format(simdat.getPlotKey("time")))
 
         pass
 
@@ -441,7 +434,7 @@ def writeMathPlot(math1,math2,outfile,plotable,has_efield,paramkeys,ui0,ui,
     lowhead = [x.lower() for x in plot_keys]
     lowplotable = [x.lower() for x in plotable]
     with open( math2, "w" ) as f:
-        f.write('showcy[time,{{"cycle","time"}}]\n')
+        f.write('showcy[{0},{{"cycle","time"}}]\n'.format(simdat.getPlotKey("time")))
 
         tmp = []
         for item in plotable:
@@ -464,71 +457,93 @@ def writeMathPlot(math1,math2,outfile,plotable,has_efield,paramkeys,ui0,ui,
     # write to the log file what is plotable and not requested, along with inital
     # value
     # time
+    time = simdat.getData("time")
+    key = simdat.getPlotKey("time")
+    name = simdat.getPlotName("time")
     writeToLog("Summary of available output")
-    idx, key, name, val = 1, "time", "Time", time
+    idx, val = 1, time
     writePlotable(idx,key,key.lower() in lowplotable,name,val)
 
     # stress
+    sig = matdat.getData("stress")
+    keys = matdat.getPlotKey("stress")
+    names = matdat.getPlotName("stress")
     for i, val in enumerate(sig):
-        comp = mapping(i)
-        idx, key, name = idx+1, "sig"+comp, comp + " component of stress"
-        writePlotable(idx,key,key.lower() in lowplotable,name,val)
+        idx = idx+1
+        writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
         continue
 
     # dstress/dt
+    dsigdt = matdat.getData("stress rate")
+    keys = matdat.getPlotKey("stress rate")
+    names = matdat.getPlotName("stress rate")
     for i, val in enumerate(dsigdt):
-        comp = mapping(i)
-        idx, key, name = idx+1, "dsig"+comp+"dt", comp + " component of dstress/dt"
-        writePlotable(idx,key,key.lower() in lowplotable,name,val)
+        idx = idx+1
+        writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
         continue
 
     # strain
+    eps = simdat.getData("strain")
+    keys = simdat.getPlotKey("strain")
+    names = simdat.getPlotName("strain")
     for i, val in enumerate(eps):
-        comp = mapping(i)
-        idx, key, name = idx+1, "eps"+comp, comp + " component of strain"
-        writePlotable(idx,key,key.lower() in lowplotable,name,val)
+        idx = idx+1
+        writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
         continue
 
     # sym(velocity gradient)
+    d = simdat.getData("rate of deformation")
+    keys = simdat.getPlotKey("rate of deformation")
+    names = simdat.getPlotName("rate of deformation")
     for i, val in enumerate(d):
-        comp = mapping(i)
-        idx, key, name = idx+1, "d"+comp, comp + " component of rate of deformation"
-        writePlotable(idx,key,key.lower() in lowplotable,name,val)
+        idx = idx+1
+        writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
         continue
 
     # deformation gradient
+    defgrad = simdat.getData("deformation gradient")
+    keys = simdat.getPlotKey("deformation gradient")
+    names = simdat.getPlotName("deformation gradient")
     for i, val in enumerate(defgrad):
-        comp = mapping(i,sym=False)
-        idx, key, name = idx+1, "F"+comp, comp + " component of defgrad"
+        idx = idx+1
+        writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
+        continue
+
+    # extra variables
+    ex = matdat.getData("extra variables")
+    for i, val in enumerate(ex):
+        idx = idx+1
+        name = matdat.getExName(i)
+        key = matdat.getPlotKey(name)
         writePlotable(idx,key,key.lower() in lowplotable,name,val)
         continue
 
-    # state variables
-    for i, val in enumerate(sv):
-        idx, key, name = idx+1, keys[i], names[i]
-        writePlotable(idx,key,key.lower() in lowplotable,name,val)
-        continue
-
-    if has_efield:
+    if matdat.electric_field_model:
         # electric field
+        efield = simdat.getData("electric field")
+        keys = simdat.getPlotKey("electric field")
+        names = simdat.getPlotName("electric field")
         for i, val in enumerate(efield):
-            comp = mapping(i)
-            idx, key, name = idx+1, "EF"+comp, comp + " component of electric field"
-            writePlotable(idx,key,key.lower() in lowplotable,name,val)
+            idx = idx+1
+            writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
             continue
 
         # polarization
+        polrzn = matdat.getData("polarization")
+        keys = matdat.getPlotKey("polarization")
+        names = matdat.getPlotName("polarization")
         for i, val in enumerate(polrzn):
-            comp = mapping(i)
-            idx, key, name = idx+1, "POL"+comp, comp + " component of polarization"
-            writePlotable(idx,key,key.lower() in lowplotable,name,val)
+            idx = idx+1
+            writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
             continue
 
         # electric displacement
+        edisp = matdat.getData("electric displacement")
+        keys = matdat.getPlotKey("electric displacement")
+        names = matdat.getPlotName("electric displacement")
         for i, val in enumerate(edisp):
-            comp = mapping(i)
-            idx, key, name = idx+1, "ED"+comp, comp + " component of electric disp"
-            writePlotable(idx,key,key.lower() in lowplotable,name,val)
+            idx = idx+1
+            writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
             continue
         pass
 
@@ -537,7 +552,7 @@ def writeMathPlot(math1,math2,outfile,plotable,has_efield,paramkeys,ui0,ui,
 def closeFiles():
     ofile.write("\n")
     ofile.close()
-    log.close()
+    simlog.close()
 
 def writeVelAndDispTable(t0,tf,tbeg,tend,epsbeg,epsend,kappa):
     """
@@ -622,3 +637,28 @@ def writeVelAndDispTable(t0,tf,tbeg,tend,epsbeg,epsend,kappa):
 def parse_error(message):
     sys.exit("ERROR: {0}".format(message))
 
+def flatten(x):
+    """flatten(sequence) -> list
+
+    Returns a single, flat list which contains all elements retrieved
+    from the sequence and all recursively contained sub-sequences
+    (iterables).
+
+    Examples:
+    >>> [1, 2, [3,4], (5,6)]
+    [1, 2, [3, 4], (5, 6)]
+    >>> flatten([[[1,2,3], (42,None)], [4,5], [6], 7, MyVector(8,9,10)])
+    [1, 2, 3, 42, None, 4, 5, 6, 7, 8, 9, 10]"""
+
+    if isinstance(x,(float,int,str,bool)): return x
+
+    result = []
+    for el in x:
+        #if isinstance(el, (list, tuple)):
+        if hasattr(el, "__iter__") and not isinstance(el, basestring):
+            result.extend(flatten(el))
+        else:
+            result.append(el)
+            pass
+        continue
+    return result

@@ -27,7 +27,6 @@ attributes = {"payette material":True,
               "material type":["mechanical"]
               }
 
-
 class KayentaQSFail(ConstitutiveModelPrototype):
     '''
     CLASS NAME
@@ -79,43 +78,31 @@ class KayentaQSFail(ConstitutiveModelPrototype):
             pass
         pass
 
-    # Private methods
-    def _check_props(self,**kwargs):
-        a = [kwargs["props"],kwargs["props"],np.zeros(13),migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
-        return kayenta.mtllib.kayenta_chk(*a)
-
-    def _set_field(self,*args,**kwargs):
-        a = [self.ui,self.ui,self.dc,migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
-        return kayenta.mtllib.kayenta_rxv(*a)
-
     # Public methods
-    def setUp(self,payette,props):
-        self.dc = np.zeros(self.ndc)
-        self.ui0 = np.array(props)
-        self.ui,self.dc = self._check_props(props=props)
-        (self.ui,self.nsv,namea,keya,sv,
-         self.rdim,self.iadvct,self.itype) = self._set_field()
+    def setUp(self,simdat,matdat,user_params,f_params):
+        iam = self.name + ".setUp(self,material,props)"
 
-        self.namea = parseToken(self.nsv,namea)
-        self.keya = parseToken(self.nsv,keya)
+        # parse parameters
+        self.parseParameters(user_params,f_params)
+
+        self.dc = np.zeros(self.ndc)
+        self.ui, self.dc = self._check_props()
+        (self.ui,self.nsv,namea,keya,sv,rdim,iadvct,itype) = self._set_field()
+
+        namea = parseToken(self.nsv,namea)
+        keya = parseToken(self.nsv,keya)
 
         # append 2 extra nsvs to sv array
         nxsv = 2
         self.nsv = self.nsv + nxsv
-        self.keya.append("CFLG")
-        self.keya.append("FRATIO")
-        self.namea.append("crack flag")
-        self.namea.append("failure ratio")
+        keya.append("CFLG")
+        keya.append("FRATIO")
+        namea.append("crack flag")
+        namea.append("failure ratio")
         sv = np.append(sv,np.zeros(nxsv))
 
-        # setup old and new sv arrays
-        self.svold = np.array(sv)
-        self.sv = np.array(sv)
-
         # register the extra variables with the payette object
-        payette.registerExtraVariables(self.nsv,self.namea,self.keya,self.sv)
+        matdat.registerExtraVariables(self.nsv,namea,keya,sv)
 
         self.bulk_modulus,self.shear_modulus = self.ui[0],self.ui[5]
         self.J0 = self.computeInitialJacobian()
@@ -125,16 +112,40 @@ class KayentaQSFail(ConstitutiveModelPrototype):
         self.fratio_idx = self.nsv - 1
         return
 
-    def updateState(self,*args,**kwargs):
+    def updateState(self,simdat,matdat):
         '''
            update the material state based on current state and strain increment
         '''
-        dt,d,fold,fnew,efield,sigold,svold = args
-        signew,svnew = np.array(sigold), np.array(svold)
+
+        iam = self.name + ".setUp(self,material,props)"
+
+        dt = simdat.getData("time step")
+        d = simdat.getData("rate of deformation")
+        sigold = matdat.getData("stress")
+        svold = matdat.getData("extra variables")
+        signew = np.array(sigold)
+        svnew = np.array(svold)
+
         a = [dt,self.ui,self.dc,d,sigold,signew,svold,svnew,migError,migMessage]
         if not Payette_F2Py_Callback: a = a[:-2]
         updated_state = kayenta.mtllib.kayenta_update_state(*a)
-        sigold,signew,svold,svnew,usm = updated_state
-        self.sv = np.array(svnew)
 
-        return signew,svnew
+        sigold,signew,svold,svnew,usm = updated_state
+
+        matdat.storeData("stress",signew)
+        matdat.storeData("extra variables",svnew)
+
+        return
+
+    # Private methods
+    def _check_props(self,**kwargs):
+        props = np.array(self.ui0)
+        a = [props,props,self.dc,migError,migMessage]
+        if not Payette_F2Py_Callback: a = a[:-2]
+        return kayenta.mtllib.kayenta_chk(*a)
+
+    def _set_field(self,*args,**kwargs):
+        a = [self.ui,self.ui,self.dc,migError,migMessage]
+        if not Payette_F2Py_Callback: a = a[:-2]
+        return kayenta.mtllib.kayenta_rxv(*a)
+

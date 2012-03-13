@@ -1,0 +1,30 @@
+begin simulation elastic-plastic-uniaxial-strain
+begin material
+constitutive model elastic_plastic
+AN=1.
+B0=11.634e9
+G0=10.018e9
+G1=5
+A1=8.27e6
+A4=0.23
+R0=3500
+T0=298
+GP=1.0
+S1=1
+CV=800
+TM=1e99
+IDK=1
+IDG=1
+end material
+begin boundary
+estar = -1.
+kappa = 0.
+tstar = 1.
+ampl= .01
+begin legs
+0,     0.,      0, 222222, 0., 0., 0., 0., 0., 0.
+1,     1.,   1000, 222222, 1., 0., 0., 0., 0., 0.
+2,     2.,   1000, 222222, 0., 0., 0., 0., 0., 0.
+end legs
+end boundary
+end simulation

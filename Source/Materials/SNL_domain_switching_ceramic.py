@@ -68,7 +68,8 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         self.imported = imported
         self.electric_field_model = True
 
-        nri = 35
+        # register parameters
+        nri = 38
         self.registerParameter("C11",0,aliases=[])
         self.registerParameter("C33",1,aliases=[])
         self.registerParameter("C12",2,aliases=[])
@@ -109,6 +110,9 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         self.registerParameter("BKMOD",32,aliases=[])
         self.registerParameter("XKSAT",33,aliases=[])
         self.registerParameter("ELFLG",34,aliases=[])
+        self.registerParameter("EP1",35,aliases=[],parseable=False)
+        self.registerParameter("EP2",36,aliases=[],parseable=False)
+        self.registerParameter("EP3",37,aliases=[],parseable=False)
         self.registerParameter("DBG",nri,aliases=["DEBUG"])
         self.registerParameter("FREE0",nri+1,aliases=["NALGO"])
         self.registerParameter("FREE1",nri+2,aliases=["ANAGRAD"])
@@ -118,9 +122,80 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         self.nprop = len(self.parameter_table.keys())
         pass
 
+    # Public Methods
+    def setUp(self,simdat,matdat,user_params,f_params):
+        iam = self.name + ".setUp(self,material,props)"
+
+        # parse parameters
+        self.parseParameters(user_params,f_params)
+
+        # check parameters
+        self.ui, self.dc = self._check_props()
+        (self.ui,self.nsv,namea,keya,sv,
+         rdim,iadvct,itype,iscal,
+         bkd,permtv,polrzn) = self._set_field(self.ui,self.dc)
+        namea = parseToken(self.nsv,namea)
+        keya = parseToken(self.nsv,keya)
+
+        # register non standard variables
+        matdat.registerData("polarization","Vector",
+                            init_val = np.zeros(3),
+                            plot_key = "polrzn")
+        matdat.registerData("electric displacement","Vector",
+                            init_val = np.zeros(3),
+                            plot_key = "edisp")
+        matdat.registerData("block data","Array",
+                            init_val = bkd)
+
+        # register the extra variables with the material object
+        matdat.registerExtraVariables(self.nsv,namea,keya,sv)
+
+        # initial shear and bulk moduli
+        self.bulk_modulus = self.ui[self.parameter_table["BKMOD"]["ui pos"]]
+        self.shear_modulus = self.ui[self.parameter_table["SHMOD"]["ui pos"]]
+
+        # initial jacobian
+        self.computeInitialJacobian(simdat,matdat,isotropic=False)
+        pass
+
+    def updateState(self,simdat,matdat):
+        """
+           update the material state based on current state and stretch
+        """
+        dt = simdat.getData("time step")
+        d = simdat.getData("rate of deformation")
+        Fnew = simdat.getData("deformation gradient",form="Matrix")
+        efield = simdat.getData("electric field")
+        sigold = matdat.getData("stress")
+        svold = matdat.getData("extra variables")
+
+        # compute the stretch
+        Rstretch = sqrtm( np.dot( Fnew.T, Fnew ) )
+
+        # reorder rotation
+        rotation = np.dot(Fnew,np.linalg.inv(Rstretch))
+
+        # convert
+        rotation = toMig(toArray(rotation,symmetric=False))
+        Rstretch = toArray(Rstretch,symmetric=True)
+
+        args = [1,self.ui,self.ui,self.dc,svold,Rstretch,rotation,efield,
+                sigold,migError,migMessage]
+        if not Payette_F2Py_Callback: args = args[:-2]
+        svnew,permtv,polrzn,edisp,signew = mtllib.qsedr7(*args)
+
+        # update data
+        simdat.storeData("permittivity",permtv)
+        matdat.storeData("stress",signew)
+        matdat.storeData("extra variables",svnew)
+        matdat.storeData("polarization",polrzn)
+        matdat.storeData("electric displacement",edisp)
+
+        return
+
     # Private Methods
     def _check_props(self,**kwargs):
-        props = kwargs["props"]
+        props = np.array(self.ui0)
         dc = np.zeros(13)
         args = [props,props,dc,migError,migMessage]
         if not Payette_F2Py_Callback: args = args[-2:]
@@ -145,55 +220,3 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
 
         return ui,nsv,namea,keya,sv,rdim,iadvct,itype,iscal,bkd,permtv,polrzn
 
-    # Public Methods
-    def setUp(self,payette,props):
-        iam = self.name + ".setUp(self,payette,props)"
-
-        # check that the electric quantities are properly set up
-        if "electric field" not in payette.material_data:
-            reportError(iam,"efield not registered")
-        elif "electric displacement" not in payette.material_data:
-            reportError(iam,"edisp not registered")
-        elif "polarization" not in payette.material_data:
-            reportError(iam,"polrzn not registered")
-            pass
-
-        # check parameters
-        self.ui0 = np.array(props)
-        self.ui, self.dc = self._check_props(props=props)
-        (self.ui,self.nsv,namea,keya,self.sv,
-         self.rdim,self.iadvct,self.itype,iscal,
-         self.bkd,self.permtv,self.polrzn) = self._set_field(self.ui,self.dc)
-        self.namea = parseToken(self.nsv,namea)
-        self.keya = parseToken(self.nsv,keya)
-
-        # register the extra variables with the payette object
-        payette.registerExtraVariables(self.nsv,self.namea,self.keya,self.sv)
-
-        # initial shear and bulk moduli
-        self.bulk_modulus = self.ui[self.parameter_table["BKMOD"]["ui pos"]]
-        self.shear_modulus = self.ui[self.parameter_table["SHMOD"]["ui pos"]]
-
-        # initial jacobian
-        f = np.array([1.,1.,1.,0.,0.,0.,0.,0.,0.])
-        dt, d, sig, efield = 1., np.zeros(6), np.zeros(6), np.zeros(3)
-        v = [0,1,2,3,4,5]
-        argv = (dt,np.array(d),np.array(f),np.array(f),np.array(efield),
-                np.array(sig),np.array(self.sv),np.array(v))
-        self.J0 = self.jacobian(*argv)
-        pass
-
-    def updateState(self,*args,**kwargs):
-        """
-           update the material state based on current state and stretch
-        """
-        dt,d,fold,fnew,efield,sigold,svold = args
-        stretch = toArray(sqrtm(np.dot(toMatrix(fnew).T,toMatrix(fnew))),
-                          symmetric=True)
-        rot = np.array([1.,0.,0.,0.,1.,0.,0.,0.,1.])
-        args = [1,self.ui,self.ui,self.dc,svold,stretch,rot,efield,
-                sigold,migError,migMessage]
-        if not Payette_F2Py_Callback: args = args[:-2]
-        svnew,permtv,polrzn,edisp,signew = mtllib.qsedr7(*args)
-
-        return signew,svnew,polrzn

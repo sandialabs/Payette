@@ -19,7 +19,7 @@ import os,sys
 import imp
 import optparse
 import subprocess as sbp
-import linecache
+from linecache import getline
 from distutils import sysconfig
 
 
@@ -210,9 +210,10 @@ def buildPayette(argc,argv):
     # used to initially build Payette
     createx = True
     if buildselect:
-        if (os.path.isfile(runPayette) and os.path.isfile(testPayette) and
-                                           os.path.isfile(rebuildPayette)):
-            if Payette_pyint != linecache.getline(runPayette,2).split(" ")[0]:
+        if (os.path.isfile(Payette_runPayette) and
+            os.path.isfile(Payette_testPayette) and
+            os.path.isfile(Payette_rebuildPayette)):
+            if Payette_pyint != getline(Payette_runPayette,2).split(" ")[0]:
                 print("ERROR: attempting to build material library with "
                       "different interpreter than Payette was previously built")
                 return 1
@@ -221,10 +222,10 @@ def buildPayette(argc,argv):
         pass
 
     if createx:
-        # remove the runPayette and testPayette executables, if this script is
+        # remove the executables built by Payette, if the build is successful
         # successful, they will be recreated
-        for f in Payette_Executables:
-            try: os.remove(f)
+        for key,val in Payette_Built_Executables.items():
+            try: os.remove(val)
             except: pass
             continue
 
@@ -285,23 +286,23 @@ def createPayetteExecutables():
 
     loginf("writing executable scripts")
 
-    for item in [[runPayette,"run"],[testPayette,"test"]]:
+    for item in [[Payette_runPayette,"run"],[Payette_testPayette,"test"]]:
         script,typ = item
         begmes("writing %s"%(os.path.basename(script)),pre=sp)
-        execmd ="#!/bin/sh -f\n%s %s %s $* 2>&1\n"%(Payette_pyint,Payette,typ)
+        execmd ="#!/bin/sh -f\n%s %s %s $* 2>&1\n"%(Payette_pyint,Payette_Payette,typ)
         with open(script,"w") as f: f.write(execmd)
         os.chmod(script,0o750)
         endmes("%s script written"%os.path.basename(script))
         continue
 
     # Make the rebuildPayette script
-    begmes("writing {0}".format(os.path.basename(rebuildPayette)),pre=sp)
+    begmes("writing {0}".format(os.path.basename(Payette_rebuildPayette)),pre=sp)
     execmd =("#!/bin/sh -f\ncd {0}\n{1} {2} {3}\n"
              .format(Payette_Toolset,Payette_pyint,
                      build_payette," ".join(sys.argv[1:])))
-    with open(rebuildPayette,"w") as f: f.write(execmd)
-    os.chmod(rebuildPayette,0o750)
-    endmes("%s script written"%os.path.basename(rebuildPayette))
+    with open(Payette_rebuildPayette,"w") as f: f.write(execmd)
+    os.chmod(Payette_rebuildPayette,0o750)
+    endmes("%s script written"%os.path.basename(Payette_rebuildPayette))
 
     loginf("executable scripts written\n")
     return 0
@@ -321,7 +322,7 @@ def testRunPayette(test):
     """
 
     begmes("INFO: testing that runPayette [-h] executes normally",pre="")
-    cmd = [runPayette,"-h"]
+    cmd = [Payette_runPayette,"-h"]
     runcheck = sbp.Popen(cmd,stdout=sbp.PIPE,stderr=sbp.STDOUT)
     runcheck.wait()
     if runcheck.returncode != 0:
@@ -344,8 +345,8 @@ def testRunPayette(test):
         else: print ("please let the Payette developers know so a fix "
                      "can be found")
         loginf("removing {runPayette,testPayette} and exiting")
-        for tmp in Payette_Executables:
-            try: os.remove(tmp)
+        for key,val in Payette_Built_Executables.items():
+            try: os.remove(val)
             except: pass
             continue
         return 1
@@ -373,7 +374,7 @@ def testRunPayette(test):
         message = ("please let the Payette developers know so a fix can be found\n"
                    "removing {runPayette,testPayette} and exiting")
         print(message)
-        for exe in [runPayette,buildPayette,rebuildPayette]:
+        for name, exe in Payette_Built_Executables.items():
             try: os.remove(exe)
             except: pass
             continue
@@ -648,8 +649,8 @@ def getPayetteMaterials(requested_libs=["all"],options=[]):
         except: continue
 
         # check if a constitutive model class is defined
-        data = pyclbr.readmodule(py_mod,path=[os.path.dirname(py_file)])
-        for name, data in sorted(data.items(), key=lambda x:x[1].lineno):
+        class_data = pyclbr.readmodule(py_mod,path=[os.path.dirname(py_file)])
+        for name, data in sorted(class_data.items(), key=lambda x:x[1].lineno):
             class_name = data.name
             constitutive_model = ("ConstitutiveModelPrototype" in
                                   get_super_classes(name,data))
@@ -902,8 +903,10 @@ def configure_payette_environment(opts):
     global Payette_MIG_Utils, Payette_Materials_Library
     global Payette_Materials_Fortran, Payette_Materials_Fortran_Includes
     global Payette_Materials_File, Payette_Inputs, Payette_Extension_Module_Fext
-    global Payette_ostype, Payette_F2Py_Callback, Payette, runPayette, testPayette
-    global rebuildPayette, Payette_Executables, Payette_config_file
+    global Payette_ostype, Payette_F2Py_Callback, Payette_Payette
+    global Payette_runPayette, Payette_testPayette, Payette_rebuildPayette
+    global Payette_Built_Executables, Payette_Executables
+    global Payette_config_file
     global Payette_Kayenta, Payette_AlegraNevada, Payette_nlopt
     global Payette_fcompiler, Payette_f77exec, Payette_f90exec
     global assertion_errors
@@ -1003,13 +1006,19 @@ def configure_payette_environment(opts):
     Payette_F2Py_Callback = True
 
     # Payette executables
-    Payette = os.path.join(Payette_Toolset,"Payette")
-    runPayette = os.path.join(Payette_Toolset,"runPayette")
-    extractPayette = os.path.join(Payette_Toolset,"extractPayette.py")
-    check_exists("extractPayette",extractPayette)
-    testPayette = os.path.join(Payette_Toolset,"testPayette")
-    rebuildPayette = os.path.join(Payette_Toolset,"rebuildPayette")
-    Payette_Executables = [runPayette, rebuildPayette, testPayette]
+    Payette_Payette = os.path.join(Payette_Toolset,"Payette")
+    Payette_runPayette = os.path.join(Payette_Toolset,"runPayette")
+    Payette_extractPayette = os.path.join(Payette_Toolset,"extractPayette.py")
+    check_exists("extractPayette",Payette_extractPayette)
+    Payette_testPayette = os.path.join(Payette_Toolset,"testPayette")
+    Payette_rebuildPayette = os.path.join(Payette_Toolset,"rebuildPayette")
+    Payette_Built_Executables = {"runPayette":Payette_runPayette,
+                                 "rebuildPayette":Payette_rebuildPayette,
+                                 "testPayette":Payette_testPayette}
+    Payette_Executables = {"extractPayette.py":Payette_extractPayette}
+    for key,val in Payette_Built_Executables.items():
+        Payette_Executables[key] = val
+        continue
 
     # configuration files
     Payette_config_file = os.path.join(Payette_Toolset,"Payette_config.py")
@@ -1034,14 +1043,7 @@ def configure_payette_environment(opts):
         pass
 
     # modify sys.path
-    if Payette_Home not in sys.path: sys.path.append(Payette_Home)
-    if Payette_Source not in sys.path: sys.path.append(Payette_Source)
-    if Payette_Materials not in sys.path: sys.path.append(Payette_Materials)
-    if Payette_Materials_Fortran_Includes not in sys.path:
-        sys.path.append(Payette_Materials_Fortran_Includes)
-        pass
-    if Payette_Tests not in sys.path: sys.path.append(Payette_Tests)
-    if Payette_Toolset not in sys.path: sys.path.append(Payette_Toolset)
+    if Payette_Home not in sys.path: sys.path.insert(0,Payette_Home)
 
     # store all of the above information for writing to the Payette_config_file,
     # we waited tpo write it til now so that we would only write it if everything
@@ -1064,11 +1066,7 @@ def configure_payette_environment(opts):
     payette_config["Payette_Extension_Module_Fext"] = Payette_Extension_Module_Fext
     payette_config["Payette_ostype"] = Payette_ostype
     payette_config["Payette_F2Py_Callback"] = Payette_F2Py_Callback
-    payette_config["Payette"] = Payette
-    payette_config["runPayette"] = runPayette
-    payette_config["extractPayette"] = extractPayette
-    payette_config["testPayette"] = testPayette
-    payette_config["rebuildPayette"] = rebuildPayette
+    payette_config["Payette_Payette"] = Payette_Payette
     payette_config["Payette_Executables"] = Payette_Executables
     payette_config["Payette_config_file"] = Payette_config_file
     payette_config["Payette_Kayenta"] = Payette_Kayenta
@@ -1109,32 +1107,19 @@ import os
                 f.write('{0} = {1}\n'.format(key,value))
                 pass
             continue
-        f.write(
-            """if Payette_Home not in sys.path: sys.path.append(Payette_Home)
-if Payette_Materials not in sys.path: sys.path.append(Payette_Materials)
-if Payette_Materials_Fortran_Includes not in sys.path: sys.path.append(Payette_Materials_Fortran_Includes)
-if Payette_Source not in sys.path: sys.path.append(Payette_Source)
-if Payette_Tests not in sys.path: sys.path.append(Payette_Tests)
-if Payette_Toolset not in sys.path: sys.path.append(Payette_Toolset)
-""")
+        f.write("if Payette_Home not in sys.path: sys.path.insert(0,Payette_Home)")
         pass
     endmes("Payette_config.py written")
 
-    # write the Payette_config file to the tests directories as tests_common
-    begmes("writing tests_common.py to test directories",pre=sp)
+    # symlink the Payette_config file to the tests directories
     for dirnam, dirs, files in os.walk(Payette_Tests):
-        tests_common = os.path.join(dirnam,"tests_common.py")
-        shutil.copyfile(Payette_config_file,tests_common)
-        with open(tests_common,"a") as f:
-            f.write("""if "PAYETTE_DBG" in os.environ:
-    print("__file__:        {0}".format(os.path.realpath(__file__)))
-    print("Payette_Tests:   {0}".format(Payette_Tests))
-    print("Payette_Source:  {0}".format(Payette_Source))
-    print("Payette_Toolset: {0}".format(Payette_Toolset))
-    print("")""")
-            pass
+        if "__init__.py" not in files: continue
+        config_base = os.path.basename(Payette_config_file)
+        tests_config = os.path.join(dirnam,config_base)
+        try: os.remove(tests_config)
+        except: pass
+        os.symlink(Payette_config_file,tests_config)
         continue
-    endmes("tests_common.py written to test directories")
     return
 
 def write_summary_to_screen():
@@ -1196,9 +1181,10 @@ def cleanPayette():
     homed = os.path.dirname(toolsd)
     rootd = os.path.dirname(homed)
 
-    pats_to_remove = ["*.pyc","*.pyo","tests_common.py","Payette_config.py",
+    pats_to_remove = ["*.pyc","*.pyo","Payette_config.py",
                       "Payette_installed_materials.py","*.{0}".format(soext),
-                      "f2py","rebuildPayette","runPayette","testPayette"]
+                      "f2py","rebuildPayette","runPayette","testPayette",
+                      "*.log","*.echo","*.prf","*.diff","*.xout","*.out"]
     for dirnam, dirs, files in os.walk(rootd):
         [os.remove(os.path.join(dirnam,f)) for f in files if
          any(fnmatch(f,p) for p in pats_to_remove)]
@@ -1237,11 +1223,8 @@ if __name__ == "__main__":
         error += 1
 
     if createx and not error:
-        msg = ("the runPayette, testPayete, and rebuildPayette executable scripts "
-               "were built in: \n"
-               "{0}{1}\n"
-               "{0}{2}\n"
-               "{0}{3}\n".format(sp,runPayette,testPayette,rebuildPayette))
+        msg = ("the {0} executable scripts were built in:\n\t{1}"
+               .format(", ".join(Payette_Built_Executables),Payette_Toolset))
         loginf(msg)
         pass
 

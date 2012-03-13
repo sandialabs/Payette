@@ -81,6 +81,7 @@ class Elastic(ConstitutiveModelPrototype):
         self.aliases = attributes["aliases"]
         self.imported = imported
 
+        # register parameters
         self.registerParameter("LAM",0,aliases=[])
         self.registerParameter("G",1,aliases=['SHMOD'])
         self.registerParameter("E",2,aliases=['YMOD'])
@@ -95,11 +96,61 @@ class Elastic(ConstitutiveModelPrototype):
         self.registerParameter("RHO",11,aliases=[])
         self.nprop = len(self.parameter_table.keys())
         self.ndc = 0
+
         pass
 
+    # Public methods
+    def setUp(self,simdat,matdat,user_params,f_params):
+        iam = self.name + ".setUp(self,material,props)"
+
+        if not imported: return
+
+        # parse parameters
+        self.parseParameters(user_params,f_params)
+
+        # check parameters
+        self.dc = np.zeros(self.ndc)
+        self.ui = self._check_props()
+        self.nsv,namea,keya,sv,rdim,iadvct,itype = self._set_field()
+        namea = parseToken(self.nsv,namea)
+        keya = parseToken(self.nsv,keya)
+
+        # register the extra variables with the payette object
+        matdat.registerExtraVariables(self.nsv,namea,keya,sv)
+
+        self.bulk_modulus,self.shear_modulus = self.ui[4],self.ui[1]
+        self.computeInitialJacobian()
+        pass
+
+    # redefine Jacobian to return initial jacobian
+    def jacobian(self,simdat,matdat):
+        if not imported: return
+        v = simdat.getData("prescribed stress components")
+        return self.J0[[[x] for x in v],v]
+
+    def updateState(self,simdat,matdat):
+        """
+           update the material state based on current state and strain increment
+        """
+        if not imported: return
+        dt = simdat.getData("time step")
+        d = simdat.getData("rate of deformation")
+        sigold = matdat.getData("stress")
+        svold = matdat.getData("extra variables")
+
+        a = [dt,self.ui,sigold,d,svold,migError,migMessage]
+        if not Payette_F2Py_Callback: a = a[:-2]
+        sig, sv, usm = mtllib.hooke_incremental(*a)
+
+        matdat.storeData("extra variables",sv)
+        matdat.storeData("stress",sig)
+
+        return
+
     # Private methods
-    def _check_props(self,*args,**kwargs):
-        a = [kwargs["props"],kwargs["props"],kwargs["props"],migError,migMessage]
+    def _check_props(self):
+        props = np.array(self.ui0)
+        a = [props,props,props,migError,migMessage]
         if not Payette_F2Py_Callback: a = a[:-2]
         ui = mtllib.hookechk(*a)
         return ui
@@ -108,38 +159,5 @@ class Elastic(ConstitutiveModelPrototype):
         a = [self.ui,self.ui,self.ui,migError,migMessage]
         if not Payette_F2Py_Callback: a = a[:-2]
         else: return mtllib.hookerxv(*a)
-
-    # Public methods
-    def setUp(self,payette,props):
-        if not imported: return
-        self.dc = np.zeros(self.ndc)
-        self.ui0 = np.array(props)
-        self.ui = self._check_props(props=props)
-        (self.nsv,namea,keya,self.sv,
-         self.rdim,self.iadvct,self.itype) = self._set_field()
-        self.namea = parseToken(self.nsv,namea)
-        self.keya = parseToken(self.nsv,keya)
-
-        # register the extra variables with the payette object
-        payette.registerExtraVariables(self.nsv,self.namea,self.keya,self.sv)
-
-        self.bulk_modulus,self.shear_modulus = self.ui[4],self.ui[1]
-        self.computeInitialJacobian()
         pass
 
-    # redefine Jacobian to return initial jacobian
-    def jacobian(self,dt,d,Fold,Fnew,EF,sig,sv,v,*args,**kwargs):
-        if not imported: return
-        return self.J0[[[x] for x in v],v]
-
-    def updateState(self,*args,**kwargs):
-        """
-           update the material state based on current state and strain increment
-        """
-        if not imported: return
-        dt,d,fold,fnew,efield,sigold,svold = args
-        a = [dt,self.ui,sigold,d,svold,migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
-        sig, sv, usm = mtllib.hooke_incremental(*a)
-        self.sv = np.array(sv)
-        return sig,sv

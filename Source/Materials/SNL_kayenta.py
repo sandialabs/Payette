@@ -3,7 +3,6 @@
 #    Use and export of this program may require a license from
 #    the United States Government.
 #
-from __future__ import print_function
 import sys
 import numpy as np
 
@@ -163,57 +162,56 @@ class Kayenta(ConstitutiveModelPrototype):
         self.registerParameter("RPWR",ib+27,aliases=[])
         self.nprop = len(self.parameter_table.keys())
         self.ndc = 13
+        self.dc = np.zeros(self.ndc)
+
         pass
-
-    # Private methods
-    def _check_props(self,**kwargs):
-        a = [kwargs["props"],kwargs["props"],np.zeros(13),migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
-        return mtllib.kayenta_chk(*a)
-
-    def _set_field(self,*args,**kwargs):
-        a = [self.ui,self.ui,self.dc,migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
-        return mtllib.kayenta_rxv(*a)
 
     # Public methods
-    def setUp(self,payette,props):
-        self.dc = np.zeros(13)
-        self.ui0 = np.array(props)
-        self.ui,self.dc = self._check_props(props=props)
-        (self.ui,self.nsv,namea,keya,self.sv,
-         self.rdim,self.iadvct,self.itype) = self._set_field()
-        self.namea = parseToken(self.nsv,namea)
-        self.keya = parseToken(self.nsv,keya)
+    def setUp(self,simdat,matdat,user_params,f_params):
+
+        iam = self.name + ".setUp(self,material,props)"
+
+        # parse parameters
+        self.parseParameters(user_params,f_params)
+
+        self.ui,self.dc = self._check_props()
+        self.ui,self.nsv,namea,keya,sv,rdim,iadvct,itype = self._set_field()
+        namea = parseToken(self.nsv,namea)
+        keya = parseToken(self.nsv,keya)
 
         # register the extra variables with the payette object
-        payette.registerExtraVariables(self.nsv,self.namea,self.keya,self.sv)
+        matdat.registerExtraVariables(self.nsv,namea,keya,sv)
 
         self.bulk_modulus,self.shear_modulus = self.ui[0],self.ui[5]
-        self.J0 = self.computeInitialJacobian()
+        self.computeInitialJacobian()
         pass
 
-    def updateState(self,*args,**kwargs):
+    def updateState(self,simdat,matdat):
         '''
            update the material state based on current state and strain increment
         '''
-        dt,d,fold,fnew,efield,sigold,svold = args
+        dt = simdat.getData("time step")
+        d = simdat.getData("rate of deformation")
+        sigold = matdat.getData("stress")
+        svold = matdat.getData("extra variables")
+
         a = [dt,self.ui,self.ui,self.dc,sigold,d,svold,migError,migMessage]
         if not Payette_F2Py_Callback: a = a[:-2]
         signew,svnew,usm = mtllib.kayenta_calc(*a)
-        self.sv = np.array(svnew)
 
-        if self.ui[58] == 9 and self.sv[18] < 0.:
-            if self.sv[18] == -2.:
+        if self.ui[58] == 9 and svnew[18] < 0.:
+            if svnew[18] == -2.:
                 reportError(__file__,'expansion encountered')
-            if self.sv[18] == -1.:
+                pass
+            if svnew[18] == -1.:
                 reportMessage(__file__,'spall pressure exceeded')
-                dt,d,fold,fnew,efield,sigold,svold = args
+                dt = simdat.getData("time step")
+                sigold = matdat.getData("stress")
+                svold = matdat.getData("extra variables")
                 d = np.array([0.,0.,0.,0.,0.,0.])
                 a = [dt,self.ui,self.ui,self.dc,sigold,d,svold,migError,migMessage]
                 signew,svnew,usm = mtllib.kayenta_calc(*a)
-                self.sv = np.array(svnew)
-                if self.sv[18] < 0.:
+                if svnew[18] < 0.:
                     reportError(__file__,'0 d DID NOT resolve')
                 else:
                     reportError(__file__,'0 d DID resolve')
@@ -221,4 +219,20 @@ class Kayenta(ConstitutiveModelPrototype):
                 pass
             reportError(__file__,'stopping because kayenta wants me to')
             pass
-        return signew,svnew
+
+        matdat.storeData("stress",signew)
+        matdat.storeData("extra variables",svnew)
+
+        return
+    # Private methods
+    def _check_props(self):
+        props = np.array(self.ui0)
+        a = [props,props,self.dc,migError,migMessage]
+        if not Payette_F2Py_Callback: a = a[:-2]
+        return mtllib.kayenta_chk(*a)
+
+    def _set_field(self):
+        a = [self.ui,self.ui,self.dc,migError,migMessage]
+        if not Payette_F2Py_Callback: a = a[:-2]
+        return mtllib.kayenta_rxv(*a)
+

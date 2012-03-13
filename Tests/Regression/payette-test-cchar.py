@@ -1,81 +1,58 @@
 #!/usr/bin/env python
-import sys,subprocess,linecache,os
-import time
-import math
-import numpy as np
+from Payette_config import *
+from Source.Payette_test import PayetteTest
 
-from tests_common import *
+class Test(PayetteTest):
 
-Payette_test = True   # change to true
-name = "payette-test-cchar"
-keywords = ["payette","cchar","regression","fast"] # add keywords
-owner = "Tim Fuller"
-date = "February 25, 2012"
+    def __init__(self):
 
-fdir = os.path.dirname(os.path.realpath(__file__))
-infile = "%s.inp"%(os.path.join(fdir,name))
-restartfile = name + ".prf"
-outfile = "%s.out"%(name)
-executable = runPayette
-runcommand = [executable,"--no-writeprops","--no-restart","--cchar=!",infile]
-baseline = None
+        # initialize the base class
+        PayetteTest.__init__(self)
 
-description = """
-    Test of user comment character (cchar) capabilities
-"""
+        self.enabled = True
 
-def performCalcs(cmd):
-    """
-    NAME
-       performCalcs
+        self.name = os.path.splitext(os.path.basename(__file__))[0]
+        self.tdir = os.path.dirname(os.path.realpath(__file__))
 
-    PURPOSE
-       run the benchmark problem
+        self.infile = "{0}.inp".format(os.path.join(self.tdir,self.name))
+        self.outfile = "{0}.out".format(self.name)
+        self.runcommand = ["runPayette","--no-writeprops","--no-restart",
+                           "--cchar=!",self.infile]
+        self.keywords = ["payette","cchar","regression","fast"] # add keywords
 
-    OUTPUT
-       stat   0: problem ran successfully
-           != 0: problem did not run successfully
-    """
-    # run the problem
-    with open("%s.echo"%(name),"w") as f:
-        run = subprocess.Popen(cmd,stdout=f,stderr=subprocess.STDOUT)
-        run.wait()
+        self.owner = "Tim Fuller"
+        self.date = "February 25, 2012"
+        self.description = """ Test of user comment character capabilities """
         pass
-    return run.returncode
 
-def analyzeTest():
-    return 0
+    def runTest(self):
+        """ run the test """
 
-def runTest():
-    perform_calcs = performCalcs(runcommand)
-    if perform_calcs != 0: return 2
-    return analyzeTest()
+        perform_calcs = self.run_command(self.runcommand)
+
+        if perform_calcs != 0:
+            return self.failcode
+
+        return self.passcode
 
 if __name__ == "__main__":
     import time
+
+    test = Test()
     if "--cleanup" in sys.argv:
         for ext in ["out","res","log","prf","pyc","echo"]:
-            try: os.remove("%s.%s"%(name,ext))
+            try: os.remove("%s.%s"%(test.name,ext))
             except: pass
             continue
         pass
     else:
         t0 = time.time()
-        print("%s RUNNING"%name)
-        perform_calcs = performCalcs(runcommand)
+        print("%s RUNNING"%test.name)
+        run_test = test.runTest()
         dtp = time.time()-t0
-        if perform_calcs != 0:
-            print("%s FAILED TO RUN TO COMPLETION"%(name))
-            sys.exit()
-            pass
-        print("%s FINISHED"%name)
-        print("%s ANALYZING"%name)
-        t1 = time.time()
-        run_test = analyzeTest()
-        dta = time.time()-t1
-        if run_test == 0:
-            print("%s PASSED(%fs)"%(name,dtp+dta))
-        elif run_test == 1:
-            print("%s DIFFED(%fs)"%(name,dtp+dta))
+        if run_test == test.passcode:
+            print("%s PASSED(%fs)"%(test.name,dtp))
+        elif run_test == test.diffcode:
+            print("%s DIFFED(%fs)"%(test.name,dtp))
         else:
-            print("%s FAILED(%fs)"%(name,dtp+dta))
+            print("%s FAILED(%fs)"%(test.name,dtp))

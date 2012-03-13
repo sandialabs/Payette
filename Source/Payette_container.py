@@ -33,12 +33,13 @@ import scipy.linalg
 import time
 
 from Source.Payette_utils import *
-import Source.Payette_material as cmtl
+from Source.Payette_material import Payette_Constitutive_Models, Material
 import Source.Payette_driver as cdriver
+from Source.Payette_data_container import DataContainer
 
 def parseError(msg):
     print("ERROR: {0:s}".format(msg))
-    sys.exit()
+    sys.exit(4)
     return
 
 class Payette:
@@ -51,99 +52,29 @@ class Payette:
        the runPayette script. The documentation is currently sparse, but may be
        expanded if time allows.
 
-    OBJECT DATA
-       Relevant data, this list is not comprehensive.
-
-         variable           type      size    description
-         ------------       --------  ----    --------------------------------------
-         mt                 instance  1       material object
-         sym_vel_grad       array     (2,6)   symmetic part of velocity gradient d
-                                                d[0,:] at time n
-                                                d[1,:] (to be) at time n + 1
-         strain             array     (2,6)   strain E
-                                                E[0,:] at time n
-                                                E[1,:] (to be) at time n + 1
-         rate_of_strain     array     (6)     rate of strain dEdt
-         prescribed_strain  array     (3,6)   prescribed strain Epres
-                                                Epres[0,:] at tleg[0]
-                                                Epres[1,:] at tleg[1]
-                                                Epres[2,:] at t (interpolated)
-         defgrad            array     (2,9)   deformation gradient F
-                                                F[0,:] at time n
-                                                F[1,:] (to be) at time n + 1
-         rate_of_defgrad    array     (9)     rate of deformation gradient dFdt
-         prescribed_defgrad array     (3,9)   prescribed deformation gradient Fpres
-                                                Fpres[0,:] at tleg[0]
-                                                Fpres[1,:] at tleg[1]
-                                                Fpres[2,:] at t (interpolated)
-         kappa              scalar    1       Seth-Hill parameter
-         lcontrol           list      var     input deformation leg.  size varies by
-                                              prescribed [deformation,stress] type.
-         stress             array     (2,6)   stress P conjugate to E
-         rate_of_stress     array     (6)     rate of stress dPdt
-         stress_dum         array     (2,6)   dummy holder for prescribed stress Pdum
-                                                Pdum[0,:] at tleg[0]
-                                                Pdum[1,:] at tleg[1]
-         prescribed_stress  array     (3,?)   array Ppres containing only those
-                                              components of Pdum for which stresses
-                                              were actually prescribed
-                                                Ppres[0,:] at tleg[0]
-                                                Ppres[1,:] at tleg[1]
-                                                Ppres[2,:] at t (interpolated)
-         rotation           array     (2,9)   rotation R (=I for now)
-                                                R[0,:] at time n
-                                                R[1,:] (to be) at time n + 1
-         rate_of_rotation   array     (9)     rate of rotation dRdt
-         prescribed_rotation array    (3,9)   prescribed rotation Rpres (not used)
-                                                Rpres[0,:] at tleg[0]
-                                                Rpres[1,:] at tleg[1]
-                                                Rpres[2,:] at t (interpolated)
-         t                  scalar    1       current time
-         tleg*              array     (2)     leg time
-                                                tleg[0]: time at beginning of leg
-                                                tleg[1]: time at end of leg
-         v                  array     var     vector subscript array containing the
-                                              components for which stresses
-                                              (or stress rates) are prescribed
-         skew_vel_grad      array     (2,9)   skew part of velocity gradient w
-                                                w[0,:] at time n
-                                                w[1,:] (to be) at time n + 1
-
     AUTHORS
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     '''
 
     def __init__(self, simname, user_input, opts):
 
-        self.opts = opts
-        if self.opts.debug: self.opts.verbosity = 4
-        self.loglevel = self.opts.verbosity
-        self.write_restart = not self.opts.norestart
-        writeprops = not self.opts.nowriteprops
-        self.test_restart = self.opts.testrestart
+        iam = simname + "__init__(self, simname, user_input, opts)"
+        if opts.debug: opts.verbosity = 4
+        loglevel = opts.verbosity
 
         delete = not opts.keep
         basedir = os.getcwd()
-        self.simname = simname
+
         self.name = simname
-        self.class_name = "Payette"
 
-        self.math1 = os.path.join(basedir, self.simname + ".math1")
-        self.math2 = os.path.join(basedir, self.simname + ".math2")
-
-        # all material data
-        self.material_data = {}
-
-        self.extra_vars_registered = False
-
-        self.outfile = os.path.join(basedir, self.simname + ".out")
-        if delete and os.path.isfile(self.outfile):
-            os.remove(self.outfile)
-        elif os.path.isfile(self.outfile):
+        outfile = os.path.join(basedir, simname + ".out")
+        if delete and os.path.isfile(outfile):
+            os.remove(outfile)
+        elif os.path.isfile(outfile):
             i = 0
             while True:
-                self.outfile = os.path.join(basedir,'%s.%i.out'%(self.simname,i))
-                if os.path.isfile(self.outfile):
+                outfile = os.path.join(basedir,'%s.%i.out'%(simname,i))
+                if os.path.isfile(outfile):
                     i += 1
                     if i > 100:
                         parseError(r'Come on!  Really, over 100 output files???')
@@ -155,97 +86,154 @@ class Payette:
             pass
 
         # logfile
-        self.logfile = '%s.log'%os.path.splitext(self.outfile)[0]
-        try: os.remove(self.logfile)
+        logfile = '%s.log'%os.path.splitext(outfile)[0]
+        try: os.remove(logfile)
         except: pass
-        setupLogger(self.logfile,self.loglevel)
-        msg = "setting up simulation %s"%self.simname
+        setupLogger(logfile,loglevel)
+        msg = "setting up simulation %s"%simname
         reportMessage(__file__,msg)
 
-
         # file name for the Payette restart file
-        self.rfile = '%s.prf'%os.path.splitext(self.outfile)[0]
+        rfile = '%s.prf'%os.path.splitext(outfile)[0]
 
-        self.mtl = None
+        # set up the simulation data container
+        self.simdat = DataContainer(simname)
+
+        # --- register obligatory data
+        # plotable data
+        self.simdat.registerData("time","Scalar",
+                                 init_val = 0.,
+                                 plot_key="time")
+        self.simdat.registerData("time step","Scalar",
+                                 init_val = 0.,
+                                 plot_key = "timestep")
+        self.simdat.registerData("strain","SymTensor",
+                                 init_val = np.zeros(6),
+                                 plot_key = "strain")
+        self.simdat.registerData("deformation gradient","Tensor",
+                                 init_val = "Identity",
+                                 plot_key = "F")
+        self.simdat.registerData("rate of deformation","SymTensor",
+                                 init_val = np.zeros(6),
+                                 plot_key = "d")
+        self.simdat.registerData("vorticity","Tensor",
+                                 init_val = np.zeros(9),
+                                 plot_key = "w")
+        self.simdat.registerData("equivalent strain","Scalar",
+                                 init_val = 0.,
+                                 plot_key = "eqveps")
+        self.simdat.registerData("permittivity","SymTensor",
+                                 init_val = np.zeros(6),
+                                 plot_key = "permtv")
+        self.simdat.registerData("electric field","Vector",
+                                 init_val = np.zeros(3),
+                                 plot_key = "efield")
+        # non-plotable data
+        self.simdat.registerData("prescribed stress","Array",
+                                 init_val = np.zeros(6))
+        self.simdat.registerData("prescribed stress components","Integer Array",
+                                 init_val = np.zeros(6,dtype=int))
+        self.simdat.registerData("prescribed strain","SymTensor",
+                                 init_val = np.zeros(6))
+        self.simdat.registerData("strain rate","SymTensor",
+                                 init_val = np.zeros(6))
+        self.simdat.registerData("prescribed deformation gradient","Tensor",
+                                 init_val = np.zeros(9))
+        self.simdat.registerData("deformation gradient rate","Tensor",
+                                 init_val = np.zeros(9))
+        self.simdat.registerData("rotation","Tensor",
+                                 init_val = "Identity")
+        self.simdat.registerData("rotation rate","Tensor",
+                                 init_val = np.zeros(9))
+
+        # set up simulation from user input
+        self.material = None
         self.lcontrol = None
         self.bcontrol = None
 
-        # set up simulation from user input
         self.boundaryFactory(user_input)
         self.materialFactory(user_input)
 
-        if not self.diagonal and opts.write_vandd_table:
+        if not self.isdiag and opts.write_vandd_table:
             parseError("cannot create displacement tables from nondiagonal strain")
             return 1
-        self.write_vandd_table = opts.write_vandd_table
-
-        # material parameter keys
-        self.paramkeys = [None]*self.mtl.cm.nprop
-        for param in self.mtl.cm.parameter_table:
-            i = self.mtl.cm.parameter_table[param]['ui pos']
-            self.paramkeys[i] = param
-
-        # write out properties
-        if writeprops: self.writeMaterialParameters()
 
         # get mathplot
         mathplot, mathplotid = findBlock(user_input,"mathplot")
-        self.plotable = []
+        plotable = []
         if mathplot:
             for item in mathplot:
                 tmp = item.replace(","," ")
                 for repl in [",",";",":"]: item = item.replace(repl," ")
-                self.plotable.extend(item.split())
+                plotable.extend(item.split())
                 continue
             pass
 
-        # ----- Initialize model variables
+        # register boundary variables
+        self.simdat.registerData("leg number","Scalar",
+                                 init_val = 0 )
 
-        # timing
-        self.ileg = 0
-        self.tleg = np.zeros(2)
-        self.t = 0.
-        self.dt = 0.
+        self.simdat.registerData("leg data","List",
+                                 init_val = self.lcontrol)
 
-        # strain
-        self.strain = np.zeros((2,6))
-        self.prescribed_strain = np.zeros((3,6))
-        self.rate_of_strain = np.zeros(6)
+        # check if user has specified simulation options
+        for item in user_input:
+            deprication_warning = False
+            split_item = item.replace("="," ").replace(","," ").lower().split()
 
-        # velocity gradient
-        self.sym_vel_grad = np.zeros((2,6))
-        self.skew_vel_grad = np.zeros((2,9))
+            if split_item[0] == "title": deprication_warning = True
 
-        # stress
-        self.stress = np.zeros((2,6))
-        self.prescribed_stress = np.zeros((3,6))
-        self.rate_of_stress = np.zeros(6)
-        self.stress_dum = np.zeros((2,6))
-        self.stress_dum_comp = np.zeros(6,dtype=int)
+            if deprication_warning:
+                msg = ("depricated input file option [{0}] skipped"
+                       .format(split_item[0]))
+                reportWarning(iam,msg)
+                continue
 
-        I9 = np.array([1.,1.,1.,0.,0.,0.,0.,0.,0.],dtype='double')
-        # rotation
-        self.rotation = np.array([I9,I9])
-        self.prescribed_rotation = np.array([I9,I9,I9])
-        self.rate_of_rotation = np.zeros(9)
+            if len(split_item) == 1: split_item.append("True")
+            try: val = eval(split_item[1])
+            except: sys.exit("bad simulation option: {0}".format(item))
+            self.simdat.registerOption(split_item[0],val)
+            continue
 
-        # deformation gradient
-        self.defgrad = np.array([I9,I9])
-        self.prescribed_defgrad = np.array([I9,I9,I9])
-        self.rate_of_defgrad = np.zeros(9)
+        # register some obligatory options
+        self.simdat.registerOption("simname",simname)
+        self.simdat.registerOption("outfile",outfile)
+        self.simdat.registerOption("restart file",rfile)
+        self.simdat.registerOption("verbosity",opts.verbosity)
+        self.simdat.registerOption("sqa",opts.sqa)
+        self.simdat.registerOption("write vandd table",opts.write_vandd_table)
+        self.simdat.registerOption("use table",opts.use_table)
+        self.simdat.registerOption("debug",opts.debug)
+        self.simdat.registerOption("test restart",opts.testrestart)
+        self.simdat.registerOption("write restart",not opts.norestart)
+        self.simdat.registerOption("initial time",self.t0)
+        self.simdat.registerOption("termination time",self.tf)
+        self.simdat.registerOption("kappa",self.bcontrol["kappa"])
+        self.simdat.registerOption("emit",self.bcontrol["emit"])
+        self.simdat.registerOption("screenout",self.bcontrol["screenout"])
+        self.simdat.registerOption("nprints",self.bcontrol["nprints"])
+        self.simdat.registerOption("legs",self.lcontrol)
+        self.simdat.registerOption("material",self.material)
+        self.simdat.registerOption("efield sim",self.material.electricFieldModel())
+        self.simdat.registerOption("mathplot vars",[x.upper() for x in plotable])
+        self.simdat.registerOption("math1",
+                                   os.path.join(basedir, simname + ".math1"))
+        self.simdat.registerOption("math2",
+                                   os.path.join(basedir, simname + ".math2"))
 
-        # electric field
-        self.efield = np.zeros((2,3))
-        self.prescribed_efield = np.zeros((3,3))
+        if "proportional" not in self.simdat.getAllOptions():
+            self.simdat.registerOption("proportional",False)
+            pass
 
-        # electric displacement
-        self.electric_displacement = np.zeros((2,3))
+        if "strict" not in self.simdat.getAllOptions():
+            self.simdat.registerOption("strict",False)
+            pass
 
-        # polarization
-        self.polarization = np.zeros((2,3))
+        # write out properties
+        if not opts.nowriteprops: self.writeMaterialParameters()
 
-        # failure
-        self.failed = False
+        pass
+
 
     def materialFactory(self,user_input):
         '''
@@ -334,7 +322,7 @@ class Payette:
         # constitutive model given, now see if it is available, here we replace
         # spaces with _ in all model names and convert to lower case
         mdlname = constitutive_model.lower().replace(" ","_")
-        available_models = cmtl.Payette_Constitutive_Models
+        available_models = Payette_Constitutive_Models
         for key in available_models:
             if mdlname == key or mdlname in available_models[key]["aliases"]:
                 constitutive_model = key
@@ -348,39 +336,8 @@ class Payette:
             parseError('constitutive model %s not installed'%str(constitutive_model))
             pass
 
-        # instantiate the constitutive model
-        cmod = cmtl.Payette_Constitutive_Models[constitutive_model]["class name"]
-        self.constitutive_model = cmod()
-        self.electric_field_simulation = self.constitutive_model.electric_field_model
-
-        # check if the model was successfully imported
-        if not self.constitutive_model.imported:
-            msg = ("Error importing the {0} material model.\n"
-                   "If the material model is a fortran extension library, "
-                   "it probably was not built correctly.\nTo check, go to "
-                   "{1}/Source/Materials/Library\nand try importing "
-                   "the material's extension module directly in a python "
-                   "session.\nIf it does not import, you will need to rebuild "
-                   "the extension module.\n"
-                   "If rebuilding Payette does not fix the problem, "
-                   "please contact the Payette\ndevelopers."
-                   .format(self.constitutive_model.name,Payette_Materials_Library))
-            reportError(__file__,msg)
-            pass
-
-        # initialize material
-        user_params = self.constitutive_model.parseParameters(user_params,f_params)
-
-        # register common parameters
-        self.registerCommonData()
-
-        # finish set up
-        self.constitutive_model.setUp(self,user_params)
-        self.constitutive_model.checkSetUp()
-        self.constitutive_model.intializeState()
-
-        # instantiate a material object
-        self.mtl = cmtl.Material(self.constitutive_model)
+        # instantiate the material object
+        self.material = Material(constitutive_model,self.simdat,user_params,f_params)
 
         return
 
@@ -637,348 +594,28 @@ class Payette:
         self.bcontrol = bcontrol
         return
 
-    def getPayetteState(self):
-        return (
-            # timing
-            self.ileg, self.lcontrol[self.ileg:],self.tleg, self.t, self.dt,
-
-            # strain
-            self.strain, self.prescribed_strain, self.rate_of_strain,
-
-            # stress
-            self.stress, self.prescribed_stress, self.rate_of_stress,
-
-            # stress control
-            self.stress_dum, self.stress_dum_comp,
-
-            # rotation
-            self.rotation, self.prescribed_rotation, self.rate_of_rotation,
-
-            # deformation gradient
-            self.defgrad, self.prescribed_defgrad, self.rate_of_defgrad,
-
-            # velocity gradient
-            self.sym_vel_grad, self.skew_vel_grad,
-
-            # electric field
-            self.efield, self.prescribed_efield,
-
-            # electric displacement
-            self.electric_displacement,
-
-            # polarization
-            self.polarization,
-
-            # failure
-            self.failed)
-
-
-    def savePayetteState(self,ileg,tleg,t,dt,e,epres,dedt,s,spres,dsdt,sdum,v,
-                         r,rpres,drdt,f,fpres,dfdt,d,w,
-                         ef,efpres,ed,polrzn,failed):
-        # timing
-        self.ileg,self.tleg,self.t,self.dt, = ileg,tleg,t,dt
-
-        # strain
-        self.strain,self.prescribed_strain,self.rate_of_strain = e,epres,dedt
-
-        # stress
-        self.stress,self.prescribed_stress,self.rate_of_stress = s,spres,dsdt
-
-        # stress control
-        self.stress_dum,self.stress_dum_comp = sdum,v
-
-        # rotation
-        self.rotation,self.prescribed_rotation,self.rate_of_rotation = r,rpres,drdt
-
-        # deformation gradient
-        self.defgrad,self.prescribed_defgrad,self.rate_of_defgrad = f,fpres,dfdt
-
-        # velocity gradient
-        self.sym_vel_grad,self.skew_vel_grad = d,w
-
-        # electric field
-        self.efield, self.prescribed_efield = ef, efpres
-
-        # electric displacement
-        self.electric_displacement = ed
-
-        # polarization
-        self.polarization = polrzn
-
-        self.failed = failed
-        return None
-
-    def registerCommonData(self):
-
-        self.material_data_idx = 0
-
-        # register obligatory variables
-        self.registerMaterialData("time","time",0.,typ="Scalar")
-        self.registerMaterialData("stress","sig",np.zeros(6),typ="SymTensor")
-        self.registerMaterialData("time rate of stress","dsigdt",
-                                  np.zeros(6),typ="SymTensor")
-        self.registerMaterialData("strain","eps",np.zeros(6),typ="SymTensor")
-        self.registerMaterialData("time rate of strain","d",
-                                  np.zeros(6),typ="SymTensor")
-        self.registerMaterialData("deformation gradient","F",np.zeros(9),
-                                  typ="Tensor")
-        self.registerMaterialData("equivalent strain","eqveps",0.,typ="Scalar")
-
-        # electric field items
-        if self.electric_field_simulation:
-            self.registerMaterialData("electric field","efield",np.zeros(3),
-                                      typ="Vector")
-            self.registerMaterialData("polarization","polrzn",np.zeros(3),
-                                      typ="Vector")
-            self.registerMaterialData("electric displacement","edisp",np.zeros(3),
-                                      typ="Vector")
-            pass
-
-        pass
-
-    def registerExtraVariables(self,nsv,names,keys,values):
-        """
-           method used by material models to register extra variables with payette
-        """
-        iam = self.class_name+".registerExtraVariables(self,nsv,names,keys,values)"
-        if self.extra_vars_registered:
-            reporteError(iam,"extra variables can only be registered once")
-
-        self.extra_vars_registered = True
-        self.num_extra = nsv
-        self.extra_vars_map = {}
-
-        for i in range(nsv):
-            name = names[i]
-            key = keys[i]
-            value = values[i]
-            self.registerMaterialData(name,key,value,typ="scalar")
-            self.extra_vars_map[i] = name
-            continue
-
-        if len(self.material_data) != self.material_data_idx:
-            reportError(iam,"duplicate extra variable names")
-        pass
-
-    def registerMaterialData(self,name,key,value,typ):
-        """
-            register the material data for Payette to track
-        """
-        iam = self.class_name + ".registerMaterialData"
-        typ = typ.lower()
-
-        if typ == "symtensor":
-            if not isinstance(value,(list,np.ndarray)):
-                reportError(iam,("SymTensor material data {0} must be a list "
-                                 "or numpy.ndarray").format(name))
-            elif len(value) != 6:
-                reportError(iam,"initial value of SymTensor material data {0} != 6"
-                            .format(name))
-                pass
-
-        elif typ == "tensor":
-            if not isinstance(value,(list,np.ndarray)):
-                reportError(iam,("Tensor material data {0} must be a list "
-                                 "or numpy.ndarray").format(name))
-            elif len(value) != 9:
-                reportError(iam,"initial value of Tensor material data {0} != 9"
-                            .format(name))
-                pass
-
-        elif typ == "scalar":
-            if isinstance(value,(list,np.ndarray)):
-                reportError(iam,("Scalar material data {0} must not be a list "
-                                 "or numpy.ndarray").format(name))
-                pass
-
-        elif typ == "vector":
-            if not isinstance(value,(list,np.ndarray)):
-                reportError(iam,("Vector material data {0} must be a list "
-                                 "or numpy.ndarray").format(name))
-            elif len(value) != 3:
-                reportError(iam,"initial value of Vector material data {0} != 9"
-                            .format(name))
-                pass
-
-        else:
-            reportError(iam,"unrecognized material data type: {0}".format(typ))
-            pass
-
-        # register the data
-        self.material_data[name] = { "name":name,
-                                     "plot key":key,
-                                     "idx":self.material_data_idx,
-                                     "type":typ,
-                                     "value":value }
-        self.material_data_idx += 1
-        pass
-
-    def updateMaterialData(self,**kwargs):
-        """
-        """
-        for key, val in kwargs.items():
-
-            if key == "extra variables":
-                for isv, sv in enumerate(val):
-                    nkey = self.extra_vars_map[isv]
-                    self.material_data[nkey]["value"] = sv
-                    continue
-                continue
-
-            if ( key in ["electric field","electric displacement","polarization"]
-                 and not self.electric_field_simulation ):
-                continue
-
-            self.material_data[key]["value"] = val
-
-            if key == "strain":
-                self.material_data["equivalent strain"]["value"] = (
-                    np.sqrt( 2./3.*( sum(val[:3]**2) + 2.*sum(val[3:]**2))) )
-                pass
-
-            continue
-        pass
-
-    def plotKeys(self):
-        iam = self.class_name + ".plotKeys(self)"
-        # return a list of plot keys in the order registered
-        plot_keys = [None]*len(self.material_data)
-        for key,val in self.material_data.items():
-            typ = val["type"]
-            key = val["plot key"]
-            idx = val["idx"]
-            if typ == "scalar":
-                plot_keys[idx] = [key]
-
-            elif typ == "vector":
-                plot_keys[idx] = [key + "1", key + "2", key + "3"]
-
-            elif typ == "symtensor":
-                plot_keys[idx] = [key + "11", key + "22", key + "33",
-                                  key + "12", key + "23", key + "13" ]
-
-            elif typ == "tensor":
-                plot_keys[idx] = [key + "11", key + "22", key + "33",
-                                  key + "12", key + "23", key + "13",
-                                  key + "21", key + "32", key + "31" ]
-
-            else:
-                reportError(iam,"unrecognized material data type {0}".format(typ))
-                pass
-
-            continue
-        # flatten plot keys to just a list
-        plot_keys = [x for y in plot_keys for x in y]
-
-        if not any(plot_keys): reportError(iam,"non empty plot key")
-        return plot_keys
-
-
-    def plotableData(self):
-        iam = self.class_name + ".plotableData(self)"
-
-        # return a list of the current values of the material data, in the order
-        # registered
-        plot_data = [0.]*len(self.material_data)
-        for key, val in self.material_data.items():
-            typ = val["type"]
-            value = val["value"]
-            idx = val["idx"]
-            if typ == "scalar":
-                plot_data[idx] = [value]
-
-            elif typ == "vector":
-                plot_data[idx] = value
-
-            elif typ == "symtensor":
-                plot_data[idx] = value
-
-            elif typ == "tensor":
-                plot_data[idx] = value
-
-            else:
-                reportError(iam,"unrecognized material data type {0}".format(typ))
-                pass
-
-            continue
-
-        # flatten plot_data to just a list
-        plot_data = [x for y in plot_data for x in y]
-
-        return plot_data
-
-
-
-
-    def legs(self):
-        return self.lcontrol
-
-    def initialTime(self):
-        return self.t0
-
-    def terminationTime(self):
-        return self.tf
-
-    def kappa(self):
-        return self.bcontrol['kappa']
-
-    def emit(self):
-        return self.bcontrol['emit']
-
-    def screenout(self):
-        return self.bcontrol['screenout']
-
-    def nprints(self):
-        return self.bcontrol['nprints']
-
-    def amplitude(self):
-        return self.bcontrol['amplitude']
-
-    def material(self):
-        return self.mtl
-
-    def constitutiveModel(self):
-        return self.constitutive_model
-
-    def diagonal(self):
-        return self.isdiag
-
     def finish(self):
         closeFiles()
-        del self.constitutive_model
-        del self.material_data
+        del self.simdat
         return
 
-    def debug(self):
-        return self.opts.debug
-
-    def strict(self):
-        return self.opts.strict
-
-    def proportional(self):
-        return self.opts.proportional
-
-    def sqa(self):
-        return self.opts.sqa
-
-    def verbosity(self):
-        return self.opts.verbosity
-
-    def useTableVals(self):
-        return self.opts.use_table
+    def simulationData(self):
+        return self.simdat
 
     def writeMaterialParameters(self):
-        with open( self.simname + ".props", "w" ) as f:
-            for i, key in enumerate(self.paramkeys):
-                f.write("{0:s} = {1:12.5E}\n".format(key,self.mtl.cm.ui[i]))
+        with open( self.simdat.simname + ".props", "w" ) as f:
+            matdat = self.material.materialData()
+            for item in matdat.parameter_table:
+                key = item["name"]
+                val = item["adjusted value"]
+                f.write("{0:s} = {1:12.5E}\n".format(key,val))
                 continue
             pass
         return
 
     def setupRestart(self):
-        setupLogger(self.logfile,self.loglevel)
-        msg = "setting up simulation %s"%self.simname
+        setupLogger(self.simdat.logfile,self.simdat.loglevel)
+        msg = "setting up simulation %s"%self.simdat.simname
         reportMessage(__file__,msg)
 
 if __name__ == "__main__":

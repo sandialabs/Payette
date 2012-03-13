@@ -1,33 +1,29 @@
 !    -*- f90 -*-
 ! Note: the context of this file is case sensitive.
-python module elastic_plastic ! in
-    interface  ! in :elastic_plastic
-        subroutine diamm_calc(nblk,ninsv,dt,ui,sig,d,sv,usm) ! in :elastic_plastic:.//diamm_main.F
-            integer, parameter :: nprop=34
+python module diamm ! in
+    interface  ! in :diamm
+        subroutine diamm_calc(nblk,ninsv,dt,ui,sig,d,sv,usm) ! in :diamm:.//diamm_main.F
+            integer, parameter :: nprop=47
             integer, parameter :: nsv=35
             integer optional,check(len(sv)>=ninsv),depend(sv) :: ninsv=len(sv)
-            double precision :: dt
+            double precision intent(in) :: dt
             double precision dimension(nprop),intent(in) :: ui
             double precision dimension(6),intent(in,out) :: sig
             double precision dimension(6),intent(in) :: d
             double precision dimension(nsv),intent(in,out) :: sv
             double precision dimension(1),intent(out) :: usm
         end subroutine diamm_calc
-        subroutine dmmchk(ui,gc,dc) ! in :elastic_plastic:.//diamm_mig.F
-            integer, parameter :: nprop=34
+        subroutine dmmchk(ui) ! in :diamm:.//diamm_mig.F
+            integer, parameter :: nprop=47
             integer, parameter :: nsv=35
-            real dimension(nprop),intent(in,out) :: ui
-            real dimension(nprop),intent(in) :: gc
-            real dimension(nprop),intent(in) :: dc
+            double precision dimension(nprop),intent(in,out) :: ui
         end subroutine dmmchk
-        subroutine dmmrxv(ui,gc,dc,nx,namea,keya,rinit,rdim,iadvct,itype) ! in :elastic:diamm_mig.F
-            integer, parameter :: nprop=34
+        subroutine dmmrxv(ui,nx,namea,keya,rinit,rdim,iadvct,itype) ! in :elastic:diamm_mig.F
+            integer, parameter :: nprop=47
             integer, parameter :: nsv=35
             integer,parameter :: mxn=nsv*80
             integer,parameter :: mxk=nsv*10
             double precision dimension(nprop),intent(in) :: ui
-            double precision dimension(nprop),intent(in) :: gc
-            double precision dimension(nprop),intent(in) :: dc
             integer intent(out) :: nx
             character dimension(mxn),intent(out) :: namea
             character dimension(mxk),intent(out) :: keya
@@ -37,7 +33,7 @@ python module elastic_plastic ! in
             integer dimension(nsv),intent(out) :: itype
         end subroutine dmmrxv
     end interface
-end python module elastic_plastic
+end python module diamm
 
 ! This file was auto-generated with f2py (version:1).
 ! See http://cens.ioc.ee/projects/f2py2e/

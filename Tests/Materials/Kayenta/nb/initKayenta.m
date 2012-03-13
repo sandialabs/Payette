@@ -146,11 +146,11 @@ showcy[x_,labl_]:=ListPlot[Table[{i,x[[i]]},{i,Length[x]}],Joined->True,AxesLabe
 showcy[x_,imin_,imax_]:=ListPlot[Table[{i,x[[i]]},{i,imin,imax}],Joined->True,PlotStyle->myStyle]
 
 
-showhis[y_]:=ListPlot[Transpose[{time,y}],Joined->True,PlotStyle->myStyle]
+showhis[y_]:=ListPlot[Transpose[{TIME,y}],Joined->True,PlotStyle->myStyle]
 init["showhis","command to plot a variable vs. time","showhis[...]"];
 
 
-showhis[y_,labl_]:=ListPlot[Transpose[{time,y}],Joined->True,AxesLabel->{"time",labl},PlotStyle->myStyle]
+showhis[y_,labl_]:=ListPlot[Transpose[{TIME,y}],Joined->True,AxesLabel->{"time",labl},PlotStyle->myStyle]
 
 
 showme[x_,y_]:=ListPlot[Transpose[{x,y}],Joined->True,PlotStyle->myStyle]
@@ -208,7 +208,7 @@ N[Flatten[{Table[(id=(k-1)fac+1;idl=IntegerPart[id];a[[idl]]+(a[[idl+1]]-a[[idl]
 init["resize","interpolate an array to change its number of data points","resize[array,npts]"];
 
 
-stressSpace[]:=Module[{data,mn,mx,axis,adat,xdat,ydat,zdat,val,vuctr},data=Transpose[{sig11,sig22,sig33}/(scaler)];
+stressSpace[]:=Module[{data,mn,mx,axis,adat,xdat,ydat,zdat,val,vuctr},data=Transpose[{SIG11,SIG22,SIG33}/(scaler)];
 mn=Min[data];
 mx=Max[data];
 axis=Table[val,{val,mn,mx,(mx-mn)/100}];
@@ -361,11 +361,11 @@ If[geocrack,xpropz[A1U=A1M=STRENIU,"A1U"];
 xpropz[A2U=A2M=FSLOPEIU/STRENIU,"A2U"];
 xpropz[A3U=A3M=STRENIU E^(-((FSLOPEIU PEAKI1IU)/STRENIU)),"A3U"];];
 
-xplotz[pres=-(1/3) (sig11+sig22+sig33),"pres","pressure = - tr(stress)/3"];xplotz[vstrain=eps11+eps22+eps33,"vstrain","volumetric strain"];
+xplotz[pres=-(1/3) (SIG11+SIG22+SIG33),"pres","pressure = - tr(stress)/3"];xplotz[vstrain=STRAIN11+STRAIN22+STRAIN33,"vstrain","volumetric strain"];
 xplotz[sigm=-(I1/Sqrt[3]),"sigm","isomorphic mean stress = -I1/Sqrt[3]"];
-xplotz[sigd11=sig11+PRES,"sigd11","11 component of stress deviator"];
-xplotz[sigd22=sig22+PRES,"sigd22","22 component of stress deviator"];
-xplotz[sigd33=sig33+PRES,"sigd33","33 component of stress deviator"];xplotz[sigs=Sqrt[sigd11 sigd11+sigd22 sigd22+sigd33 sigd33] ,"sigs","isomorphic shear stress"];
+xplotz[sigd11=SIG11+PRES,"sigd11","11 component of stress deviator"];
+xplotz[sigd22=SIG22+PRES,"sigd22","22 component of stress deviator"];
+xplotz[sigd33=SIG33+PRES,"sigd33","33 component of stress deviator"];xplotz[sigs=Sqrt[sigd11 sigd11+sigd22 sigd22+sigd33 sigd33] ,"sigs","isomorphic shear stress"];
 
 sigmrange={Min[sigm],Max[sigm]};
 sigsrange={Min[sigs (2UnitStep[LODE]-1)],Max[sigs (2UnitStep[LODE]-1)]};
@@ -382,8 +382,8 @@ xpropz[j3type=IntegerPart[J3TYPEM],"j3type"];xplotz[RK=Table[RKfnt[RKM,I1[[i]],A
 xplotz[RKPF=Table[RKfnt[RKPFM,I1[[i]],A2PFM,A3M,A4PFM],{i,Length[I1]}],"RKPF","value of RKPF function"];
 xplotz[GAMMA=Table[GAM[j3type,RK[[i]],Min[Max[1/180 LODE[[i]] \[Pi],-(\[Pi]/6)],\[Pi]/6]],{i,1,Length[LODE]}],"GAMMA","J3type \[CapitalGamma] function"];
 xplotz[lode=(LODE \[Pi])/180,"lode","Lode angle in radians"];xplotz[GAMMAopposite=Table[GAM[j3type,1/3 ArcSin[Sin[3/180 (LODE[[i]]+180) \[Pi]]]],{i,1,Length[LODE]}],"GAMMAopposite","value of J3Type \[CapitalGamma] function on opposite side of YS"];
-xplotz[LodeXsig=LodeX[sig11,sig22,sig33],"LodeXsig","Lode Cartesian x-coordinate"];
-xplotz[LodeYsig=LodeY[sig11,sig22,sig33],"LodeYsig","Lode Cartesian y-coordinate"];
+xplotz[LodeXsig=LodeX[SIG11,SIG22,SIG33],"LodeXsig","Lode Cartesian x-coordinate"];
+xplotz[LodeYsig=LodeY[SIG11,SIG22,SIG33],"LodeYsig","Lode Cartesian y-coordinate"];
 xplotz[LodeXbs=LodeX[QSBSXX,QSBSYY,QSBSZZ],"LodeXbs","Lode Cartesian x-coordinate for backstress"];xplotz[LodeYbs=LodeY[QSBSXX,QSBSYY,QSBSZZ],"LodeYbs","Lode Cartesian y-coordinate for backstress"];xplotz[trueLodesig=TrueLode[LodeXsig,LodeYsig],"trueLodesig","wide range Lode Angle"];
 xplotz[porosity=1-E^(-EQPV-P3U),"porosity","volume fraction of pores"];
 xplotz[computedX=Table[QSEL[[i]]-CRM (A1M-A3M E^(A2M QSEL[[i]])-A4M QSEL[[i]]),{i,Length[QSEL]}],"computedX","X branch point (should equal KAPPA)"];
@@ -429,9 +429,8 @@ meridianALLold[nmerid_,scale_]:=Module[{},rmin=sigsrange[[1]];rmax=sigsrange[[2]
 meridianALLbasicNOFLOW[nmerid_,scale_]:=Module[{},rmin=sigsrange[[1]];rmax=sigsrange[[2]];zbarMin=Min[-I1]/Sqrt[3];zbarMax=Max[-I1]/Sqrt[3];If[zbarMax-zbarMin<B0M/10^9,zbarMax=1;zbarMin=-1];dm=IntegerPart[(lastep-1)/Min[nmerid,lastep-1]];mstep=Table[kkk,{kkk,1,lastep,dm}];meridTABLE=Table[1/scale merid[scale zbar,A1M,A2M,A3M,A4M,RNM GFUN[[mstep[[i]]]],-KAPPA[[mstep[[i]]]],CRM],{i,1,Length[mstep]}];meridFam=Plot[Evaluate[meridTABLE],{zbar,zbarMin/scale,zbarMax/scale},PlotStyle->{green},PlotRange->{rmin/scale,(rmax 1.01`)/scale},PlotPoints->100];limitcurve=Plot[limitCurve[scale zbar,A1M,A2M,A3M,A4M]/scale,{zbar,zbarMin/scale,zbarMax/scale},PlotRange->{rmin/scale,(rmax 1.01`)/scale},PlotStyle->{blue},PlotPoints->100];meridpathscaled=ListPlot[Transpose[{sigm/scale,sigs/scale}],Joined->True,PlotRange->sigsrange/scale];Show[meridFam,limitcurve,meridpathscaled,ImageSize->72 8]]
 
 
-meridianALLbasic[nmerid_,scale_]:=Module[{},rmin=Max[sigsrange[[1]] Max[GAMMA],0];rmax=sigsrange[[2]] Max[GAMMA];Print["here i am 0"];
+meridianALLbasic[nmerid_,scale_]:=Module[{},rmin=Max[sigsrange[[1]] Max[GAMMA],0];rmax=sigsrange[[2]] Max[GAMMA];
 zbarMin=Min[-I1]/Sqrt[3];zbarMax=Max[-I1]/Sqrt[3];If[zbarMax-zbarMin<B0M/10^9,zbarMax=1;zbarMin=-1];dm=IntegerPart[(lastep-1)/Min[nmerid,lastep-1]];mstep=Table[kkk,{kkk,1,lastep,dm}];meridTABLE=Table[1/scale merid[scale zbar,A1M,A2M,A3M,A4M,RNM GFUN[[mstep[[i]]]],-KAPPA[[mstep[[i]]]],CRM],{i,1,Length[mstep]}];
-Print["here i am 1"];
 meridFam=Plot[Evaluate[meridTABLE],{zbar,zbarMin/scale,zbarMax/scale},PlotStyle->{green},PlotRange->{rmin/scale,(rmax 1.01`)/scale},PlotPoints->100];limitcurve=Plot[limitCurve[scale zbar,A1M,A2M,A3M,A4M]/scale,{zbar,zbarMin/scale,zbarMax/scale},PlotRange->{rmin/scale,(rmax 1.01`)/scale},PlotStyle->{RGBColor[0.6,0.6,1],Thickness[0.005]},PlotPoints->100];limitcurvePF=Plot[limitCurve[scale zbar,A1M,A2PFM,A3M,A4PFM]/scale,{zbar,zbarMin/scale,zbarMax/scale},PlotRange->{rmin/scale,(rmax 1.05)/scale},PlotStyle->{red,Thickness[0.003],Dashed},PlotPoints->100];
 prinlineTXC=Plot[Sqrt[2] z+(Sqrt[6] Min[CTPSM,10.0^10])/scale,{z,zbarMin/scale,zbarMax/scale},PlotRange->{rmin/scale,(rmax 1.01)/scale},PlotStyle->{Hue[0.5],chainDash,Thick}];
 prinlineTXE=Plot[1/2 (Sqrt[2] z+(Sqrt[6] Min[CTPSM,10.0^10])/scale),{z,zbarMin/scale,zbarMax/scale},PlotRange->{rmin/scale,(rmax 1.01)/scale},PlotStyle->{Hue[0.5],chainDash,Thick}];Print["cyan chaindash=prinline"];
@@ -471,7 +470,7 @@ elasticInfo=.;ClearAll[elasticInfo];
 elasticInfo[]:=Module[{RAT,facN,facS,p11,p12,p21,p22,barg,garg,bkmoda,shmoda},RAT=G0M/B0M;facN=(RJSM RKNM)/B0M;facS=(RJSM RKSM)/G0M;
 xpropz[PoisU=(3 B0U-2 G0U)/2/(3 B0U + G0U),"PoisU"];
 xpropz[PoisM = (3 B0M-2 G0M)/2/(3 B0M + G0M),"PoisM"];
-Print[TableForm[{{"bulk modulus parameters =",B0M,B1M,B2M,B3M,B4M},{"shear modulus parameters =",G0M,G1M,G2M,G3M,G4M},{"joint degredation of bulk modulus, facK=",facK=If[RJSM>0,(.75*facN+RAT)/(.75*(1+facN)+RAT),1]},{"joint degredation of shear modulus, facG=",facG=If[RJSM>0,(.6+facS)/(1+facS)+(4./15)*(facK-1)*RAT,1]}}]];absI1=Table[Max[-(QSSIGXX[[i]]+QSSIGYY[[i]]+QSSIGZZ[[i]]),1/1000000000000000000000000000000000000000],{i,1,Length[I1]}];rootJ2qs=\[Sqrt](1/3 (QSSIGXX^2+QSSIGYY^2+QSSIGZZ^2-QSSIGXX QSSIGYY-QSSIGYY QSSIGZZ-QSSIGZZ QSSIGXX)+QSSIGXY^2+QSSIGYZ^2+QSSIGZX^2);barg=Table[-(B4M/Max[Abs[EVP[Xbar[-QSEL[[i]],CRM,A1M,A2M,A3M,A4M]]],1/10^60]),{i,1,Length[EQPV]}];garg=Table[-(G4M/Max[Abs[EQPS[[i]]],1/10^60]),{i,1,Length[EQPS]}];bkmoda=facK (B0M+B1M Exps[-(B2M/absI1)]);shmoda=(facG (G0M (1-G1M E^(-G2M rootJ2qs))))/(1-G1M);bkmodA=facK (B0M+B1M Exps[-(B2M/absI1)]-B3M Exps[barg]);shmodA=facG ((G0M (1-G1M E^(-G2M rootJ2qs)))/(1-G1M)-G3M Exps[garg]);poisA=(3 bkmodA-2 shmodA)/(2 (3 bkmodA+shmodA));usmA=bkmodA+(4 shmodA)/3;p11=Show[ListPlot[Table[{time[[i]],bkmodA[[i]]/B0M},{i,1,lastep}],Joined->True,AxesLabel->{"time","bkmodA/B0M"},PlotStyle->{fatLine}],ListPlot[Table[{time[[i]],bkmoda[[i]]/B0M},{i,1,lastep}],Joined->True,AxesLabel->{"time","bkmoda/B0M"},PlotStyle->{thinLine,green}]];p12=Show[ListPlot[Table[{time[[i]],shmodA[[i]]/G0M},{i,1,lastep}],Joined->True,AxesLabel->{"time","shmodA/G0M"},PlotStyle->{fatLine}],ListPlot[Table[{time[[i]],shmoda[[i]]/G0M},{i,1,lastep}],Joined->True,AxesLabel->{"time","shmoda/G0M"},PlotStyle->{thinLine,green}]];p21=Show[ListPlot[Table[{time[[i]],USM[[i]]/(B0M+(4 G0M)/3)},{i,1,lastep}],Joined->True,AxesLabel->{"time","USM/USM_initial"},PlotStyle->{fatLine}],ListPlot[Table[{time[[i]],usmA[[i]]/(B0M+(4 G0M)/3)},{i,1,lastep}],Joined->True,AxesLabel->{"time","usmA/USM_initial"},PlotStyle->{red}]];p22=ListPlot[Table[{time[[i]],poisA[[i]]},{i,1,lastep}],Joined->True,AxesLabel->{"time","poisA"},PlotStyle->{blue}];Show[GraphicsGrid[{{p11,p12},{p21,p22}}],ImageSize->72 8]];
+Print[TableForm[{{"bulk modulus parameters =",B0M,B1M,B2M,B3M,B4M},{"shear modulus parameters =",G0M,G1M,G2M,G3M,G4M},{"joint degredation of bulk modulus, facK=",facK=If[RJSM>0,(.75*facN+RAT)/(.75*(1+facN)+RAT),1]},{"joint degredation of shear modulus, facG=",facG=If[RJSM>0,(.6+facS)/(1+facS)+(4./15)*(facK-1)*RAT,1]}}]];absI1=Table[Max[-(QSSIGXX[[i]]+QSSIGYY[[i]]+QSSIGZZ[[i]]),1/1000000000000000000000000000000000000000],{i,1,Length[I1]}];rootJ2qs=\[Sqrt](1/3 (QSSIGXX^2+QSSIGYY^2+QSSIGZZ^2-QSSIGXX QSSIGYY-QSSIGYY QSSIGZZ-QSSIGZZ QSSIGXX)+QSSIGXY^2+QSSIGYZ^2+QSSIGZX^2);barg=Table[-(B4M/Max[Abs[EVP[Xbar[-QSEL[[i]],CRM,A1M,A2M,A3M,A4M]]],1/10^60]),{i,1,Length[EQPV]}];garg=Table[-(G4M/Max[Abs[EQPS[[i]]],1/10^60]),{i,1,Length[EQPS]}];bkmoda=facK (B0M+B1M Exps[-(B2M/absI1)]);shmoda=(facG (G0M (1-G1M E^(-G2M rootJ2qs))))/(1-G1M);bkmodA=facK (B0M+B1M Exps[-(B2M/absI1)]-B3M Exps[barg]);shmodA=facG ((G0M (1-G1M E^(-G2M rootJ2qs)))/(1-G1M)-G3M Exps[garg]);poisA=(3 bkmodA-2 shmodA)/(2 (3 bkmodA+shmodA));usmA=bkmodA+(4 shmodA)/3;p11=Show[ListPlot[Table[{TIME[[i]],bkmodA[[i]]/B0M},{i,1,lastep}],Joined->True,AxesLabel->{"time","bkmodA/B0M"},PlotStyle->{fatLine}],ListPlot[Table[{TIME[[i]],bkmoda[[i]]/B0M},{i,1,lastep}],Joined->True,AxesLabel->{"time","bkmoda/B0M"},PlotStyle->{thinLine,green}]];p12=Show[ListPlot[Table[{TIME[[i]],shmodA[[i]]/G0M},{i,1,lastep}],Joined->True,AxesLabel->{"time","shmodA/G0M"},PlotStyle->{fatLine}],ListPlot[Table[{TIME[[i]],shmoda[[i]]/G0M},{i,1,lastep}],Joined->True,AxesLabel->{"time","shmoda/G0M"},PlotStyle->{thinLine,green}]];p21=Show[ListPlot[Table[{TIME[[i]],USM[[i]]/(B0M+(4 G0M)/3)},{i,1,lastep}],Joined->True,AxesLabel->{"time","USM/USM_initial"},PlotStyle->{fatLine}],ListPlot[Table[{TIME[[i]],usmA[[i]]/(B0M+(4 G0M)/3)},{i,1,lastep}],Joined->True,AxesLabel->{"time","usmA/USM_initial"},PlotStyle->{red}]];p22=ListPlot[Table[{TIME[[i]],poisA[[i]]},{i,1,lastep}],Joined->True,AxesLabel->{"time","poisA"},PlotStyle->{blue}];Show[GraphicsGrid[{{p11,p12},{p21,p22}}],ImageSize->72 8]];
 init["elasticInfo","function that computes elastic constants and other things elastic","elasticInfo[]"];
 init["bkmodA","nonlinear bulk modulus","{bkmodA}"];
 init["shmodA","nonlinear shear modulus","{shmodA}"];

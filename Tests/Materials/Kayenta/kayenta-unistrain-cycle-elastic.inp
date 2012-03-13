@@ -1,5 +1,4 @@
 begin simulation kayenta-unistrain-cycle-elastic
-  title Uniaxial strain cycle test
   begin material
     constitutive model kayenta
     A1 1.e99

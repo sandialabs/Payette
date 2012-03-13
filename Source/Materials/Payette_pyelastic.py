@@ -42,12 +42,12 @@ class PyElastic(ConstitutiveModelPrototype):
 
        Constitutive model for an elastic material in python. When instantiated,
        the Elastic material initializes itself by first checking the user input
-       (_check_properties) and then initializing any internal state variables
+       (_check_props) and then initializing any internal state variables
        (_set_field). Then, at each timestep, the driver update the Material state
        by calling updateState.
 
     METHODS
-       _check_properties
+       _check_props
        _set_field
        updateState
 
@@ -60,15 +60,54 @@ class PyElastic(ConstitutiveModelPrototype):
         self.name = attributes["name"]
         self.aliases = attributes["aliases"]
         self.imported = True
+
+        # register parameters
         self.registerParameter("K",0,aliases=['BKMOD'])
         self.registerParameter("G",1,aliases=['SHMOD'])
         self.nprop = len(self.parameter_table.keys())
+
         self.ndc = 0
+        self.dc = np.zeros(self.ndc)
         pass
 
+    # public methods
+    def setUp(self,simdat,matdat,user_params,f_params):
+        iam = self.name + ".setUp(self,material,props)"
+
+        # parse parameters
+        self.parseParameters(user_params,f_params)
+
+        self.ui = self._check_props()
+        self.nsv,namea,keya,sv,rdim,iadvct,itype = self._set_field()
+
+        # register the extra variables with the payette object
+        matdat.registerExtraVariables(self.nsv,namea,keya,sv)
+
+        self.computeInitialJacobian()
+        return
+
+    def jacobian(self,simdat,matdat):
+        v = simdat.getData("prescribed stress components")
+        return self.J0[[[x] for x in v],v]
+
+    def updateState(self,simdat,matdat):
+        """
+           update the material state based on current state and strain increment
+        """
+        dt = simdat.getData("time step")
+        d = simdat.getData("rate of deformation")
+        sigold = matdat.getData("stress")
+        de, delta = d*dt, np.array([1.,1.,1.,0.,0.,0.])
+        dev = (de[0] + de[1] + de[2])
+        twog, lam = 2.*self.ui[0], self.ui[1]
+        signew = sigold + twog*de + lam*dev*delta
+
+        matdat.storeData("stress",signew)
+        return
+
     # private methods
-    def _check_properties(self,*args,**kwargs):
-        K,G = kwargs["props"]
+    def _check_props(self):
+        K,G = self.ui0
 
         msg = ""
         if K <= 0.0: msg += "Bulk modulus K must be positive.  "
@@ -89,32 +128,4 @@ class PyElastic(ConstitutiveModelPrototype):
         namea,keya = ["Free 01","Free 02"], ["F01","F02"]
         rdim,iadvct,itype = [None]*3
         return nsv,namea,keya,sv,rdim,iadvct,itype
-
-    # public methods
-    def setUp(self,payette,props):
-        self.ui0 = np.array(props)
-        self.dc = np.zeros(self.ndc)
-        self.ui = self._check_properties(props=props)
-        (self.nsv,self.namea,self.keya,self.sv,
-         self.rdim,self.iadvct,self.itype) = self._set_field()
-
-        # register the extra variables with the payette object
-        payette.registerExtraVariables(self.nsv,self.namea,self.keya,self.sv)
-
-        self.computeInitialJacobian()
-        return
-
-    def jacobian(self,dt,d,Fold,Fnew,EF,sig,sv,v,*args,**kwargs):
-        return self.J0[[[x] for x in v],v]
-
-    def updateState(self,*args,**kwargs):
-        """
-           update the material state based on current state and strain increment
-        """
-        dt,d,fold,fnew,efield,sigold,svold = args
-        de, delta = d*dt, np.array([1.,1.,1.,0.,0.,0.])
-        dev = (de[0] + de[1] + de[2])
-        twog, lam = 2.*self.ui[0], self.ui[1]
-        signew = sigold + twog*de + lam*dev*delta
-        return signew, self.sv
 

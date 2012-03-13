@@ -31,8 +31,11 @@ from scipy import optimize
 import Source.Payette_iterative_solvers as citer
 import Source.Payette_kinematics as pkin
 from Source.Payette_utils import *
+from Source.Payette_tensor import *
 
-def runProblem(the_model,restart):
+iam = "Payette_driver.runProplem(the_model,restart)"
+
+def runProblem(the_model,**kwargs):
     '''
     NAME
        runProblem:
@@ -71,7 +74,6 @@ def runProblem(the_model,restart):
              F         array     (2,9)   deformation gradient
                                            F[0,:] at time n
                                            F[1,:] (to be) at time n + 1
-             dFdt      array     (9)     rate of deformation gradient
              Fpres     array     (3,9)   prescribed deformation gradient
                                            Fpres[0,:] at tleg[0]
                                            Fpres[1,:] at tleg[1]
@@ -128,337 +130,350 @@ def runProblem(the_model,restart):
 
     # -------------------- initialize and copy passed values to local variables
 
-    # --- passed variables
-    verbose = the_model.verbosity() > 0
-    diagonal = the_model.diagonal()
-    strict = the_model.strict()
-    sparseout = the_model.emit() == 'sparse'
-    screenout = the_model.screenout()
-    nprints = the_model.nprints()
-    proportional = the_model.proportional()
-    k = the_model.kappa()
+    try: restart = kwargs["restart"]
+    except: restart = False
 
-    # constitutive model stuff
-    cmod = the_model.constitutiveModel()
-    multilevelfail = cmod.multi_level_fail_model
-    has_efield = cmod.electric_field_model
-    sqa = the_model.sqa()
-    write_vandd_table = the_model.write_vandd_table
-    sv = np.array((cmod.internalStateVariables(),
-                   cmod.internalStateVariables()),
-                  dtype='double')
-    updateState = cmod.updateState
-    initialJacobian = cmod.initialJacobian
+    # --- simulation data
+    simdat = the_model.simulationData()
 
-    (ileg,legs,tleg,t,dt,E,Epres,dEdt,P,Ppres,dPdt,Pdum,vdum,
-     R,Rpres,dRdt,F,Fpres,dFdt,d,w,EF,EFpres,ED,POL,
-     failed) = the_model.getPayetteState()
+    # --- options
+    verbose = simdat.verbosity > 0
 
-    # ----------------------------------------------------------------------- #
+    # --- data
+    ileg = int(simdat.getData("leg number"))
+    legs = simdat.getData("leg data")[ileg:]
+    t_beg = simdat.getData("time")
+    dt = simdat.getData("time step")
+    vdum = np.zeros(6,dtype=int)
+    sig_hld = np.zeros(6)
+
+    # --- material data
+    material = simdat.material
+    matdat = material.materialData()
+    J0 = matdat.getData("jacobian")
 
     # -------------------------------------------------------- initialize model
     # --- start output file and Mathematica files
-    msg = "starting calculations for simulation %s"%the_model.simname
-    reportMessage(__file__,msg)
+    msg = "starting calculations for simulation %s"%simdat.getOption("simname")
+    reportMessage(iam,msg)
+    setupOutputFile(simdat,matdat,restart)
 
-    setupOutputFile(the_model,restart) #.outfile,restart,cmod.isvKeys(),
-#                    has_efield,write_vandd_table)
+    # write the mathematica files
+    if simdat.mathplot_vars: writeMathPlot(simdat,matdat)
 
     # --- call the material model with zero state
     if ileg == 0:
-        arg_us = ( 1., np.array(d[0,:]),np.array(F[0,:]),np.array(F[0,:]),
-                   np.array(EF[0,:]),np.array(P[0,:]),np.array(sv[0,:]) )
-        updatedState = updateState(*arg_us)
-        if has_efield: P[0,:],sv[0,:],POL[0,:] = updatedState
-        else: P[0,:],sv[0,:] = updatedState
-
+        material.updateState(simdat,matdat)
         pass
 
-    # write the mathematica files
-    if the_model.plotable:
-        writeMathPlot(the_model.math1,the_model.math2,the_model.outfile,
-                      the_model.plotable,has_efield,the_model.paramkeys,
-                      cmod.ui0,cmod.ui,t,P[0,:],dPdt,E[0,:],d[0,:],F[0,:],
-                      sv[0,:],cmod.keya,cmod.namea,EF[0,:],POL[0,:],ED[0,:])
-        pass
+    # advance and write data
+    simdat.advanceAllData()
+    matdat.advanceAllData()
+    writeState(simdat,matdat)
 
-    # --- initial jacobian matrix
-    v = np.array(range(6),dtype=int)
-    J0 = initialJacobian()
-
-    kwargs = { "time":t,
-               "stress":P[0,:],
-               "time rate of stress":dPdt,
-               "strain":E[0,:],
-               "time rate of strain":d[0,:],
-               "deformation gradient":F[0,:],
-               "extra variables":sv[0,:],
-               "electric field":EF[0,:],
-               "electric displacement":ED[0,:],
-               "polarization":POL[0,:]}
-    the_model.updateMaterialData(**kwargs)
-    writeState(the_model)
     # ----------------------------------------------------------------------- #
 
     # --------------------------------------------------- begin{processing leg}
     for leg in legs:
 
-        if the_model.test_restart and not restart:
+        # test restart capability
+        if simdat.test_restart and not restart:
             if ileg == int(len(legs)/2):
                 print('\n\nStopping to test Payette restart capabilities.\n'
                       'Restart the simulation by executing\n\n'
                       '\t\trunPayette %s.prf\n\n'
-                      %os.path.splitext(os.path.basename(the_model.outfile))[0])
+                      %os.path.splitext(os.path.basename(
+                            simdat.getOption("outfile")))[0])
                 sys.exit(76)
-
-        # read inputs and initialize for this leg
-        lnum,tleg[1],nsteps,ltype,lcntrl = leg
-        delt = tleg[1] - tleg[0]
-        if delt == 0.: continue
-        nv, dflg = 0, list(set(ltype))
-        nprints = the_model.nprints() if the_model.nprints() else nsteps
-        if sparseout: nprints = min(10,nsteps)
-        print_interval = max(1,int(nsteps/nprints))
-
-        if verbose:
-            msg = 'leg %i, step %i, time %f, dt %f'%(lnum,1,t,dt)
-            reportMessage(__file__,msg)
+                pass
             pass
 
-        # --- loop through components of lcntrl and compute:
-        #       for ltype = 1,2: E at tleg[1]
-        #       for ltype = 3,4: P at tleg[1]
-        #       for ltype = 5:   F at tleg[1]
-        #       for ltype = 6,7: EF at tleg[1]
-        for i in range(len(lcntrl)):
+        # read inputs and initialize for this leg
+        lnum,t_end,nsteps,ltype,prdef = leg
+        delt = t_end - t_beg
+        if delt == 0.: continue
+        nv, dflg = 0, list(set(ltype))
+        nprints = simdat.nprints if simdat.nprints else nsteps
+        if simdat.emit == "sparse": nprints = min(10,nsteps)
+        print_interval = max(1,int(nsteps/nprints))
+
+        # pass values from the end of the last leg to beginning of this leg
+        eps_beg = simdat.getData("strain")
+        sig_beg = matdat.getData("stress")
+        F_beg = simdat.getData("deformation gradient")
+        efld_beg = simdat.getData("electric field")
+        v = simdat.getData("prescribed stress components")
+        if len(v):
+            prsig_beg = simdat.getData("prescribed stress")
+            j = 0
+            for i in v:
+                sig_beg[i] = prsig_beg[j]
+                j += 1
+                continue
+            pass
+
+        if verbose:
+            msg = 'leg %i, step %i, time %f, dt %f'%(lnum,1,t_beg,dt)
+            reportMessage(iam,msg)
+            pass
+
+        # --- loop through components of prdef and compute the values at the end
+        #     of this leg:
+        #       for ltype = 1: eps_end at t_end -> eps_beg + prdef*delt
+        #       for ltype = 2: eps_end at t_end -> prdef
+        #       for ltype = 3: Pf at t_end -> sig_beg + prdef*delt
+        #       for ltype = 4: Pf at t_end -> prdef
+        #       for ltype = 5: F_end at t_end -> prdef
+        #       for ltype = 6: efld_end at t_end-> prdef
+        eps_end, F_end, efld_end = Z6, I9, Z3
+
+        # if stress is prescribed, we don't compute sig_end just yet, but sig_hld
+        # which holds just those values of stress that are actually prescribed.
+
+
+        for i in range(len(prdef)):
+
             if ltype[i] == 0: continue
-            elif i < 6 and ltype[i] == 1:                  # strain rate
-                Epres[1,i] = Epres[0,i] + lcntrl[i]*delt
-            elif i < 6 and ltype[i] == 2:      # strain
-                Epres[1,i] = lcntrl[i]
-            elif i < 6 and ltype[i] == 3:                # stress rate
-                Pdum[1,i] = Pdum[0,i] + lcntrl[i]*delt
+
+            # -- strain rate
+            elif i < 6 and ltype[i] == 1:
+                eps_end[i] = eps_beg[i] + prdef[i]*delt
+
+            # -- strain
+            elif i < 6 and ltype[i] == 2:
+                eps_end[i] = prdef[i]
+
+            # stress rate
+            elif i < 6 and ltype[i] == 3:
+                sig_hld[i] = sig_beg[i] + prdef[i]*delt
                 vdum[nv] = i
                 nv += 1
-            elif i < 6 and ltype[i] == 4:                # stress
-                Pdum[1,i] = lcntrl[i]
+
+            # stress
+            elif i < 6 and ltype[i] == 4:
+                sig_hld[i] = prdef[i]
                 vdum[nv] = i
                 nv += 1
+
             elif ltype[i] == 5:                # deformation gradient
-                Fpres[1,i] = lcntrl[i]
-            elif i >= 9 and ltype[i] == 6:                # electric field rate
-                EFpres[1,i-9] = EFpres[0,i-9] + lcntrl[i]*delt
-            elif i >= 9 and ltype[i] == 7:                # electric field
-                EFpres[1,i-9] = lcntrl[i]
+                F_end[i] = prdef[i]
+
+            elif i >= 9 and ltype[i] == 6:                # electric field
+                efld_end[i-9] = prdef[i]
+
             else:
                 msg = ('\nERROR: Invalid load type (ltype) parameter\n'
                        'prescribed for leg %i\n'%lnum)
-                reportError(__file__,msg)
+                reportError(iam,msg)
                 return 1
             continue
 
         v = vdum[0:nv]
+        simdat.advanceData("prescribed stress components",v)
         if len(v):
-            Ppres = np.zeros((3,nv))
-            Ppres[0,:],Ppres[1,:] = Pdum[0,v],Pdum[1,v]
+            prsig_beg, prsig_end = sig_beg[v], sig_hld[v]
             Js = J0[[[x] for x in v],v]
             pass
 
-        t = tleg[0]
+        t = t_beg
         dt = delt/nsteps
 
         # ---------------------------------------------- begin{processing step}
         for n in range(nsteps):
 
+            t += dt
+
             # interpolate values of E, F, EF, and P for the current step
             a1 = float(nsteps - (n + 1))/nsteps
             a2 = float(n + 1)/nsteps
 
-            Epres[2,:] = a1*Epres[0,:] + a2*Epres[1,:]
-            dEdt = (Epres[2,:] - E[0,:])/dt
+            eps_int = a1*eps_beg + a2*eps_end
 
-            Fpres[2,:] = a1*Fpres[0,:] + a2*Fpres[1,:]
-            dFdt = (Fpres[2,:] - F[0,:])/dt
+            F_int = a1*F_beg + a2*F_end
 
-            EFpres[2,:] = a1*EFpres[0,:] + a2*EFpres[1,:]
+            efld_int = a1*efld_beg + a2*efld_end
 
-            # --- initial guess for dEdt[v]
-            Ppres[2,:] = a1*Ppres[0,:] + a2*Ppres[1,:]
+            # --- initial guess for depsdt[v]
             if len(v):
-                Perr = Ppres[2,:] - P[0,v]
-                try: dEdt[v] = np.linalg.solve(Js,Perr)/dt
-                except: dEdt[v] -= np.linalg.lstsq(Js,Perr)[0]/dt
+                prsig_int = a1*prsig_beg + a2*prsig_end
+                prsig_dif = prsig_int - matdat.getData("stress")[v]
 
-            # --- update electric field to the end of the step
-            EF[1,:] = EFpres[2,:]
+                depsdt = (eps_int - simdat.getData("strain"))/dt
+                try:
+                    depsdt[v] = np.linalg.solve(Js,prsig_dif)/dt
+                except:
+                    depsdt[v] -= np.linalg.lstsq(Js,prsig_dif)[0]/dt
+                pass
+
+            # advance known values to end of step
+            simdat.advanceData("time",t)
+            simdat.advanceData("time step",dt)
+            simdat.advanceData("electric field",efld_int)
 
             # --- find d (symmetric part of velocity gradient)
             if not len(v):
+
                 if dflg[0] == 5:
                     # --- deformation gradient prescribed
-                    argv = [np.array(Fpres[2,:]),np.array(dFdt),strict]
-                    d[1,:],w[1,:] = pkin.velGradCompFromF(*argv)
+                    simdat.advanceData("prescribed deformation gradient",F_int)
+                    pkin.velGradCompFromF(simdat)
+
                 else:
                     # --- strain or strain rate prescribed
-                    argv = [dt,k,np.array(E[0,:]),np.array(Epres[2,:]),
-                            np.array(dEdt),np.array(R[1,:]),np.array(dRdt),strict]
-                    d[1,:],w[1,:] = pkin.velGradCompFromE(*argv)
+                    simdat.advanceData("prescribed strain",eps_int)
+                    pkin.velGradCompFromE(simdat)
+
             else:
                 # --- One or more stresses prescribed
-                argv = [cmod,dt,np.array(dEdt),np.array(F[0,:]),np.array(EF[1,:]),
-                        np.array(P[0,:]),np.array(Ppres[2,:]),np.array(sv[1,:]),
-                        np.array(v),strict]
-                d[1,:],w[1,:] = pkin.velGradCompFromP(*argv,proportional=proportional)
+                simdat.advanceData("strain rate",depsdt)
+                simdat.advanceData("prescribed stress",prsig_int)
+                pkin.velGradCompFromP(material,simdat,matdat)
+                simdat.advanceData("strain rate")
+                depsdt = simdat.getData("strain rate")
+                simdat.storeData("rate of deformation",depsdt)
                 pass
 
-            # --- update the deformation to the end of the step
-            args = (k,dt,np.array(d[1,:]),np.array(w[1,:]),np.array(F[0,:]),strict)
-            E[1,:],F[1,:] = pkin.updateDeformation(*args)
-            if the_model.useTableVals():
-                if dflg == [1] or dflg == [2] or dflg == [1,2]: E[1,:] = Epres[2,:]
-                elif dflg[0] == 5: F[1,:] = Fpres[2,:]
+            # --- update the deformation to the end of the step at this point,
+            #     the rate of deformation and vorticity to the end of the step
+            #     are known, advance them.
+            simdat.advanceData("rate of deformation")
+            simdat.advanceData("vorticity")
+
+            # find the current {deformation gradient,strain} and advance them
+            pkin.updateDeformation(simdat)
+            simdat.advanceData("deformation gradient")
+            simdat.advanceData("strain")
+            simdat.advanceData("equivalent strain")
+
+            if simdat.use_table:
+                # use the actual table values, not the values computed above
+                if dflg == [1] or dflg == [2] or dflg == [1,2]:
+                    simdat.advanceData("strain",eps_int)
+                elif dflg[0] == 5:
+                    simdat.advanceData("deformation gradient",F_int)
+                    pass
                 pass
 
-            # update stress, internal state, and electric displacment if appl.
-            arg_us = ( dt,np.array(d[1,:]),np.array(F[0,:]),np.array(F[1,:]),
-                       np.array(EF[1,:]),np.array(P[0,:]),np.array(sv[0,:]) )
-            updatedState = updateState(*arg_us)
-            if has_efield: P[1,:],sv[1,:],POL[1,:] = updatedState
-            else: P[1,:],sv[1,:] = updatedState
-            dPdt = (P[1,:] - P[0,:])/dt
+            # update material state
+            material.updateState(simdat,matdat)
+
+            # advance all data after updating state
+            matdat.storeData("stress rate", (matdat.getData("stress",cur=True) -
+                                             matdat.getData("stress"))/dt)
+            matdat.advanceAllData()
 
             # multilevel failure. since there is only one element, it really
             # isn't multilevel
-            if multilevelfail:
-                if sv[1,cmod.cflg_idx] == 1:
-                    reportMessage(__file__,"multilevel failure beginning")
-                    reportMessage(__file__,"Failure ratio is %12.5e"
-                                  %sv[1,cmod.fratio_idx])
-                    sv[1,cmod.cflg_idx] = 3
-                elif sv[1,cmod.cflg_idx] == 4: failed = True
+            if matdat.multi_level_fail:
+                sv = matdat.getData("extra variables")
+                if sv[cmod.cflg_idx] == 1:
+                    reportMessage(iam,"multilevel failure beginning")
+                    reportMessage(iam,"Failure ratio is %12.5e"
+                                  %sv[cmod.fratio_idx])
+                    sv[cmod.cflg_idx] = 3
+                elif sv[cmod.cflg_idx] == 4:
+                    matdat.advanceData("failed",True)
+                    pass
                 pass
-
-            # --- pass values from end of this step to beginning of next
-            for x in [P,E,F,EF,d,sv,ED,POL,w]: x[0,:] = x[1,:]
-            t += dt
-
-            kwargs = { "time":t,
-                       "stress":P[0,:],
-                       "time rate of stress":dPdt,
-                       "strain":E[0,:],
-                       "time rate of strain":d[0,:],
-                       "deformation gradient":F[0,:],
-                       "extra variables":sv[0,:],
-                       "electric field":EF[0,:],
-                       "electric displacement":ED[0,:],
-                       "polarization":POL[0,:]}
-            the_model.updateMaterialData(**kwargs)
 
             # --- write state to file
             if (nsteps-n)%print_interval == 0:
-                writeState(the_model)
+                writeState(simdat,matdat)
                 pass
 
-            if screenout or ( verbose and (2*n - nsteps) == 0 ):
+            if simdat.screenout or ( verbose and (2*n - nsteps) == 0 ):
                 msg = 'leg %i, step %i, time %f, dt %f'%(lnum,n,t,dt)
-                reportMessage(__file__,msg)
+                reportMessage(iam,msg)
                 pass
 
-            if failed:
+            if matdat.getData("failed"):
                 msg = 'material failed on leg %i, step %i, at time %f'%(lnum,n,t)
-                reportMessage(__file__,msg)
+                reportMessage(iam,msg)
                 return 0
 
             # ------------------------------------------ begin{end of step SQA}
-            if sqa:
+            if simdat.sqa:
                 if dflg == [1] or dflg == [2] or dflg == [1,2]:
-                    max_diff = np.max(np.abs(E[1,:] - Epres[2,:]))
-                    dnom = max(np.max(np.abs(Epres[2,:])),0.)
-                    if dnom == 0.: dnom = 1.
+                    eps_tmp = simdat.getData("strain")
+                    max_diff = np.max(np.abs(eps_tmp - eps_int))
+                    dnom = max(np.max(np.abs(eps_int)),0.)
+                    dnom = dnom if dnom != 0. else 1.
                     rel_diff = max_diff/dnom
                     if rel_diff > accuracyLim() and max_diff > epsilon():
-                        msg = ('E differs from lcntrl excessively at end of step '
+                        msg = ('E differs from prdef excessively at end of step '
                                '%i of leg %i with a percent difference of %f'
                                %(n,lnum,rel_diff*100.))
-                        reportWarning(__file__,msg)
+                        reportWarning(iam,msg)
+                        pass
                     pass
                 elif dflg == [5]:
-                    max_diff = (np.max(np.abs(F[1,:] - Fpres[2,:]))/
-                                np.max(np.abs(Fpres[2,:])))
-                    dnom = max(np.max(np.abs(Fpres[2,:])),0.)
-                    if dnom == 0.: dnom = 1.
+                    F_tmp = simdat.getData("deformation gradient")
+                    max_diff = (np.max(F_tmp - F_int))/np.max(np.abs(F_int))
+                    dnom = max(np.max(np.abs(F_int)),0.)
+                    dnom = dnom if dnom != 0. else 1.
                     rel_diff = max_diff/dnom
                     if rel_diff > accuracyLim() and max_diff > epsilon():
-                        msg = ('F differs from lcntrl excessively at end of step '
+                        msg = ('F differs from prdef excessively at end of step '
                                ' with max_diff %f' %max_diff)
-                        reportWarning(__file__,msg)
+                        reportWarning(iam,msg)
+                        pass
                     pass
                 pass
             # -------------------------------------------- end{end of step SQA}
 
-            continue
+            continue # continue to next step
         # ------------------------------------------------ end{processing step}
 
+        # --- pass quantities from end of leg to beginning of new leg
+        simdat.advanceData("leg number",ileg+1)
+        ileg += 1
+
+        if simdat.write_vandd_table:
+            writeVelAndDispTable(simdat.initial_time, simdat.termination_time,
+                                 t_beg,t_end,eps_beg,eps_end,simdat.kappa)
+            pass
+
+        # advances time must come after writing the v & d tables above
+        t_beg = t_end
+
+        if simdat.write_restart:
+            with open(simdat.rfile,'wb') as f: pickle.dump(the_model,f,2)
+            pass
+
+        # --- print message to screen
+        if verbose and nsteps > 1:
+            msg = 'leg %i, step %i, time %f, dt %f'%(lnum,n+1,t,dt)
+            reportMessage(iam,msg)
+            pass
+
+
         # ----------------------------------------------- begin{end of leg SQA}
-        if sqa:
+        if simdat.sqa:
             if dflg == [1] or dflg == [2] or dflg == [1,2]:
-                max_diff = np.max(np.abs(E[1,:] - Epres[1,:]))
-                dnom = np.max(Epres[2,:])
-                if dnom <= epsilon(): dnom = 1.
+                eps_tmp = simdat.getData("strain")
+                max_diff = np.max(np.abs(eps_tmp - eps_end))
+                dnom = np.max(eps_end) if np.max(eps_end) >= epsilon() else 1.
                 rel_diff = max_diff/dnom
                 if rel_diff > accuracyLim() and max_diff > epsilon():
-                    msg = ('E differs from lcntrl excessively at end of '
+                    msg = ('E differs from prdef excessively at end of '
                            'leg %i with relative diff %f'%(lnum,rel_diff))
-                    reportWarning(__file__,msg)
+                    reportWarning(iam,msg)
                 pass
 
             elif dflg == [5]:
-                max_diff = (np.max(np.abs(F[1,:] - Fpres[1,:]))/
-                            np.max(np.abs(Fpres[1,:])))
-                dnom = np.max(Fpres[2,:])
-                if dnom <= epsilon(): dnom = 1.
+                F_tmp = simdat.getData("deformation gradient")
+                max_diff = np.max(np.abs(F_tmp - F_end))/np.max(np.abs(F_end))
+                dnom = np.max(F_end) if np.max(F_end) >= epsilon() else 1.
                 rel_diff = max_diff/dnom
                 if rel_diff > accuracyLim() and max_diff > epsilon():
-                    msg = ('F differs from lcntrl excessively at end of leg '
+                    msg = ('F differs from prdef excessively at end of leg '
                            ' with max_diff %f' %max_diff)
-                    reportWarning(__file__,msg)
+                    reportWarning(iam,msg)
                 pass
             pass
         # ------------------------------------------------- end{end of leg SQA}
 
-        # --- pass quantities from end of leg to beginning of new leg
-        if write_vandd_table:
-            writeVelAndDispTable(the_model.initialTime(),
-                                 the_model.terminationTime(),
-                                 tleg[0],tleg[1],Epres[0,:],E[1,:],k)
-            pass
-        tleg[0] = tleg[1]
-        Pdum[0,:],Epres[0,:],Fpres[0,:],EFpres[0,:] = P[1,:],E[1,:],F[1,:],EF[1,:]
-        if len(v):
-            j = 0
-            for i in v:
-                Pdum[0,i] = Ppres[1,j]
-                j += 1
-                continue
-            pass
-
-        # save the state
-        ileg += 1
-        the_model.savePayetteState(ileg,tleg,t,dt,E,Epres,dEdt,P,Ppres,dPdt,Pdum,
-                                   vdum,R,Rpres,dRdt,F,Fpres,dFdt,d,w,
-                                   EF,EFpres,ED,POL,failed)
-
-        if the_model.write_restart:
-            with open(the_model.rfile,'wb') as f: pickle.dump(the_model,f,2)
-            pass
-
-        # --- print message to screen
-        if verbose:
-            msg = 'leg %i, step %i, time %f, dt %f'%(lnum,n+1,t,dt)
-            reportMessage(__file__,msg)
-            pass
-
-        continue
+        continue # continue to next leg
     # ----------------------------------------------------- end{processing leg}
 
     return 0

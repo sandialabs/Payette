@@ -1,5 +1,4 @@
 begin simulation py-elastic-mtl-unistrain-cycle
-  title Uniaxial strain cycle test
   begin material
     constitutive model py elastic
     shmod 53.e9
