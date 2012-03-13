@@ -27,6 +27,7 @@ from distutils import sysconfig
 sp = "      "
 
 build_payette = os.path.realpath(__file__)
+this_d = os.path.dirname(build_payette)
 
 class BuildError(Exception):
     def __init__(self, message, errno):
@@ -1198,8 +1199,11 @@ if __name__ == "__main__":
         # we want to enforce that buildPayette.py is executed from the Toolset
         # directory, except in special cases...
 
-        if not any(["../Toolset/buildPayette.py" in sys.argv and "-W" in sys.argv,
-                    "-h" in sys.argv or "--help" in sys.argv]):
+        if not any(["../Toolset/buildPayette.py" in sys.argv,
+                    "-W" in sys.argv,
+                    "-h" in sys.argv or "--help" in sys.argv,
+                    os.path.realpath(os.getcwd()) == this_d
+                    ]):
             sys.exit("buildPayette must be executed from {0}".format(toolsd))
             pass
         pass
