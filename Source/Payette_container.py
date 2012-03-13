@@ -191,7 +191,7 @@ class Payette:
 
             if len(split_item) == 1: split_item.append("True")
             try: val = eval(split_item[1])
-            except: sys.exit("bad simulation option: {0}".format(item))
+            except: val = str(split_item[1])
             self.simdat.registerOption(split_item[0],val)
             continue
 
