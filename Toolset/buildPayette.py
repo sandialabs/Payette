@@ -1118,7 +1118,7 @@ import os
 
     # symlink the Payette_config file to the tests directories
     for dirnam, dirs, files in os.walk(Payette_Tests):
-        if "__init__.py" not in files: continue
+        if "__test_dir__.py" not in files: continue
         config_base = os.path.basename(Payette_config_file)
         tests_config = os.path.join(dirnam,config_base)
         try: os.remove(tests_config)

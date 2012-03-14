@@ -169,14 +169,14 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         sigold = matdat.getData("stress")
         svold = matdat.getData("extra variables")
 
-        # compute the stretch
+        # right stretch
         Rstretch = sqrtm( np.dot( Fnew.T, Fnew ) )
 
-        # reorder rotation
+        # rotation
         rotation = np.dot(Fnew,np.linalg.inv(Rstretch))
 
         # convert
-        rotation = toMig(toArray(rotation,symmetric=False))
+        rotation = toArray(rotation,symmetric=False)
         Rstretch = toArray(Rstretch,symmetric=True)
 
         args = [1,self.ui,self.ui,self.dc,svold,Rstretch,rotation,efield,

@@ -878,8 +878,8 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
             if ( fext != ".py" or
                  fbase[0] == "." or
                  fbase == "__init__" or
+                 fbase == "__test_dir__" or
                  fbase == "Payette_config" or
-                 fbase == "tests_common" or
                  fbase == "template" ):
                 continue
 
