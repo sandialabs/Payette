@@ -387,7 +387,6 @@ def testRunPayette(test):
     return 0
 
 
-#def writePayetteMaterials(all_materials,built_materials,failed_materials):
 def writePayetteMaterials(payette_materials):
     """
         Write the Source/Materials/Payette_materials.py file containing a
@@ -634,6 +633,7 @@ def getPayetteMaterials(requested_libs=["all"],options=[]):
 
     # go through list of python files in
     for py_file in py_files:
+        verb = "qsfail" in py_file
 
         parse_error = False
 
@@ -648,13 +648,17 @@ def getPayetteMaterials(requested_libs=["all"],options=[]):
         # check if this is a payette material
         try: payette_material = attributes["payette material"]
         except: continue
+        if not payette_material: continue
 
         # check if a constitutive model class is defined
         class_data = pyclbr.readmodule(py_mod,path=[os.path.dirname(py_file)])
-        for name, data in sorted(class_data.items(), key=lambda x:x[1].lineno):
+
+        try: proto = class_data["Parent"].name
+        except: proto = "ConstitutiveModelPrototype"
+
+        for name, data in class_data.items():
             class_name = data.name
-            constitutive_model = ("ConstitutiveModelPrototype" in
-                                  get_super_classes(name,data))
+            constitutive_model = proto in get_super_classes(name,data)
             if constitutive_model: break
             continue
 

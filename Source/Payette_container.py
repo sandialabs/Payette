@@ -154,10 +154,6 @@ class Payette:
         self.boundaryFactory(user_input)
         self.materialFactory(user_input)
 
-        if not self.isdiag and opts.write_vandd_table:
-            parseError("cannot create displacement tables from nondiagonal strain")
-            return 1
-
         # get mathplot
         mathplot, mathplotid = findBlock(user_input,"mathplot")
         plotable = []
@@ -423,7 +419,6 @@ class Payette:
         # parse legs
         lcontrol = []
         sigc = False
-        self.isdiag = True
         for ileg,leg in enumerate(legs):
             leg = [x.strip() for x in leg.replace(',',' ').split(' ') if x]
             if len(leg) < 7:
@@ -438,7 +433,6 @@ class Payette:
                 pass
             control = leg[3].strip()
             c = [float(eval(y)) for y in leg[4:]]
-            if self.isdiag: self.isdiag = not [x for x in c[3:] if x > 0.]
             # control should be a group of letters describing what type of
             # control type the leg is. valid options are:
             #  1: strain rate control
@@ -499,9 +493,9 @@ class Payette:
                     return 1
                 else:
                     # check for valid deformation
-                    F = np.array([[c[0],c[3],c[5]],
-                                  [c[6],c[1],c[4]],
-                                  [c[8],c[7],c[2]]])
+                    F = np.array([[c[0],c[1],c[2]],
+                                  [c[3],c[4],c[5]],
+                                  [c[6],c[7],c[8]]])
                     J = np.linalg.det(F)
                     if J <= 0:
                         parseError('inadmissible deformation gradient in leg %i '

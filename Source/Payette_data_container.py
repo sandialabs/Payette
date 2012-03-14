@@ -56,7 +56,7 @@ class DataContainer:
         self.extra_vars_registered = False
         self.I3 = np.array([1.,1.,1.])
         self.I6 = np.array([1.,1.,1.,0.,0.,0.])
-        self.I9 = np.array([1.,1.,1.,0.,0.,0.,0.,0.,0.])
+        self.I9 = np.array([1.,0.,0.,0.,1.,0.,0.,0.,1.])
         self.nvec = 3
         self.nsym = 6
         self.ntens = 9
@@ -193,9 +193,9 @@ class DataContainer:
                 msg = "Array data {0} must be a np.ndarray".format(name)
                 reportError(iam,msg)
                 pass
-            value = np.array([x for x in init_val])
-            old_value = np.array([x for x in init_val])
-            stashed_value = np.array([x for x in init_val])
+            value = np.array(init_val)
+            old_value = np.array(init_val)
+            stashed_value = np.array(init_val)
             shape = value.shape
 
         elif typ == "Scalar":
@@ -405,7 +405,7 @@ class DataContainer:
             return np.array([x for x in data[valtyp]],dtype=int)
 
         elif typ == "Array":
-            return np.array([x for x in data[valtyp]])
+            return np.array(data[valtyp])
 
         else:
             return data[valtyp]
@@ -485,7 +485,7 @@ class DataContainer:
             data[valtyp] = np.array([x for x in newval],dtype=int)
 
         elif typ == "Array":
-            data[valtyp] = np.array([x for x in newval])
+            data[valtyp] = np.array(newval)
 
         else:
             # store the scalar variable
@@ -711,14 +711,14 @@ class DataContainer:
             elif ii == 5: comp = "13"
         else:
             if ii == 0: comp = "11"
-            elif ii == 1: comp = "22"
-            elif ii == 2: comp = "33"
-            elif ii == 3: comp = "12"
-            elif ii == 4: comp = "23"
-            elif ii == 5: comp = "13"
-            elif ii == 6: comp = "21"
+            elif ii == 1: comp = "12"
+            elif ii == 2: comp = "13"
+            elif ii == 3: comp = "21"
+            elif ii == 4: comp = "22"
+            elif ii == 5: comp = "23"
+            elif ii == 6: comp = "31"
             elif ii == 7: comp = "32"
-            elif ii == 8: comp = "31"
+            elif ii == 8: comp = "33"
             pass
 
         if comp: return comp

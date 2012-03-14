@@ -28,11 +28,39 @@ from scipy import linalg
 
 from Source.Payette_utils import *
 
+nvec = 3
+nsym = 6
+ntens = 9
+
+tol = 1.e-16
+
 di3 = [[0,1,2],[0,1,2]]
-I = np.eye(3)
-I9 = np.array([1.,1.,1.,0.,0.,0.,0.,0.,0.,])
-Z6 = np.zeros(6)
-Z3 = np.zeros(3)
+
+I3x3 = np.eye(3)
+Z3x3 = np.zeros((3,3))
+
+Z3 = np.array([0., 0., 0.])
+I3 = np.array([1., 1., 1.])
+Z6 = np.array([0., 0., 0.,
+                   0., 0.,
+                       0.])
+I6 = np.array([1., 0., 0.,
+                   1., 0.,
+                       1.])
+Z9 = np.array([0., 0., 0.,
+               0., 0., 0.,
+               0., 0., 0.])
+I9 = np.array([1., 0., 0.,
+               0., 1., 0.,
+               0., 0., 1.])
+
+tens_map = { 0:(0,0), 1:(0,1), 2:(0,2),
+             3:(1,0), 4:(1,1), 5:(1,2),
+             6:(2,0), 7:(2,1), 8:(2,2) }
+symtens_map = { 0:(0,0), 1:(0,1), 2:(0,2),
+                         3:(1,1), 4:(1,2),
+                                  5:(2,2) }
+vec_map = { 0:(0,), 1:(1,), 2:(2,) }
 
 '''
 NAME
@@ -60,9 +88,9 @@ def toMatrix(a):
                            [ a[3], a[1], a[4] ],
                            [ a[5], a[4], a[2] ] ],dtype='double')
     elif len(a) == 9:
-        return np.matrix([ [ a[0], a[3], a[5] ],
-                           [ a[6], a[1], a[4] ],
-                           [ a[8], a[7], a[2] ] ],dtype='double')
+        return np.matrix([ [ a[0], a[1], a[2] ],
+                           [ a[3], a[4], a[5] ],
+                           [ a[6], a[7], a[8] ] ],dtype='double')
     else:
         msg = 'wrong size array of size [%i] sent to toMatrix'%(len(a))
         reportError(__file__,msg)
@@ -74,14 +102,15 @@ def toArray(a,symmetric=True):
         reportError(__file__,'wrong shape of [%s] sent to toArray'%str(shape))
         return 1
     if not symmetric:
-        return np.array([ a[0,0], a[1,1], a[2,2], a[0,1], a[1,2],
-                          a[0,2], a[1,0], a[2,1], a[2,0] ],dtype='double')
+        return np.array([ a[0,0], a[0,1], a[0,2],
+                          a[1,0], a[1,1], a[1,2],
+                          a[2,0], a[2,1], a[2,2] ],dtype='double')
     a = 0.5*(a + a.T)
     return np.array([ a[0,0], a[1,1], a[2,2],
                       a[0,1], a[1,2], a[0,2] ],dtype='double')
 
 def powm(a,m,strict=False):
-    if isDiagonal(a) and not strict: a[di3] = np.diag(a)**m
+    if isdiag(a) and not strict: a[di3] = np.diag(a)**m
     else:
         w,v = la.eigh(a)
         a = np.dot(np.dot(v,np.diag(w**m)),v.T)
@@ -89,7 +118,7 @@ def powm(a,m,strict=False):
     return a
 
 def expm(a,strict=False):
-    if isDiagonal(a) and not strict: a[di3] = np.exp(np.diag(a))
+    if isdiag(a) and not strict: a[di3] = np.exp(np.diag(a))
     elif strict: a = np.real(scipy.linalg.expm(a))
     else: a = I + a + np.dot(a,a)/2.
     return a
@@ -99,20 +128,21 @@ def sqrtm(a,strict=False):
         msg = "Probably reaching the numerical limits for the " +\
               "magnitude of the deformation."
         reportError(__file__,msg)
-    if isDiagonal(a) and not strict: a[di3] = np.sqrt(np.diag(a))
+    if isdiag(a) and not strict: a[di3] = np.sqrt(np.diag(a))
     elif strict: a = np.real(scipy.linalg.sqrtm(a))
     else: a = powm(a,0.5)
     return a
 
 def logm(a,strict=False):
-    if isDiagonal(a) and not strict: a[di3] = np.log(np.diag(a))
+    if isdiag(a) and not strict: a[di3] = np.log(np.diag(a))
     elif strict: a = np.real(scipy.linalg.logm(a))
     else: a = (a-I)-np.dot(a-I,a-I)/2.+np.dot(a-I,np.dot(a-I,a-I))/3.
     return a
 
-def isDiagonal(a):
-    return bool(a[0,1] == 0. and a[1,2] == 0. and a[0,2] == 0. and
-                a[1,0] == 0. and a[2,1] == 0. and a[2,0] == 0.)
+def isdiag(a):
+    return all([abs(x) <= tol for x in [       a[0,1],a[0,2],
+                                        a[1,0],       a[1,2],
+                                        a[2,0],a[2,1]       ]])
 
 def toMig(a):
     if len(a) == 6 or len(a) == 3: return np.array(a)

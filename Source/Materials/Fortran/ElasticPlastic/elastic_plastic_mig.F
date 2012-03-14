@@ -424,70 +424,70 @@ C----------------------------------------------------------------------13
       NX=NX+1                                                         !F1
       IF(NX.NE.KF1)CALL BOMBED(IAM//' KF1 pointer wrong')
       NAME(NX)='Free 1'
-      KEY(NX)='F1'
+      KEY(NX)='FREE1'
       IADVCT(NX)=1
       RINIT(NX)=VINIT
 C----------------------------------------------------------------------14
       NX=NX+1                                                         !F2
       IF(NX.NE.KF2)CALL BOMBED(IAM//' KF2 pointer wrong')
       NAME(NX)='Free 2'
-      KEY(NX)='F2'
+      KEY(NX)='FREE2'
       IADVCT(NX)=1
       RINIT(NX)=VINIT
 C----------------------------------------------------------------------15
       NX=NX+1                                                         !F3
       IF(NX.NE.KF3)CALL BOMBED(IAM//' KF3 pointer wrong')
       NAME(NX)='Free 3'
-      KEY(NX)='F3'
+      KEY(NX)='FREE3'
       IADVCT(NX)=1
       RINIT(NX)=VINIT
 C----------------------------------------------------------------------16
       NX=NX+1                                                         !F4
       IF(NX.NE.KF4)CALL BOMBED(IAM//' KF4 pointer wrong')
       NAME(NX)='Free 4'
-      KEY(NX)='F4'
+      KEY(NX)='FREE4'
       IADVCT(NX)=1
       RINIT(NX)=VINIT
 C----------------------------------------------------------------------17
       NX=NX+1                                                         !F5
       IF(NX.NE.KF5)CALL BOMBED(IAM//' KF5 pointer wrong')
       NAME(NX)='Free 5'
-      KEY(NX)='F5'
+      KEY(NX)='FREE5'
       IADVCT(NX)=1
       RINIT(NX)=VINIT
 C----------------------------------------------------------------------18
       NX=NX+1                                                         !F6
       IF(NX.NE.KF6)CALL BOMBED(IAM//' KF6 pointer wrong')
       NAME(NX)='Free 6'
-      KEY(NX)='F6'
+      KEY(NX)='FREE6'
       IADVCT(NX)=1
       RINIT(NX)=VINIT
 C----------------------------------------------------------------------19
       NX=NX+1                                                         !F7
       IF(NX.NE.KF7)CALL BOMBED(IAM//' KF7 pointer wrong')
       NAME(NX)='Free 7'
-      KEY(NX)='F7'
+      KEY(NX)='FREE7'
       IADVCT(NX)=1
       RINIT(NX)=VINIT
 C----------------------------------------------------------------------20
       NX=NX+1                                                         !F8
       IF(NX.NE.KF8)CALL BOMBED(IAM//' KF8 pointer wrong')
       NAME(NX)='Free 8'
-      KEY(NX)='F8'
+      KEY(NX)='FREE8'
       IADVCT(NX)=1
       RINIT(NX)=VINIT
 C----------------------------------------------------------------------21
       NX=NX+1                                                         !F9
       IF(NX.NE.KF9)CALL BOMBED(IAM//' KF9 pointer wrong')
       NAME(NX)='Free9'
-      KEY(NX)='F9'
+      KEY(NX)='FREE9'
       IADVCT(NX)=1
       RINIT(NX)=VINIT
 C----------------------------------------------------------------------22
       NX=NX+1                                                        !F10
       IF(NX.NE.KF10)CALL BOMBED(IAM//' KF10 pointer wrong')
       NAME(NX)='Free10'
-      KEY(NX)='F10'
+      KEY(NX)='FREE10'
       IADVCT(NX)=1
       RINIT(NX)=VINIT
 C----------------------------------------------------------------------23
