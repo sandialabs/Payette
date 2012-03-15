@@ -367,7 +367,11 @@ def testPayette(argc,argv):
     from Source.Payette_test import findTests
     import Source.Payette_notify
 
-    global testresdir,rantests,topts
+    global testresdir,rantests,topts,term_width,info_width
+
+    # These are used to control formatting for testPayette
+    term_width = 80
+    info_width = 25
 
     # *************************************************************************
     # -- command line option parsing
@@ -500,7 +504,7 @@ def testPayette(argc,argv):
                 py_module = imp.load_module(py_mod,fp,pathname,description)
                 fp.close()
                 test = py_module.Test()
-                out.write(72*"="+"\n")
+                out.write(term_width*"="+"\n")
                 out.write("Name:  {0}\n".format(test.name))
                 out.write("Owner: {0}\n\n".format(test.owner))
                 out.write("Description:\n{0}".format(test.description))
@@ -562,9 +566,10 @@ def testPayette(argc,argv):
             test_res[i] = {}
             continue
 
-        print("="*72)
+
+        print("="*term_width)
         print("Running {0} benchmarks:".format(len(conforming)))
-        print("="*72)
+        print("="*term_width)
 
         # run the tests on multiple processors using the multiprocessor map ONLY
         # if nprocs > 1. For debug purposes, when nprocs=1, run without using the
@@ -579,7 +584,7 @@ def testPayette(argc,argv):
             p.join()
 
         ttot = time.time()-runtimer
-        print("="*72)
+        print("="*term_width)
 
         # copy the mathematica notebooks to the output directory
         for mtldir, mathnb in mathnbs.items():
@@ -669,9 +674,9 @@ def testPayette(argc,argv):
             pass
 
         longtxtsummary = (
-             "="*72+"\nLONG SUMMARY\n"+
+             "="*term_width+"\nLONG SUMMARY\n"+
              "{0} benchmarks took {1:.2f}s.\n".format(len(conforming),ttot) +
-             "{0:^72}\n".format("{0:-^30}".format(" system information "))+
+             "{0:^{1}}\n".format("{0:-^30}".format(" system information "),term_width)+
              "   Date complete:    {0:<}\n".format(str_date)+
              "   Username:         {0:<}\n".format(getpass.getuser())+
              "   Hostname:         {0:<}\n".format(os.uname()[1])+
@@ -684,7 +689,7 @@ def testPayette(argc,argv):
         for stat in test_result_statuses:
             names = test_res[stat].keys()
             header = "{0:-^30}".format(" "+stat+" ({0}) ".format(len(names)))
-            longtxtsummary += "{0:^72}\n".format(header)
+            longtxtsummary += "{0:^{1}}\n".format(header,term_width)
             if len(names) == 0:
 #                longtxtsummary += "None\n"
                 continue
@@ -700,7 +705,7 @@ def testPayette(argc,argv):
                 longtxtsummary += "  {0:>8}   {1}\n".format(t,name)
                 continue
             continue
-        longtxtsummary += "="*72 + "\n"
+        longtxtsummary += "="*term_width + "\n"
         # longtxtsummary is finished at this point
         ######################################################################
 
@@ -711,9 +716,9 @@ def testPayette(argc,argv):
             pass
 
         print(longtxtsummary)
-        print("="*72)
+        print("="*term_width)
         print(txtsummary)
-        print("="*72)
+        print("="*term_width)
 
         # write out the results to the summary file
         writePyTestSummary(summpy,test_res)
@@ -766,9 +771,8 @@ def runPayetteTest(py_file):
         return result
 
     # Let the user know which test is running
-    print(  "%s"%(test.name)
-            + " "*(60-len(test.name))
-            + "{0:>10s}".format("RUNNING"))
+    print(  "{0:<{1}}".format(test.name,term_width-info_width)
+            + "{0:>{1}s}".format("RUNNING",info_width))
 
     # Create benchmark directory and copy the input and baseline files into the
     # new directory
@@ -822,10 +826,9 @@ def runPayetteTest(py_file):
 
     # Print output at completion
     tcompletion = time.time()-starttime
-    print(  "%s"%(test.name)
-            + " "*(47-len(test.name))
-            + "{0:>15s}".format(retcode.upper())
-            + " ({0:.02f}s)".format(tcompletion))
+    info_string = "{0} ({1:6.02f}s)".format(retcode.upper(),tcompletion)
+    print(  "{0:<{1}}".format(test.name,term_width-info_width)
+            + "{0:>{1}s}".format(info_string,info_width))
 
     # return to the directory we came from
     os.chdir(cwd)

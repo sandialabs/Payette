@@ -345,8 +345,11 @@ class PayetteTest:
         out = self.read_data(outf)
         gold = self.read_data(baselinef)
 
-        # check that time is same
-        rmsd, nrmsd = self.compute_fast_RMS(gold[:,0], out[:,0])
+        # check that time is same (lengths must be the same)
+        if len(gold[:,0]) == len(out[:,0]):
+            rmsd, nrmsd = self.compute_fast_RMS(gold[:,0], out[:,0])
+        else:
+            rmsd, nrmsd = 1.0e99, 1.0e99
 
         if nrmsd > np.finfo(np.float).eps:
             errors += 1
