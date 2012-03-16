@@ -205,8 +205,9 @@ class Kayenta(ConstitutiveModelPrototype):
             # Kayenta reached the spall cut off only using a portion of the
             # strain increment.
             p = (dtused/dtsent)*100.
+            n = simdat.getData("number of steps")
             msg = ( """Kayenta returned with CRACK < 0, using only [{0}%]
-of the strain increment sent to it""".format(p) )
+of the strain increment sent to it on step number {1}""".format(p,n) )
             reportError(iam,msg)
 
         matdat.storeData("stress",signew)

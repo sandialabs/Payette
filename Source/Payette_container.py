@@ -107,6 +107,8 @@ class Payette:
         self.simdat.registerData("time step","Scalar",
                                  init_val = 0.,
                                  plot_key = "timestep")
+        self.simdat.registerData("number of steps","Scalar",
+                                 init_val = 0)
         self.simdat.registerData("strain","SymTensor",
                                  init_val = np.zeros(6),
                                  plot_key = "strain")

@@ -142,6 +142,7 @@ def runProblem(the_model,**kwargs):
     # --- data
     ileg = int(simdat.getData("leg number"))
     legs = simdat.getData("leg data")[ileg:]
+    simsteps = simdat.getData("number of steps")
     t_beg = simdat.getData("time")
     dt = simdat.getData("time step")
     vdum = np.zeros(6,dtype=int)
@@ -282,6 +283,8 @@ def runProblem(the_model,**kwargs):
         for n in range(nsteps):
 
             t += dt
+            simsteps += 1
+            simdat.advanceData("number of steps",simsteps)
 
             # interpolate values of E, F, EF, and P for the current step
             a1 = float(nsteps - (n + 1))/nsteps
