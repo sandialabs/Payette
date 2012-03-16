@@ -18,6 +18,9 @@ class Build(MaterialBuilder):
         # initialize base class
         MaterialBuilder.__init__(self,name,libname,fdir,compiler_info)
 
+        self.kayenta_directives = ["-DFOR_SCOT_TO_SEE"]
+        self.pre_directives.extend(self.kayenta_directives)
+
         pass
 
     def build_extension_module(self):

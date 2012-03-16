@@ -190,35 +190,24 @@ class Kayenta(ConstitutiveModelPrototype):
         '''
            update the material state based on current state and strain increment
         '''
+        iam = self.name + ".updateState(self,simdat,matdat)"
         dt = simdat.getData("time step")
+        dtsent = simdat.getData("time step")
         d = simdat.getData("rate of deformation")
         sigold = matdat.getData("stress")
         svold = matdat.getData("extra variables")
 
         a = [dt,self.ui,self.ui,self.dc,sigold,d,svold,migError,migMessage]
         if not Payette_F2Py_Callback: a = a[:-2]
-        signew,svnew,usm = mtllib.kayenta_calc(*a)
+        dtused,signew,svnew,usm = mtllib.kayenta_calc(*a)
 
         if self.ui[58] == 9 and svnew[18] < 0.:
-            if svnew[18] == -2.:
-                reportError(__file__,'expansion encountered')
-                pass
-            if svnew[18] == -1.:
-                reportMessage(__file__,'spall pressure exceeded')
-                dt = simdat.getData("time step")
-                sigold = matdat.getData("stress")
-                svold = matdat.getData("extra variables")
-                d = np.array([0.,0.,0.,0.,0.,0.])
-                a = [dt,self.ui,self.ui,self.dc,sigold,d,svold,migError,migMessage]
-                signew,svnew,usm = mtllib.kayenta_calc(*a)
-                if svnew[18] < 0.:
-                    reportError(__file__,'0 d DID NOT resolve')
-                else:
-                    reportError(__file__,'0 d DID resolve')
-                    pass
-                pass
-            reportError(__file__,'stopping because kayenta wants me to')
-            pass
+            # Kayenta reached the spall cut off only using a portion of the
+            # strain increment.
+            p = (dtused/dtsent)*100.
+            msg = ( """Kayenta returned with CRACK < 0, using only [{0}%]"
+of the strain increment sent to it""".format(p) )
+            reportError(iam,msg)
 
         matdat.storeData("stress",signew)
         matdat.storeData("extra variables",svnew)

@@ -25,7 +25,7 @@ python module kayenta ! in
             integer,parameter :: nprop=97
             integer,parameter :: nsv=52
             integer,parameter :: ndc=13
-            double precision, intent(in) :: dtarg
+            double precision, intent(in,out) :: dtarg
             double precision dimension(nprop),intent(in) :: ui
             double precision dimension(ndc),intent(in) :: dc
             double precision dimension(6,nblk),intent(in,out) :: sigold
@@ -46,7 +46,7 @@ python module kayenta ! in
             integer,parameter :: nprop=97
             integer,parameter :: nsv=52
             integer,parameter :: ndc=13
-            double precision, intent(in) :: dtarg
+            double precision, intent(in,out) :: dtarg
             double precision dimension(nprop),intent(in) :: ui
             double precision dimension(nprop),intent(in) :: gc
             double precision dimension(ndc),intent(in) :: dc
