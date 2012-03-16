@@ -113,7 +113,7 @@ class Kayenta(ConstitutiveModelPrototype):
         self.registerParameter("FAIL6",47,aliases=[])
         self.registerParameter("FAIL7",48,aliases=[])
         self.registerParameter("FAIL8",49,aliases=[])
-        self.registerParameter("FAIL9",50,aliases=[])
+        self.registerParameter("FAIL9",50,aliases=["SPALLI1"])
         self.registerParameter("PEAKI1I",51,aliases=[])
         self.registerParameter("STRENI",52,aliases=[])
         self.registerParameter("FSLOPEI",53,aliases=[])
@@ -205,7 +205,7 @@ class Kayenta(ConstitutiveModelPrototype):
             # Kayenta reached the spall cut off only using a portion of the
             # strain increment.
             p = (dtused/dtsent)*100.
-            msg = ( """Kayenta returned with CRACK < 0, using only [{0}%]"
+            msg = ( """Kayenta returned with CRACK < 0, using only [{0}%]
 of the strain increment sent to it""".format(p) )
             reportError(iam,msg)
 
