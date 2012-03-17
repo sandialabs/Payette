@@ -189,7 +189,8 @@ in a terminal window:\newline
 
 \termcommand{sudo apt-get python-numpy python-scipy python-matplotlib}
 \AuthorNote{This will not work for everyone. Alternatives need to be described.}
-
+\AuthorNote{Might need to have the user check on python-dev? I got...SystemError: Cannot compile 'Python.h'. Perhaps you need to install python-dev|python-devel.}
+\AuthorNote{I managed to (apparently get python-devel working by using the CentOS package manager, but then I continued to have no luck getting scipy working. Such problems are not limited to me (Brannon).  None of the other students here at UofU have been able to get this going.  Is it possible to write an install script that would check for existence of the correct packages?  Payette will not be of much use if we have to spend hours and hours getting the correct python configuration. What is the best way to manage this problem?} 
 % ----------------------------------------------------------------------------- %
 \section{Getting \payette{}}
 \label{sec:getting}
@@ -694,7 +695,7 @@ in the \url{$PAYETTE_HOME/Aux/MaterialsDatabase}, in that order.
 % ----------------------------- %
 \subsection{Complete Input File}
 Below is an input file, any keywords not given take the default values shown in
-Section \label{sec:boundary}.
+Section \label{sec:input}.
 
 \begin{verbatim}
 begin simulation elastic unistrain cycle
