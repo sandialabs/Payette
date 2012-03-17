@@ -201,13 +201,13 @@ class Kayenta(ConstitutiveModelPrototype):
         if not Payette_F2Py_Callback: a = a[:-2]
         dtused,signew,svnew,usm = mtllib.kayenta_calc(*a)
 
-        if self.ui[58] == 9 and svnew[18] < 0.:
+        if svnew[18] < 0.:
             # Kayenta reached the spall cut off only using a portion of the
             # strain increment.
-            p = (dtused/dtsent)*100.
+            void = svnew[47]
             n = simdat.getData("number of steps")
-            msg = ( """Kayenta returned with CRACK < 0, using only [{0}%]
-of the strain increment sent to it on step number {1}""".format(p,n) )
+            msg = ( """Kayenta returned with CRACK < 0, requesting void of [{0}]
+on step [{1}]""".format(void,n) )
             reportError(iam,msg)
 
         matdat.storeData("stress",signew)
