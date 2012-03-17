@@ -27,6 +27,17 @@
 \newcommand{\tim}{\texttt{time}}
 \newcommand{\legno}{\texttt{legno}}
 \newcommand{\ltyp}{\texttt{ltyp}}
+%\newcommand{\AuthorNote}[1]{{%
+%      \marginpar{$\longleftarrow$}
+%      \raggedright\footnotesize
+%      \itshape\smallskip\AuthorMark#1\AuthorMark\smallskip
+%}}% 
+\newcommand{\AuthorMark}{$\spadesuit$}
+\newcommand{\AuthorNote}[1]{{%
+      \marginpar{$\longleftarrow$}
+      \raggedright\footnotesize
+      \itshape\smallskip\AuthorMark#1\AuthorMark\smallskip
+}}%
 
 % python commands
 \newcommand{\str}{\texttt{str}}
@@ -177,6 +188,7 @@ fetch and install the required python modules.  On Ubuntu/Debian, simply execute
 in a terminal window:\newline
 
 \termcommand{sudo apt-get python-numpy python-scipy python-matplotlib}
+\AuthorNote{This will not work for everyone. Alternatives need to be described.}
 
 % ----------------------------------------------------------------------------- %
 \section{Getting \payette{}}
