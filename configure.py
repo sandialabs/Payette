@@ -31,8 +31,7 @@ def configurePayette(argc,argv):
                       dest = "OPTIONS",
                       action = "append",
                       default = [],
-                      help = ("Options to build (accumulated) [default: %default] "
-                              "[choices: [electromech, special]]"))
+                      help = "Options to build (accumulated) [default: %default]")
     parser.add_option("--fcompiler",
                       dest = "FCOMPILER",
                       action = "store",
@@ -51,12 +50,6 @@ def configurePayette(argc,argv):
                       action = "store",
                       default = "gfortran",
                       help = "Specify the path F90 to compiler [default: %default]")
-    parser.add_option("--clean",
-                      dest = "CLEAN",
-                      action = "store_true",
-                      default = False,
-                      help = ("Remove Payette configuraton files and extension "
-                              "library files and exit [default: %default]"))
     parser.add_option("--no-callback",
                       dest = "NOCALLBACK",
                       action = "store_true",

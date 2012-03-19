@@ -7,33 +7,37 @@ Payette is an object oriented material driver. The majority of the source code i
 written in Python and requires no additional building. Many of the material
 models, however, are written in Fortran and require a seperate compile step.
 
-
 PREREQUISITES
 =============
 Payette requires the following software installed for your platform:
 
-1) Python__ 2.6.x or newer
+0) Python__ 2.6.x or newer
+   __ http://www.python.org
 
-__ http://www.python.org
+1) NumPy__ 1.4.1 or newer
+   __ http://www.numpy.org/
 
-2) NumPy__ 1.4.1 or newer
+2) SciPy__ 0.1 or newer
+   __ http://www.scipy.org/
 
-__ http://www.numpy.org/
+Each can be installed from source, or from a package manager. *** BUT *** we have
+had varying degrees of success using software installed by package managers on
+various linux distributions. On the Mac, we have had great success using software
+installed by MacPorts (__ http://www.macports.org).  The alternatives are to:
 
-3) SciPy__ 0.1 or newer
+   a) build each from source
+      an involved, but fairly straight forward process
 
-__ http://www.scipy.org/
+   b) use Python, NumPy, and SciPy installed with Sage__ 4.7 or newer
+      __ http://www.sagemath.org/
 
+      This option is perhaps the easiest, but has some limitations:
 
-*** OR ***
+         *) some features are disabled when using Sage, in particular,
+      	    callback functions from Fortran to Python routines.
 
-1) Sage__ 4.7 or newer
-
-__ http://www.sagemath.org/
-
-**warning**, some features are disabled when using Sage, in particular, callback
-functions from Fortran to Python routines. Additionally, using Sage is not as
-extensively tested as using a seperate Python installation.
+	**) Using Sage is not as extensively tested as using a seperate
+            Python installation.
 
 LAYOUT
 ======
@@ -63,10 +67,11 @@ INSTALLATION
    where $PYTHON is the python interpreter that has NumPy and SciPy installed. If
    using Sage, replace $PYTHON with sage -python instead.
 
-   configure.py will write the Payette configuration files and the following
+   configure.py will write the Payette configuration file and the following
    executable scripts
 
    $PAYETTE_ROOT
+   |-- Payette_config.py
    | -- Toolset/
         |-- buildPayette
         |-- cleanPayette
@@ -93,13 +98,33 @@ which will run the "fast" "regression" tests. To run the full test suite execute
 
 Please note that running all of the tests takes several minutes.
 
+KNOWN ISSUES
+============
+0) callbacks
+   A callback function is a Python function accessible by Fortran subroutines
+   through a callback mechanism provided by f2py. The NumPy and SciPy packages
+   distributed by many of the different linux distributions package managers have
+   broken dependencies. In particular, callback functions seem to be broken on
+   many linux systems. The easy work around is to configure Payette with
+   --no-callback. Another work around is passing different fortran compilers to
+   configure.py (--f77exec= , --f90exec= ) and seeing if that makes a difference.
+
+1) segfault
+   A segfault error is usually a result of a broken callback.  See 0) above.
+
+2) Unable to build
+   Difficulty building Payette is usually the result of broken NumPy and SciPy
+   installations and the workaround involves reinstalling all software packages
+   from sourc. If you are uncomfortable installing these software packages from
+   source, consider using Sage to build and run Payette.
+
 TROUBLESHOOTING
 ===============
 If you experience problems when building/installing/testing Payette, you can ask
 help from Tim Fuller (tjfulle@sandia.gov) or Scot Swan (mswan@sandia.gov). Please
 include the following information in your message:
 
-0) Are you using Sage or not
+0) Are you using Sage, or not
 
 1) Platform information
 
