@@ -29,7 +29,7 @@ def runPayette(argc,argv):
     # *************************************************************************
     # -- command line option parsing
     usage = "usage: runPayette [options] <input file>"
-    parser = optparse.OptionParser(usage = usage, version = "%prog 1.0")
+    parser = optparse.OptionParser(usage = usage, version = "runPayette 1.0")
     parser.add_option("--clean",
                       dest = "clean",
                       action = "store_true",
@@ -384,7 +384,7 @@ def testPayette(argc,argv):
     # *************************************************************************
     # -- command line option parsing
     usage = "usage: testPayette [options]"
-    parser = optparse.OptionParser(usage = usage, version = "%prog 1.0")
+    parser = optparse.OptionParser(usage = usage, version = "testPayette 1.0")
     parser.add_option("-k",
                       dest = "KEYWORDS",
                       action = "append",
@@ -459,6 +459,12 @@ def testPayette(argc,argv):
 
     (topts,args) = parser.parse_args(argv)
 
+    if not os.path.isfile(Payette_Materials_File):
+        logerr("buildPayette must be run to generate "
+               "Source/Materials/Payette_installed_materials.py")
+        sys.exit(130)
+        pass
+
     # number of processors
     nproc = min(mp.cpu_count(),topts.nproc)
 
@@ -468,6 +474,7 @@ def testPayette(argc,argv):
     # adjust keywords
     if not topts.ELECTROMECH:
         topts.NOKEYWORDS.append("electromech")
+        pass
 
     # find tests
     inform(iam,"Gathering Payette tests from {0}".format(topts.TESTDIR))
@@ -935,9 +942,8 @@ def buildPayette(argc,argv):
 
     # *************************************************************************
     # -- command line option parsing
-    usage = ("usage: python %prog [options]\nmust be executed from "
-             "{0}".format(os.path.dirname("buildPayette")))
-    parser = optparse.OptionParser(usage = usage, version = "%prog 1.0")
+    usage = ("usage: buildPayette  [options]")
+    parser = optparse.OptionParser(usage = usage, version = "buildPayette 1.0")
     parser.add_option("-x","--no-build-libs",
                       dest = "nobuildlibs",
                       action = "store_true",

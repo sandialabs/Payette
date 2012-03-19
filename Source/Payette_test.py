@@ -37,6 +37,11 @@ if __name__ == "__main__":
 
 from Source.Payette_utils import *
 
+try: from Source.Materials.Payette_installed_materials import *
+except ImportError:
+    reportError(__file__,"Toolset/buildPayette must be run to create "
+                "Source/Materials/Payette_installed_materials.py")
+
 speed_kws = ["fast","medium","long"]
 type_kws = ["verification","validation","prototype","regression"]
 
@@ -309,7 +314,7 @@ class PayetteTest:
             pass
 
         if not baselinef:
-            log.error(iam,"not baseline file given")
+            log.error(iam,"no baseline file given")
             return self.badin
 
         if outf:
@@ -321,7 +326,7 @@ class PayetteTest:
             pass
 
         if not outf:
-            log.error(iam,"not out file given")
+            log.error(iam,"no out file given")
             return self.badin
 
         # read in header
@@ -854,9 +859,39 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
         pass
 
     # reqkws are user specified keywords
+    errors = 0
     if reqkws: reqkws = [x.lower() for x in reqkws]
     if unreqkws: unreqkws = [x.lower() for x in unreqkws]
     if spectests: spectests = [x.lower() for x in spectests]
+
+    # do not run the kayenta tests if kayenta not installed
+    if [x for x in ["kayenta","kayenta_ortho","kayenta_qsfail"]
+        if x not in Payette_Constitutive_Models]:
+        unreqkws.append("kayenta")
+        if "kayenta" in reqkws:
+            errors += 1
+            warn(iam,"requested kayenta tests but kayenta model not installed")
+            pass
+        pass
+
+    # do not run the piezo electric material's tests if not installed
+    if "domain_switching_ceramic" not in Payette_Constitutive_Models:
+        unreqkws.append("domain_switching_ceramic")
+        if "domain_switching_ceramic" in reqkws:
+            errors += 1
+            warn(iam,("requested domain_switching_ceramic tests but "
+                      "domain_switching_ceramic model not installed"))
+            pass
+        pass
+
+    if "piezo_ceramic" not in Payette_Constitutive_Models:
+        unreqkws.append("piezo_ceramic")
+        if "piezo_ceramic" in reqkws:
+            errors += 1
+            warn(iam,("requested piezo_ceramic tests but "
+                      "piezo_ceramic model not installed"))
+            pass
+        pass
 
     reqkws.sort()
     unreqkws.sort()
@@ -867,7 +902,6 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
         continue
 
     py_modules = {}
-    errors = 0
     for dirname,dirs,files in os.walk(test_dir):
 
         if ".svn" in dirname or "__test_dir__.py" not in files:
