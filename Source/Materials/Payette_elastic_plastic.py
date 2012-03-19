@@ -129,11 +129,9 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         d = simdat.getData("rate of deformation")
         sigold = matdat.getData("stress")
         svold = matdat.getData("extra variables")
-        a = [1,dt,self.ui,sigold,d,svold,migError,migMessage,self.nsv]
-        if not Payette_F2Py_Callback:
-            a.delete(migMessage)
-            a.delete(migError)
-            pass
+        a = [1,dt,self.ui,sigold,d,svold,migError,migMessage]
+        if not Payette_F2Py_Callback: a = a[:-2]
+        a.append(self.nsv)
         signew,svnew,usm = mtllib.diamm_calc(*a)
 
         # update data
