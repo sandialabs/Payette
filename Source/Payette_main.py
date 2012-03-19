@@ -1275,17 +1275,17 @@ def buildPayetteMaterials(payette_materials,compiler_info):
             build_error = error.errno
             pass
 
-#        except Exception as error:
-#            build_error = error.errno
-#            if build_error not in [1,2,5,10,35,40,66]:
-#                # raise what ever error came through
-#                raise
-#            else:
-#                if hasattr(error,"message"):
-#                    logwrn(error.message,pre=build_sp)
-#                else: raise
-#                pass
-#            pass
+        except Exception as error:
+            build_error = error.errno
+            if build_error not in [1,2,5,10,35,40,66]:
+                # raise what ever error came through
+                raise
+            else:
+                if hasattr(error,"message"):
+                    logwrn(error.message,pre=build_sp)
+                else: raise
+                pass
+            pass
 
         if build_error:
             errors += 1
