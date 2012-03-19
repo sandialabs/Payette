@@ -279,6 +279,7 @@ class DataContainer:
                                       "stashed value":old_value,
                                       "plotable":plotable }
         self.data_container_idx += 1
+        setattr(self,name.replace(" ","_").upper(),old_value)
         pass
 
     def registerExtraVariables(self,nextra,names,keys,values):
@@ -576,6 +577,7 @@ class DataContainer:
                     self.storeData(name,value,old=True)
                     continue
                 pass
+            setattr(self,name.replace(" ","_").upper(),value)
             return
 
         if name not in self.data_container:
@@ -586,6 +588,7 @@ class DataContainer:
 
         if value == None: value = self.getData(name,cur=True)
         self.storeData(name,value,old=True)
+        setattr(self,name.replace(" ","_").upper(),value)
 
         return
 

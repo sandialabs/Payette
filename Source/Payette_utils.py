@@ -29,7 +29,7 @@ import math
 import numpy as np
 import numpy.linalg as la
 
-from Toolset.Payette_config import *
+from Payette_config import *
 
 debug = False
 wcount, wthresh, wmax = 0, 0, 1000
@@ -662,3 +662,53 @@ def flatten(x):
             pass
         continue
     return result
+
+class BuildError(Exception):
+    def __init__(self, message, errno):
+        # errno:
+        # 1: bad input files
+        # 2: f2py failed
+        #  5 = environmental variable not found (not error)
+        # 10 = source files/directories not found
+        # 35 = Extension module not imported
+        # 40 = Bad/no sigfile
+        # 66 = No build attribute
+        self.message = message
+        self.errno = errno
+        logwrn(message)
+        pass
+
+    def __repr__(self):
+        return self.__name__
+
+    def __str__(self):
+        return repr(self.errno)
+
+def get_module_name_and_path(py_file):
+    return os.path.splitext(os.path.basename(py_file))[0],[os.path.dirname(py_file)]
+
+def begmes(msg,pre="",end="  "):
+    print("{0}{1}...".format(pre,msg),end=end)
+    return
+
+def endmes(msg,pre="",end="\n"):
+    print("{0}{1}".format(pre,msg),end=end)
+    return
+
+def loginf(msg,pre="",end="\n"):
+    print("{0}INFO: {1}".format(pre,msg),end=end)
+    return
+
+def logmes(msg,pre="",end="\n"):
+    print("{0}{1}".format(pre,msg),end=end)
+    return
+
+def logwrn(msg,pre="",end="\n"):
+    print("{0}WARNING: {1}".format(pre,msg),end=end)
+    return
+
+def logerr(msg,pre="",end="\n"):
+    print("{0}ERROR: {1}".format(pre,msg),end=end)
+    return
+
+

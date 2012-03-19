@@ -5,8 +5,8 @@ from distutils import sysconfig
 from copy import deepcopy
 from numpy.f2py import main as f2py
 
-from Toolset.Payette_config import *
-from Toolset.buildPayette import BuildError
+from Payette_config import *
+from Source.Payette_utils import BuildError
 from Source.Materials.Payette_build_material import MaterialBuilder
 
 class Build(MaterialBuilder):
@@ -40,12 +40,12 @@ class Build(MaterialBuilder):
         self.build_extension_module_with_f2py()
 
         # remove cruft
-        for srcf in self.source_files:
-            try: os.remove(srcf)
-            except: pass
-            continue
-        try: os.remove(os.path.join(fdir,"host_defines.h"))
-        except: pass
+        #for srcf in self.source_files:
+        #    try: os.remove(srcf)
+        #    except: pass
+        #    continue
+        #try: os.remove(os.path.join(fdir,"host_defines.h"))
+        #except: pass
 
         return 0
 
@@ -66,12 +66,6 @@ class Build(MaterialBuilder):
         retcode, kmmsrcf = release.main(kmmcmd)
         if retcode != 0:
             raise BuildError("kayenta release script failed",10)
-
-        # remove extension module files if they exist
-        for d in [self.source_directory,Payette_Materials_Library]:
-            try: os.remove(os.path.join(d,self.libname))
-            except: pass
-            continue
 
         return kmmsrcf
 

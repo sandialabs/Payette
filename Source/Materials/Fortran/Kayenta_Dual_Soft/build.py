@@ -7,8 +7,8 @@ from copy import deepcopy
 from numpy.f2py import main as f2py
 
 
-from Toolset.Payette_config import *
-from Toolset.buildPayette import BuildError
+from Payette_config import *
+from Source.Payette_utils import BuildError
 from Source.Materials.Payette_build_material import MaterialBuilder
 
 class Build(MaterialBuilder):

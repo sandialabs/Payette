@@ -5,8 +5,8 @@ from distutils import sysconfig
 from copy import deepcopy
 from numpy.f2py import main as f2py
 
-from Toolset.Payette_config import *
-from Toolset.buildPayette import BuildError,get_module_name_and_path
+from Payette_config import *
+from Payette_utils import BuildError,get_module_name_and_path
 
 class MaterialBuilder():
 
@@ -16,17 +16,23 @@ class MaterialBuilder():
         self.source_directory = srcd
         self.source_files = []
         self.libname = libname
+        self.pre_directives = []
 
         # signature file and migutils
-        if not sigf and Payette_F2Py_Callback:
-            self.signature_file = os.path.join(srcd, self.name + ".python-2.pyf")
-            self.pre_directives = ["-UNOPYCALLBACK"]
-        elif not sigf:
-            self.signature_file = os.path.join(srcd, self.name + ".python-3.pyf")
-            self.pre_directives = ["-DNOPYCALLBACK"]
+        if not sigf:
+            self.signature_file = os.path.join(srcd, self.name + ".signature.pyf")
         else:
             self.signature_file = sigf
-            self.pre_directives = []
+            pass
+
+        self.nocallback_file = os.path.join(self.source_directory,
+                                            "nocallback.signature.pyf")
+
+        # format the signature file
+        self.format_signature_file()
+
+        if not Payette_F2Py_Callback:
+            self.pre_directives.append("-DNOPYCALLBACK")
             pass
 
         if not os.path.isfile(self.signature_file):
@@ -98,6 +104,18 @@ class MaterialBuilder():
         sys.argv = deepcopy(tmp)
         sys.stdout, sys.stderr  = sys.__stdout__, sys.__stderr__
 
+        # remove nocallback_file, if it exists
+        try: os.remove(self.nocallback_file)
+        except: pass
+
+        # remove object files
+        for f in self.source_files:
+            fnam,fext = os.path.splitext(f)
+            obj = fnam + ".o"
+            try: os.remove(obj)
+            except: pass
+            continue
+
         if not built:
             raise BuildError("failed to build {0} with f2py, see {1}"
                              .format(self.libname,echo),2)
@@ -120,4 +138,56 @@ class MaterialBuilder():
         except: pass
 
         return 0
+
+    def format_signature_file(self):
+
+        """ format signature file from original sigature file """
+
+        if Payette_F2Py_Callback:
+            return
+
+        sigf_lines = open(self.signature_file,"r").readlines()
+
+        in_callback = False
+        user_routines = []
+        lines = []
+        for line in sigf_lines:
+
+            if not line.split(): continue
+
+            if "end python module payette__user__routines" in line:
+                in_callback = False
+                continue
+
+            if "use payette__user__routines" in line: continue
+
+            if "python module payette__user__routines" in line:
+                in_callback = True
+                continue
+
+            if in_callback:
+                if line.split() and line.split()[0] == "subroutine":
+                    sub = line.split("(")[0].strip()[len("subroutine"):].strip()
+                    user_routines.append(sub)
+                    pass
+                continue
+
+            lines.append(line)
+
+            continue
+
+        self.signature_file = self.nocallback_file
+
+        with open(self.signature_file,"w") as f:
+
+            for line in lines:
+                if [x for x in user_routines if x in line.split()]: continue
+                f.write(line)
+                continue
+
+            pass
+
+        return
+
+
 

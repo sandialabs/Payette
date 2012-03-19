@@ -1,3 +1,0 @@
-#!/bin/sh
-
-../Toolset/buildPayette.py -W

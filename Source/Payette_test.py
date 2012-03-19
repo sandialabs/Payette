@@ -870,7 +870,7 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
     errors = 0
     for dirname,dirs,files in os.walk(test_dir):
 
-        if ".svn" in dirname:
+        if ".svn" in dirname or "__test_dir__.py" not in files:
             continue
 
         for fname in files:

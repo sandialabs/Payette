@@ -158,6 +158,6 @@ class Elastic(ConstitutiveModelPrototype):
     def _set_field(self,*args,**kwargs):
         a = [self.ui,self.ui,self.ui,migError,migMessage]
         if not Payette_F2Py_Callback: a = a[:-2]
-        else: return mtllib.hookerxv(*a)
-        pass
+        field = mtllib.hookerxv(*a)
+        return field
 
