@@ -333,7 +333,7 @@ def configurePayette(argc,argv):
 
     # create the runPayette, testPayette, and buildPayette
     # executables
-    loginf("\nwriting executable scripts")
+    loginf("writing executable scripts")
 
     for item in [[Payette_runPayette,"run"],[Payette_testPayette,"test"],
                  [Payette_buildPayette,"build"],[Payette_cleanPayette,"clean"]]:

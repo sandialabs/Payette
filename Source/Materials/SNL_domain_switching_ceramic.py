@@ -179,10 +179,10 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         rotation = toArray(rotation,symmetric=False)
         Rstretch = toArray(Rstretch,symmetric=True)
 
-        args = [1,self.ui,self.ui,self.dc,svold,Rstretch,rotation,efield,
+        argv = [1,self.ui,self.ui,self.dc,svold,Rstretch,rotation,efield,
                 sigold,migError,migMessage]
-        if not Payette_F2Py_Callback: args = args[:-2]
-        svnew,permtv,polrzn,edisp,signew = mtllib.qsedr7(*args)
+        if not Payette_F2Py_Callback: argv = argv[:-2]
+        svnew,permtv,polrzn,edisp,signew = mtllib.qsedr7(*argv)
 
         # update data
         simdat.storeData("permittivity",permtv)
@@ -197,9 +197,9 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
     def _check_props(self,**kwargs):
         props = np.array(self.ui0)
         dc = np.zeros(13)
-        args = [props,props,dc,migError,migMessage]
-        if not Payette_F2Py_Callback: args = args[-2:]
-        props,dc = mtllib.qseck7(*args)
+        argv = [props,props,dc,migError,migMessage]
+        if not Payette_F2Py_Callback: argv = argv[-2:]
+        props,dc = mtllib.qseck7(*argv)
         return props,dc
 
     def _set_field(self,*args,**kwargs):
@@ -215,7 +215,7 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         bkd = np.zeros(lbd)
         ibflg = 0
         argv = [ibflg,lbd,ui,ui,dc,nsv,bkd,lbd,sv,migError,migMessage]
-        if not Payette_F2Py_Callback: args = args[:-2]
+        if not Payette_F2Py_Callback: argv = argv[:-2]
         ui,bkd,permtv,polrzn,sv = mtllib.dsc_init(*argv)
 
         return ui,nsv,namea,keya,sv,rdim,iadvct,itype,iscal,bkd,permtv,polrzn
