@@ -40,12 +40,12 @@ class Build(MaterialBuilder):
         self.build_extension_module_with_f2py()
 
         # remove cruft
-        #for srcf in self.source_files:
-        #    try: os.remove(srcf)
-        #    except: pass
-        #    continue
-        #try: os.remove(os.path.join(fdir,"host_defines.h"))
-        #except: pass
+        for srcf in self.source_files:
+            try: os.remove(srcf)
+            except: pass
+            continue
+        try: os.remove(os.path.join(fdir,"host_defines.h"))
+        except: pass
 
         return 0
 

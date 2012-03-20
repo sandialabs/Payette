@@ -358,6 +358,8 @@ def setupOutputFile(simdat,matdat,restart):
         dtable.write("\n")
         pass
 
+    writeAvailableDataToLog(simdat,matdat)
+
     return
 
 def writeState(simdat,matdat):
@@ -384,15 +386,6 @@ def writeMathPlot(simdat,matdat):
     outfile = simdat.outfile
     plotable = simdat.mathplot_vars
     parameter_table = matdat.parameter_table
-
-    # private functions
-    def writePlotable(idx,key,isplotable,name,val):
-        # write to the logfile the available variables
-        if isplotable: token = "plotable"
-        else: token = "no request"
-        writeToLog("{0:<3d} {1:<10s}: {2:<10s} = {3:<50s} = {4:12.5E}"
-                   .format(idx,token,key,name,val))
-        return
 
     # math1 is a file containing user inputs, and locations of simulation output
     # for mathematica to use
@@ -454,15 +447,31 @@ def writeMathPlot(simdat,matdat):
 
         pass
 
+    return
+
+def writeAvailableDataToLog(simdat,matdat):
+
+    plotable = simdat.mathplot_vars
+    lowplotable = [x.lower() for x in plotable]
+
+    def write_plotable(idx,key,isplotable,name,val):
+        # write to the logfile the available variables
+        if isplotable: token = "plotable"
+        else: token = "no request"
+        writeToLog("{0:<3d} {1:<10s}: {2:<10s} = {3:<50s} = {4:12.5E}"
+                   .format(idx,token,key,name,val))
+        return
+
     # write to the log file what is plotable and not requested, along with inital
     # value
+    writeToLog("Summary of available output")
+
     # time
     time = simdat.getData("time")
     key = simdat.getPlotKey("time")
     name = simdat.getPlotName("time")
-    writeToLog("Summary of available output")
     idx, val = 1, time
-    writePlotable(idx,key,key.lower() in lowplotable,name,val)
+    write_plotable(idx,key,key.lower() in lowplotable,name,val)
 
     # stress
     sig = matdat.getData("stress")
@@ -470,7 +479,7 @@ def writeMathPlot(simdat,matdat):
     names = matdat.getPlotName("stress")
     for i, val in enumerate(sig):
         idx = idx+1
-        writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
+        write_plotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
         continue
 
     # dstress/dt
@@ -479,7 +488,7 @@ def writeMathPlot(simdat,matdat):
     names = matdat.getPlotName("stress rate")
     for i, val in enumerate(dsigdt):
         idx = idx+1
-        writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
+        write_plotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
         continue
 
     # strain
@@ -488,7 +497,7 @@ def writeMathPlot(simdat,matdat):
     names = simdat.getPlotName("strain")
     for i, val in enumerate(eps):
         idx = idx+1
-        writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
+        write_plotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
         continue
 
     # sym(velocity gradient)
@@ -497,7 +506,7 @@ def writeMathPlot(simdat,matdat):
     names = simdat.getPlotName("rate of deformation")
     for i, val in enumerate(d):
         idx = idx+1
-        writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
+        write_plotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
         continue
 
     # deformation gradient
@@ -506,7 +515,7 @@ def writeMathPlot(simdat,matdat):
     names = simdat.getPlotName("deformation gradient")
     for i, val in enumerate(defgrad):
         idx = idx+1
-        writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
+        write_plotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
         continue
 
     # extra variables
@@ -515,7 +524,7 @@ def writeMathPlot(simdat,matdat):
         idx = idx+1
         name = matdat.getExName(i)
         key = matdat.getPlotKey(name)
-        writePlotable(idx,key,key.lower() in lowplotable,name,val)
+        write_plotable(idx,key,key.lower() in lowplotable,name,val)
         continue
 
     if matdat.electric_field_model:
@@ -525,7 +534,7 @@ def writeMathPlot(simdat,matdat):
         names = simdat.getPlotName("electric field")
         for i, val in enumerate(efield):
             idx = idx+1
-            writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
+            write_plotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
             continue
 
         # polarization
@@ -534,7 +543,7 @@ def writeMathPlot(simdat,matdat):
         names = matdat.getPlotName("polarization")
         for i, val in enumerate(polrzn):
             idx = idx+1
-            writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
+            write_plotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
             continue
 
         # electric displacement
@@ -543,7 +552,7 @@ def writeMathPlot(simdat,matdat):
         names = matdat.getPlotName("electric displacement")
         for i, val in enumerate(edisp):
             idx = idx+1
-            writePlotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
+            write_plotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
             continue
         pass
 

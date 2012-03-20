@@ -29,7 +29,6 @@ import re
 import imp
 import math
 import numpy as np
-import scipy.linalg
 import time
 
 from Source.Payette_utils import *

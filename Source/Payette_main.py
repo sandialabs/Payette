@@ -275,7 +275,8 @@ def runPayette(argc,argv):
         # read the user input
         user_input_dict = readUserInput(input_lines,opts.cchar)
         if not user_input_dict:
-            sys.exit("ERROR: user input not found in {0:s}".format(infile))
+            sys.exit("ERROR: user input not found in {0:s}"
+                     .format(", ".join(foundf)))
             pass
         pass
     # ------------------------------------------------------- end: get user input
