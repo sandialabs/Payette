@@ -65,8 +65,18 @@ def configurePayette(argc,argv):
         pass
 
     # intro message
-    loginf("Configuring Payette: An Object Oriented Material Model Driver\n",
-           pre="\n")
+    intro_message = """
+            PPPPPPPPP      A    Y        Y EEEEE TTTTTTTTTTT TTTTTTTTTTT EEEEEE
+           P        P    A A     Y     Y  E           T          T      E
+          P        P   A   A      Y  Y   E           T          T      E
+         PPPPPPPPP   A  A  A       Y    EEEE        T          T      EEEE
+        P          A       A     Y     E           T          T      E
+       P         A         A   Y      E           T          T      E
+      P        A           A Y       EEEEEEEE    T          T      EEEEEEEE
+
+                    An Object Oriented Material Model Driver
+    """
+    logmes(intro_message)
 
     # python interpreter info
     Payette_pyint = os.path.realpath(sys.executable)
@@ -297,7 +307,8 @@ def configurePayette(argc,argv):
     # write the the configuration file
     begmes("writing Payette_config.py",pre=sp)
     with open(Payette_config_file,"w") as f:
-        f.write(intro())
+        f.write(intro)
+        f.write('Payette_intro = """{0}"""\n'.format(intro_message))
         for key,value in payette_config.items():
             f.write(dictfrmt(key,value) + "\n")
             continue
@@ -454,8 +465,7 @@ main()
     os.chmod(f2py,0o750)
     return f2py
 
-def intro():
-    return """# ****************************************************************************** #
+intro = """# ****************************************************************************** #
 #                                                                                #
 # This file was generated automatically by the Payette. It contains important    #
 # global Payette parameters that are configured at build time.                   #

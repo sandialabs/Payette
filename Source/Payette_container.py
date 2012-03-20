@@ -89,6 +89,9 @@ class Payette:
         try: os.remove(logfile)
         except: pass
         setupLogger(logfile,loglevel)
+
+        reportMessage(__file__,Payette_intro,pre="")
+
         msg = "setting up simulation %s"%simname
         reportMessage(__file__,msg)
 
@@ -129,6 +132,7 @@ class Payette:
         self.simdat.registerData("electric field","Vector",
                                  init_val = np.zeros(3),
                                  plot_key = "efield")
+
         # non-plotable data
         self.simdat.registerData("prescribed stress","Array",
                                  init_val = np.zeros(6))
@@ -228,6 +232,15 @@ class Payette:
 
         # write out properties
         if not opts.nowriteprops: self.writeMaterialParameters()
+
+        # if the material does not support electric fields, remove the electric
+        # field data from the simdat data container, we must register and then
+        # unregister because at the time that the material model is instantiated,
+        # we do not know if it supports electric fields. Those models that do
+        # support electric fields need to know the initial value at setup.
+        if not self.simdat.EFIELD_SIM:
+            self.simdat.unregisterData("electric field")
+            self.simdat.unregisterData("permittivity")
 
         pass
 
@@ -598,9 +611,9 @@ class Payette:
         return self.simdat
 
     def writeMaterialParameters(self):
-        with open( self.simdat.simname + ".props", "w" ) as f:
+        with open( self.simdat.SIMNAME + ".props", "w" ) as f:
             matdat = self.material.materialData()
-            for item in matdat.parameter_table:
+            for item in matdat.PARAMETER_TABLE:
                 key = item["name"]
                 val = item["adjusted value"]
                 f.write("{0:s} = {1:12.5E}\n".format(key,val))
@@ -609,8 +622,8 @@ class Payette:
         return
 
     def setupRestart(self):
-        setupLogger(self.simdat.logfile,self.simdat.loglevel)
-        msg = "setting up simulation %s"%self.simdat.simname
+        setupLogger(self.simdat.LOGFILE,self.simdat.LOGLEVEL)
+        msg = "setting up simulation %s"%self.simdat.SIMNAME
         reportMessage(__file__,msg)
 
 if __name__ == "__main__":

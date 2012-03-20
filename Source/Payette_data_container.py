@@ -282,6 +282,11 @@ class DataContainer:
         setattr(self,name.replace(" ","_").upper(),old_value)
         pass
 
+    def unregisterData(self,name):
+        """ unregister data with the data container """
+        try: del self.data_container[name]
+        except: reportWarning(iam,"attempting to unregistered non-registered data")
+
     def registerExtraVariables(self,nextra,names,keys,values):
         """ register extra data with the data container """
 
@@ -323,7 +328,7 @@ class DataContainer:
             pass
 
         self.option_container[name] = val
-        setattr(self,name.replace(" ","_"),val)
+        setattr(self,name.replace(" ","_").upper(),val)
         pass
 
     def getAllOptions(self):

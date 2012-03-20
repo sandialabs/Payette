@@ -206,14 +206,16 @@ class Kayenta(ConstitutiveModelPrototype):
             # strain increment.
             void = svnew[47]
             n = simdat.getData("number of steps")
-            msg = ( """Kayenta returned with CRACK < 0, requesting void of [{0}]
-on step [{1}]""".format(void,n) )
+            msg = ( "Kayenta returned with CRACK < 0, requesting void of "
+                    "[{0}] on step [{1}]".format(void,n) )
             reportError(iam,msg)
+            pass
 
         matdat.storeData("stress",signew)
         matdat.storeData("extra variables",svnew)
 
         return
+
     # Private methods
     def _check_props(self):
         props = np.array(self.ui0)

@@ -87,9 +87,9 @@ def writeWarning(f,msg):
     sys.stdout.write("WARNING: {0:s}\n".format(msg))
     return
 
-def reportMessage(f,msg):
+def reportMessage(f,msg,pre="INFO: "):
 #    msg = 'INFO: {0} (reported from [{1}])\n'.format(msg,f)
-    msg = 'INFO: {0}\n'.format(msg)
+    msg = '{0}{1}\n'.format(pre,msg)
     simlog.write(msg)
     if loglevel > 0: sys.stderr.write(msg)
     return
@@ -326,8 +326,8 @@ def textformat(var):
 def setupOutputFile(simdat,matdat,restart):
 
     global ofile,vtable,dtable,plot_keys
-    if restart: ofile = open(simdat.outfile,'a')
-    else: ofile = open(simdat.outfile,'w')
+    if restart: ofile = open(simdat.OUTFILE,'a')
+    else: ofile = open(simdat.OUTFILE,'w')
 
     # get the plot keys from the simvars
     plot_keys = simdat.plotKeys()
@@ -337,9 +337,9 @@ def setupOutputFile(simdat,matdat,restart):
     for head in plot_keys: ofile.write(textformat(head))
     ofile.write('\n')
 
-    if simdat.write_vandd_table:
-        vname = os.path.splitext(simdat.outfile)[0] + ".vtable"
-        dname = os.path.splitext(simdat.outfile)[0] + ".dtable"
+    if simdat.WRITE_VANDD_TABLE:
+        vname = os.path.splitext(simdat.OUTFILE)[0] + ".vtable"
+        dname = os.path.splitext(simdat.OUTFILE)[0] + ".dtable"
 
         # set up velocity and displacement table files
         if restart: vtable = open(vname,'a')
@@ -381,11 +381,11 @@ def writeMathPlot(simdat,matdat):
     Write the $SIMNAME.math1 file for mathematica post processing
     """
 
-    math1 = simdat.math1
-    math2 = simdat.math2
-    outfile = simdat.outfile
-    plotable = simdat.mathplot_vars
-    parameter_table = matdat.parameter_table
+    math1 = simdat.MATH1
+    math2 = simdat.MATH2
+    outfile = simdat.OUTFILE
+    plotable = simdat.MATHPLOT_VARS
+    parameter_table = matdat.PARAMETER_TABLE
 
     # math1 is a file containing user inputs, and locations of simulation output
     # for mathematica to use
@@ -451,7 +451,7 @@ def writeMathPlot(simdat,matdat):
 
 def writeAvailableDataToLog(simdat,matdat):
 
-    plotable = simdat.mathplot_vars
+    plotable = simdat.MATHPLOT_VARS
     lowplotable = [x.lower() for x in plotable]
 
     def write_plotable(idx,key,isplotable,name,val):
@@ -527,7 +527,7 @@ def writeAvailableDataToLog(simdat,matdat):
         write_plotable(idx,key,key.lower() in lowplotable,name,val)
         continue
 
-    if matdat.electric_field_model:
+    if simdat.EFIELD_SIM:
         # electric field
         efield = simdat.getData("electric field")
         keys = simdat.getPlotKey("electric field")

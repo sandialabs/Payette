@@ -255,7 +255,7 @@ def func(depsdt_opt,material,simdat,matdat):
 
     # check the error
     error = 0.
-    if not simdat.proportional:
+    if not simdat.PROPORTIONAL:
         for i, j in enumerate(v):
             error += (sig[j] - prsig[i])**2
             continue

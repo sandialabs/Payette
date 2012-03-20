@@ -137,7 +137,7 @@ def runProblem(the_model,**kwargs):
     simdat = the_model.simulationData()
 
     # --- options
-    verbose = simdat.verbosity > 0
+    verbose = simdat.VERBOSITY > 0
 
     # --- data
     ileg = int(simdat.getData("leg number"))
@@ -149,18 +149,18 @@ def runProblem(the_model,**kwargs):
     sig_hld = np.zeros(6)
 
     # --- material data
-    material = simdat.material
+    material = simdat.MATERIAL
     matdat = material.materialData()
     J0 = matdat.getData("jacobian")
 
     # -------------------------------------------------------- initialize model
     # --- start output file and Mathematica files
-    msg = "starting calculations for simulation %s"%simdat.getOption("simname")
+    msg = "starting calculations for simulation %s"%simdat.SIMNAME
     reportMessage(iam,msg)
     setupOutputFile(simdat,matdat,restart)
 
     # write the mathematica files
-    if simdat.mathplot_vars: writeMathPlot(simdat,matdat)
+    if simdat.MATHPLOT_VARS: writeMathPlot(simdat,matdat)
 
     # --- call the material model with zero state
     if ileg == 0:
@@ -178,13 +178,13 @@ def runProblem(the_model,**kwargs):
     for leg in legs:
 
         # test restart capability
-        if simdat.test_restart and not restart:
+        if simdat.TEST_RESTART and not restart:
             if ileg == int(len(legs)/2):
                 print('\n\nStopping to test Payette restart capabilities.\n'
                       'Restart the simulation by executing\n\n'
                       '\t\trunPayette %s.prf\n\n'
                       %os.path.splitext(os.path.basename(
-                            simdat.getOption("outfile")))[0])
+                            simdat.OUTFILE))[0])
                 sys.exit(76)
                 pass
             pass
@@ -194,16 +194,19 @@ def runProblem(the_model,**kwargs):
         delt = t_end - t_beg
         if delt == 0.: continue
         nv, dflg = 0, list(set(ltype))
-        nprints = simdat.nprints if simdat.nprints else nsteps
-        if simdat.emit == "sparse": nprints = min(10,nsteps)
+        nprints = simdat.NPRINTS if simdat.NPRINTS else nsteps
+        if simdat.EMIT == "sparse": nprints = min(10,nsteps)
         print_interval = max(1,int(nsteps/nprints))
 
         # pass values from the end of the last leg to beginning of this leg
         eps_beg = simdat.getData("strain")
         sig_beg = matdat.getData("stress")
         F_beg = simdat.getData("deformation gradient")
-        efld_beg = simdat.getData("electric field")
         v = simdat.getData("prescribed stress components")
+        if simdat.EFIELD_SIM:
+            efld_beg = simdat.getData("electric field")
+            pass
+
         if len(v):
             prsig_beg = simdat.getData("prescribed stress")
             j = 0
@@ -226,7 +229,10 @@ def runProblem(the_model,**kwargs):
         #       for ltype = 4: Pf at t_end -> prdef
         #       for ltype = 5: F_end at t_end -> prdef
         #       for ltype = 6: efld_end at t_end-> prdef
-        eps_end, F_end, efld_end = Z6, I9, Z3
+        eps_end, F_end = Z6, I9
+        if simdat.EFIELD_SIM:
+            efld_end = Z3
+            pass
 
         # if stress is prescribed, we don't compute sig_end just yet, but sig_hld
         # which holds just those values of stress that are actually prescribed.
@@ -234,7 +240,14 @@ def runProblem(the_model,**kwargs):
 
         for i in range(len(prdef)):
 
-            if ltype[i] == 0: continue
+            if ltype[i] not in [0, 1, 2, 3, 4, 5, 6 ]:
+                msg = ('\nERROR: Invalid load type (ltype) parameter\n'
+                       'prescribed for leg %i\n'%lnum)
+                reportError(iam,msg)
+                return 1
+
+            if ltype[i] == 0:
+                continue
 
             # -- strain rate
             elif i < 6 and ltype[i] == 1:
@@ -256,17 +269,15 @@ def runProblem(the_model,**kwargs):
                 vdum[nv] = i
                 nv += 1
 
-            elif ltype[i] == 5:                # deformation gradient
+            # deformation gradient
+            elif ltype[i] == 5:
                 F_end[i] = prdef[i]
 
-            elif i >= 9 and ltype[i] == 6:                # electric field
+            # electric field
+            elif simdat.EFIELD_SIM and ( i >= 9 and ltype[i] == 6 ):
                 efld_end[i-9] = prdef[i]
+                pass
 
-            else:
-                msg = ('\nERROR: Invalid load type (ltype) parameter\n'
-                       'prescribed for leg %i\n'%lnum)
-                reportError(iam,msg)
-                return 1
             continue
 
         v = vdum[0:nv]
@@ -294,7 +305,9 @@ def runProblem(the_model,**kwargs):
 
             F_int = a1*F_beg + a2*F_end
 
-            efld_int = a1*efld_beg + a2*efld_end
+            if simdat.EFIELD_SIM:
+                efld_int = a1*efld_beg + a2*efld_end
+                pass
 
             # --- initial guess for depsdt[v]
             if len(v):
@@ -311,7 +324,9 @@ def runProblem(the_model,**kwargs):
             # advance known values to end of step
             simdat.advanceData("time",t)
             simdat.advanceData("time step",dt)
-            simdat.advanceData("electric field",efld_int)
+            if simdat.EFIELD_SIM:
+                simdat.advanceData("electric field",efld_int)
+                pass
 
             # --- find d (symmetric part of velocity gradient)
             if not len(v):
@@ -348,7 +363,7 @@ def runProblem(the_model,**kwargs):
             simdat.advanceData("strain")
             simdat.advanceData("equivalent strain")
 
-            if simdat.use_table:
+            if simdat.USE_TABLE:
                 # use the actual table values, not the values computed above
                 if dflg == [1] or dflg == [2] or dflg == [1,2]:
                     simdat.advanceData("strain",eps_int)
@@ -367,7 +382,7 @@ def runProblem(the_model,**kwargs):
 
             # multilevel failure. since there is only one element, it really
             # isn't multilevel
-            if matdat.multi_level_fail:
+            if matdat.MULTI_LEVEL_FAIL:
                 sv = matdat.getData("extra variables")
                 if sv[cmod.cflg_idx] == 1:
                     reportMessage(iam,"multilevel failure beginning")
@@ -384,7 +399,7 @@ def runProblem(the_model,**kwargs):
                 writeState(simdat,matdat)
                 pass
 
-            if simdat.screenout or ( verbose and (2*n - nsteps) == 0 ):
+            if simdat.SCREENOUT or ( verbose and (2*n - nsteps) == 0 ):
                 msg = 'leg %i, step %i, time %f, dt %f'%(lnum,n,t,dt)
                 reportMessage(iam,msg)
                 pass
@@ -395,7 +410,7 @@ def runProblem(the_model,**kwargs):
                 return 0
 
             # ------------------------------------------ begin{end of step SQA}
-            if simdat.sqa:
+            if simdat.SQA:
                 if dflg == [1] or dflg == [2] or dflg == [1,2]:
                     eps_tmp = simdat.getData("strain")
                     max_diff = np.max(np.abs(eps_tmp - eps_int))
@@ -431,16 +446,16 @@ def runProblem(the_model,**kwargs):
         simdat.advanceData("leg number",ileg+1)
         ileg += 1
 
-        if simdat.write_vandd_table:
-            writeVelAndDispTable(simdat.initial_time, simdat.termination_time,
-                                 t_beg,t_end,eps_beg,eps_end,simdat.kappa)
+        if simdat.WRITE_VANDD_TABLE:
+            writeVelAndDispTable(simdat.INITIAL_TIME, simdat.TERMINATION_TIME,
+                                 t_beg,t_end,eps_beg,eps_end,simdat.KAPPA)
             pass
 
         # advances time must come after writing the v & d tables above
         t_beg = t_end
 
-        if simdat.write_restart:
-            with open(simdat.rfile,'wb') as f: pickle.dump(the_model,f,2)
+        if simdat.WRITE_RESTART:
+            with open(simdat.RFILE,'wb') as f: pickle.dump(the_model,f,2)
             pass
 
         # --- print message to screen
@@ -451,7 +466,7 @@ def runProblem(the_model,**kwargs):
 
 
         # ----------------------------------------------- begin{end of leg SQA}
-        if simdat.sqa:
+        if simdat.SQA:
             if dflg == [1] or dflg == [2] or dflg == [1,2]:
                 eps_tmp = simdat.getData("strain")
                 max_diff = np.max(np.abs(eps_tmp - eps_end))

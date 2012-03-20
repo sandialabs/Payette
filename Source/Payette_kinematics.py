@@ -85,7 +85,7 @@ def velGradCompFromE(simdat):
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     '''
     # convert passed arrays to matrices
-    k = simdat.kappa
+    k = simdat.KAPPA
     dt = simdat.getData("time step")
     E0 = simdat.getData("strain",form="Matrix")
     Ef = simdat.getData("prescribed strain",form="Matrix")
@@ -95,7 +95,7 @@ def velGradCompFromE(simdat):
     Ri = R.T
 
     # stretch and its rate
-    U = rightStretch(k,Ef,simdat.strict)
+    U = rightStretch(k,Ef,simdat.STRICT)
     Ui = la.inv(U)
     X = 0.5*(la.inv(k*Ef + I) + la.inv(k*E0 + I)) # center X on half step
     dUdt = U*X*dEdt
@@ -204,7 +204,7 @@ def velGradCompFromP(material,simdat,matdat):
     v = simdat.getData("prescribed stress components")
     nv = len(v)
 
-    if not simdat.proportional:
+    if not simdat.PROPORTIONAL:
 
         converged = piter.newton(material,simdat,matdat)
 
@@ -277,16 +277,16 @@ def updateDeformation(simdat):
     '''
     iam = "updateDeformation(simdat,matdat)"
 
-    k = simdat.kappa
+    k = simdat.KAPPA
     dt = simdat.getData("time step")
     F0 = simdat.getData("deformation gradient",form="Matrix")
     d = simdat.getData("rate of deformation",form="Matrix")
     w = simdat.getData("vorticity",form="Matrix")
 
-    Ff = expm((d + w)*dt,simdat.strict)*F0
-    U = sqrtm((Ff.T)*Ff,simdat.strict)
-    if k == 0: E = logm(U,simdat.strict)
-    else: E = 1./k*(powm(U,k,simdat.strict) - I)
+    Ff = expm((d + w)*dt,simdat.STRICT)*F0
+    U = sqrtm((Ff.T)*Ff,simdat.STRICT)
+    if k == 0: E = logm(U,simdat.STRICT)
+    else: E = 1./k*(powm(U,k,simdat.STRICT) - I)
 
     if np.linalg.det(Ff) <= 0.:
         reportError(iam,"negative Jacobian encountered")
