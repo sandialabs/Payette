@@ -152,7 +152,7 @@ def velGradCompFromF(simdat):
     simdat.storeData("rate of deformation",d)
     return
 
-def velGradCompFromP(material,simdat,matdat):
+def velGradCompFromP(simdat,matdat):
     '''
     NAME
        velGradCompFromP
@@ -200,6 +200,7 @@ def velGradCompFromP(material,simdat,matdat):
                    python implementation
     '''
 
+    material = simdat.MATERIAL
     depsdt_old = simdat.getData("strain rate")
     v = simdat.getData("prescribed stress components")
     nv = len(v)

@@ -305,29 +305,26 @@ class PayetteTest:
         # open the log file
         log = TestLogger(self.name + ".diff","w")
 
-        if baselinef:
-            if not os.path.isfile(baselinef):
-                log.error(iam,"sent baseline file not found")
-                errors += 1
-        else:
+        if not baselinef:
             baselinef = self.baseline
             pass
 
-        if not baselinef:
-            log.error(iam,"no baseline file given")
-            return self.badin
-
-        if outf:
-            if not os.path.isfile(outf):
-                log.error(iam,"sent output file not found")
-                errors += 1
-        else:
-            outf = self.outfile
+        if not os.path.isfile(baselinef):
+            log.error(iam,"baseline file not found {0}".format(self.name))
+            errors += 1
             pass
 
         if not outf:
-            log.error(iam,"no out file given")
-            return self.badin
+            outf = self.outfile
+            pass
+
+        if not os.path.isfile(outf):
+            log.error(iam,"output file not found for {0}".format(self.name))
+            errors += 1
+            pass
+
+        if errors:
+            return badincode
 
         # read in header
         outheader = [x.lower() for x in self.get_header(outf)]
@@ -335,12 +332,14 @@ class PayetteTest:
 
         if outheader[0] != "time":
             errors += 1
-            log.error(iam,"time not first column of {0}".format(outf))
+            log.error(iam,"time not first column of {0} for {1}".format(outf,
+                                                                        self.name))
             pass
 
         if goldheader[0] != "time":
             errors += 1
-            log.error(iam,"time not first column of {0}".format(baselinef))
+            log.error(iam,"time not first column of {0} for {1}".format(baselinef,
+                                                                        self.name))
             pass
 
         if errors:
@@ -865,8 +864,7 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
     if spectests: spectests = [x.lower() for x in spectests]
 
     # do not run the kayenta tests if kayenta not installed
-    if [x for x in ["kayenta","kayenta_ortho","kayenta_qsfail"]
-        if x not in Payette_Constitutive_Models]:
+    if "kayenta" not in Payette_Installed_Materials:
         unreqkws.append("kayenta")
         if "kayenta" in reqkws:
             errors += 1

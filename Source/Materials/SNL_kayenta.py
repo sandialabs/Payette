@@ -61,7 +61,7 @@ class Kayenta(ConstitutiveModelPrototype):
         self.aliases = attributes["aliases"]
         self.imported = imported
 
-        nbasicinput,njntinputs,neos = 70,0,27
+        nbasicinput,njntinputs,neos = 70,12,27
         ib = nbasicinput + njntinputs - 1
         self.registerParameter("B0",0,aliases=['BKMOD'])
         self.registerParameter("B1",1,aliases=[])
@@ -133,6 +133,18 @@ class Kayenta(ConstitutiveModelPrototype):
         self.registerParameter("CTPSF",67,aliases=['CUTPSF'])
         self.registerParameter("YSLOPEI",68,aliases=[])
         self.registerParameter("YSLOPEF",69,aliases=[])
+        self.registerParameter("CKN01",70,aliases=['CKN01', 'CN1'])
+        self.registerParameter("VMAX1",71,aliases=['VMAX1', 'VM1'])
+        self.registerParameter("SPACE1",72,aliases=['SPACE1'])
+        self.registerParameter("SHRSTIFF1",73,aliases=['SHRSTIFF1', 'ST1'])
+        self.registerParameter("CKN02",74,aliases=['CKN02', 'CN2'])
+        self.registerParameter("VMAX2",75,aliases=['VMAX2', 'VM2'])
+        self.registerParameter("SPACE2",76,aliases=['SPACE2'])
+        self.registerParameter("SHRSTIFF2",77,aliases=['SHRSTIFF2', 'ST2'])
+        self.registerParameter("CKN03",78,aliases=['CKN03', 'CN3'])
+        self.registerParameter("VMAX3",79,aliases=['VMAX3', 'VM3'])
+        self.registerParameter("SPACE3",80,aliases=['SPACE3'])
+        self.registerParameter("SHRSTIFF3",81,aliases=['SHRSTIFF3', 'ST3'])
         self.registerParameter("TMPRXP",ib+1,aliases=[])
         self.registerParameter("THERM01",ib+2,aliases=['THERM1'])
         self.registerParameter("THERM02",ib+3,aliases=['THERM2'])
@@ -192,14 +204,13 @@ class Kayenta(ConstitutiveModelPrototype):
         '''
         iam = self.name + ".updateState(self,simdat,matdat)"
         dt = simdat.getData("time step")
-        dtsent = simdat.getData("time step")
         d = simdat.getData("rate of deformation")
         sigold = matdat.getData("stress")
         svold = matdat.getData("extra variables")
 
         a = [dt,self.ui,self.ui,self.dc,sigold,d,svold,migError,migMessage]
         if not Payette_F2Py_Callback: a = a[:-2]
-        dtused,signew,svnew,usm = mtllib.kayenta_calc(*a)
+        signew,svnew,usm = mtllib.kayenta_calc(*a)
 
         if svnew[18] < 0.:
             # Kayenta reached the spall cut off only using a portion of the

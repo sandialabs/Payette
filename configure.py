@@ -66,15 +66,15 @@ def configurePayette(argc,argv):
 
     # intro message
     intro_message = """
-            PPPPPPPPP      A    Y        Y EEEEE TTTTTTTTTTT TTTTTTTTTTT EEEEEE
-           P        P    A A     Y     Y  E           T          T      E
-          P        P   A   A      Y  Y   E           T          T      E
-         PPPPPPPPP   A  A  A       Y    EEEE        T          T      EEEE
-        P          A       A     Y     E           T          T      E
-       P         A         A   Y      E           T          T      E
-      P        A           A Y       EEEEEEEE    T          T      EEEEEEEE
+            PPPPPPPPP      A  Y     Y  EEEEE  TTTTTTTTTTT  TTTTTTTTTTT  EEEEEE
+           P        P    A A   Y   Y  E            T            T      E
+          P        P   A   A    Y Y  E            T            T      E
+         PPPPPPPPP   A  A  A     Y  EEEE         T            T      EEEE
+        P          A       A    Y  E            T            T      E
+       P         A         A   Y  E            T            T      E
+      P        A           A  Y  EEEEEEEE     T            T      EEEEEEEE
 
-                    An Object Oriented Material Model Driver
+                                  An Object Oriented Material Model Driver
     """
     logmes(intro_message)
 

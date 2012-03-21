@@ -145,6 +145,7 @@ def newton(material,simdat,matdat):
             return converged
 
         Fnew = Fold + np.dot(toMatrix(depsdt),Fold)*dt
+        simdat.storeData("rate of deformation",depsdt,old=True)
         simdat.storeData("deformation gradient",Fnew,old=True)
         material.updateState(simdat,matdat)
         sig = matdat.getData("stress",cur=True)

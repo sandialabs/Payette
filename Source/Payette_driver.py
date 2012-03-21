@@ -25,8 +25,6 @@ import os
 import sys
 import pickle
 import numpy as np
-import scipy
-from scipy import optimize
 
 import Source.Payette_iterative_solvers as citer
 import Source.Payette_kinematics as pkin
@@ -34,6 +32,8 @@ from Source.Payette_utils import *
 from Source.Payette_tensor import *
 
 iam = "Payette_driver.runProplem(the_model,restart)"
+
+np.set_printoptions(precision=2)
 
 def runProblem(the_model,**kwargs):
     '''
@@ -319,6 +319,7 @@ def runProblem(the_model,**kwargs):
                     depsdt[v] = np.linalg.solve(Js,prsig_dif)/dt
                 except:
                     depsdt[v] -= np.linalg.lstsq(Js,prsig_dif)[0]/dt
+                    pass
                 pass
 
             # advance known values to end of step
@@ -345,7 +346,7 @@ def runProblem(the_model,**kwargs):
                 # --- One or more stresses prescribed
                 simdat.advanceData("strain rate",depsdt)
                 simdat.advanceData("prescribed stress",prsig_int)
-                pkin.velGradCompFromP(material,simdat,matdat)
+                pkin.velGradCompFromP(simdat,matdat)
                 simdat.advanceData("strain rate")
                 depsdt = simdat.getData("strain rate")
                 simdat.storeData("rate of deformation",depsdt)
