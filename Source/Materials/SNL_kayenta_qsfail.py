@@ -8,9 +8,9 @@ import sys
 import numpy as np
 
 from Source.Payette_utils import *
-from Source.Materials.SNL_kayenta_ortho import KayentaOrthotropic as Parent
+from Source.Materials.SNL_kayenta_ortho import Kayenta as Parent
 try:
-    from Source.Materials.SNL_kayenta_ortho import mtllib
+    from Source.Materials.SNL_kayenta import mtllib
     imported = True
 except:
     imported = False
@@ -20,7 +20,7 @@ attributes = {"payette material":True,
               "name":'kayenta_qsfail',
               "fortran source":False,
               "build script":"Not_Needed",
-              "depends":"kayenta_ortho",
+              "depends":"kayenta",
               "aliases":["kayenta quasistatic failure"],
               "material type":["mechanical"]
               }
