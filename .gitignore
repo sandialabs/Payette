@@ -25,3 +25,4 @@ Payette_config.py
 Payette_installed_materials.py
 nocallback.signature.pyf
 host_defines.h
+TestResults.*
