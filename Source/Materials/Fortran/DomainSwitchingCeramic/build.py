@@ -16,13 +16,6 @@ class Build(MaterialBuilder):
 
         fdir,fnam = os.path.split(os.path.realpath(__file__))
 
-        # initialize base class
-        MaterialBuilder.__init__(self,name,libname,fdir,compiler_info)
-
-        pass
-
-    def build_extension_module(self):
-
         # domain switching model requires nlopt
         if not Payette_nlopt:
             raise BuildError("{0} environment variable not set, skipping {1}.\n"
@@ -30,6 +23,13 @@ class Build(MaterialBuilder):
         elif not os.path.isdir(Payette_nlopt):
             raise BuildError("{0} not found, skipping {1}\n."
                              .format(Payette_nlopt,self.libname),10)
+
+        # initialize base class
+        MaterialBuilder.__init__(self,name,libname,fdir,compiler_info)
+
+        pass
+
+    def build_extension_module(self):
 
         self.incdirs.append(os.path.join(Payette_nlopt,"include"))
         self.libdirs.append(os.path.join(Payette_nlopt,"lib"))

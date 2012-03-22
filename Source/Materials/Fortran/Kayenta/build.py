@@ -15,6 +15,14 @@ class Build(MaterialBuilder):
 
         fdir,fnam = os.path.split(os.path.realpath(__file__))
 
+        # check if Kayenta source directory is found
+        if not Payette_Kayenta:
+            raise BuildError("{0} environment variable not found, {1} not built"
+                             .format("PAYETTE_KAYENTA",self.libname),5)
+        elif not os.path.isdir(Payette_Kayenta):
+            raise BuildError("{0} not found, {1} not built"
+                             .format(Payette_Kayenta,self.libname),10)
+
         # initialize base class
         MaterialBuilder.__init__(self,name,libname,fdir,compiler_info)
 
@@ -25,17 +33,7 @@ class Build(MaterialBuilder):
 
     def build_extension_module(self):
 
-        fdir,fnam = os.path.split(os.path.realpath(__file__))
-        # get the Kayenta source directory
-        if not Payette_Kayenta:
-            raise BuildError("{0} environment variable not found, {1} not built"
-                             .format("PAYETTE_KAYENTA",self.libname),5)
-        elif not os.path.isdir(Payette_Kayenta):
-            raise BuildError("{0} not found, {1} not built"
-                             .format(Payette_Kayenta,self.libname),10)
-        else:
-            self.source_files = self.get_kayenta_source_files()
-            pass
+        self.source_files = self.get_kayenta_source_files()
 
         self.build_extension_module_with_f2py()
 
