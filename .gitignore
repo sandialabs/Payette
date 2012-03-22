@@ -23,3 +23,4 @@ testPayette
 # Payette configuration files
 Payette_config.py
 Payette_installed_materials.py
+nocallback.signature.pyf
