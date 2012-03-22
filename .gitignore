@@ -1,0 +1,25 @@
+# Payette executables 
+buildPayette
+cleanPayette
+runPayette
+testPayette
+
+# Backups
+*~
+
+# Payette files
+*.out
+*.log
+*.diff
+*.prf
+*.echo
+*.pyc
+*.vtable
+*.dtable
+*.so
+*.o
+*.a
+
+# Payette configuration files
+Payette_config.py
+Payette_installed_materials.py

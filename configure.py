@@ -293,7 +293,7 @@ def configurePayette(argc,argv):
     add_python_path = False
     if "PYTHONPATH" in payette_environ:
         if Payette_Root not in payette_environ["PYTHONPATH"].split(os.pathsep):
-            payette_environ["PYTHONPATH"] += os.pathsep + Payette_Root
+            payette_environ["PYTHONPATH"] = Payette_Root+os.pathsep+payette_environ["PYTHONPATH"]
             add_python_path = True
             pass
         pass
