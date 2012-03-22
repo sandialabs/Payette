@@ -26,38 +26,21 @@ C*************************************************************************
       END SUBROUTINE FATERR
 #else
 C*************************************************************************
-      SUBROUTINE LOGMES(MESS)
-      CHARACTER*(*) MESS
-      PRINT*,MESS
+      SUBROUTINE LOGMES(MSG)
+      CHARACTER*(*) MSG
+      PRINT*,"INFO: "//MSG
       RETURN
       END
 C*************************************************************************
       SUBROUTINE BOMBED(MSG)
       CHARACTER*(*) MSG
-      CHARACTER*200 JNKSTR
-      CALL LOGMES('****************************')
-      CALL LOGMES('****************************')
-      CALL LOGMES('****************************')
-      JNKSTR='BOMBED: '// MSG
-      CALL LOGMES(JNKSTR)
+      PRINT*,"ERROR: "//MSG//" reported from [MIG]"
       STOP
       END
+C*************************************************************************
       SUBROUTINE FATERR(CALLER, MSG)
-      CHARACTER*200 JNKSTR
       CHARACTER*(*) CALLER,MSG
-      CALL LOGMES(' ')
-      CALL LOGMES(' ')
-      JNKSTR=' //////////////////////////////////////////////////'
-      CALL LOGMES(JNKSTR)
-      JNKSTR=' ///////////////////  fatal error detected by '//CALLER
-      CALL LOGMES(JNKSTR)
-      JNKSTR=' //////////////////////////////////////////////////'
-      CALL LOGMES(JNKSTR)
-      JNKSTR='FATAL ERROR:'//MSG
-      CALL LOGMES(JNKSTR)
-      CALL LOGMES(' ')
-      CALL LOGMES(' ')
-      STOP
+      PRINT*,"FATAL ERROR: "//MSG//" reported by ["//CALLER//"]"
       STOP
       END
 #endif

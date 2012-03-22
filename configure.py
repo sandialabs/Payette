@@ -316,7 +316,7 @@ def configurePayette(argc,argv):
         for key,value in payette_environ.items():
             f.write('os.environ["{0}"] = "{1}"\n'.format(key,value))
             continue
-        f.write("Payette_built = False")
+        f.write("Payette_built = False\n")
         pass
     endmes("Payette_config.py written")
 
@@ -522,11 +522,14 @@ if __name__ == "__main__":
     configure_Payette = configurePayette(len(sys.argv[1:]),sys.argv[1:])
 
     if configure_Payette <= 0:
-        loginf("configure succeeded")
+        loginf("configuration complete")
 
         if configure_Payette < 0:
-            loginf("\n\n*** IMPORTANT ***\nAdd the Payette root directory to your "
-                   "PYTHONPATH environment variable to complete the configuration")
+            logmes("\n\n"
+      "***************************** IMPORTANT ******************************\n"
+      "Add the Payette root directory to your PYTHONPATH environment variable\n"
+      "to complete the configuration\n"
+      "**********************************************************************\n")
             pass
 
         pass

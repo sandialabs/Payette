@@ -293,10 +293,10 @@ def runPayette(argc,argv):
 
     if nproc > 1:
         writeWarning(__file__,
-                     "Running with multiple processors.  Logging to the console\n"
-                     "         has been turned off.  If a job hangs, [ctrl-c] at the\n"
-                     "         console will not shut down Payette.  Instead, put the job\n"
-                     "         in the background with [ctrl-z] and then kill it")
+             "Running with multiple processors.  Logging to the console\n"
+             "         has been turned off.  If a job hangs, [ctrl-c] at the\n"
+             "         console will not shut down Payette.  Instead, put the job\n"
+             "         in the background with [ctrl-z] and then kill it")
 
     # loop through simulations and run them
     if opts.timing: t0 = time.time()

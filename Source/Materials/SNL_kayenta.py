@@ -216,10 +216,11 @@ class Kayenta(ConstitutiveModelPrototype):
             # Kayenta reached the spall cut off only using a portion of the
             # strain increment.
             void = svnew[47]
+            ch = svnew[37]
             n = simdat.getData("number of steps")
             msg = ( "Kayenta returned with CRACK < 0, requesting void of "
-                    "[{0}] on step [{1}]".format(void,n) )
-            reportError(iam,msg)
+                    "[{0}] on step [{1}] and coher of [{2}]".format(void,n,ch) )
+            reportMessage(iam,msg)
             pass
 
         matdat.storeData("stress",signew)

@@ -62,7 +62,7 @@ class Build(MaterialBuilder):
         release = imp.load_module(py_mod,fp,pathname,description)
         sys.path.pop()
         fp.close()
-        kmmcmd = ["-t","payette","-b",fdir]
+        kmmcmd = ["-t","payette","-b",fdir] + self.kayenta_directives
         retcode, kmmsrcf = release.main(kmmcmd)
         if retcode != 0:
             raise BuildError("kayenta release script failed",10)
