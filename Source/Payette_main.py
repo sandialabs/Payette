@@ -1044,7 +1044,6 @@ def buildPayette(argc,argv):
         # build the requested material libraries
         errors, payette_materials = buildPayetteMaterials(payette_materials,
                                                           compiler_info)
-
         # material libraries built, now write the
         # Source/Materials/Payette_Materials file containing all materials
         writePayetteMaterials(payette_materials)
@@ -1069,6 +1068,8 @@ def buildPayette(argc,argv):
         # something is wrong...
         errors = 75
     else: pass
+
+    errors += test_error
 
     return errors
 
@@ -1098,16 +1099,8 @@ def testRunPayette(test):
                    "%s"%("="*25+" Start Error\n"+sbp_msg+"\n"+"="*25+" End Error\n"))
         buildfail(message)
 
-        logmes("<<< IF >>> no other build errors were encountered,")
-        if "compatible f2py" in msg[-1].lower():
-            logmes("this error might be a result of attempting to use "
-                  "the python bundled with sage  it is not known "
-                  "at this time why the python libraries compiled \n"
-                  "sage\"s f2py are not being imported properly.  please "
-                  "build Payette with\npython2.{6,7} or python3.? until a "
-                  "fix is found\n")
-        else: print ("please let the Payette developers know so a fix "
-                     "can be found")
+        logmes("<<< IF >>> no other build errors were encountered, "
+               "please let the Payette developers know so a fix can be found")
         return 1
     else:
         endmes("runPayette [-h] executed normally\n")
@@ -1639,11 +1632,15 @@ def Payette(args):
         else:
             logerr("buildPayette failed\n")
             error += 1
-
-            if not error and not warn: logmes("Enjoy Payette!")
-            elif warn: logmes("You've been warned, tread lightly!")
-            else: logmes("Better luck next time!")
             pass
+
+        if error: payette_built(False)
+        else: payette_built(True)
+
+        if not error and not warn: logmes("Enjoy Payette!")
+        elif warn: logmes("You've been warned, tread lightly!")
+        else: logmes("Better luck next time!")
+
         return build_Payette
 
     else:
@@ -1653,6 +1650,21 @@ def Payette(args):
         pass
 
     return payette
+
+def payette_built(built):
+    """ write to the global config file that Payette built """
+    built = bool(built)
+    lines = open(Payette_config_file).readlines()
+    with open(Payette_config_file,"w") as f:
+        for line in lines:
+            if line.split() and line.strip().split()[0] == "Payette_built":
+                line = "Payette_built = {0}\n".format(bool(built))
+                pass
+            f.write(line)
+            continue
+        pass
+    return
+
 
 def get_module_name(py_file):
     return os.path.splitext(os.path.basename(py_file))[0]

@@ -8,7 +8,7 @@ import sys
 import numpy as np
 
 from Source.Payette_utils import *
-from Source.Materials.SNL_kayenta_ortho import Kayenta as Parent
+from Source.Materials.SNL_kayenta import Kayenta as Parent
 try:
     from Source.Materials.SNL_kayenta import mtllib
     imported = True
