@@ -35,13 +35,14 @@ except:
     imported = False
     pass
 
-attributes = {"payette material":True,
-              "name":"elastic",
-              "fortran source":True,
-              "build script":os.path.join(Payette_Materials_Fortran,"Elastic/build.py"),
-              "aliases":["hooke","elasticity"],
-              "material type":["mechanical"]
-              }
+attributes = {
+    "payette material":True,
+    "name":"elastic",
+    "fortran source":True,
+    "build script":os.path.join(Payette_Materials_Fortran,"Elastic/build.py"),
+    "aliases":["hooke","elasticity"],
+    "material type":["mechanical"]
+    }
 
 class Elastic(ConstitutiveModelPrototype):
     """

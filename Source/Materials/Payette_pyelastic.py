@@ -28,11 +28,12 @@ import numpy as np
 from Source.Payette_utils import *
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 
-attributes = {"payette material":True,
-              "name":"py elastic",
-              "aliases":["python elastic","py hooke","python hook"],
-              "material type":["mechanical"]
-              }
+attributes = {
+    "payette material":True,
+    "name":"py elastic",
+    "aliases":["python elastic","py hooke","python hook"],
+    "material type":["mechanical"]
+    }
 class PyElastic(ConstitutiveModelPrototype):
     """
     CLASS NAME

@@ -35,13 +35,14 @@ except:
     imported = False
     pass
 
-attributes = {"payette material":True,
-              "name":"elastic_plastic",
-              "fortran source":True,
-              "build script":os.path.join(Payette_Materials_Fortran,"ElasticPlastic/build.py"),
-              "aliases":["inuced anisotropy"],
-              "material type":["mechanical"]
-              }
+attributes = {
+    "payette material":True,
+    "name":"elastic_plastic",
+    "fortran source":True,
+    "build script":os.path.join(Payette_Materials_Fortran,"ElasticPlastic/build.py"),
+    "aliases":["inuced anisotropy"],
+    "material type":["mechanical"]
+    }
 
 class ElasticPlastic(ConstitutiveModelPrototype):
 

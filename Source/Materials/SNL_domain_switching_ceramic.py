@@ -19,12 +19,14 @@ except:
     imported = False
     pass
 
-attributes = {"payette material":True,
-              "name":"domain_switching_ceramic",
-              "fortran source":True,
-              "build script":os.path.join(Payette_Materials_Fortran,"DomainSwitchingCeramic/build.py"),
-              "aliases":["multi domain ceramic"],
-              "material type":["electromechanical"]
+attributes = {
+    "payette material":True,
+    "name":"domain_switching_ceramic",
+    "fortran source":True,
+    "build script":os.path.join(Payette_Materials_Fortran,
+                                "DomainSwitchingCeramic/build.py"),
+    "aliases":["multi domain ceramic"],
+    "material type":["electromechanical"]
               }
 
 class DomainSwitchingCeramic(ConstitutiveModelPrototype):

@@ -16,14 +16,15 @@ except:
     imported = False
     pass
 
-attributes = {"payette material":True,
-              "name":'kayenta_qsfail',
-              "fortran source":False,
-              "build script":"Not_Needed",
-              "depends":"kayenta",
-              "aliases":["kayenta quasistatic failure"],
-              "material type":["mechanical"]
-              }
+attributes = {
+    "payette material":True,
+    "name":'kayenta_qsfail',
+    "fortran source":False,
+    "build script":"Not_Needed",
+    "depends":"kayenta",
+    "aliases":["kayenta quasistatic failure"],
+    "material type":["mechanical"]
+    }
 
 class KayentaQSFail(Parent):
     """

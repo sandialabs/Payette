@@ -15,13 +15,15 @@ except:
     imported = False
     pass
 
-attributes = {"payette material":True,
-              "name":'kayenta_dual_soft',
-              "fortran source":True,
-              "build script":os.path.join(Payette_Materials_Fortran,"Kayenta_Dual_Soft/build.py"),
-              "aliases":[],
-              "material type":["special"]
-              }
+attributes = {
+    "payette material":True,
+    "name":'kayenta_dual_soft',
+    "fortran source":True,
+    "build script":os.path.join(Payette_Materials_Fortran,
+                                "Kayenta_Dual_Soft/build.py"),
+    "aliases":[],
+    "material type":["special"]
+    }
 
 class KayentaDualSoft(ConstitutiveModelPrototype):
     '''
