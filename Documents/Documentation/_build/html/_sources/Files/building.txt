@@ -1,3 +1,7 @@
+.. Payette is an object oriented material model driver. This document contains
+   instructions on building Payette.  For more complete documentation, see
+   Documents/Documentation/_build/html/index.html
+
 .. highlight:: rst
 
 ########
