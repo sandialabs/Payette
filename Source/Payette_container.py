@@ -90,8 +90,6 @@ class Payette:
         except: pass
         setupLogger(logfile,loglevel)
 
-        reportMessage(__file__,Payette_intro,pre="")
-
         msg = "setting up simulation %s"%simname
         reportMessage(__file__,msg)
 

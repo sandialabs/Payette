@@ -84,7 +84,6 @@ class PyElastic(ConstitutiveModelPrototype):
         # register the extra variables with the payette object
         matdat.registerExtraVariables(self.nsv,namea,keya,sv)
 
-        self.computeInitialJacobian()
         return
 
     def jacobian(self,simdat,matdat):

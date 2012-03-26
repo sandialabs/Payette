@@ -179,6 +179,7 @@ def runPayette(argc,argv):
             continue
         msg = "INFO: output cleaned" if cleaned else "WARNING: no ouput cleaned"
         sys.exit(msg)
+        pass
 
     # ------------------------------------------------- start: get the user input
     restart = False
@@ -193,6 +194,24 @@ def runPayette(argc,argv):
         parser.print_help()
         parser.error("No input given")
         pass
+
+    # first check for barf files
+    barf_files = [x for x in args if "barf" in os.path.splitext(x)[1]
+                  or "barf.source" in x]
+    if len(barf_files):
+        if len(barf_files) > 1:
+            parser.error(str(len(barf_files)) + " barf files given, but only one "
+                         "barf file can be processed at a time")
+        else:
+            from Source.Payette_barf import PayetteBarf
+            barf_file = os.path.realpath(barf_files[0])
+            if not os.path.isfile(barf_file):
+                parser.error("barf file {0} not found".format(barf_file))
+                pass
+            logmes(Payette_intro)
+            PayetteBarf(barf_file)
+            pass
+        return 0
 
     # check restart files
     rfiles = [x for x in args if os.path.splitext(x)[1] == ".prf"]
@@ -297,7 +316,9 @@ def runPayette(argc,argv):
              "         has been turned off.  If a job hangs, [ctrl-c] at the\n"
              "         console will not shut down Payette.  Instead, put the job\n"
              "         in the background with [ctrl-z] and then kill it")
+        pass
 
+    logmes(Payette_intro)
     # loop through simulations and run them
     if opts.timing: t0 = time.time()
     if nproc > 1 and len(user_input_dict.keys()) > 1:

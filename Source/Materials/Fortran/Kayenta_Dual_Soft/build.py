@@ -1,11 +1,5 @@
 from __future__ import print_function
-import os,sys,shutil,imp
-import subprocess as sbp
-import os.path as osp
-from distutils import sysconfig
-from copy import deepcopy
-from numpy.f2py import main as f2py
-
+import os,sys,imp
 
 from Payette_config import *
 from Source.Payette_utils import BuildError

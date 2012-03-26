@@ -196,7 +196,6 @@ class Kayenta(ConstitutiveModelPrototype):
         matdat.registerExtraVariables(self.nsv,namea,keya,sv)
 
         self.bulk_modulus,self.shear_modulus = self.ui[0],self.ui[5]
-        self.computeInitialJacobian()
         pass
 
     def updateState(self,simdat,matdat):

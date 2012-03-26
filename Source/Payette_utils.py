@@ -169,6 +169,7 @@ def setupLogger(logfile,level):
     global loglevel,simlog
     loglevel = level
     simlog = open(logfile,"w")
+    simlog.write(Payette_intro + "\n")
     return
 
 def readUserInput(user_input,user_cchar=None):

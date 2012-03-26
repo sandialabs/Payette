@@ -55,8 +55,9 @@ class ConstitutiveModelPrototype:
         self.name = None
         self.aliases = []
         self.parameter_table = {}
+        self.parameter_table_idx_map = {}
         self.nprop, self.ndc, self.nsv = 0, 0, 0
-        self.J0 = np.zeros((6,6))
+        self.J0 = None
         self.ui = np.zeros(self.nprop)
         self.dc = np.zeros(self.ndc)
         self.bulk_modulus, self.shear_modulus = 0., 0.
@@ -99,8 +100,13 @@ class ConstitutiveModelPrototype:
             pass
 
         if self.J0 == None:
-            reportError(iam,"iniatial Jacobian not defined by {0}".format(name))
-        elif not any( x for y in self.J0 for x in y ):
+            msg = ( "iniatial Jacobian not defined by {0}".format(name)
+                    + ", assuming isotropy to assign initial value" )
+            reportWarning(iam,msg)
+            self.computeInitialJacobian()
+            pass
+
+        if not any( x for y in self.J0 for x in y ):
             reportError(iam,"iniatial Jacobian is empty")
             pass
 
@@ -150,6 +156,7 @@ class ConstitutiveModelPrototype:
                                             "names":param_names,
                                             "ui pos":param_idx,
                                             "parseable":parseable}
+        self.parameter_table_idx_map[param_idx] = full_name
         pass
 
     def parseParameters(self,user_params,param_file=None):

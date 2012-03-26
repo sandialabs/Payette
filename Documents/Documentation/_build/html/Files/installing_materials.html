@@ -1,0 +1,604 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Installing New Materials &mdash; Payette 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Payette 1.0 documentation" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="../index.html">Payette 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="installing-new-materials">
+<h1>Installing New Materials<a class="headerlink" href="#installing-new-materials" title="Permalink to this headline">¶</a></h1>
+<p><tt class="docutils literal"><span class="pre">Payette</span></tt> was born from the need for an environment in which material
+constitutive models could be rapidly developed, tested, deployed, and maintained,
+independent of host finite element code implementation. Important prerequisites
+in the design of <tt class="docutils literal"><span class="pre">Payette</span></tt> were ease of model installation and support for
+constitutive routines written in Fortran. This requirement is met by providing a
+simple API with which a model developer can install a material in <tt class="docutils literal"><span class="pre">Payette</span></tt> as
+a new Python class and use <a class="reference external" href="cens.ioc.ee/projects/f2py2e/">f2py</a> to compile
+Python extension modules from the material&#8217;s Fortran source (if applicable). In
+this section, the required elements of the constitutive model interface and
+instructions on compiling the material&#8217;s Fortran source (if applicable) are
+provided.</p>
+<div class="section" id="material-file-naming-conventions">
+<h2>Material File Naming Conventions<a class="headerlink" href="#material-file-naming-conventions" title="Permalink to this headline">¶</a></h2>
+<p>Each material model must provide its Python class definition in an &#8220;interface&#8221;
+file in the <tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Source/Materials</span></tt>. The accepted naming convention
+for the material&#8217;s interface file is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">PAYETTE_ROOT</span><span class="o">/</span><span class="n">Source</span><span class="o">/</span><span class="n">Materials</span><span class="o">/</span><span class="n">Payette_material_name</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<p>A material&#8217;s Fortran source code (if applicable) is stored in its own directory
+in the <tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Source/Materials/Fortran</span></tt> directory. The accepted
+naming convention for the material&#8217;s Fortran directory is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">PAYETTE_ROOT</span><span class="o">/</span><span class="n">Source</span><span class="o">/</span><span class="n">Materials</span><span class="o">/</span><span class="n">Fortran</span><span class="o">/</span><span class="n">MaterialName</span>
+</pre></div>
+</div>
+<p>There is no defined naming convention for Fortran source code within the
+materials <tt class="file docutils literal"><span class="pre">Fortran/MaterialName</span></tt> directory.</p>
+<p>As an example, suppose you were developing a new material model &#8220;Porous Rock&#8221;.
+The source files and directories would be named:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">PAYETTE_ROOT</span><span class="o">/</span><span class="n">Source</span><span class="o">/</span><span class="n">Materials</span><span class="o">/</span><span class="n">Payette_porous_rock</span><span class="o">.</span><span class="n">py</span>
+<span class="n">PAYETTE_ROOT</span><span class="o">/</span><span class="n">Source</span><span class="o">/</span><span class="n">Materials</span><span class="o">/</span><span class="n">Fortran</span><span class="o">/</span><span class="n">PorousRock</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The <tt class="docutils literal"><span class="pre">Payette</span></tt> project is an open source project, without restrictions on how
+the source code is used and/or distributed. However, many material models do
+have restrictive access controls and cannot, therefore, include their source
+files in <tt class="docutils literal"><span class="pre">Payette</span></tt>. This is the case for many materials currently being
+developed with <tt class="docutils literal"><span class="pre">Payette</span></tt>. For these materials, rather than include the source
+code in the material&#8217;s Fortran directory, the Fortran build script used by
+<tt class="docutils literal"><span class="pre">Payette</span></tt> to build the material&#8217;s Python extension module is used to direct
+<tt class="docutils literal"><span class="pre">Payette</span></tt> to the location of the material&#8217;s source files, elsewhere in the
+developer&#8217;s file system. The contents of the Fortran build script are
+discussed later in this document in the section on building Fortran source
+code in <tt class="docutils literal"><span class="pre">Payette</span></tt>.</p>
+</div>
+</div>
+<div class="section" id="interface-file-required-attributes">
+<h2>Interface File Required Attributes<a class="headerlink" href="#interface-file-required-attributes" title="Permalink to this headline">¶</a></h2>
+<p>The interface file must provide an <tt class="docutils literal"><span class="pre">attributes</span></tt> with the following keys</p>
+<dl class="data">
+<dt>
+<tt class="descname">attributes[&quot;payette material&quot;]</tt></dt>
+<dd><p>Boolean.  Does the material represent an interface file, or not.</p>
+</dd></dl>
+
+<dl class="data">
+<dt>
+<tt class="descname">attributes[&quot;name&quot;]</tt></dt>
+<dd><p>String.  The material name.</p>
+</dd></dl>
+
+<dl class="data">
+<dt>
+<tt class="descname">attributes[&quot;fortran source&quot;]</tt></dt>
+<dd><p>Boolean.  Does the material have additional Fortran source code.</p>
+</dd></dl>
+
+<dl class="data">
+<dt>
+<tt class="descname">attributes[&quot;build script&quot;]</tt></dt>
+<dd><p>String.  Absolute path to Fortran build script, if applicable.</p>
+</dd></dl>
+
+<dl class="data">
+<dt>
+<tt class="descname">attributes[&quot;aliases&quot;]</tt></dt>
+<dd><p>List.  List of optional names.</p>
+</dd></dl>
+
+<dl class="data">
+<dt>
+<tt class="descname">attributes[&quot;material type&quot;]</tt></dt>
+<dd><p>List. List of keyword descriptors of material type. Examples are &#8220;mechanical&#8221;,
+&#8220;electro-mechanical&#8221;.</p>
+</dd></dl>
+
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Using the <tt class="docutils literal"><span class="pre">attributes</span></tt> dictionary outside of the material&#8217;s class definition
+allows <tt class="docutils literal"><span class="pre">Payette</span></tt> to scan <tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Source/Materials/</span></tt> directory to
+find and import only the <tt class="docutils literal"><span class="pre">Payette</span></tt> material interface files during the build
+process.</p>
+</div>
+</div>
+<div class="section" id="constitutive-model-api-required-elements">
+<h2>Constitutive Model API: Required Elements<a class="headerlink" href="#constitutive-model-api-required-elements" title="Permalink to this headline">¶</a></h2>
+<p><tt class="docutils literal"><span class="pre">Payette</span></tt> provides a simple interface for interacting with material models
+through the Python class structure. Material models are installed as separate
+Python classes, derived from the <tt class="docutils literal"><span class="pre">ConstitutiveModelPrototype</span></tt> base class.</p>
+<div class="section" id="inheritance-from-base-class">
+<h3>Inheritance From Base Class<a class="headerlink" href="#inheritance-from-base-class" title="Permalink to this headline">¶</a></h3>
+<p>A new material model <tt class="docutils literal"><span class="pre">MaterialModel</span></tt> is only recognized as a material model by
+Payette if it inherits from the <tt class="docutils literal"><span class="pre">ConstitutiveModelPrototype</span></tt> base class:</p>
+<div class="highlight-python"><pre>class MaterialModel(ConstitutiveModelPrototype):</pre>
+</div>
+</div>
+<div class="section" id="required-data">
+<h3>Required Data<a class="headerlink" href="#required-data" title="Permalink to this headline">¶</a></h3>
+<dl class="data">
+<dt id="MaterialModel.aliases">
+<tt class="descclassname">MaterialModel.</tt><tt class="descname">aliases</tt><a class="headerlink" href="#MaterialModel.aliases" title="Permalink to this definition">¶</a></dt>
+<dd><p>The aliases by which the constitutive model can be called (case insensitive).</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="MaterialModel.bulk_modulus">
+<tt class="descclassname">MaterialModel.</tt><tt class="descname">bulk_modulus</tt><a class="headerlink" href="#MaterialModel.bulk_modulus" title="Permalink to this definition">¶</a></dt>
+<dd><p>The bulk modulus.  Used for determining the material&#8217;s Jacobian matrix</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="MaterialModel.imported">
+<tt class="descclassname">MaterialModel.</tt><tt class="descname">imported</tt><a class="headerlink" href="#MaterialModel.imported" title="Permalink to this definition">¶</a></dt>
+<dd><p>Boolean indicating whether the material&#8217;s extension library (if applicable)
+was imported.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="MaterialModel.name">
+<tt class="descclassname">MaterialModel.</tt><tt class="descname">name</tt><a class="headerlink" href="#MaterialModel.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>The name by which users can invoke the constituve model from the input file
+(case insensitive).</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="MaterialModel.nprop">
+<tt class="descclassname">MaterialModel.</tt><tt class="descname">nprop</tt><a class="headerlink" href="#MaterialModel.nprop" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number of required parameters for the model.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="MaterialModel.shear_modulus">
+<tt class="descclassname">MaterialModel.</tt><tt class="descname">shear_modulus</tt><a class="headerlink" href="#MaterialModel.shear_modulus" title="Permalink to this definition">¶</a></dt>
+<dd><p>The shear modulus.  Used for determining the material&#8217;s Jacobian matrix</p>
+</dd></dl>
+
+</div>
+<div class="section" id="required-functions">
+<h3>Required Functions<a class="headerlink" href="#required-functions" title="Permalink to this headline">¶</a></h3>
+<dl class="function">
+<dt id="MaterialModel.__init__">
+<tt class="descclassname">MaterialModel.</tt><tt class="descname">__init__</tt><big>(</big><big>)</big><a class="headerlink" href="#MaterialModel.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Instantiate the material model.  Register parameters with <tt class="docutils literal"><span class="pre">Payette</span></tt>.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="MaterialModel.setUp">
+<tt class="descclassname">MaterialModel.</tt><tt class="descname">setUp</tt><big>(</big><em>simdat</em>, <em>matdat</em>, <em>user_params</em>, <em>f_params</em><big>)</big><a class="headerlink" href="#MaterialModel.setUp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check user inputs and register extra variables with <tt class="docutils literal"><span class="pre">Payette</span></tt>. <em>simdat</em> and
+<em>matdat</em> are the simulation and material data containers, respectively,
+<em>user_params</em> are the parameters read in from the input file, and <em>f_params</em>
+are parameters from a parameters file.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="MaterialModel.updateState">
+<tt class="descclassname">MaterialModel.</tt><tt class="descname">updateState</tt><big>(</big><em>simdat</em>, <em>matdat</em><big>)</big><a class="headerlink" href="#MaterialModel.updateState" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the material state to the end of the current time step. <em>simdat</em> and
+<em>matdat</em> are the simulation and material data containers, respectively.</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="example-elastic-material-model-interface-file">
+<h2>Example: Elastic Material Model Interface File<a class="headerlink" href="#example-elastic-material-model-interface-file" title="Permalink to this headline">¶</a></h2>
+<p>The required elements of the material&#8217;s interface file described above are now
+demonstrated by an annotated version of the elastic material&#8217;s interface.</p>
+<p><strong>View the source code:</strong>
+<a class="reference download internal" href="../_downloads/Payette_elastic.py"><tt class="xref download docutils literal"><span class="pre">Payette_elastic.py</span></tt></a></p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">Source.Payette_utils</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">Source.Payette_constitutive_model</span> <span class="kn">import</span> <span class="n">ConstitutiveModelPrototype</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The <tt class="docutils literal"><span class="pre">Source.Payette_utils</span></tt> module contains public methods for interfacing
+with <tt class="docutils literal"><span class="pre">Payette</span></tt>.</p>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">attributes</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">&quot;payette material&quot;</span><span class="p">:</span><span class="bp">True</span><span class="p">,</span>
+    <span class="s">&quot;name&quot;</span><span class="p">:</span><span class="s">&quot;elastic&quot;</span><span class="p">,</span>
+    <span class="s">&quot;fortran source&quot;</span><span class="p">:</span><span class="bp">True</span><span class="p">,</span>
+    <span class="s">&quot;build script&quot;</span><span class="p">:</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">Payette_Materials_Fortran</span><span class="p">,</span><span class="s">&quot;Elastic/build.py&quot;</span><span class="p">),</span>
+    <span class="s">&quot;aliases&quot;</span><span class="p">:[</span><span class="s">&quot;hooke&quot;</span><span class="p">,</span><span class="s">&quot;elasticity&quot;</span><span class="p">],</span>
+    <span class="s">&quot;material type&quot;</span><span class="p">:[</span><span class="s">&quot;mechanical&quot;</span><span class="p">]</span>
+    <span class="p">}</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">Source.Materials.Library.elastic</span> <span class="kn">as</span> <span class="nn">mtllib</span>
+    <span class="n">imported</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="n">imported</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">We don&#8217;t raise an exception just yet if the material&#8217;s extension library is
+not importable. This allows users to run simulations even if all materials
+were not imported. Of course, if you try to run a simulation with a material
+that is not imported, an exception is raised.</p>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">Elastic</span><span class="p">(</span><span class="n">ConstitutiveModelPrototype</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    CLASS NAME</span>
+<span class="sd">       Elastic</span>
+
+<span class="sd">    PURPOSE</span>
+<span class="sd">       Constitutive model for an elastic material. When instantiated, the Elastic</span>
+<span class="sd">       material initializes itself by first checking the user input</span>
+<span class="sd">       (_check_props) and then initializing any internal state variables</span>
+<span class="sd">       (_set_field). Then, at each timestep, the driver update the Material state</span>
+<span class="sd">       by calling updateState.</span>
+
+<span class="sd">    METHODS</span>
+<span class="sd">       Private:</span>
+<span class="sd">         _check_props</span>
+<span class="sd">         _set_field</span>
+
+<span class="sd">       Public:</span>
+<span class="sd">         setUp</span>
+<span class="sd">         updateState</span>
+
+<span class="sd">    FORTRAN</span>
+<span class="sd">       The core code for the Elastic material is contained in</span>
+<span class="sd">       Fortran/Elastic/elastic.f.  The module Library/elastic is created by f2py.</span>
+<span class="sd">       elastic.f defines the following public subroutines</span>
+
+<span class="sd">          hookechk: fortran data check routine called by _check_props</span>
+<span class="sd">          hookerxv: fortran field initialization  routine called by _set_field</span>
+<span class="sd">          hooke_incremental: fortran stress update called by updateState</span>
+
+<span class="sd">       See the documentation in elastic.f for more information.</span>
+
+<span class="sd">    AUTHORS</span>
+<span class="sd">       Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">ConstitutiveModelPrototype</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The base ConstitutiveModelPrototype class must be initialized.</p>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">attributes</span><span class="p">[</span><span class="s">&quot;name&quot;</span><span class="p">]</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">aliases</span> <span class="o">=</span> <span class="n">attributes</span><span class="p">[</span><span class="s">&quot;aliases&quot;</span><span class="p">]</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">imported</span> <span class="o">=</span> <span class="n">imported</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The required elastic material data <tt class="docutils literal"><span class="pre">name</span></tt>, <tt class="docutils literal"><span class="pre">aliases</span></tt>, and <tt class="docutils literal"><span class="pre">imported</span></tt> are
+assigned from the interface files <tt class="docutils literal"><span class="pre">attributes</span></tt> dictionary and the file scope
+variable <tt class="docutils literal"><span class="pre">imported</span></tt>.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>Below, the elastic material&#8217;s parameters are registered with <tt class="docutils literal"><span class="pre">Payette</span></tt>
+through the <tt class="docutils literal"><span class="pre">registerParameter</span></tt> function:</p>
+<dl class="last function">
+<dt id="self.registerParameter">
+<tt class="descclassname">self.</tt><tt class="descname">registerParameter</tt><big>(</big><em>name</em>, <em>ui_loc</em>, <em>aliases=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#self.registerParameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register the parameter <em>name</em> with <tt class="docutils literal"><span class="pre">Payette</span></tt>. <em>ui_loc</em> is the integer
+location (starting at 0) of the parameter in the material&#8217;s user input array.
+<em>aliases</em> are aliases by which the parameter can be specified in the input
+file.</p>
+</dd></dl>
+
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># register parameters</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;LAM&quot;</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;G&quot;</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="n">aliases</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;SHMOD&#39;</span><span class="p">])</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;E&quot;</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="n">aliases</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;YMOD&#39;</span><span class="p">])</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;NU&quot;</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="n">aliases</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;POISSONS&#39;</span><span class="p">])</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;K&quot;</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="n">aliases</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;BKMOD&#39;</span><span class="p">])</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;H&quot;</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;KO&quot;</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;CL&quot;</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;CT&quot;</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;CO&quot;</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;CR&quot;</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;RHO&quot;</span><span class="p">,</span><span class="mi">11</span><span class="p">,</span><span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">nprop</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameter_table</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">ndc</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">pass</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><tt class="docutils literal"><span class="pre">self.ndc</span></tt> is the number of derived constants.  This model has none.</p>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># Public methods</span>
+<span class="k">def</span> <span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">simdat</span><span class="p">,</span><span class="n">matdat</span><span class="p">,</span><span class="n">user_params</span><span class="p">,</span><span class="n">f_params</span><span class="p">):</span>
+    <span class="n">iam</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&quot;.setUp(self,material,props)&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">imported</span><span class="p">:</span> <span class="k">return</span>
+
+    <span class="c"># parse parameters</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">parseParameters</span><span class="p">(</span><span class="n">user_params</span><span class="p">,</span><span class="n">f_params</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><tt class="docutils literal"><span class="pre">parseParameters</span></tt> passes the user input read from the input file to the
+initial user input array <tt class="docutils literal"><span class="pre">self.UI0</span></tt>. There is not return value.</p>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># check parameters</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">dc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ndc</span><span class="p">)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">ui</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_props</span><span class="p">()</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">nsv</span><span class="p">,</span><span class="n">namea</span><span class="p">,</span><span class="n">keya</span><span class="p">,</span><span class="n">sv</span><span class="p">,</span><span class="n">rdim</span><span class="p">,</span><span class="n">iadvct</span><span class="p">,</span><span class="n">itype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set_field</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><tt class="docutils literal"><span class="pre">_check_props</span></tt> and <tt class="docutils literal"><span class="pre">_set_field</span></tt> are private functions that check the user
+input and assign initial values to extra variables.</p>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">namea</span> <span class="o">=</span> <span class="n">parseToken</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nsv</span><span class="p">,</span><span class="n">namea</span><span class="p">)</span>
+<span class="n">keya</span> <span class="o">=</span> <span class="n">parseToken</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nsv</span><span class="p">,</span><span class="n">keya</span><span class="p">)</span>
+
+<span class="c"># register the extra variables with the payette object</span>
+<span class="n">matdat</span><span class="o">.</span><span class="n">registerExtraVariables</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nsv</span><span class="p">,</span><span class="n">namea</span><span class="p">,</span><span class="n">keya</span><span class="p">,</span><span class="n">sv</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>Above, the elastic material model registers its extra variables with the
+material data container.</p>
+<dl class="last function">
+<dt id="DataContainer.registerExtraVariables">
+<tt class="descclassname">DataContainer.</tt><tt class="descname">registerExtraVariables</tt><big>(</big><em>nxv</em>, <em>namea</em>, <em>keya</em>, <em>exinit</em><big>)</big><a class="headerlink" href="#DataContainer.registerExtraVariables" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register extra varaibles with the data container. <em>nxv</em> is the number of
+extra variables, <em>namea</em> and <em>keya</em> are ordered lists of extra variable
+names and plot keys, respectively, and <em>exinit</em> is a list of initial
+values.</p>
+</dd></dl>
+
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="bp">self</span><span class="o">.</span><span class="n">bulk_modulus</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">shear_modulus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ui</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span><span class="bp">self</span><span class="o">.</span><span class="n">ui</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="k">pass</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">By default, <tt class="docutils literal"><span class="pre">Payette</span></tt> computes the material&#8217;s Jacobian matrix numerically
+through a central difference algorithm. For some materials, like this elastic
+model, the Jacobian is constant. Here, we redefine the Jacobian to return the
+intial value.</p>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># redefine Jacobian to return initial jacobian</span>
+<span class="k">def</span> <span class="nf">jacobian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">simdat</span><span class="p">,</span><span class="n">matdat</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">imported</span><span class="p">:</span> <span class="k">return</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">simdat</span><span class="o">.</span><span class="n">getData</span><span class="p">(</span><span class="s">&quot;prescribed stress components&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">J0</span><span class="p">[[[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">v</span><span class="p">],</span><span class="n">v</span><span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">updateState</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">simdat</span><span class="p">,</span><span class="n">matdat</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">       update the material state based on current state and strain increment</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">imported</span><span class="p">:</span> <span class="k">return</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The <em>simdat</em> and <em>matdat</em> data containers contain all current data. Data is
+accessed by the <tt class="docutils literal"><span class="pre">DataContainer.getData(name)</span></tt> method.</p>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">dt</span> <span class="o">=</span> <span class="n">simdat</span><span class="o">.</span><span class="n">getData</span><span class="p">(</span><span class="s">&quot;time step&quot;</span><span class="p">)</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">simdat</span><span class="o">.</span><span class="n">getData</span><span class="p">(</span><span class="s">&quot;rate of deformation&quot;</span><span class="p">)</span>
+<span class="n">sigold</span> <span class="o">=</span> <span class="n">matdat</span><span class="o">.</span><span class="n">getData</span><span class="p">(</span><span class="s">&quot;stress&quot;</span><span class="p">)</span>
+<span class="n">svold</span> <span class="o">=</span> <span class="n">matdat</span><span class="o">.</span><span class="n">getData</span><span class="p">(</span><span class="s">&quot;extra variables&quot;</span><span class="p">)</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">ui</span><span class="p">,</span><span class="n">sigold</span><span class="p">,</span><span class="n">d</span><span class="p">,</span><span class="n">svold</span><span class="p">,</span><span class="n">migError</span><span class="p">,</span><span class="n">migMessage</span><span class="p">]</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">Payette_F2Py_Callback</span><span class="p">:</span> <span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+<span class="n">sig</span><span class="p">,</span> <span class="n">sv</span><span class="p">,</span> <span class="n">usm</span> <span class="o">=</span> <span class="n">mtllib</span><span class="o">.</span><span class="n">hooke_incremental</span><span class="p">(</span><span class="o">*</span><span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><tt class="docutils literal"><span class="pre">hooke_incremental(*a)</span></tt> is a Fortran subroutine that performs the actual
+physics. Below, we store the update values of the extra variables and the
+stress.</p>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">matdat</span><span class="o">.</span><span class="n">storeData</span><span class="p">(</span><span class="s">&quot;extra variables&quot;</span><span class="p">,</span><span class="n">sv</span><span class="p">)</span>
+<span class="n">matdat</span><span class="o">.</span><span class="n">storeData</span><span class="p">(</span><span class="s">&quot;stress&quot;</span><span class="p">,</span><span class="n">sig</span><span class="p">)</span>
+
+<span class="k">return</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="building-material-fortran-extension-modules-in-payette">
+<h2>Building Material Fortran Extension Modules in <tt class="docutils literal"><span class="pre">Payette</span></tt><a class="headerlink" href="#building-material-fortran-extension-modules-in-payette" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This is not an exhaustive tutorial for how to link Python programs with
+compiled source code. Instead, it demonstrates through an annotated example
+the strategy that <tt class="docutils literal"><span class="pre">Payette</span></tt> uses to build and link with material models
+written in Fortran.</p>
+</div>
+<p>The strategy used in <tt class="docutils literal"><span class="pre">Payette</span></tt> to build and link to material models written in
+Fortran is to use <tt class="docutils literal"><span class="pre">f2py</span></tt> to compile the Fortran source in to a shared object
+library recognized by Python. The same task can be accomplished through Python&#8217;s
+built in <a class="reference external" href="http://docs.python.org/library/ctypes.html">ctypes</a>, <a class="reference external" href="http://www.scipy.org/Weave">weave</a>, or other methods. We have found that <tt class="docutils literal"><span class="pre">f2py</span></tt>
+offers the most robust and easy to use solution. For more detailed examples of
+how to use compiled libraries with Python see <a class="reference external" href="http://docs.scipy.org/doc/numpy/user/c-info.python-as-glue.html">Using Python as glue</a> at the SciPy
+website or <a class="reference external" href="http://www.sagemath.org/doc/numerical_sage/using_compiled_code_iteractively.html">Using Compiled Code Interactively</a>
+on Sage&#8217;s website.</p>
+<p>Rather than provide an exhaustive tutorial on linking Python programs to compiled
+libraries, we demonstrate how the <tt class="docutils literal"><span class="pre">elastic</span></tt> material model accomplishes this
+task through annotated examples.</p>
+<div class="section" id="creating-the-elastic-material-signature-file">
+<h3>Creating the Elastic Material Signature File<a class="headerlink" href="#creating-the-elastic-material-signature-file" title="Permalink to this headline">¶</a></h3>
+<p>First, a Python signature file for the <tt class="docutils literal"><span class="pre">elatic</span></tt> material&#8217;s Fortran source must
+be created. A signature file is a Fortran 90 file that contains all of the
+information that is needed to construct Python bindings to Fortran (or C)
+functions.</p>
+<p>For the elastic model, change to
+<tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Source/Materials/Fortran/Elastic</span></tt> and execute</p>
+<div class="highlight-python"><pre>% f2py -m elastic -h elastic.signature.pyf elastic.F</pre>
+</div>
+<p>which will create the <tt class="file docutils literal"><span class="pre">elastic.signature.pyf</span></tt> signature file.</p>
+<p>f2py will create a signature for every function in <tt class="file docutils literal"><span class="pre">elastic.F</span></tt>. However,
+only three public functions need to be bound to our Python program. So, after
+creating the signature file, all of the signatures for the private functions can
+safely be removed.</p>
+<p>The signature file can be modified even further. See the above links on how to
+specialize your signature file for maximum speed and efficiency.</p>
+<p><strong>View the elastic.signature.pyf file:</strong> <a class="reference download internal" href="../_downloads/elastic.signature.pyf"><tt class="xref download docutils literal"><span class="pre">elastic.signauture.pyf</span></tt></a></p>
+</div>
+<div class="section" id="elastic-material-build-script">
+<h3>Elastic Material Build Script<a class="headerlink" href="#elastic-material-build-script" title="Permalink to this headline">¶</a></h3>
+<p>Materials are built by <em>f2py</em> through the <tt class="docutils literal"><span class="pre">MaterialBuilder</span></tt> class from which
+each material derives its <tt class="docutils literal"><span class="pre">Build</span></tt> class. The <tt class="docutils literal"><span class="pre">Build</span></tt> class must provide a
+<tt class="docutils literal"><span class="pre">build_extension_module</span></tt> function, as shown below in the elastic material&#8217;s
+build script.</p>
+<p><strong>View the elastic material build script:</strong> <a class="reference download internal" href="../_downloads/build.py"><tt class="xref download docutils literal"><span class="pre">build.py</span></tt></a></p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span><span class="nn">sys</span>
+
+<span class="kn">from</span> <span class="nn">Payette_config</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">Source.Payette_utils</span> <span class="kn">import</span> <span class="n">BuildError</span>
+<span class="kn">from</span> <span class="nn">Source.Materials.Payette_build_material</span> <span class="kn">import</span> <span class="n">MaterialBuilder</span>
+
+<span class="k">class</span> <span class="nc">Build</span><span class="p">(</span><span class="n">MaterialBuilder</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">name</span><span class="p">,</span><span class="n">libname</span><span class="p">,</span><span class="n">compiler_info</span><span class="p">):</span>
+
+        <span class="n">fdir</span><span class="p">,</span><span class="n">fnam</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">__file__</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fdir</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fnam</span> <span class="o">=</span> <span class="n">fdir</span><span class="p">,</span> <span class="n">fnam</span>
+
+        <span class="c"># initialize base class</span>
+        <span class="n">MaterialBuilder</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">name</span><span class="p">,</span><span class="n">libname</span><span class="p">,</span><span class="n">fdir</span><span class="p">,</span><span class="n">compiler_info</span><span class="p">)</span>
+
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">build_extension_module</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="c"># fortran files</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fdir</span><span class="p">,</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fdir</span><span class="p">)</span>
+                             <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&quot;.F&quot;</span><span class="p">)]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_extension_module_with_f2py</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">For the elastic material, the <tt class="docutils literal"><span class="pre">build_extension_module</span></tt> function defines the
+Fortran source files and the calls the base class&#8217;s
+<tt class="docutils literal"><span class="pre">build_extension_module_with_f2py</span></tt> function.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Installing New Materials</a><ul>
+<li><a class="reference internal" href="#material-file-naming-conventions">Material File Naming Conventions</a></li>
+<li><a class="reference internal" href="#interface-file-required-attributes">Interface File Required Attributes</a></li>
+<li><a class="reference internal" href="#constitutive-model-api-required-elements">Constitutive Model API: Required Elements</a><ul>
+<li><a class="reference internal" href="#inheritance-from-base-class">Inheritance From Base Class</a></li>
+<li><a class="reference internal" href="#required-data">Required Data</a></li>
+<li><a class="reference internal" href="#required-functions">Required Functions</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#example-elastic-material-model-interface-file">Example: Elastic Material Model Interface File</a></li>
+<li><a class="reference internal" href="#building-material-fortran-extension-modules-in-payette">Building Material Fortran Extension Modules in <tt class="docutils literal"><span class="pre">Payette</span></tt></a><ul>
+<li><a class="reference internal" href="#creating-the-elastic-material-signature-file">Creating the Elastic Material Signature File</a></li>
+<li><a class="reference internal" href="#elastic-material-build-script">Elastic Material Build Script</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/Files/installing_materials.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li><a href="../index.html">Payette 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Tim Fuller, Scot Swan.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+  </body>
+</html>

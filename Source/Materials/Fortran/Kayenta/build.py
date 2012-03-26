@@ -1,9 +1,5 @@
 from __future__ import print_function
-import os,sys,shutil,imp
-import subprocess as sbp
-from distutils import sysconfig
-from copy import deepcopy
-from numpy.f2py import main as f2py
+import os,sys,imp
 
 from Payette_config import *
 from Source.Payette_utils import BuildError
@@ -18,10 +14,10 @@ class Build(MaterialBuilder):
         # check if Kayenta source directory is found
         if not Payette_Kayenta:
             raise BuildError("{0} environment variable not found, {1} not built"
-                             .format("PAYETTE_KAYENTA",self.libname),5)
+                             .format("PAYETTE_KAYENTA",libname),5)
         elif not os.path.isdir(Payette_Kayenta):
             raise BuildError("{0} not found, {1} not built"
-                             .format(Payette_Kayenta,self.libname),10)
+                             .format(Payette_Kayenta,libname),10)
 
         # initialize base class
         MaterialBuilder.__init__(self,name,libname,fdir,compiler_info)

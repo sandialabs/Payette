@@ -120,7 +120,8 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         matdat.registerExtraVariables(self.nsv,namea,keya,sv)
 
         self.bulk_modulus,self.shear_modulus = self.ui[0],self.ui[3]
-        self.computeInitialJacobian()
+
+        pass
 
     def updateState(self,simdat,matdat):
         '''

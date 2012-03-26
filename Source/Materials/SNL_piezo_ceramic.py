@@ -116,7 +116,6 @@ class PiezoCeramic(ConstitutiveModelPrototype):
         twomu  = 0.5*(c11 + c33) - lam
         self.shear_modulus = 0.5*twomu
         self.bulk_modulus = lam + twomu/3.
-        self.computeInitialJacobian()
         return
 
     def updateState(self,simdat,matdat):

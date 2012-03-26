@@ -29,8 +29,8 @@ from Source.Payette_utils import *
 
 try: from Source.Materials.Payette_installed_materials import *
 except ImportError:
-    reportError(__file__,"Toolset/buildPayette must be run to create "
-                "Source/Materials/Payette_installed_materials.py")
+    sys.exit("buildPayette must be run to create "
+             "Source/Materials/Payette_installed_materials.py")
 
 from Source.Payette_data_container import DataContainer
 

@@ -191,7 +191,6 @@ class KayentaDualSoft(ConstitutiveModelPrototype):
         payette.registerExtraVariables(self.nsv,self.namea,self.keya,self.sv)
 
         self.bulk_modulus,self.shear_modulus = self.ui[0],self.ui[5]
-        self.J0 = self.computeInitialJacobian()
         return
 
     def updateState(self,*args,**kwargs):

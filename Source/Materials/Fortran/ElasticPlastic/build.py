@@ -1,10 +1,5 @@
 from __future__ import print_function
-import os,sys,shutil
-import subprocess as sbp
-import os.path as osp
-from distutils import sysconfig
-from copy import deepcopy
-from numpy.f2py import main as f2py
+import os,sys
 
 from Payette_config import *
 from Source.Payette_utils import BuildError
@@ -25,11 +20,11 @@ class Build(MaterialBuilder):
     def build_extension_module(self):
 
         # fortran files
-        self.source_files = [osp.join(self.fdir,x) for x in os.listdir(self.fdir)
+        self.source_files = [os.path.join(self.fdir,x) for x in os.listdir(self.fdir)
                              if x.endswith(".F")]
         kerleyd = Payette_Kayenta
         if kerleyd:
-            kerley = osp.join(kerleyd,"Kerley_eos.F")
+            kerley = os.path.join(kerleyd,"Kerley_eos.F")
             if os.path.isfile(kerley):
                 self.pre_directives.append("-DKERLEY_EOS_RTNS")
                 self.source_files.append(kerley)
