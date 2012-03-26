@@ -13,6 +13,7 @@ testPayette
 *.diff
 *.prf
 *.echo
+*.props
 *.pyc
 *.vtable
 *.dtable

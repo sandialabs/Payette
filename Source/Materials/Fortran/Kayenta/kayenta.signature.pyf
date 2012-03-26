@@ -23,7 +23,7 @@ python module kayenta
             integer optional,check(shape(sigold,1)==nblk),depend(sigold) :: nblk=shape(sigold,1)
             integer optional,check(shape(svold,0)==ninsv),depend(svold) :: ninsv=shape(svold,0)
             integer,parameter :: nprop=109
-            integer,parameter :: nsv=55
+            integer,parameter :: nsv=56
             integer,parameter :: ndc=13
             double precision, intent(in) :: dtarg
             double precision dimension(nprop),intent(in) :: ui
@@ -45,7 +45,7 @@ python module kayenta
             integer optional,check(shape(sigarg,1)==nblk),depend(sigarg) :: nblk=shape(sigarg,1)
             integer optional,check(shape(svarg,0)==ninsv),depend(svarg) :: ninsv=shape(svarg,0)
             integer,parameter :: nprop=109
-            integer,parameter :: nsv=55
+            integer,parameter :: nsv=56
             integer,parameter :: ndc=13
             double precision, intent(in) :: dtarg
             double precision dimension(nprop),intent(in) :: ui
@@ -63,7 +63,7 @@ python module kayenta
         subroutine kayenta_chk(ui,gc,dc)
             use payette__user__routines
             integer,parameter :: nprop=109
-            integer,parameter :: nsv=55
+            integer,parameter :: nsv=56
             integer,parameter :: ndc=13
             double precision dimension(nprop),intent(in,out) :: ui
             double precision dimension(nprop),intent(in) :: gc
@@ -76,7 +76,7 @@ python module kayenta
         subroutine kayenta_rxv(ui,gc,dc,nx,namea,keya,rinit,rdim,iadvct,itype)
             use payette__user__routines
             integer,parameter :: nprop=109
-            integer,parameter :: nsv=55
+            integer,parameter :: nsv=56
             integer,parameter :: ndc=13
             integer,parameter :: mxn=nsv*80
             integer,parameter :: mxk=nsv*10
