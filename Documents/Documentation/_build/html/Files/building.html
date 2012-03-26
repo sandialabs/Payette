@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Building &mdash; Payette 1.0 documentation</title>
+    <title>Building Payette &mdash; Payette 1.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -52,20 +52,20 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="building">
-<h1>Building<a class="headerlink" href="#building" title="Permalink to this headline">¶</a></h1>
-<p>Payette is an object oriented material driver. The majority of the source code is
-written in Python and requires no additional building. Many of the material
+  <div class="section" id="building-payette">
+<h1>Building <em>Payette</em><a class="headerlink" href="#building-payette" title="Permalink to this headline">¶</a></h1>
+<p><em>Payette</em> is an object oriented material driver. The majority of the source code
+is written in Python and requires no additional building. Many of the material
 models, however, are written in Fortran and require a seperate compile step.</p>
 <div class="section" id="system-requirements">
 <h2>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h2>
-<p>Payette has been built and tested extensively on several versions linux and the
-Apple Mac OSX 10.6 operating systems. It is unknown whether it will run on
-Windows.</p>
+<p><em>Payette</em> has been built and tested extensively on several versions of linux and
+the Apple Mac OSX 10.6 operating systems. It is unknown whether or not <em>Payette</em>
+will run on Windows.</p>
 </div>
 <div class="section" id="required-software">
 <h2>Required Software<a class="headerlink" href="#required-software" title="Permalink to this headline">¶</a></h2>
-<p>Payette requires the following software installed for your platform:</p>
+<p><em>Payette</em> requires the following software installed for your platform:</p>
 <ol class="arabic simple">
 <li><a class="reference external" href="http://www.python.org/">Python 2.6</a> or newer</li>
 <li><a class="reference external" href="http://www.numpy.org/">NumPy 1.5</a> or newer</li>
@@ -87,7 +87,7 @@ to building from source or using Sage, as described below.</p>
 <li><p class="first"><em>Build each from source</em></p>
 <p>An involved, but fairly straight forward process.</p>
 </li>
-<li><p class="first"><em>Use Python, ``NumPy``, and ``SciPy`` installed with</em>
+<li><p class="first"><em>Use Python, NumPy, and SciPy installed with</em>
 <a class="reference external" href="http://www.sagemath.org/">Sage 4.7</a> <em>or newer</em></p>
 <p>This option is perhaps the easiest, since Sage provides prebuilt binaries
 for the Mac and many linux platforms. Their build process has also proven
@@ -108,7 +108,7 @@ installation.</li>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic">
-<li><p class="first">Make sure that all Payette prerequisites are installed and working properly.</p>
+<li><p class="first">Make sure that all <em>Payette</em> prerequisites are installed and working properly.</p>
 </li>
 <li><p class="first">Add <tt class="docutils literal"><span class="pre">PAYETTE_ROOT</span></tt> to your <tt class="docutils literal"><span class="pre">PYTHONPATH</span></tt> environment variable</p>
 </li>
@@ -118,10 +118,10 @@ installation.</li>
 <div class="highlight-rst"><div class="highlight"><pre>% PYTHON configure.py
 </pre></div>
 </div>
-<p>where <tt class="docutils literal"><span class="pre">PYTHON</span></tt> is the python interpreter that has <tt class="docutils literal"><span class="pre">NumPy</span></tt> and <tt class="docutils literal"><span class="pre">SciPy</span></tt>
+<p>where <tt class="docutils literal"><span class="pre">PYTHON</span></tt> is the python interpreter that has <em>NumPy</em> and <em>SciPy</em>
 installed. If using Sage, replace <tt class="docutils literal"><span class="pre">PYTHON</span></tt> with <tt class="docutils literal"><span class="pre">sage</span> <span class="pre">-python</span></tt>.</p>
-<p><tt class="file docutils literal"><span class="pre">configure.py</span></tt> will write the Payette configuration file and the following
-executable scripts:</p>
+<p><tt class="file docutils literal"><span class="pre">configure.py</span></tt> will write the <em>Payette</em> configuration file and the
+following executable scripts:</p>
 <div class="highlight-rst"><div class="highlight"><pre>PAYETTE_ROOT
   Payette_config.py
   Toolset/
@@ -138,7 +138,7 @@ executable scripts:</p>
 <div class="highlight-rst"><div class="highlight"><pre>% buildPayette
 </pre></div>
 </div>
-<p>which will build the Payette material libraries and create a configuration
+<p>which will build the <em>Payette</em> material libraries and create a configuration
 file of all built and installed materials in
 <tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Source/Materials/Payette_installed_materials.py</span></tt></p>
 </li>
@@ -146,7 +146,7 @@ file of all built and installed materials in
 </div>
 <div class="section" id="testing-the-installation">
 <h2>Testing the Installation<a class="headerlink" href="#testing-the-installation" title="Permalink to this headline">¶</a></h2>
-<p>To test Payette after installation, execute:</p>
+<p>To test <em>Payette</em> after installation, execute:</p>
 <div class="highlight-rst"><div class="highlight"><pre>% testPayette -k regression -k fast
 </pre></div>
 </div>
@@ -161,30 +161,29 @@ file of all built and installed materials in
 <ol class="arabic">
 <li><p class="first"><em>callbacks</em></p>
 <p>A callback function is a Python function accessible by Fortran subroutines
-through a callback mechanism provided by <tt class="docutils literal"><span class="pre">f2py</span></tt>. The <tt class="docutils literal"><span class="pre">NumPy</span></tt> and <tt class="docutils literal"><span class="pre">SciPy</span></tt>
+through a callback mechanism provided by <em>f2py</em>. The <em>NumPy</em> and <em>SciPy</em>
 packages distributed by many of the different linux distributions package
 managers have broken dependencies. In particular, callback functions seem to
-be broken on many linux systems. The easy work around is to configure Payette
-with &#8211;no-callback. Another work around is passing different fortran compilers
-to configure.py (&#8211;f77exec= , &#8211;f90exec= ) and seeing if that makes a
-difference.</p>
+be broken on many linux systems. The easy work around is to configure
+<em>Payette</em> with <tt class="docutils literal"><span class="pre">--no-callback</span></tt>. Another work around is passing different
+fortran compilers to configure.py (<tt class="docutils literal"><span class="pre">--f77exec=</span></tt> , <tt class="docutils literal"><span class="pre">--f90exec=</span></tt>) and seeing
+if that makes a difference.</p>
 </li>
 <li><p class="first"><em>segfault</em></p>
 <p>A segfault error is usually a result of a broken callback.  See 0) above.</p>
 </li>
 <li><p class="first"><em>Unable to build</em></p>
-<p>Difficulty building Payette is usually the result of broken <tt class="docutils literal"><span class="pre">NumPy</span></tt> and
-<tt class="docutils literal"><span class="pre">SciPy</span></tt> installations and the workaround involves reinstalling all software
+<p>Difficulty building <em>Payette</em> is usually the result of broken <em>NumPy</em> and
+<em>SciPy</em> installations and the workaround involves reinstalling all software
 packages from sourc. If you are uncomfortable installing these software
-packages from source, consider using Sage to build and run Payette.</p>
+packages from source, consider using Sage to build and run <em>Payette</em>.</p>
 </li>
 </ol>
 </div>
 <div class="section" id="troubleshooting">
 <h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h2>
-<p>If you experience problems when building/installing/testing Payette, you can ask
-help from <a class="reference external" href="mailto:tjfulle&#37;&#52;&#48;sandia&#46;gov">Tim Fuller</a> or <a class="reference external" href="mailto:mswan&#37;&#52;&#48;sandia&#46;gov">Scot Swan</a>.
-Please include the following information in your message:</p>
+<p>If you experience problems when building/installing/testing <em>Payette</em>, you can
+ask help from <a class="reference external" href="mailto:tjfulle&#37;&#52;&#48;sandia&#46;gov">Tim Fuller</a> or <a class="reference external" href="mailto:mswan&#37;&#52;&#48;sandia&#46;gov">Scot Swan</a>. Please include the following information in your message:</p>
 <ol class="arabic">
 <li><p class="first">Are you using Sage, or not</p>
 </li>
@@ -207,12 +206,12 @@ the output of:</p>
 </pre></div>
 </div>
 </li>
-<li><p class="first"><tt class="docutils literal"><span class="pre">NumPy</span></tt> version:</p>
+<li><p class="first"><em>NumPy</em> version:</p>
 <div class="highlight-rst"><div class="highlight"><pre>% PYTHON -c &#39;import numpy;print numpy.__version__&#39;
 </pre></div>
 </div>
 </li>
-<li><p class="first"><tt class="docutils literal"><span class="pre">SciPy</span></tt> version:</p>
+<li><p class="first"><em>SciPy</em> version:</p>
 <div class="highlight-rst"><div class="highlight"><pre>% PYTHON -c &#39;import scipy;print scipy.__version__&#39;
 </pre></div>
 </div>
@@ -233,7 +232,7 @@ the output of:</p>
         <div class="sphinxsidebarwrapper">
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">Building</a><ul>
+<li><a class="reference internal" href="#">Building <em>Payette</em></a><ul>
 <li><a class="reference internal" href="#system-requirements">System Requirements</a></li>
 <li><a class="reference internal" href="#required-software">Required Software</a></li>
 <li><a class="reference internal" href="#installation">Installation</a></li>
@@ -246,7 +245,7 @@ the output of:</p>
 
   <h4>Previous topic</h4>
   <p class="topless"><a href="obtaining.html"
-                        title="previous chapter">Obtaining Payette</a></p>
+                        title="previous chapter">Obtaining <em>Payette</em></a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="running_payette.html"
                         title="next chapter">Running Payette</a></p>

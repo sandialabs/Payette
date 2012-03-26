@@ -3,9 +3,9 @@
 Introduction
 ############
 
-``Payette`` is an object oriented material model driver written in
-`Python <http://www.python.org>`_ designed for rapid development and testing
-of material models.
+*Payette* is an object oriented material model driver written in `Python
+<http://www.python.org>`_ designed for rapid development and testing of material
+models.
 
 
 Why a Single Element Driver?
@@ -16,11 +16,11 @@ constitutive model development. In addition, features such as artificial
 viscosity can mask the actual material response from constitutive model
 development. Single element drivers allow the constituive model developer to
 concentrate on model development and not the finite element response. Other
-advantages of the ``Payette`` (or, more generally, of any stand-alone
-constitutive model driver) are
+advantages of the *Payette* (or, more generally, of any stand-alone constitutive
+model driver) are
 
-  * ``Payette`` is a very small, special purpose, code. Thus, maintaining and
-    adding new features to ``Payette`` is very easy.
+  * *Payette* is a very small, special purpose, code. Thus, maintaining and
+    adding new features to *Payette* is very easy.
 
   * Simulations are not affected by irrelevant artifacts such as artificial
     viscosity or uncertainty in the handling of boundary conditions.
@@ -61,15 +61,15 @@ models.
 Historical Background
 =====================
 
-``Payette`` is an outgrowth of Tom Pucick's ``MMD`` and `Rebecca Brannon's
-<http://www.mech.utah.edu/~brannon/>`_ ``MED`` drivers. Both these other drivers
+*Payette* is an outgrowth of Tom Pucick's *MMD* and `Rebecca Brannon's
+<http://www.mech.utah.edu/~brannon/>`_ *MED* drivers. Both these other drivers
 are written in Fortran.
 
 
 Simulation Approach
 ===================
 
-``Payette`` exercises a material model directly by "driving" it through user
+*Payette* exercises a material model directly by "driving" it through user
 specified mechanical and electrical inputs.
 
 

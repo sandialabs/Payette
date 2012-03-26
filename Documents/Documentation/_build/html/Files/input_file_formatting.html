@@ -53,12 +53,12 @@
           <div class="body">
             
   <div class="section" id="payette-input-file-formatting">
-<h1><tt class="docutils literal"><span class="pre">Payette</span></tt> Input File Formatting<a class="headerlink" href="#payette-input-file-formatting" title="Permalink to this headline">¶</a></h1>
+<h1><em>Payette</em> Input File Formatting<a class="headerlink" href="#payette-input-file-formatting" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="input-file-blocks">
 <span id="id1"></span><h2>Input File Blocks<a class="headerlink" href="#input-file-blocks" title="Permalink to this headline">¶</a></h2>
-<p>Input files are comprised of several &#8220;blocks&#8221; of instruction for <tt class="docutils literal"><span class="pre">runPayette</span></tt>.
-A block is a group of instructions contained in a <tt class="docutils literal"><span class="pre">begin</span> <span class="pre">&lt;block&gt;</span> <span class="pre">[block</span> <span class="pre">name]</span>
-<span class="pre">...</span> <span class="pre">end</span> <span class="pre">&lt;block&gt;</span></tt> pair:</p>
+<p>Input files are comprised of several &#8220;blocks&#8221; of instruction for
+<tt class="file docutils literal"><span class="pre">runPayette</span></tt>. A block is a group of instructions contained in a <tt class="docutils literal"><span class="pre">begin</span>
+<span class="pre">&lt;block&gt;</span> <span class="pre">[block</span> <span class="pre">name]</span> <span class="pre">...</span> <span class="pre">end</span> <span class="pre">&lt;block&gt;</span></tt> pair:</p>
 <div class="highlight-python"><pre>begin &lt;block&gt; [block name]
         .
         .
@@ -69,13 +69,13 @@ end &lt;block&gt;</pre>
 <p class="first admonition-title">Note</p>
 <p class="last">The case of the text in the input file does not matter, nor does the
 indentation on each line. Indentation of input blocks is used only for clarity
-in this document. <tt class="docutils literal"><span class="pre">runPayette</span></tt> supports <tt class="docutils literal"><span class="pre">#</span></tt> and <tt class="docutils literal"><span class="pre">$</span></tt> as native comment
-characters and the user can pass the optional <tt class="docutils literal"><span class="pre">--cchar=userchar</span></tt> to specify
-any character <tt class="docutils literal"><span class="pre">userchar</span></tt> to be used as a comment character.</p>
+in this document. <tt class="file docutils literal"><span class="pre">runPayette</span></tt> supports <tt class="docutils literal"><span class="pre">#</span></tt> and <tt class="docutils literal"><span class="pre">$</span></tt> as native
+comment characters and the user can pass the optional <tt class="docutils literal"><span class="pre">--cchar=userchar</span></tt> to
+specify any character <tt class="docutils literal"><span class="pre">userchar</span></tt> to be used as a comment character.</p>
 </div>
 <div class="section" id="required-blocks">
 <span id="id2"></span><h3>Required Blocks<a class="headerlink" href="#required-blocks" title="Permalink to this headline">¶</a></h3>
-<p>The blocks required by <tt class="docutils literal"><span class="pre">runPayette</span></tt> are:</p>
+<p>The blocks required by <tt class="file docutils literal"><span class="pre">runPayette</span></tt> are:</p>
 <div class="highlight-python"><pre>begin simulation &lt;title&gt;
 
   begin material
@@ -102,8 +102,8 @@ title of the simulation will serve as the basename for all simulation output,
 with spaces replaced with underscores.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last"><tt class="docutils literal"><span class="pre">runPayette</span></tt> supports an arbitrary number of <tt class="docutils literal"><span class="pre">simulation</span></tt> blocks in a single
-input file.</p>
+<p class="last"><tt class="file docutils literal"><span class="pre">runPayette</span></tt> supports an arbitrary number of <tt class="docutils literal"><span class="pre">simulation</span></tt> blocks in a
+single input file.</p>
 </div>
 </div>
 <div class="section" id="the-material-block">
@@ -135,7 +135,7 @@ end material</pre>
 <span id="boundary-block"></span><h4>The <tt class="docutils literal"><span class="pre">boundary</span></tt> Block<a class="headerlink" href="#the-boundary-block" title="Permalink to this headline">¶</a></h4>
 <p>In the <tt class="docutils literal"><span class="pre">boundary</span></tt> block, the boundary conditions for the simulation are
 defined. The <tt class="docutils literal"><span class="pre">boundary</span></tt> block is comprised of keyword instructions to
-<tt class="docutils literal"><span class="pre">Payette</span></tt> and a <tt class="docutils literal"><span class="pre">legs</span></tt> block. In the <tt class="docutils literal"><span class="pre">boundary</span></tt> block below, the default
+<em>Payette</em> and a <tt class="docutils literal"><span class="pre">legs</span></tt> block. In the <tt class="docutils literal"><span class="pre">boundary</span></tt> block below, the default
 values for available keywords are shown:</p>
 <div class="highlight-python"><pre>begin boundary
   kappa = 0.
@@ -159,40 +159,55 @@ end boundary</pre>
 <p>The various keywords and the <tt class="docutils literal"><span class="pre">legs</span></tt> block are described in the following sections.</p>
 <div class="section" id="the-boundary-block-keywords">
 <span id="legs-keywords"></span><h5>The <tt class="docutils literal"><span class="pre">boundary</span></tt> Block Keywords<a class="headerlink" href="#the-boundary-block-keywords" title="Permalink to this headline">¶</a></h5>
-<div class="section" id="t-s-e-f-d-ef-step-star">
-<span id="xstar-keywords"></span><h6><tt class="docutils literal"><span class="pre">[t,s,e,f,d,ef,step]star</span></tt><a class="headerlink" href="#t-s-e-f-d-ef-step-star" title="Permalink to this headline">¶</a></h6>
+<span class="target" id="xstar-keywords"></span><dl class="data">
+<dt>
+<tt class="descname">[t,s,e,f,d,ef,step]star</tt></dt>
+<dd></dd></dl>
+
 <p>Multiplier on all components of time, stress, strain, deformation gradient,
 strain rate, displacement, electric field, and number of steps, respectively. All
 values of the previously listed quantities are defined in each leg will be
 multiplied by this factor. As an example, if the simulation times are given in
 microseconds, <tt class="docutils literal"><span class="pre">tstar</span></tt> could be set to <tt class="docutils literal"><span class="pre">1.0e-6</span></tt> and the times given in integer
 microsecond values.</p>
-</div>
-<div class="section" id="emit">
-<span id="emit-keyword"></span><h6><tt class="docutils literal"><span class="pre">emit</span></tt><a class="headerlink" href="#emit" title="Permalink to this headline">¶</a></h6>
+<span class="target" id="emit-keyword"></span><dl class="data">
+<dt id="emit">
+<tt class="descname">emit</tt><a class="headerlink" href="#emit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <p>Write all data (<tt class="docutils literal"><span class="pre">emit</span> <span class="pre">=</span> <span class="pre">all</span></tt>) or data from only 10 timesteps (<tt class="docutils literal"><span class="pre">emit</span> <span class="pre">=</span>
 <span class="pre">sparse</span></tt>) to the output file.</p>
-</div>
-<div class="section" id="screenout">
-<span id="screenout-keyword"></span><h6><tt class="docutils literal"><span class="pre">screenout</span></tt><a class="headerlink" href="#screenout" title="Permalink to this headline">¶</a></h6>
+<span class="target" id="screenout-keyword"></span><dl class="data">
+<dt id="screenout">
+<tt class="descname">screenout</tt><a class="headerlink" href="#screenout" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <p>Print out all timestep information to the console.</p>
-</div>
-<div class="section" id="nprints">
-<span id="nprints-keyword"></span><h6><tt class="docutils literal"><span class="pre">nprints</span></tt><a class="headerlink" href="#nprints" title="Permalink to this headline">¶</a></h6>
+<span class="target" id="nprints-keyword"></span><dl class="data">
+<dt id="nprints">
+<tt class="descname">nprints</tt><a class="headerlink" href="#nprints" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <p>Total number of writes to the output file during the simulation.</p>
-</div>
-<div class="section" id="ampl">
-<span id="ampl-keyword"></span><h6><tt class="docutils literal"><span class="pre">ampl</span></tt><a class="headerlink" href="#ampl" title="Permalink to this headline">¶</a></h6>
+<span class="target" id="ampl-keyword"></span><dl class="data">
+<dt id="ampl">
+<tt class="descname">ampl</tt><a class="headerlink" href="#ampl" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <p>Multiplier on all leg inputs. <tt class="docutils literal"><span class="pre">ampl</span></tt> may be used to increase or decrease the
 peak values of the given inputs without changing the rates of those inputs.</p>
-</div>
-<div class="section" id="ratfac">
-<span id="ratfac-keyword"></span><h6><tt class="docutils literal"><span class="pre">ratfac</span></tt><a class="headerlink" href="#ratfac" title="Permalink to this headline">¶</a></h6>
+<span class="target" id="ratfac-keyword"></span><dl class="data">
+<dt id="ratfac">
+<tt class="descname">ratfac</tt><a class="headerlink" href="#ratfac" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <p>Multiplier on strain and stress rates - effectively achieved by dividing each
 time by <tt class="docutils literal"><span class="pre">ratfac</span></tt>.</p>
-</div>
-<div class="section" id="kappa">
-<span id="kappa-keyword"></span><h6><tt class="docutils literal"><span class="pre">kappa</span></tt><a class="headerlink" href="#kappa" title="Permalink to this headline">¶</a></h6>
+<span class="target" id="kappa-keyword"></span><dl class="data">
+<dt id="kappa">
+<tt class="descname">kappa</tt><a class="headerlink" href="#kappa" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <p>The keyword <tt class="docutils literal"><span class="pre">kappa</span></tt> is only used/defined for the purposes of strain or strain
 rate control. It refers to the coefficient used in the Seth-Hill generalized
 strain definition</p>
@@ -232,7 +247,6 @@ names for each (there is some ambiguity in the names) are:</p>
 </tbody>
 </table>
 </div></blockquote>
-</div>
 </div>
 </div>
 <div class="section" id="the-legs-block">
@@ -307,8 +321,8 @@ to tensor components by</p>
        C_{4} &amp; C_{5} &amp; C_{6} \\
        C_{7} &amp; C_{8} &amp; C_{9}
       \end{bmatrix}\end{split}\]</div>
-<p>Payette simply follows this pattern for assigning variables. However, at least
-the first three must be defined (the <span class="math">\(x\)</span>, <span class="math">\(y\)</span>, and <span class="math">\(z\)</span>
+<p><em>Payette</em> simply follows this pattern for assigning variables. However, at
+least the first three must be defined (the <span class="math">\(x\)</span>, <span class="math">\(y\)</span>, and <span class="math">\(z\)</span>
 components). If any variables are given beyond this, it fills in the matrix in
 that order up to the maximum number of components.</p>
 </div>
@@ -327,7 +341,7 @@ Mathematica post processing files. The basic syntax is:</p>
   var7; ...; varn
 end mathplot</pre>
 </div>
-<p>where <tt class="docutils literal"><span class="pre">var?</span></tt> are <tt class="docutils literal"><span class="pre">Payette</span></tt> and material model variables. A complete list of
+<p>where <tt class="docutils literal"><span class="pre">var?</span></tt> are <em>Payette</em> and material model variables. A complete list of
 plotable variables is listed in each simulation&#8217;s log file. Each line in the
 <tt class="docutils literal"><span class="pre">mathplot</span></tt> block can contain an arbitrary number of space, comma, or semi-colon
 delimited variables.</p>
@@ -336,7 +350,7 @@ delimited variables.</p>
 </div>
 <div class="section" id="inserting-external-files">
 <span id="inserting-files"></span><h2>Inserting External Files<a class="headerlink" href="#inserting-external-files" title="Permalink to this headline">¶</a></h2>
-<p>External files containing formatted <tt class="docutils literal"><span class="pre">Payette</span></tt> input can be included anywhere in
+<p>External files containing formatted <em>Payette</em> input can be included anywhere in
 the input file through the <tt class="docutils literal"><span class="pre">include</span></tt> and <tt class="docutils literal"><span class="pre">insert</span></tt> directives. For
 example, material parameters can be kept in a separate parameter file and
 inserted in to an input file by:</p>
@@ -345,7 +359,7 @@ inserted in to an input file by:</p>
   insert salem_limestone.dat
 end material</pre>
 </div>
-<p>When <tt class="docutils literal"><span class="pre">Payette</span></tt> encounters an <tt class="docutils literal"><span class="pre">[insert,include]</span></tt> directive, it looks for the
+<p>When <em>Payette</em> encounters an <tt class="docutils literal"><span class="pre">[insert,include]</span></tt> directive, it looks for the
 inserted file by it&#8217;s absolute path, in the current directory, and in the
 <tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Aux/MaterialsDatabase</span></tt> directory, in that order.</p>
 </div>
@@ -406,7 +420,7 @@ simply cannot reach the prescribed stress. For example, if the user desired
 uniaxial stress but prescribed the stress to some value beyond the limit
 surface then the stress state might develop non-zero values in components that
 could reasonably be expected to stay zero.</p>
-<p class="last">To alleviate this problem, Payette has a command line argument
+<p class="last">To alleviate this problem, <em>Payette</em> has a command line argument
 <tt class="docutils literal"><span class="pre">--proportional</span></tt> that enforces proportional loading for prescribed stress
 problems. This changes the objective function to optimize for a stress state
 that is proportional to the prescribed stress by some factor and that is as
@@ -415,7 +429,7 @@ output stress tensor into <tt class="docutils literal"><span class="pre">proport
 the proportional stress tensor begin a multiple of the prescribed stress
 tensor and the perpendicular tensor being the balance. The function takes the
 square of the L2 norm of the perpendicular tensor and the L2 norm of the
-difference of the proportional and prescribed tensors. In this way Payette
+difference of the proportional and prescribed tensors. In this way <em>Payette</em>
 weights the stress state such that being proportional is more important than
 being closer. For this objective function using the same simulation as
 described for the default objective function, we would maintain uniaxial
@@ -484,22 +498,13 @@ end simulation</pre>
         <div class="sphinxsidebarwrapper">
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#"><tt class="docutils literal"><span class="pre">Payette</span></tt> Input File Formatting</a><ul>
+<li><a class="reference internal" href="#"><em>Payette</em> Input File Formatting</a><ul>
 <li><a class="reference internal" href="#input-file-blocks">Input File Blocks</a><ul>
 <li><a class="reference internal" href="#required-blocks">Required Blocks</a><ul>
 <li><a class="reference internal" href="#the-simulation-block">The <tt class="docutils literal"><span class="pre">simulation</span></tt> Block</a></li>
 <li><a class="reference internal" href="#the-material-block">The <tt class="docutils literal"><span class="pre">material</span></tt> Block</a></li>
 <li><a class="reference internal" href="#the-boundary-block">The <tt class="docutils literal"><span class="pre">boundary</span></tt> Block</a><ul>
-<li><a class="reference internal" href="#the-boundary-block-keywords">The <tt class="docutils literal"><span class="pre">boundary</span></tt> Block Keywords</a><ul>
-<li><a class="reference internal" href="#t-s-e-f-d-ef-step-star"><tt class="docutils literal"><span class="pre">[t,s,e,f,d,ef,step]star</span></tt></a></li>
-<li><a class="reference internal" href="#emit"><tt class="docutils literal"><span class="pre">emit</span></tt></a></li>
-<li><a class="reference internal" href="#screenout"><tt class="docutils literal"><span class="pre">screenout</span></tt></a></li>
-<li><a class="reference internal" href="#nprints"><tt class="docutils literal"><span class="pre">nprints</span></tt></a></li>
-<li><a class="reference internal" href="#ampl"><tt class="docutils literal"><span class="pre">ampl</span></tt></a></li>
-<li><a class="reference internal" href="#ratfac"><tt class="docutils literal"><span class="pre">ratfac</span></tt></a></li>
-<li><a class="reference internal" href="#kappa"><tt class="docutils literal"><span class="pre">kappa</span></tt></a></li>
-</ul>
-</li>
+<li><a class="reference internal" href="#the-boundary-block-keywords">The <tt class="docutils literal"><span class="pre">boundary</span></tt> Block Keywords</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#the-legs-block">The <tt class="docutils literal"><span class="pre">legs</span></tt> Block</a></li>

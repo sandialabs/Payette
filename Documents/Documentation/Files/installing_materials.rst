@@ -3,12 +3,12 @@
 Installing New Materials
 ########################
 
-``Payette`` was born from the need for an environment in which material
+*Payette* was born from the need for an environment in which material
 constitutive models could be rapidly developed, tested, deployed, and maintained,
 independent of host finite element code implementation. Important prerequisites
-in the design of ``Payette`` were ease of model installation and support for
+in the design of *Payette* were ease of model installation and support for
 constitutive routines written in Fortran. This requirement is met by providing a
-simple API with which a model developer can install a material in ``Payette`` as
+simple API with which a model developer can install a material in *Payette* as
 a new Python class and use `f2py <cens.ioc.ee/projects/f2py2e/>`_ to compile
 Python extension modules from the material's Fortran source (if applicable). In
 this section, the required elements of the constitutive model interface and
@@ -43,17 +43,17 @@ The source files and directories would be named::
 
 .. note::
 
-   The ``Payette`` project is an open source project, without restrictions on how
+   The *Payette* project is an open source project, without restrictions on how
    the source code is used and/or distributed. However, many material models do
    have restrictive access controls and cannot, therefore, include their source
-   files in ``Payette``. This is the case for many materials currently being
-   developed with ``Payette``. For these materials, rather than include the source
+   files in *Payette*. This is the case for many materials currently being
+   developed with *Payette*. For these materials, rather than include the source
    code in the material's Fortran directory, the Fortran build script used by
-   ``Payette`` to build the material's Python extension module is used to direct
-   ``Payette`` to the location of the material's source files, elsewhere in the
+   *Payette* to build the material's Python extension module is used to direct
+   *Payette* to the location of the material's source files, elsewhere in the
    developer's file system. The contents of the Fortran build script are
    discussed later in this document in the section on building Fortran source
-   code in ``Payette``.
+   code in *Payette*.
 
 
 Interface File Required Attributes
@@ -89,15 +89,15 @@ The interface file must provide an ``attributes`` with the following keys
 .. note::
 
    Using the ``attributes`` dictionary outside of the material's class definition
-   allows ``Payette`` to scan :file:`PAYETTE_ROOT/Source/Materials/` directory to
-   find and import only the ``Payette`` material interface files during the build
+   allows *Payette* to scan :file:`PAYETTE_ROOT/Source/Materials/` directory to
+   find and import only the *Payette* material interface files during the build
    process.
 
 
 Constitutive Model API: Required Elements
 =========================================
 
-``Payette`` provides a simple interface for interacting with material models
+*Payette* provides a simple interface for interacting with material models
 through the Python class structure. Material models are installed as separate
 Python classes, derived from the ``ConstitutiveModelPrototype`` base class.
 
@@ -146,12 +146,12 @@ Required Functions
 
 .. function:: MaterialModel.__init__()
 
-   Instantiate the material model.  Register parameters with ``Payette``.
+   Instantiate the material model.  Register parameters with *Payette*.
 
 
 .. function:: MaterialModel.setUp(simdat,matdat,user_params,f_params)
 
-   Check user inputs and register extra variables with ``Payette``. *simdat* and
+   Check user inputs and register extra variables with *Payette*. *simdat* and
    *matdat* are the simulation and material data containers, respectively,
    *user_params* are the parameters read in from the input file, and *f_params*
    are parameters from a parameters file.
@@ -183,7 +183,7 @@ demonstrated by an annotated version of the elastic material's interface.
 .. note::
 
    The ``Source.Payette_utils`` module contains public methods for interfacing
-   with ``Payette``.
+   with *Payette*.
 
 ::
 
@@ -268,12 +268,12 @@ demonstrated by an annotated version of the elastic material's interface.
 
 .. note::
 
-   Below, the elastic material's parameters are registered with ``Payette``
+   Below, the elastic material's parameters are registered with *Payette*
    through the ``registerParameter`` function:
 
    .. function:: self.registerParameter(name, ui_loc, aliases=[])
 
-      Register the parameter *name* with ``Payette``. *ui_loc* is the integer
+      Register the parameter *name* with *Payette*. *ui_loc* is the integer
       location (starting at 0) of the parameter in the material's user input array.
       *aliases* are aliases by which the parameter can be specified in the input
       file.
@@ -357,7 +357,7 @@ demonstrated by an annotated version of the elastic material's interface.
 
 .. note::
 
-   By default, ``Payette`` computes the material's Jacobian matrix numerically
+   By default, *Payette* computes the material's Jacobian matrix numerically
    through a central difference algorithm. For some materials, like this elastic
    model, the Jacobian is constant. Here, we redefine the Jacobian to return the
    intial value.
@@ -406,21 +406,21 @@ demonstrated by an annotated version of the elastic material's interface.
         return
 
 
-Building Material Fortran Extension Modules in ``Payette``
+Building Material Fortran Extension Modules in *Payette*
 ==========================================================
 
 .. note::
 
    This is not an exhaustive tutorial for how to link Python programs with
    compiled source code. Instead, it demonstrates through an annotated example
-   the strategy that ``Payette`` uses to build and link with material models
+   the strategy that *Payette* uses to build and link with material models
    written in Fortran.
 
-The strategy used in ``Payette`` to build and link to material models written in
-Fortran is to use ``f2py`` to compile the Fortran source in to a shared object
+The strategy used in *Payette* to build and link to material models written in
+Fortran is to use *f2py* to compile the Fortran source in to a shared object
 library recognized by Python. The same task can be accomplished through Python's
 built in `ctypes <http://docs.python.org/library/ctypes.html>`_, `weave
-<http://www.scipy.org/Weave>`_\, or other methods. We have found that ``f2py``
+<http://www.scipy.org/Weave>`_\, or other methods. We have found that *f2py*
 offers the most robust and easy to use solution. For more detailed examples of
 how to use compiled libraries with Python see `Using Python as glue
 <http://docs.scipy.org/doc/numpy/user/c-info.python-as-glue.html>`_ at the SciPy

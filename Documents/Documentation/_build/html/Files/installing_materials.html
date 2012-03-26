@@ -26,7 +26,8 @@
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="Payette 1.0 documentation" href="../index.html" /> 
+    <link rel="top" title="Payette 1.0 documentation" href="../index.html" />
+    <link rel="prev" title="Running Tests" href="test_payette.html" /> 
   </head>
   <body>
     <div class="related">
@@ -35,6 +36,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="test_payette.html" title="Running Tests"
+             accesskey="P">previous</a> |</li>
         <li><a href="../index.html">Payette 1.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
@@ -46,12 +50,12 @@
             
   <div class="section" id="installing-new-materials">
 <h1>Installing New Materials<a class="headerlink" href="#installing-new-materials" title="Permalink to this headline">¶</a></h1>
-<p><tt class="docutils literal"><span class="pre">Payette</span></tt> was born from the need for an environment in which material
+<p><em>Payette</em> was born from the need for an environment in which material
 constitutive models could be rapidly developed, tested, deployed, and maintained,
 independent of host finite element code implementation. Important prerequisites
-in the design of <tt class="docutils literal"><span class="pre">Payette</span></tt> were ease of model installation and support for
+in the design of <em>Payette</em> were ease of model installation and support for
 constitutive routines written in Fortran. This requirement is met by providing a
-simple API with which a model developer can install a material in <tt class="docutils literal"><span class="pre">Payette</span></tt> as
+simple API with which a model developer can install a material in <em>Payette</em> as
 a new Python class and use <a class="reference external" href="cens.ioc.ee/projects/f2py2e/">f2py</a> to compile
 Python extension modules from the material&#8217;s Fortran source (if applicable). In
 this section, the required elements of the constitutive model interface and
@@ -81,17 +85,17 @@ The source files and directories would be named:</p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">The <tt class="docutils literal"><span class="pre">Payette</span></tt> project is an open source project, without restrictions on how
+<p class="last">The <em>Payette</em> project is an open source project, without restrictions on how
 the source code is used and/or distributed. However, many material models do
 have restrictive access controls and cannot, therefore, include their source
-files in <tt class="docutils literal"><span class="pre">Payette</span></tt>. This is the case for many materials currently being
-developed with <tt class="docutils literal"><span class="pre">Payette</span></tt>. For these materials, rather than include the source
+files in <em>Payette</em>. This is the case for many materials currently being
+developed with <em>Payette</em>. For these materials, rather than include the source
 code in the material&#8217;s Fortran directory, the Fortran build script used by
-<tt class="docutils literal"><span class="pre">Payette</span></tt> to build the material&#8217;s Python extension module is used to direct
-<tt class="docutils literal"><span class="pre">Payette</span></tt> to the location of the material&#8217;s source files, elsewhere in the
+<em>Payette</em> to build the material&#8217;s Python extension module is used to direct
+<em>Payette</em> to the location of the material&#8217;s source files, elsewhere in the
 developer&#8217;s file system. The contents of the Fortran build script are
 discussed later in this document in the section on building Fortran source
-code in <tt class="docutils literal"><span class="pre">Payette</span></tt>.</p>
+code in <em>Payette</em>.</p>
 </div>
 </div>
 <div class="section" id="interface-file-required-attributes">
@@ -137,14 +141,14 @@ code in <tt class="docutils literal"><span class="pre">Payette</span></tt>.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">Using the <tt class="docutils literal"><span class="pre">attributes</span></tt> dictionary outside of the material&#8217;s class definition
-allows <tt class="docutils literal"><span class="pre">Payette</span></tt> to scan <tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Source/Materials/</span></tt> directory to
-find and import only the <tt class="docutils literal"><span class="pre">Payette</span></tt> material interface files during the build
+allows <em>Payette</em> to scan <tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Source/Materials/</span></tt> directory to
+find and import only the <em>Payette</em> material interface files during the build
 process.</p>
 </div>
 </div>
 <div class="section" id="constitutive-model-api-required-elements">
 <h2>Constitutive Model API: Required Elements<a class="headerlink" href="#constitutive-model-api-required-elements" title="Permalink to this headline">¶</a></h2>
-<p><tt class="docutils literal"><span class="pre">Payette</span></tt> provides a simple interface for interacting with material models
+<p><em>Payette</em> provides a simple interface for interacting with material models
 through the Python class structure. Material models are installed as separate
 Python classes, derived from the <tt class="docutils literal"><span class="pre">ConstitutiveModelPrototype</span></tt> base class.</p>
 <div class="section" id="inheritance-from-base-class">
@@ -200,13 +204,13 @@ was imported.</p>
 <dl class="function">
 <dt id="MaterialModel.__init__">
 <tt class="descclassname">MaterialModel.</tt><tt class="descname">__init__</tt><big>(</big><big>)</big><a class="headerlink" href="#MaterialModel.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Instantiate the material model.  Register parameters with <tt class="docutils literal"><span class="pre">Payette</span></tt>.</p>
+<dd><p>Instantiate the material model.  Register parameters with <em>Payette</em>.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="MaterialModel.setUp">
 <tt class="descclassname">MaterialModel.</tt><tt class="descname">setUp</tt><big>(</big><em>simdat</em>, <em>matdat</em>, <em>user_params</em>, <em>f_params</em><big>)</big><a class="headerlink" href="#MaterialModel.setUp" title="Permalink to this definition">¶</a></dt>
-<dd><p>Check user inputs and register extra variables with <tt class="docutils literal"><span class="pre">Payette</span></tt>. <em>simdat</em> and
+<dd><p>Check user inputs and register extra variables with <em>Payette</em>. <em>simdat</em> and
 <em>matdat</em> are the simulation and material data containers, respectively,
 <em>user_params</em> are the parameters read in from the input file, and <em>f_params</em>
 are parameters from a parameters file.</p>
@@ -238,7 +242,7 @@ demonstrated by an annotated version of the elastic material&#8217;s interface.<
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">The <tt class="docutils literal"><span class="pre">Source.Payette_utils</span></tt> module contains public methods for interfacing
-with <tt class="docutils literal"><span class="pre">Payette</span></tt>.</p>
+with <em>Payette</em>.</p>
 </div>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">attributes</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s">&quot;payette material&quot;</span><span class="p">:</span><span class="bp">True</span><span class="p">,</span>
@@ -320,12 +324,12 @@ variable <tt class="docutils literal"><span class="pre">imported</span></tt>.</p
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p>Below, the elastic material&#8217;s parameters are registered with <tt class="docutils literal"><span class="pre">Payette</span></tt>
+<p>Below, the elastic material&#8217;s parameters are registered with <em>Payette</em>
 through the <tt class="docutils literal"><span class="pre">registerParameter</span></tt> function:</p>
 <dl class="last function">
 <dt id="self.registerParameter">
 <tt class="descclassname">self.</tt><tt class="descname">registerParameter</tt><big>(</big><em>name</em>, <em>ui_loc</em>, <em>aliases=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#self.registerParameter" title="Permalink to this definition">¶</a></dt>
-<dd><p>Register the parameter <em>name</em> with <tt class="docutils literal"><span class="pre">Payette</span></tt>. <em>ui_loc</em> is the integer
+<dd><p>Register the parameter <em>name</em> with <em>Payette</em>. <em>ui_loc</em> is the integer
 location (starting at 0) of the parameter in the material&#8217;s user input array.
 <em>aliases</em> are aliases by which the parameter can be specified in the input
 file.</p>
@@ -407,7 +411,7 @@ values.</p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">By default, <tt class="docutils literal"><span class="pre">Payette</span></tt> computes the material&#8217;s Jacobian matrix numerically
+<p class="last">By default, <em>Payette</em> computes the material&#8217;s Jacobian matrix numerically
 through a central difference algorithm. For some materials, like this elastic
 model, the Jacobian is constant. Here, we redefine the Jacobian to return the
 intial value.</p>
@@ -454,18 +458,18 @@ stress.</p>
 </div>
 </div>
 <div class="section" id="building-material-fortran-extension-modules-in-payette">
-<h2>Building Material Fortran Extension Modules in <tt class="docutils literal"><span class="pre">Payette</span></tt><a class="headerlink" href="#building-material-fortran-extension-modules-in-payette" title="Permalink to this headline">¶</a></h2>
+<h2>Building Material Fortran Extension Modules in <em>Payette</em><a class="headerlink" href="#building-material-fortran-extension-modules-in-payette" title="Permalink to this headline">¶</a></h2>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">This is not an exhaustive tutorial for how to link Python programs with
 compiled source code. Instead, it demonstrates through an annotated example
-the strategy that <tt class="docutils literal"><span class="pre">Payette</span></tt> uses to build and link with material models
+the strategy that <em>Payette</em> uses to build and link with material models
 written in Fortran.</p>
 </div>
-<p>The strategy used in <tt class="docutils literal"><span class="pre">Payette</span></tt> to build and link to material models written in
-Fortran is to use <tt class="docutils literal"><span class="pre">f2py</span></tt> to compile the Fortran source in to a shared object
+<p>The strategy used in <em>Payette</em> to build and link to material models written in
+Fortran is to use <em>f2py</em> to compile the Fortran source in to a shared object
 library recognized by Python. The same task can be accomplished through Python&#8217;s
-built in <a class="reference external" href="http://docs.python.org/library/ctypes.html">ctypes</a>, <a class="reference external" href="http://www.scipy.org/Weave">weave</a>, or other methods. We have found that <tt class="docutils literal"><span class="pre">f2py</span></tt>
+built in <a class="reference external" href="http://docs.python.org/library/ctypes.html">ctypes</a>, <a class="reference external" href="http://www.scipy.org/Weave">weave</a>, or other methods. We have found that <em>f2py</em>
 offers the most robust and easy to use solution. For more detailed examples of
 how to use compiled libraries with Python see <a class="reference external" href="http://docs.scipy.org/doc/numpy/user/c-info.python-as-glue.html">Using Python as glue</a> at the SciPy
 website or <a class="reference external" href="http://www.sagemath.org/doc/numerical_sage/using_compiled_code_iteractively.html">Using Compiled Code Interactively</a>
@@ -556,7 +560,7 @@ Fortran source files and the calls the base class&#8217;s
 </ul>
 </li>
 <li><a class="reference internal" href="#example-elastic-material-model-interface-file">Example: Elastic Material Model Interface File</a></li>
-<li><a class="reference internal" href="#building-material-fortran-extension-modules-in-payette">Building Material Fortran Extension Modules in <tt class="docutils literal"><span class="pre">Payette</span></tt></a><ul>
+<li><a class="reference internal" href="#building-material-fortran-extension-modules-in-payette">Building Material Fortran Extension Modules in <em>Payette</em></a><ul>
 <li><a class="reference internal" href="#creating-the-elastic-material-signature-file">Creating the Elastic Material Signature File</a></li>
 <li><a class="reference internal" href="#elastic-material-build-script">Elastic Material Build Script</a></li>
 </ul>
@@ -565,6 +569,9 @@ Fortran source files and the calls the base class&#8217;s
 </li>
 </ul>
 
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="test_payette.html"
+                        title="previous chapter">Running Tests</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="../_sources/Files/installing_materials.txt"
@@ -593,6 +600,9 @@ Fortran source files and the calls the base class&#8217;s
         <li class="right" style="margin-right: 10px">
           <a href="../genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="test_payette.html" title="Running Tests"
+             >previous</a> |</li>
         <li><a href="../index.html">Payette 1.0 documentation</a> &raquo;</li> 
       </ul>
     </div>

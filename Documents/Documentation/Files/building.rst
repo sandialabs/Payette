@@ -4,27 +4,27 @@
 
 .. highlight:: rst
 
-########
-Building
-########
+##################
+Building *Payette*
+##################
 
-Payette is an object oriented material driver. The majority of the source code is
-written in Python and requires no additional building. Many of the material
+*Payette* is an object oriented material driver. The majority of the source code
+is written in Python and requires no additional building. Many of the material
 models, however, are written in Fortran and require a seperate compile step.
 
 
 System Requirements
 ===================
 
-Payette has been built and tested extensively on several versions linux and the
-Apple Mac OSX 10.6 operating systems. It is unknown whether it will run on
-Windows.
+*Payette* has been built and tested extensively on several versions of linux and
+the Apple Mac OSX 10.6 operating systems. It is unknown whether or not *Payette*
+will run on Windows.
 
 
 Required Software
 =================
 
-Payette requires the following software installed for your platform:
+*Payette* requires the following software installed for your platform:
 
 #) `Python 2.6 <http://www.python.org/>`_ or newer
 
@@ -50,7 +50,7 @@ The required software may be obtained in one of several ways:
 
       An involved, but fairly straight forward process.
 
-    * *Use Python, ``NumPy``, and ``SciPy`` installed with*
+    * *Use Python, NumPy, and SciPy installed with*
       `Sage 4.7 <http://www.sagemath.org/>`_ *or newer*
 
       This option is perhaps the easiest, since Sage provides prebuilt binaries
@@ -70,7 +70,7 @@ The required software may be obtained in one of several ways:
 Installation
 ============
 
-#) Make sure that all Payette prerequisites are installed and working properly.
+#) Make sure that all *Payette* prerequisites are installed and working properly.
 
 #) Add ``PAYETTE_ROOT`` to your ``PYTHONPATH`` environment variable
 
@@ -80,11 +80,11 @@ Installation
 
         % PYTHON configure.py
 
-   where ``PYTHON`` is the python interpreter that has ``NumPy`` and ``SciPy``
+   where ``PYTHON`` is the python interpreter that has *NumPy* and *SciPy*
    installed. If using Sage, replace ``PYTHON`` with ``sage -python``.
 
-   :file:`configure.py` will write the Payette configuration file and the following
-   executable scripts::
+   :file:`configure.py` will write the *Payette* configuration file and the
+   following executable scripts::
 
        PAYETTE_ROOT
          Payette_config.py
@@ -98,7 +98,7 @@ Installation
 
 	% buildPayette
 
-   which will build the Payette material libraries and create a configuration
+   which will build the *Payette* material libraries and create a configuration
    file of all built and installed materials in
    :file:`PAYETTE_ROOT/Source/Materials/Payette_installed_materials.py`
 
@@ -106,7 +106,7 @@ Installation
 Testing the Installation
 ========================
 
-To test Payette after installation, execute::
+To test *Payette* after installation, execute::
 
 	% testPayette -k regression -k fast
 
@@ -123,13 +123,13 @@ Known Issues
 #) *callbacks*
 
    A callback function is a Python function accessible by Fortran subroutines
-   through a callback mechanism provided by ``f2py``. The ``NumPy`` and ``SciPy``
+   through a callback mechanism provided by *f2py*. The *NumPy* and *SciPy*
    packages distributed by many of the different linux distributions package
    managers have broken dependencies. In particular, callback functions seem to
-   be broken on many linux systems. The easy work around is to configure Payette
-   with --no-callback. Another work around is passing different fortran compilers
-   to configure.py (--f77exec= , --f90exec= ) and seeing if that makes a
-   difference.
+   be broken on many linux systems. The easy work around is to configure
+   *Payette* with ``--no-callback``. Another work around is passing different
+   fortran compilers to configure.py (``--f77exec=`` , ``--f90exec=``) and seeing
+   if that makes a difference.
 
 #) *segfault*
 
@@ -137,18 +137,18 @@ Known Issues
 
 #) *Unable to build*
 
-   Difficulty building Payette is usually the result of broken ``NumPy`` and
-   ``SciPy`` installations and the workaround involves reinstalling all software
+   Difficulty building *Payette* is usually the result of broken *NumPy* and
+   *SciPy* installations and the workaround involves reinstalling all software
    packages from sourc. If you are uncomfortable installing these software
-   packages from source, consider using Sage to build and run Payette.
+   packages from source, consider using Sage to build and run *Payette*.
 
 
 Troubleshooting
 ===============
 
-If you experience problems when building/installing/testing Payette, you can ask
-help from `Tim Fuller <tjfulle@sandia.gov>`_ or `Scot Swan <mswan@sandia.gov>`_.
-Please include the following information in your message:
+If you experience problems when building/installing/testing *Payette*, you can
+ask help from `Tim Fuller <tjfulle@sandia.gov>`_ or `Scot Swan
+<mswan@sandia.gov>`_. Please include the following information in your message:
 
 #) Are you using Sage, or not
 
@@ -169,11 +169,11 @@ Please include the following information in your message:
 
         % PYTHON -c 'import sys;print sys.version'
 
-#) ``NumPy`` version::
+#) *NumPy* version::
 
         % PYTHON -c 'import numpy;print numpy.__version__'
 
-#) ``SciPy`` version::
+#) *SciPy* version::
 
         % PYTHON -c 'import scipy;print scipy.__version__'
 

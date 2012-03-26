@@ -1,5 +1,5 @@
 
-``Payette`` Input File Formatting
+*Payette* Input File Formatting
 =================================
 
 .. _input_file_blocks:
@@ -7,9 +7,9 @@
 Input File Blocks
 -----------------
 
-Input files are comprised of several "blocks" of instruction for ``runPayette``.
-A block is a group of instructions contained in a ``begin <block> [block name]
-... end <block>`` pair::
+Input files are comprised of several "blocks" of instruction for
+:file:`runPayette`. A block is a group of instructions contained in a ``begin
+<block> [block name] ... end <block>`` pair::
 
   begin <block> [block name]
           .
@@ -22,9 +22,9 @@ A block is a group of instructions contained in a ``begin <block> [block name]
 
    The case of the text in the input file does not matter, nor does the
    indentation on each line. Indentation of input blocks is used only for clarity
-   in this document. ``runPayette`` supports ``#`` and ``$`` as native comment
-   characters and the user can pass the optional ``--cchar=userchar`` to specify
-   any character ``userchar`` to be used as a comment character.
+   in this document. :file:`runPayette` supports ``#`` and ``$`` as native
+   comment characters and the user can pass the optional ``--cchar=userchar`` to
+   specify any character ``userchar`` to be used as a comment character.
 
 
 .. _required_blocks:
@@ -32,7 +32,7 @@ A block is a group of instructions contained in a ``begin <block> [block name]
 Required Blocks
 ^^^^^^^^^^^^^^^
 
-The blocks required by ``runPayette`` are::
+The blocks required by :file:`runPayette` are::
 
   begin simulation <title>
 
@@ -65,8 +65,8 @@ with spaces replaced with underscores.
 
 .. note::
 
-   ``runPayette`` supports an arbitrary number of ``simulation`` blocks in a single
-   input file.
+   :file:`runPayette` supports an arbitrary number of ``simulation`` blocks in a
+   single input file.
 
 
 .. _material_block:
@@ -106,7 +106,7 @@ The ``boundary`` Block
 
 In the ``boundary`` block, the boundary conditions for the simulation are
 defined. The ``boundary`` block is comprised of keyword instructions to
-``Payette`` and a ``legs`` block. In the ``boundary`` block below, the default
+*Payette* and a ``legs`` block. In the ``boundary`` block below, the default
 values for available keywords are shown::
 
   begin boundary
@@ -138,8 +138,7 @@ The ``boundary`` Block Keywords
 
 .. _xstar_keywords:
 
-``[t,s,e,f,d,ef,step]star``
-***************************
+.. data:: [t,s,e,f,d,ef,step]star
 
 Multiplier on all components of time, stress, strain, deformation gradient,
 strain rate, displacement, electric field, and number of steps, respectively. All
@@ -151,8 +150,7 @@ microsecond values.
 
 .. _emit_keyword:
 
-``emit``
-********
+.. data:: emit
 
 Write all data (``emit = all``) or data from only 10 timesteps (``emit =
 sparse``) to the output file.
@@ -160,24 +158,21 @@ sparse``) to the output file.
 
 .. _screenout_keyword:
 
-``screenout``
-*************
+.. data:: screenout
 
 Print out all timestep information to the console.
 
 
 .. _nprints_keyword:
 
-``nprints``
-***********
+.. data:: nprints
 
 Total number of writes to the output file during the simulation.
 
 
 .. _ampl_keyword:
 
-``ampl``
-********
+.. data:: ampl
 
 Multiplier on all leg inputs. ``ampl`` may be used to increase or decrease the
 peak values of the given inputs without changing the rates of those inputs.
@@ -185,8 +180,7 @@ peak values of the given inputs without changing the rates of those inputs.
 
 .. _ratfac_keyword:
 
-``ratfac``
-**********
+.. data:: ratfac
 
 Multiplier on strain and stress rates - effectively achieved by dividing each
 time by ``ratfac``.
@@ -194,8 +188,7 @@ time by ``ratfac``.
 
 .. _kappa_keyword:
 
-``kappa``
-*********
+.. data:: kappa
 
 The keyword ``kappa`` is only used/defined for the purposes of strain or strain
 rate control. It refers to the coefficient used in the Seth-Hill generalized
@@ -305,8 +298,8 @@ to tensor components by
           C_{7} & C_{8} & C_{9}
          \end{bmatrix}
 
-Payette simply follows this pattern for assigning variables. However, at least
-the first three must be defined (the :math:`x`, :math:`y`, and :math:`z`
+*Payette* simply follows this pattern for assigning variables. However, at
+least the first three must be defined (the :math:`x`, :math:`y`, and :math:`z`
 components). If any variables are given beyond this, it fills in the matrix in
 that order up to the maximum number of components.
 
@@ -332,7 +325,7 @@ Mathematica post processing files. The basic syntax is::
     var7; ...; varn
   end mathplot
 
-where ``var?`` are ``Payette`` and material model variables. A complete list of
+where ``var?`` are *Payette* and material model variables. A complete list of
 plotable variables is listed in each simulation's log file. Each line in the
 ``mathplot`` block can contain an arbitrary number of space, comma, or semi-colon
 delimited variables.
@@ -343,7 +336,7 @@ delimited variables.
 Inserting External Files
 ------------------------
 
-External files containing formatted ``Payette`` input can be included anywhere in
+External files containing formatted *Payette* input can be included anywhere in
 the input file through the ``include`` and ``insert`` directives. For
 example, material parameters can be kept in a separate parameter file and
 inserted in to an input file by::
@@ -354,7 +347,7 @@ inserted in to an input file by::
   end material
 
 
-When ``Payette`` encounters an ``[insert,include]`` directive, it looks for the
+When *Payette* encounters an ``[insert,include]`` directive, it looks for the
 inserted file by it's absolute path, in the current directory, and in the
 :file:`PAYETTE_ROOT/Aux/MaterialsDatabase` directory, in that order.
 
@@ -437,7 +430,7 @@ held at zero stress.::
    surface then the stress state might develop non-zero values in components that
    could reasonably be expected to stay zero.
 
-   To alleviate this problem, Payette has a command line argument
+   To alleviate this problem, *Payette* has a command line argument
    ``--proportional`` that enforces proportional loading for prescribed stress
    problems. This changes the objective function to optimize for a stress state
    that is proportional to the prescribed stress by some factor and that is as
@@ -446,7 +439,7 @@ held at zero stress.::
    the proportional stress tensor begin a multiple of the prescribed stress
    tensor and the perpendicular tensor being the balance. The function takes the
    square of the L2 norm of the perpendicular tensor and the L2 norm of the
-   difference of the proportional and prescribed tensors. In this way Payette
+   difference of the proportional and prescribed tensors. In this way *Payette*
    weights the stress state such that being proportional is more important than
    being closer. For this objective function using the same simulation as
    described for the default objective function, we would maintain uniaxial
