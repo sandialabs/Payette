@@ -197,6 +197,8 @@ class Payette:
         # register some obligatory options
         self.simdat.registerOption("simname",simname)
         self.simdat.registerOption("outfile",outfile)
+        self.simdat.registerOption("logfile",logfile)
+        self.simdat.registerOption("loglevel",loglevel)
         self.simdat.registerOption("restart file",rfile)
         self.simdat.registerOption("verbosity",opts.verbosity)
         self.simdat.registerOption("sqa",opts.sqa)
@@ -430,12 +432,15 @@ class Payette:
 
         # parse legs
         lcontrol = []
+        kappa = bcontrol['kappa']
         sigc = False
         for ileg,leg in enumerate(legs):
+
             leg = [x.strip() for x in leg.replace(',',' ').split(' ') if x]
-            if len(leg) < 7:
+
+            if len(leg) < 5:
                 parseError('leg %s input must be of form: \n'
-                         '       leg number, time, steps, type, c[ij]'%leg[0])
+                           '       leg number, time, steps, type, c[ij]'%leg[0])
                 pass
             leg_no = int(float(leg[0]))
             leg_t = bcontrol['tfac']*float(leg[1])
@@ -457,8 +462,8 @@ class Payette:
             allwd_cntrl = '1234568'
             if [x for x in control if x not in allwd_cntrl]:
                 parseError('leg control parameters can only be one of '
-                         '[%s] got %s for leg number %i'
-                         %(allwd_cntrl,control,leg_no))
+                           '[%s] got %s for leg number %i'
+                           %(allwd_cntrl,control,leg_no))
                 pass
 
             if not sigc: sigc = bool([x for x in control if x == '3' or x == '4'])
@@ -484,11 +489,11 @@ class Payette:
             ef.extend([0.]*(3-len(ef)))
             efcntrl.extend([6]*(3-len(efcntrl)))
             c = [i for j, i in enumerate(c) if j not in hold]
-            lcntrl = [i for j, i in enumerate(lcntrl) if j not in hold]
+            lcntrl = [i for j,i in enumerate(lcntrl) if j not in hold]
 
             if len(lcntrl) != len(c):
                 parseError('final length of leg control != number of control items '
-                         'in leg %i'%leg_no)
+                           'in leg %i'%leg_no)
                 pass
 
             reduced_lcntrl = list(set(lcntrl))
@@ -496,13 +501,15 @@ class Payette:
                 # deformation gradient control check
                 if len(reduced_lcntrl) != 1:
                     parseError('only components of deformation gradient are allowed '
-                             'with deformation gradient control in leg %i, got %s'
-                             %(leg_no,control))
-                    return 1
+                               'with deformation gradient control in leg %i, got %s'
+                               %(leg_no,control))
+                    pass
+
                 elif len(c) != 9:
                     parseError('all 9 components of deformation gradient must '
-                             'be specified for leg %i'%leg_no)
-                    return 1
+                               'be specified for leg %i'%leg_no)
+                    pass
+
                 else:
                     # check for valid deformation
                     F = np.array([[c[0],c[1],c[2]],
@@ -511,31 +518,32 @@ class Payette:
                     J = np.linalg.det(F)
                     if J <= 0:
                         parseError('inadmissible deformation gradient in leg %i '
-                                 'gave a Jacobian of %f'%(leg_no,J))
+                                   'gave a Jacobian of %f'%(leg_no,J))
                         return 1
                     # convert F to strain E with associated rotation given by
                     # axis of rotation x and angle of rotation theta
                     R,V = np.linalg.qr(F)
                     U = np.dot(R.T,F)
                     if np.max(np.abs(R - np.eye(3))) > epsilon():
-                        parseError('deformations with rotation encountered in leg %i. '
-                                 'rotations are not yet supported'%leg_no)
-                        return 1
+                        parseError('rotation encountered in leg %i. '
+                                   'rotations are not yet supported'%leg_no)
+                        pass
 
             elif 8 in reduced_lcntrl:
                 # displacement control check
                 if len(reduced_lcntrl) != 1:
                     parseError('only components of displacment are allowed '
-                             'with displacment control in leg %i, got %s'
-                             %(leg_no,control))
-                    return 1
+                               'with displacment control in leg %i, got %s'
+                               %(leg_no,control))
+                    pass
+
                 elif len(c) != 3:
                     parseError('all 3 components of displacement must '
-                             'be specified for leg %i'%leg_no)
-                    return 1
+                               'be specified for leg %i'%leg_no)
+                    pass
 
                 # convert displacments to strains
-                kappa,dfac = bcontrol["kappa"],bcontrol["dfac"]
+                dfac = bcontrol["dfac"]
                 # Seth-Hill generalized strain is defined
                 # strain = (1/kappa)*[(stretch)^kappa - 1]
                 # and
@@ -553,15 +561,47 @@ class Payette:
                 lcntrl = [2,2,2]
                 pass
 
-            i = 0
-            for j in lcntrl:
-                if j == 1 or j == 3: c[i] = bcontrol['ratfac']*c[i]
-                elif j == 2: c[i] = bcontrol['efac']*c[i]
-                elif j == 4: c[i] = bcontrol['sfac']*c[i]
-                elif j == 5: c[i] = bcontrol['ffac']*c[i]
-                elif j == 6: c[i] = bcontrol['effac']*c[i]
-                i += 1
+            if lcntrl == [2]:
+
+                # only one strain value given -> volumetric strain
+                ev = c[0]*bcontrol['efac']
+                if kappa*ev + 1. < 0.:
+                    parseError('1 + kappa*ev must be positive')
+                    pass
+
+                if kappa == 0.: ev = ev/3.
+                else: ev = ((kappa*ev + 1.)**(1./3.) - 1.)/kappa
+
+                lcntrl = [2,2,2]
+                c = [ev, ev, ev]
+                efac_hold = bcontrol['efac']
+                bcontrol['efac'] = 1.0
+                pass
+
+            for i,j in enumerate(lcntrl):
+                if j == 1 or j == 3:
+                    c[i] = bcontrol['ratfac']*c[i]
+
+                elif j == 2:
+                    c[i] = bcontrol['efac']*c[i]
+                    if kappa*c[i] + 1. < 0.:
+                        parseError('1 + kappa*c[%i] must be positive'.format(i))
+                        pass
+
+                elif j == 4:
+                    c[i] = bcontrol['sfac']*c[i]
+
+                elif j == 5:
+                    c[i] = bcontrol['ffac']*c[i]
+
+                elif j == 6:
+                    c[i] = bcontrol['effac']*c[i]
+                    pass
+
                 continue
+
+            try: bcontrol['efac'] = efac_hold
+            except: pass
 
             # fill in c and lcntrl so that their lengths are always 9
             c.extend([0.]*(9-len(c)))
@@ -569,16 +609,20 @@ class Payette:
 
             # append leg control
             # the electric field control is added to the end of lcntrl
-            lcontrol.append([leg_no,leg_t,leg_steps,lcntrl + efcntrl,np.array(c + ef)])
+            lcontrol.append([leg_no,
+                             leg_t,
+                             leg_steps,
+                             lcntrl + efcntrl,
+                             np.array(c + ef)])
             continue
 
         if sigc:
             # stress and or stress rate is used to control this leg. For
             # these cases, kappa is set to 0. globally.
-            if bcontrol['kappa'] != 0.:
+            if kappa != 0.:
                 reportWarning(__file__,'WARNING: stress control boundary conditions '
                                  'only compatible with kappa=0. kappa is being '
-                                 'reset to 0. from %f\n'%bcontrol['kappa'])
+                                 'reset to 0. from %f\n'%kappa)
                 bcontrol['kappa'] = 0.
                 pass
 
@@ -620,7 +664,7 @@ class Payette:
         return
 
     def setupRestart(self):
-        setupLogger(self.simdat.LOGFILE,self.simdat.LOGLEVEL)
+        setupLogger(self.simdat.LOGFILE,self.simdat.LOGLEVEL,mode="a")
         msg = "setting up simulation %s"%self.simdat.SIMNAME
         reportMessage(__file__,msg)
 

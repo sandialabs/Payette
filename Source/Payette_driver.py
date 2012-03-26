@@ -165,12 +165,12 @@ def runProblem(the_model,**kwargs):
     # --- call the material model with zero state
     if ileg == 0:
         material.updateState(simdat,matdat)
-        pass
 
-    # advance and write data
-    simdat.advanceAllData()
-    matdat.advanceAllData()
-    writeState(simdat,matdat)
+        # advance and write data
+        simdat.advanceAllData()
+        matdat.advanceAllData()
+        writeState(simdat,matdat)
+        pass
 
     # ----------------------------------------------------------------------- #
 
@@ -456,7 +456,7 @@ def runProblem(the_model,**kwargs):
         t_beg = t_end
 
         if simdat.WRITE_RESTART:
-            with open(simdat.RFILE,'wb') as f: pickle.dump(the_model,f,2)
+            with open(simdat.RESTART_FILE,'wb') as f: pickle.dump(the_model,f,2)
             pass
 
         # --- print message to screen

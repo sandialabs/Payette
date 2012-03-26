@@ -16,6 +16,8 @@ testPayette
 *.props
 *.pyc
 *.vtable
+*.math1
+*.math2
 *.dtable
 *.so
 *.o

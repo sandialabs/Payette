@@ -165,11 +165,11 @@ def shutdownLogger():
     simlog.close()
     return
 
-def setupLogger(logfile,level):
+def setupLogger(logfile,level,mode="w"):
     global loglevel,simlog
     loglevel = level
-    simlog = open(logfile,"w")
-    simlog.write(Payette_intro + "\n")
+    simlog = open(logfile,mode)
+    if mode == "w": simlog.write(Payette_intro + "\n")
     return
 
 def readUserInput(user_input,user_cchar=None):
@@ -326,17 +326,18 @@ def textformat(var):
 
 def setupOutputFile(simdat,matdat,restart):
 
-    global ofile,vtable,dtable,plot_keys
+    global ofile,vtable,dtable
     if restart: ofile = open(simdat.OUTFILE,'a')
-    else: ofile = open(simdat.OUTFILE,'w')
+    else:
+        ofile = open(simdat.OUTFILE,'w')
 
-    # get the plot keys from the simvars
-    plot_keys = simdat.plotKeys()
-    plot_keys.extend(matdat.plotKeys())
+        # get the plot keys from the simvars
+        plot_keys = simdat.plotKeys()
+        plot_keys.extend(matdat.plotKeys())
 
-    #    outfile.write('# ')
-    for head in plot_keys: ofile.write(textformat(head))
-    ofile.write('\n')
+        for head in plot_keys: ofile.write(textformat(head))
+        ofile.write('\n')
+        pass
 
     if simdat.WRITE_VANDD_TABLE:
         vname = os.path.splitext(simdat.OUTFILE)[0] + ".vtable"
@@ -344,19 +345,23 @@ def setupOutputFile(simdat,matdat,restart):
 
         # set up velocity and displacement table files
         if restart: vtable = open(vname,'a')
-        else: vtable = open(vname,'w')
-        default = ['time','v1','v2','v3']
-        for head in default: vtable.write(textformat(head))
-        vtable.write('\n')
+        else:
+            vtable = open(vname,'w')
+            default = ['time','v1','v2','v3']
+            for head in default: vtable.write(textformat(head))
+            vtable.write('\n')
+            pass
 
         if restart: dtable = open(dname,'a')
-        else: dtable = open(dname,'w')
-        default = ['time','d1','d2','d3']
-        for head in default: dtable.write(textformat(head))
-        dtable.write('\n')
-        dtable.write(textformat(0.))
-        for j in range(3): dtable.write(textformat(0.))
-        dtable.write("\n")
+        else:
+            dtable = open(dname,'w')
+            default = ['time','d1','d2','d3']
+            for head in default: dtable.write(textformat(head))
+            dtable.write('\n')
+            dtable.write(textformat(0.))
+            for j in range(3): dtable.write(textformat(0.))
+            dtable.write("\n")
+            pass
         pass
 
     writeAvailableDataToLog(simdat,matdat)
@@ -388,6 +393,10 @@ def writeMathPlot(simdat,matdat):
     plotable = simdat.MATHPLOT_VARS
     parameter_table = matdat.PARAMETER_TABLE
 
+    # get the plot keys from the simvars
+    plot_keys = simdat.plotKeys()
+    plot_keys.extend(matdat.plotKeys())
+
     # math1 is a file containing user inputs, and locations of simulation output
     # for mathematica to use
     with open( math1, "w" ) as f:
@@ -408,6 +417,7 @@ def writeMathPlot(simdat,matdat):
         # write out user requested plotable output
         f.write('simdat = Delete[Import["{0:s}", "Table"],-1];\n'.format(outfile))
         sig_idx = None
+
         for i, item in enumerate(plot_keys):
             if item == "SIG11": sig_idx = i + 1
             f.write('{0:s}=simdat[[2;;,{1:d}]];\n'.format(item,i+1))

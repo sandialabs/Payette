@@ -10,7 +10,7 @@ class Test(PayetteTest):
         # initialize the base class
         PayetteTest.__init__(self)
 
-        self.enabled = False
+        self.enabled = True
 
         self.name = os.path.splitext(os.path.basename(__file__))[0]
         self.tdir = os.path.dirname(os.path.realpath(__file__))
@@ -25,6 +25,7 @@ class Test(PayetteTest):
                                "--test-restart",self.restartfile]
 
         self.keywords = ["payette","restart","regression","fast"]
+        self.compare_method = self.compare_out_to_baseline_rms
         self.owner = "Tim Fuller"
         self.date = "February 25, 2012"
         self.description = """ Test of restart capabilities """
@@ -41,7 +42,10 @@ class Test(PayetteTest):
         if perform_calcs != 0:
             return self.failcode
 
-        return self.passcode
+        # now check the output
+        compare = self.compare_method()
+
+        return compare
 
 
 if __name__ == "__main__":

@@ -151,9 +151,6 @@ def runPayette(argc,argv):
         sys.exit(130)
         pass
 
-    # @tjf: restart is temporarily disabled
-
-    opts.norestart = True
     payette_exts = [".log",".math1",".math2",".props",".echo",".prf"]
     if opts.cleanall:
         payette_exts.extend([".out"])
@@ -344,8 +341,6 @@ def runJob(key):
     if opts.timing: t0 = time.time()
 
     if restart:
-        # @tjf: restart is temporarily disabled
-        sys.exit("restart is disabled until fixed")
         the_model = user_input_dict[key]
         the_model.setupRestart()
     else: the_model = pcntnr.Payette(key,user_input_dict[key],opts)
