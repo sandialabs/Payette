@@ -2,7 +2,7 @@
 
 from Payette_config import *
 from Source.Payette_test import PayetteTest
-from Source.Payette_main import runPayette
+from Source.payette_run import run_payette
 
 class Test(PayetteTest):
 
@@ -90,9 +90,9 @@ end simulation
 
         """ run the test """
 
-        # run the test directly through runPayette
+        # run the test directly through run_payette
 
-        perform_calcs = runPayette(len(self.runcommand),self.runcommand)
+        perform_calcs = run_payette(self.runcommand)
 
         if perform_calcs != 0:
             return self.failtoruncode

@@ -3,6 +3,7 @@ buildPayette
 cleanPayette
 runPayette
 testPayette
+f2py
 
 # Backups
 *~

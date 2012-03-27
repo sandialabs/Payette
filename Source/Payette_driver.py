@@ -408,6 +408,8 @@ def runProblem(the_model,**kwargs):
             if matdat.getData("failed"):
                 msg = 'material failed on leg %i, step %i, at time %f'%(lnum,n,t)
                 reportMessage(iam,msg)
+                reportMessage(iam, "{0} Payette simulation ran to completion"
+                              .format(the_model.name))
                 return 0
 
             # ------------------------------------------ begin{end of step SQA}
@@ -495,4 +497,6 @@ def runProblem(the_model,**kwargs):
         continue # continue to next leg
     # ----------------------------------------------------- end{processing leg}
 
+    reportMessage(iam, "{0} Payette simulation ran to completion"
+                  .format(the_model.name))
     return 0

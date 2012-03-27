@@ -1,0 +1,654 @@
+#!/usr/bin/env python
+
+# The MIT License
+
+# Copyright (c) 2011 Tim Fuller
+
+# License for the specific language governing rights and limitations under
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+"""
+   Main Payette file.  None of the functions in this file should be called
+   directly, but only through the executable scripts in
+   $PAYETTE_ROOT/Toolset
+"""
+from __future__ import print_function
+import sys
+import imp
+import os
+import pickle
+import optparse
+import time
+import shutil
+import multiprocessing as mp
+from linecache import getline
+from shutil import copyfile, rmtree
+import subprocess as sbp
+
+from Source.Payette_utils import *
+
+
+def test_payette(argv):
+    """ walk through and run the Payette test simulations, compare results
+    against the accepted results
+
+    AUTHORS
+    Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
+    M. Scot Swan, Sandia National Laboratories, mswan@sandia.gov
+    """
+
+    import platform
+    import datetime  # For the date of when the tests were run
+    import getpass  # For finding the username of the person running this
+    from Source.Payette_test import findTests
+    import Source.Payette_notify
+
+    global testresdir, rantests, topts, term_width, info_width
+
+    # These are used to control formatting for test_payette
+    term_width = 80
+    info_width = 25
+
+    # *************************************************************************
+    # -- command line option parsing
+    usage = "usage: testPayette [options]"
+    parser = optparse.OptionParser(usage=usage, version="testPayette 1.0")
+    parser.add_option(
+        "-k",
+        dest="KEYWORDS",
+        action="append",
+        default=[],
+        help="keywords: [%default]")
+    parser.add_option(
+        "-K",
+        dest="NOKEYWORDS",
+        action="append",
+        default=[],
+        help="keyword negation: [%default]")
+    parser.add_option(
+        "-t",
+        dest="SPECTESTS",
+        action="append",
+        default=[],
+        help="specific tests to run, more than 1 collected: [%default]")
+    parser.add_option(
+        "-d", "--dir",
+        dest="TESTDIR",
+        action="store",
+        default=PAYETTE_TESTS,
+        help="Directory to scan for benchmarks [default: %default].")
+    parser.add_option(
+        "-i", "--index",
+        dest="INDEX",
+        action="store_true",
+        default=False,
+        help="Print benchmarks index [default: %default].")
+    parser.add_option(
+        "-r", "--run",
+        dest="RUN",
+        action="store_true",
+        default=False,
+        help="Run benchmarks. [default: %default].")
+    parser.add_option(
+        "-F",
+        dest="FORCERERUN",
+        action="store_true",
+        default=False,
+        help="Force benchmarks to be run again [default: %default].")
+    parser.add_option(
+        "-j", "--nproc",
+        dest="nproc",
+        type=int,
+        default=1,
+        action="store")
+    parser.add_option(
+        "-b", "--buildpayette",
+        dest="buildpayette",
+        action="store_true",
+        default=False,
+        help="build payette [default: %default].")
+    parser.add_option(
+        "-p", "--postprocess",
+        dest="POSTPROCESS",
+        action="store_true",
+        default=False,
+        help="Generate plots for run tests [default: %default]")
+    parser.add_option(
+        "--notify",
+        dest="NOTIFY",
+        action="store_true",
+        default=False,
+        help="email test results to mailing list [default: %default].")
+    parser.add_option(
+        "-I",
+        dest="IGNOREERROR",
+        action="store_true",
+        default=False,
+        help="Ignore noncomforming tests [default: %default]")
+    parser.add_option(
+        "-e", "--electro",
+        dest="ELECTROMECH",
+        action="store_true",
+        default=False,
+        help="Run electromechanics tests [default: %default]")
+
+    (topts, args) = parser.parse_args(argv)
+
+    if not os.path.isfile(PAYETTE_MATERIALS_FILE):
+        logerr("buildPayette must be run to generate "
+               "Source/Materials/Payette_installed_materials.py")
+        sys.exit(130)
+
+    # number of processors
+    nproc = min(mp.cpu_count(), topts.nproc)
+
+    # assume the user wants to run the tests
+    if not topts.RUN and not topts.INDEX:
+        topts.RUN = True
+
+    # adjust keywords
+    if not topts.ELECTROMECH:
+        topts.NOKEYWORDS.append("electromech")
+
+    logmes(PAYETTE_INTRO)
+
+    # find tests
+    loginf("Testing Payette")
+    loginf("Gathering Payette tests from {0}".format(topts.TESTDIR))
+    errors, found_tests = findTests(topts.KEYWORDS, topts.NOKEYWORDS,
+                                    topts.SPECTESTS, topts.TESTDIR)
+
+    # sort conforming tests from long to fast
+    fast_tests = [val for key, val in found_tests["fast"].items()]
+    medium_tests = [val for key, val in found_tests["medium"].items()]
+    long_tests = [val for key, val in found_tests["long"].items()]
+    conforming = long_tests + medium_tests + fast_tests
+
+    # find mathematica notebooks
+    mathnbs = {}
+    for (dirname, dirs, names) in os.walk(topts.TESTDIR):
+        root, base = os.path.split(dirname)
+        if base == "nb":
+            # a notebook directory has been found, see if there are any
+            # conforming tests that use it
+            if [x for x in conforming if root in x]:
+                mathnbs[root.split(topts.TESTDIR + os.sep)[1]] = [
+                    os.path.join(dirname, x) for x in names
+                    if x.endswith(".nb") or x.endswith(".m")]
+
+        continue
+
+    if errors and not topts.IGNOREERROR:
+        sys.exit("fix nonconforming benchmarks before continuing")
+
+    loginf("Found {0} Payette tests".format(len(conforming)), end="\n\n")
+
+    if topts.INDEX:
+        out = sys.stderr
+        out.write("\n\nBENCHMARK INDEX\n\n")
+        for speed, tests in found_tests.items():
+            for py_mod, py_file in tests.items():
+                # load module
+                py_path = [os.path.dirname(py_file)]
+                fp, pathname, description = imp.find_module(py_mod, py_path)
+                py_module = imp.load_module(py_mod, fp, pathname, description)
+                fp.close()
+                test = py_module.Test()
+                out.write(term_width * "=" + "\n")
+                out.write("Name:  {0}\n".format(test.name))
+                out.write("Owner: {0}\n\n".format(test.owner))
+                out.write("Description:\n{0}".format(test.description))
+
+                out.write("\nKeywords:\n")
+                for kw in test.keywords:
+                    out.write("    {0}\n".format(kw))
+                continue
+            continue
+
+    if topts.RUN:
+        # start the timer
+        runtimer = time.time()
+
+        # Make a TestResults directory named "TestResults.{platform}"
+        testresdir = os.path.join(os.getcwd(),
+                                  "TestResults.{0}".format(platform.system()))
+        if topts.buildpayette:
+            if os.path.isdir(testresdir):
+                testresdir0 = "{0}_0".format(testresdir)
+                shutil.move(testresdir, testresdir0)
+            else:
+                testresdir0 = None
+
+        if not os.path.isdir(testresdir):
+            os.mkdir(testresdir)
+
+        old_results = {}
+        summpy = os.path.join(testresdir, "summary.py")
+        summhtml = os.path.splitext(summpy)[0] + ".html"
+        if os.path.isfile(summpy):
+            try:
+                py_path = [os.path.dirname(summpy)]
+                py_mod = get_module_name(summpy)
+                fp, pathname, description = imp.find_module(py_mod, py_path)
+                py_module = imp.load_module(py_mod, fp, pathname, description)
+                fp.close()
+                try:
+                    old_results = py_module.payette_test_results
+                except:
+                    copyfile(summpy,
+                             os.path.join(testresdir, "summary_orig.py"))
+                try:
+                    os.remove("{0}c".format(summpy))
+                except OSError:
+                    pass
+
+            except:
+                pass
+
+        # check type of old_results, if not dict start over with empty dict
+        if not isinstance(old_results, dict):
+            old_results = {}
+
+        # Put all run tests in a flattened list for checking if test has
+        # been run
+        if old_results:
+            rantests = [x for y in old_results.values() for x in y]
+        else:
+            rantests = []
+
+        # reset the test results
+        test_statuses = ["pass", "diff", "fail", "notrun",
+                         "bad input", "failed to run"]
+        test_res = {}
+        for i in test_statuses:
+            test_res[i] = {}
+            continue
+
+        logmes("=" * term_width)
+        logmes("Running {0} benchmarks:".format(len(conforming)))
+        logmes("=" * term_width)
+
+        # run the tests on multiple processors using the multiprocessor map
+        # ONLY f nprocs > 1. For debug purposes, when nprocs=1, run without
+        # using the multiprocessor map because it makes debugging worse than
+        # it should be.
+        if nproc == 1:
+            all_results = [run_payette_test(test) for test in conforming]
+
+        else:
+            pool = mp.Pool(processes=nproc)
+            all_results = pool.map(run_payette_test, conforming)
+            pool.close()
+            pool.join()
+
+        ttot = time.time() - runtimer
+        logmes("=" * term_width)
+
+        # copy the mathematica notebooks to the output directory
+        for mtldir, mathnb in mathnbs.items():
+            for item in mathnb:
+                fbase = os.path.basename(item)
+                fold = os.path.join(testresdir, mtldir, fbase)
+
+                try:
+                    os.remove(fold)
+                except OSError:
+                    pass
+
+                if item.endswith(".m"):
+                    # don't copy the .m file, but write it, replacing rundir
+                    # and demodir with testresdir
+                    with open(fold, "w") as ftmp:
+                        for line in open(item, "r").readlines():
+                            demodir = os.path.join(testresdir, mtldir) + os.sep
+                            rundir = os.path.join(testresdir, mtldir) + os.sep
+                            if r"$DEMODIR" in line:
+                                line = 'demodir="{0:s}"\n'.format(demodir)
+                            elif r"$RUNDIR" in line:
+                                line = 'rundir="{0:s}"\n'.format(rundir)
+
+                            ftmp.write(line)
+                            continue
+
+                    continue
+
+                else:
+                    # copy the notebook files
+                    shutil.copyfile(item, fold)
+
+                continue
+
+            continue
+
+        # all_results is a large list of the summary of every test.
+        # Go through it and use the information to construct the test_res
+        # dictionary of the form:
+        #    test_res["notrun"] = ...
+        #    test_res["pass"] = ...
+        #    test_res["diff"] = ...
+        #    test_res["failed"] = ...
+        for item in all_results:
+            for name, summary in item.items():
+                status = summary["status"]
+                if status not in test_statuses:
+                    msg = ("return code {0} from {1} not recognized"
+                           .format(status, name))
+                    logwrn(msg)
+                    continue
+                tcompletion = summary["completion time"]
+                benchdir = summary["benchmark directory"]
+                keywords = summary["keywords"]
+                test_res[status][name] = {"benchmark directory": benchdir,
+                                          "completion time": tcompletion,
+                                          "keywords": keywords}
+                continue
+            continue
+
+        nnotrun = len(test_res["notrun"])
+        nfail = len(test_res["fail"])
+        npass = len(test_res["pass"])
+        ndiff = len(test_res["diff"])
+        nfailtorun = len(test_res["failed to run"])
+        txtsummary = (
+            "SUMMARY\n" +
+            "{0} benchmarks took {1:.2f}s.\n".format(len(conforming), ttot) +
+            "{0} benchmarks passed\n".format(npass) +
+            "{0} benchmarks diffed\n".format(ndiff) +
+            "{0} benchmarks failed\n".format(nfail) +
+            "{0} benchmarks failed to run\n".format(nfailtorun) +
+            "{0} benchmarks not run\n".format(nnotrun) +
+            "For a summary of which benchmarks passed, diffed, failed, " +
+            "or not run, see\n{0}".format(summhtml))
+
+        # Make a long summary including the names of what passed and
+        # what didn't as well as system information.
+        str_date = datetime.datetime.today().strftime("%A, %d. %B %Y %I:%M%p")
+        try:
+            py_version = "{0}.{1}.{2}".format(sys.version_info.major,
+                                              sys.version_info.minor,
+                                              sys.version_info.micro)
+        except:
+            py_version = str(sys.version_info)
+
+        longtxtsummary = (
+             "=" * term_width + "\nLONG SUMMARY\n" +
+             "{0} benchmarks took {1:.2f}s.\n".format(len(conforming), ttot) +
+             "{0:^{1}}\n".format("{0:-^30}".format(" system information "),
+                                 term_width) +
+             "   Date complete:    {0:<}\n".format(str_date) +
+             "   Username:         {0:<}\n".format(getpass.getuser()) +
+             "   Hostname:         {0:<}\n".format(os.uname()[1]) +
+             "   Platform:         {0:<}\n".format(sys.platform) +
+             "   Python Version:   {0:<}\n".format(py_version))
+
+        # List each category (diff, fail, notrun, and pass) and the tests
+        test_result_statuses = test_res.keys()
+        test_result_statuses.sort()
+        for stat in test_result_statuses:
+            names = test_res[stat].keys()
+            header = "{0:-^30}".format(" " +
+                                       stat +
+                                       " ({0}) ".format(len(names)))
+            longtxtsummary += "{0:^{1}}\n".format(header, term_width)
+            if len(names) == 0:
+#                longtxtsummary += "None\n"
+                continue
+            elif stat == "notrun":
+#                longtxtsummary += "None\n"
+                continue
+            for name in names:
+                try:
+                    t = ("{0:.2f}s."
+                         .format(test_res[stat][name]["completion time"]))
+                except:
+                    t = str(test_res[stat][name]["completion time"])
+
+                longtxtsummary += "  {0:>8}   {1}\n".format(t, name)
+                continue
+            continue
+        longtxtsummary += "=" * term_width + "\n"
+        # longtxtsummary is finished at this point
+
+        # This sends an email to everyone on the mailing list.
+        if topts.NOTIFY:
+            logmes("Sending results to mailing list.")
+            Payette_notify.notify("Payette Benchmarks", longtxtsummary)
+
+        logmes(longtxtsummary)
+        logmes("=" * term_width)
+        logmes(txtsummary)
+        logmes("=" * term_width)
+
+        # write out the results to the summary file
+        write_py_summary(summpy, test_res)
+        write_html_summary(summhtml, test_res)
+
+        # cleanup our tracks
+        for (dirname, dirs, names) in os.walk(topts.TESTDIR):
+            for name in names:
+                fbase, fext = os.path.splitext(name)
+                delext = [".so", ".pyo", ".pyc", ".log", ".out", ".prf"]
+                if fext in delext:
+                    os.remove(os.path.join(dirname, name))
+                continue
+            continue
+
+        if topts.buildpayette:
+            shutil.rmtree(testresdir)
+            if testresdir0:
+                shutil.move(testresdir0, testresdir)
+
+    return 0
+
+
+def run_payette_test(py_file):
+    """ run the payette test in py_file """
+
+    cwd = os.getcwd()
+    py_path = [os.path.dirname(py_file)]
+    py_mod = get_module_name(py_file)
+    fp, pathname, description = imp.find_module(py_mod, py_path)
+    py_module = imp.load_module(py_mod, fp, pathname, description)
+    fp.close()
+
+    test = py_module.Test()
+
+    # directory where test will be run
+    testbase = os.path.dirname(py_file).split(PAYETTE_TESTS + os.sep)[1]
+    benchdir = os.path.join(testresdir, testbase, test.name)
+
+    # check if benchmark has been run
+    ran = [x for x in rantests if x == test.name]
+
+    if not topts.FORCERERUN and ran and os.path.isdir(benchdir):
+        logmes("{0}".format(test.name) +
+               " " * (50 - len(test.name)) +
+               "{0:>10s}".format("notrun\n") +
+               "Test already ran. " +
+               "Use -F option to force a rerun")
+        result = {test.name: {"status": "notrun",
+                              "keywords": test.keywords,
+                              "completion time": "NA",
+                              "benchmark directory": benchdir}}
+        return result
+
+    # Let the user know which test is running
+    logmes("{0:<{1}}".format(test.name, term_width - info_width) +
+           "{0:>{1}s}".format("RUNNING", info_width))
+
+    # Create benchmark directory and copy the input and baseline files into the
+    # new directory
+    if os.path.isdir(benchdir):
+        rmtree(benchdir)
+    os.makedirs(benchdir)
+
+    # copy input file, if any
+    if test.infile:
+        copyfile(test.infile,
+                 os.path.join(benchdir, os.path.basename(test.infile)))
+
+    # copy the python test file and make it executable
+    copyfile(py_file,
+             os.path.join(benchdir, os.path.basename(py_file)))
+    os.chmod(os.path.join(benchdir, os.path.basename(py_file)), 0o750)
+
+    if test.baseline:
+        if isinstance(test.baseline, list):
+            for base_f in test.baseline:
+                os.symlink(base_f,
+                           os.path.join(benchdir, os.path.basename(base_f)))
+                continue
+        else:
+            os.symlink(test.baseline,
+                       os.path.join(benchdir, os.path.basename(test.baseline)))
+
+    # move to the new directory and run the test
+    os.chdir(benchdir)
+    starttime = time.time()
+
+    retcode = test.runTest()
+
+    if topts.POSTPROCESS and os.path.isfile(test.outfile):
+        import postprocess as PP
+        PP.postprocess(test.outfile, verbosity=0)
+
+    retcode = ("bad input" if retcode == test.badincode else
+               "pass" if retcode == test.passcode else
+               "diff" if retcode == test.diffcode else
+               "fail" if retcode == test.failcode else
+               "failed to run" if retcode == test.failtoruncode else
+               "unkown")
+
+    # Print output at completion
+    tcompletion = time.time() - starttime
+    info_string = "{0} ({1:6.02f}s)".format(retcode.upper(), tcompletion)
+    logmes("{0:<{1}}".format(test.name, term_width - info_width) +
+           "{0:>{1}s}".format(info_string, info_width))
+
+    # return to the directory we came from
+    os.chdir(cwd)
+    result = {test.name: {"status": retcode,
+                          "keywords": test.keywords,
+                          "completion time": tcompletion,
+                          "benchmark directory": benchdir}}
+    return result
+
+
+def write_py_summary(fname, results):
+    """ write summary of the results dictionary to python file """
+
+    # the results dictionary is of the form
+    # results = { {status: {name: { "benchmark directory":benchdir,
+    #                               "completion time":tcompletion,
+    #                               "keywords":keywords } } } }
+    with open(fname, "w") as ftmp:
+        ftmp.write("payette_test_results = {}\n")
+        for stat in results:
+            # key is one of diff, pass, fail, notrun
+            # names are the names of the tests
+            ftmp.write("payette_test_results['{0}']=[".format(stat))
+            ftmp.write(",".join(["'{0}'".format(x)
+                                 for x in results[stat].keys()]))
+            ftmp.write("]\n")
+            continue
+
+    return
+
+
+def write_html_summary(fname, results):
+    """ write summary of the results dictionary to html file """
+
+    # the results dictionary is of the form
+    # results = { {status: {name: { "benchmark directory":benchdir,
+    #                               "completion time":tcompletion,
+    #                               "keywords":keywords } } } }
+    resd = os.path.dirname(fname)
+    resdb = os.path.basename(resd)
+    npass, nfail, ndiff, nskip = [len(results[x]) for x in
+                               ["pass", "fail", "diff", "notrun"]]
+    with open(fname, "w") as ftmp:
+        # write header
+        ftmp.write("<html>\n<head>\n<title>Test Results</title>\n</head>\n")
+        ftmp.write("<body>\n<h1>Summary</h1>\n")
+        ftmp.write("<ul>\n")
+        ftmp.write("<li> Directory: {0} </li>\n".format(resd))
+        ftmp.write("<li> Options: {0} </li>\n".format(" ".join(sys.argv[1:])))
+        ftmp.write("<li> {0:d} pass, {1:d} diff, {2:d} fail, {3:d} notrun </li>\n"
+                   .format(npass, ndiff, nfail, nskip))
+        ftmp.write("</ul>\n")
+
+        # write out details test that fail, diff, pass, notrun
+        for stat in results.keys():
+            ftmp.write("<h1>Tests that showed '{0}'</h1>\n<ul>\n".format(stat))
+            for test in results[stat]:
+                tresd = results[stat][test]["benchmark directory"]
+                tresdb = results[stat][test]["benchmark directory"]
+                ftmp.write("<li>{0}  {1}</li>\n".format(test, tresdb))
+                ftmp.write("<ul>\n")
+                ftmp.write("<li>Files: \n")
+                files = os.listdir(tresd)
+                for ff in files:
+                    fpath = os.path.join(tresd, ff)
+                    ftmp.write("<a href='{0}' type='text/plain'>{1}</a> \n"
+                               .format(fpath, ff))
+                    continue
+                keywords = "  ".join(results[stat][test]["keywords"])
+                try:
+                    tcompletion = (
+                        "{0:.2f}s."
+                        .format(results[stat][test]["completion time"]))
+                except:
+                    tcompletion = str(results[stat][test]["completion time"])
+
+                status = "Exit {0} {1}".format(stat, tcompletion)
+                for myfile in files:
+                    if myfile.endswith(".out.html") and topts.POSTPROCESS:
+                        tf = os.path.join(tresd, myfile)
+                        ftmp.write("<li><a href='{0}'>PostProcessing</a>\n"
+                                   .format(tf))
+                ftmp.write("<li>Keywords: {0}\n".format(keywords))
+                ftmp.write("<li>Status: {0}\n".format(status))
+                ftmp.write("</ul>\n")
+                continue
+            ftmp.write("</ul>\n")
+            continue
+
+    return
+
+
+if __name__ == "__main__":
+
+    ARGV = sys.argv[1:]
+    if "--profile" in ARGV:
+        PROFILE = True
+        ARGV.remove("--profile")
+        import cProfile
+    else:
+        PROFILE = False
+
+    if PROFILE:
+        CMD = "test_payette(ARGV)"
+        PROF = "payette.prof"
+        cProfile.runctx(CMD, globals(), locals(), PROF)
+        TEST = 0
+    else:
+        TEST = test_payette(ARGV)
+
+    sys.exit(TEST)
+

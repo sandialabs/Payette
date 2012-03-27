@@ -117,7 +117,7 @@ main()
         for line in f2py_file:
             fnew.write(line)
     os.chmod(f2py, 0o750)
-    return f2py
+    return
 
 # --- intro message
 PAYETTE_INTRO = """
@@ -157,17 +157,19 @@ ERRORS += check_exists("PAYETTE_TOOLSET", PAYETTE_TOOLSET)
 PAYETTE_PYINT = os.path.realpath(sys.executable)
 
 # --- Payette executable files
-PAYETTE_MAIN = os.path.join(PAYETTE_SOURCE, "Payette_main.py")
+PAYETTE_RUNTEST = os.path.join(PAYETTE_SOURCE, "Payette_runtest.py")
+PAYETTE_RUN = os.path.join(PAYETTE_SOURCE, "payette_run.py")
+PAYETTE_BUILD = os.path.join(PAYETTE_SOURCE, "payette_build.py")
 RUNPAYETTE = os.path.join(PAYETTE_TOOLSET, "runPayette")
 BUILDPAYETTE = os.path.join(PAYETTE_TOOLSET, "buildPayette")
-PAYETTE_CLEANPAYETTE = os.path.join(PAYETTE_TOOLSET, "cleanPayette")
+CLEANPAYETTE = os.path.join(PAYETTE_TOOLSET, "cleanPayette")
 EXTRACTPAYETTE = os.path.join(PAYETTE_TOOLSET, "extractPayette.py")
 TESTPAYETTE = os.path.join(PAYETTE_TOOLSET, "testPayette")
-PAYETTE_F2PY = write_f2py(PAYETTE_PYINT, PAYETTE_TOOLSET)
+PAYETTE_F2PY = os.path.join(PAYETTE_TOOLSET,"f2py")
 PAYETTE_BUILT_EXECUTABLES = {"runPayette": RUNPAYETTE,
                              "testPayette": TESTPAYETTE,
                              "buildPayette": BUILDPAYETTE,
-                             "cleanPayette": PAYETTE_CLEANPAYETTE,
+                             "cleanPayette": CLEANPAYETTE,
                              "f2py": PAYETTE_F2PY}
 PAYETTE_EXECUTABLES = {"extractPayette.py": EXTRACTPAYETTE}
 ERRORS += check_exists("extractPayette", EXTRACTPAYETTE)
@@ -247,7 +249,9 @@ PAYETTE_CONFIG["PAYETTE_INPUTS"] = PAYETTE_INPUTS
 PAYETTE_CONFIG["PAYETTE_EXTENSION_MODULE_FEXT"] = (
     PAYETTE_EXTENSION_MODULE_FEXT)
 PAYETTE_CONFIG["PAYETTE_OSTYPE"] = PAYETTE_OSTYPE
-PAYETTE_CONFIG["PAYETTE_MAIN"] = PAYETTE_MAIN
+PAYETTE_CONFIG["PAYETTE_RUNTEST"] = PAYETTE_RUNTEST
+PAYETTE_CONFIG["PAYETTE_RUN"] = PAYETTE_RUN
+PAYETTE_CONFIG["PAYETTE_BUILD"] = PAYETTE_BUILD
 PAYETTE_CONFIG["PAYETTE_EXECUTABLES"] = PAYETTE_EXECUTABLES
 PAYETTE_CONFIG["PAYETTE_CONFIG_FILE"] = PAYETTE_CONFIG_FILE
 PAYETTE_CONFIG["PAYETTE_KAYENTA"] = PAYETTE_KAYENTA
@@ -257,7 +261,7 @@ PAYETTE_CONFIG["PAYETTE_F2PY"] = PAYETTE_F2PY
 PAYETTE_CONFIG["RUNPAYETTE"] = RUNPAYETTE
 PAYETTE_CONFIG["TESTPAYETTE"] = TESTPAYETTE
 PAYETTE_CONFIG["BUILDPAYETTE"] = BUILDPAYETTE
-PAYETTE_CONFIG["PAYETTE_CLEANPAYETTE"] = PAYETTE_CLEANPAYETTE
+PAYETTE_CONFIG["CLEANPAYETTE"] = CLEANPAYETTE
 PAYETTE_CONFIG["PAYETTE_BUILT_EXECUTABLES"] = PAYETTE_BUILT_EXECUTABLES
 PAYETTE_CONFIG["PAYETTE_NUMPY_VERSION"] = PAYETTE_NUMPY_VERSION
 PAYETTE_CONFIG["PAYETTE_SCIPY_VERSION"] = PAYETTE_SCIPY_VERSION
@@ -356,6 +360,7 @@ def configure_payette(argv):
         pypath = PAYETTE_ROOT + os.pathsep + PAYETTE_ENVIRON["PYTHONPATH"]
     except KeyError:
         pypath = PAYETTE_ROOT
+    pypath = os.pathsep.join(set(pypath.split(os.pathsep)))
     PAYETTE_ENVIRON["PYTHONPATH"] = pypath
 
     # write the the configuration file
@@ -393,37 +398,47 @@ def create_payette_exececutables():
 
     """ create the Payette executables """
 
-    # remove the executables built by Payette
-    for key, val in PAYETTE_BUILT_EXECUTABLES.items():
-        try:
-            os.remove(val)
-        except OSError:
-            pass
-        continue
-
-    # create the runPayette, testPayette, and buildPayette
-    # executables
     loginf("writing executable scripts")
 
-    for script, item in [[RUNPAYETTE, "run"],
-                         [TESTPAYETTE, "test"],
-                         [BUILDPAYETTE, "build"],
-                         [PAYETTE_CLEANPAYETTE, "clean"]]:
-        begmes("writing {0}".format(os.path.basename(script)), pre=SPACE)
-        with open(script, "w") as fnew:
+    for nam, path in PAYETTE_BUILT_EXECUTABLES.items():
+
+        # remove the executable first
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+        begmes("writing {0}".format(nam), pre=SPACE)
+
+        if path == PAYETTE_F2PY:
+            write_f2py(PAYETTE_PYINT, PAYETTE_TOOLSET)
+            endmes("{0} script written".format(nam))
+            continue
+
+        with open(path, "w") as fnew:
             fnew.write("#!/bin/sh -f\n")
             for key, val in PAYETTE_ENVIRON.items():
                 fnew.write("export {0}={1}\n".format(key, val))
                 continue
-            if script == PAYETTE_CLEANPAYETTE:
-                fnew.write("{0} {1} {2} $* 2>&1\n"
-                           .format(PAYETTE_PYINT, THIS_FILE, item))
-            else:
-                fnew.write("{0} {1} {2} $* 2>&1\n"
-                           .format(PAYETTE_PYINT, PAYETTE_MAIN, item))
 
-        os.chmod(script, 0o750)
-        endmes("{0} script written".format(os.path.basename(script)))
+            if path == CLEANPAYETTE:
+                fnew.write("{0} {1} {2} $* 2>&1\n"
+                           .format(PAYETTE_PYINT, THIS_FILE, "clean"))
+
+            elif path == RUNPAYETTE:
+                fnew.write("{0} {1} $* 2>&1\n"
+                           .format(PAYETTE_PYINT, PAYETTE_RUN))
+
+            elif path == TESTPAYETTE:
+                fnew.write("{0} {1} $* 2>&1\n"
+                           .format(PAYETTE_PYINT, PAYETTE_RUNTEST))
+
+            elif path == BUILDPAYETTE:
+                fnew.write("{0} {1} $* 2>&1\n"
+                           .format(PAYETTE_PYINT, PAYETTE_BUILD))
+
+        os.chmod(path, 0o750)
+        endmes("{0} script written".format(nam))
         continue
 
     loginf("executable scripts written\n")
@@ -541,8 +556,7 @@ def clean_payette():
                       "Payette_installed_materials.py", "*{0}".format(soext),
                       "*.log", "*.echo", "*.prf", "*.diff", "*.xout", "*.out",
                       "*.math1", "*.math2", "*.props", "*.vtable", "*.dtable"]
-    pats_to_remove.extend(["runPayette", "testPayette", "buildPayette",
-                           "cleanPayette", "f2py"])
+    pats_to_remove.extend(PAYETTE_BUILT_EXECUTABLES.keys())
 
     for item in os.walk(PAYETTE_ROOT):
         dirnam, files = item[0], item[2]
