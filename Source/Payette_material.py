@@ -53,7 +53,7 @@ class Material:
     def __init__(self, constitutive_model_name, simdat, user_params, f_params ):
 
         iam = "Material.__init__(self, constitutive_model_name)"
-        cmod = Payette_Constitutive_Models[constitutive_model_name]["class name"]
+        cmod = PAYETTE_CONSTITUTIVE_MODELS[constitutive_model_name]["class name"]
 
         # instantiate the constiutive model
         self.constitutive_model = cmod()
@@ -69,7 +69,7 @@ class Material:
                    "the extension module.\n"
                    "If rebuilding Payette does not fix the problem, "
                    "please contact the Payette\ndevelopers."
-                   .format(self.constitutive_model.name,Payette_Materials_Library))
+                   .format(self.constitutive_model.name,PAYETTE_MATERIALS_LIBRARY))
             reportError(iam,msg)
             pass
 

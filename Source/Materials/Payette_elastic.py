@@ -39,7 +39,7 @@ attributes = {
     "payette material":True,
     "name":"elastic",
     "fortran source":True,
-    "build script":os.path.join(Payette_Materials_Fortran,"Elastic/build.py"),
+    "build script":os.path.join(PAYETTE_MATERIALS_FORTRAN,"Elastic/build.py"),
     "aliases":["hooke","elasticity"],
     "material type":["mechanical"]
     }
@@ -140,7 +140,7 @@ class Elastic(ConstitutiveModelPrototype):
         svold = matdat.getData("extra variables")
 
         a = [dt,self.ui,sigold,d,svold,migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
+        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
         sig, sv, usm = mtllib.hooke_incremental(*a)
 
         matdat.storeData("extra variables",sv)
@@ -152,13 +152,13 @@ class Elastic(ConstitutiveModelPrototype):
     def _check_props(self):
         props = np.array(self.ui0)
         a = [props,props,props,migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
+        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
         ui = mtllib.hookechk(*a)
         return ui
 
     def _set_field(self,*args,**kwargs):
         a = [self.ui,self.ui,self.ui,migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
+        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
         field = mtllib.hookerxv(*a)
         return field
 

@@ -16,7 +16,7 @@ class Test(PayetteTest):
         self.tdir = os.path.dirname(os.path.realpath(__file__))
         self.infile = "{0}.inp".format(os.path.join(self.tdir,self.name))
         self.outfile = "{0}.out".format(self.name)
-        self.keywords = ["kayenta","medium","verification","cesf"]
+        self.keywords = ["kayenta","long","verification","cesf"]
         self.compare_method = self.compare_constant_strain_at_failure
         self.runcommand = ["runPayette","--no-restart",self.infile]
         self.failtol = 2.e-2

@@ -65,7 +65,7 @@ class Build(MaterialBuilder):
             raise BuildError("kayenta release script failed",10)
 
         # remove extension module files if they exist
-        for d in [self.source_directory,Payette_Materials_Library]:
+        for d in [self.source_directory,PAYETTE_MATERIALS_LIBRARY]:
             try: os.remove(os.path.join(d,self.libname))
             except: pass
             continue

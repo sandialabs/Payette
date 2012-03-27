@@ -119,7 +119,7 @@ def fixFLength(f):
     return basename
 
 def payetteParametersDir():
-    lpd = os.path.join(Payette_Aux,'MaterialsDatabase')
+    lpd = os.path.join(PAYETTE_AUX,'MaterialsDatabase')
     if not os.path.isdir(lpd):
         reportError(__file__,'Aux/MaterialsDatabase directory not found')
         return 1
@@ -169,7 +169,7 @@ def setupLogger(logfile,level,mode="w"):
     global loglevel,simlog
     loglevel = level
     simlog = open(logfile,mode)
-    if mode == "w": simlog.write(Payette_intro + "\n")
+    if mode == "w": simlog.write(PAYETTE_INTRO + "\n")
     return
 
 def readUserInput(user_input,user_cchar=None):

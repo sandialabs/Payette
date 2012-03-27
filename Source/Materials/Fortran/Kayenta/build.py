@@ -12,12 +12,12 @@ class Build(MaterialBuilder):
         fdir,fnam = os.path.split(os.path.realpath(__file__))
 
         # check if Kayenta source directory is found
-        if not Payette_Kayenta:
+        if not PAYETTE_KAYENTA:
             raise BuildError("{0} environment variable not found, {1} not built"
                              .format("PAYETTE_KAYENTA",libname),5)
-        elif not os.path.isdir(Payette_Kayenta):
+        elif not os.path.isdir(PAYETTE_KAYENTA):
             raise BuildError("{0} not found, {1} not built"
-                             .format(Payette_Kayenta,libname),10)
+                             .format(PAYETTE_KAYENTA,libname),10)
 
         # initialize base class
         MaterialBuilder.__init__(self,name,libname,fdir,compiler_info)
@@ -48,7 +48,7 @@ class Build(MaterialBuilder):
 
         # use kayenta release script to get the source file
         fdir = os.path.dirname(os.path.realpath(__file__))
-        releasef = os.path.join(Payette_Kayenta,"release.py")
+        releasef = os.path.join(PAYETTE_KAYENTA,"release.py")
         py_mod = os.path.splitext(os.path.basename(releasef))[0]
         py_path = os.path.dirname(releasef)
         sys.path.append(py_path)

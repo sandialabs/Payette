@@ -1,5 +1,29 @@
 #!/usr/bin/env python
 
+# The MIT License
+
+# Copyright (c) 2011 Tim Fuller
+
+# License for the specific language governing rights and limitations under
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+
 """
    Main Payette file.  None of the functions in this file should be called
    directly, but only through the executable scripts in
@@ -145,7 +169,7 @@ def runPayette(argc,argv):
                               "[default: %default]"))
     (opts,args) = parser.parse_args(argv)
 
-    if not os.path.isfile(Payette_Materials_File):
+    if not os.path.isfile(PAYETTE_MATERIALS_FILE):
         logerr("buildPayette must be run to generate "
                "Source/Materials/Payette_installed_materials.py")
         sys.exit(130)
@@ -155,6 +179,8 @@ def runPayette(argc,argv):
     if opts.cleanall:
         payette_exts.extend([".out"])
         opts.clean = True
+
+    opts.verbosity = int(opts.verbosity)
 
     if opts.clean:
         cleaned = False
@@ -205,7 +231,9 @@ def runPayette(argc,argv):
             if not os.path.isfile(barf_file):
                 parser.error("barf file {0} not found".format(barf_file))
                 pass
-            logmes(Payette_intro)
+            if opts.verbosity:
+                logmes(PAYETTE_INTRO)
+
             PayetteBarf(barf_file)
             pass
         return 0
@@ -250,8 +278,8 @@ def runPayette(argc,argv):
                 f = arg
             elif os.path.isfile(os.path.realpath(arg)):
                 f = os.path.realpath(arg)
-            elif os.path.isfile(os.path.join(Payette_Inputs,arg)):
-                f = os.path.join(Payette_Inputs,arg)
+            elif os.path.isfile(os.path.join(PAYETTE_INPUTS,arg)):
+                f = os.path.join(PAYETTE_INPUTS,arg)
                 writeMessage(__file__,"Using " + f + " as input")
             elif not fext or fext == ".":
                 # add .inp extension to arg
@@ -259,8 +287,8 @@ def runPayette(argc,argv):
                 if os.path.isfile(arginp):
                     f = arginp
                     writeMessage(__file__,"Using " + f + " as input")
-                elif os.path.isfile(os.path.join(Payette_Inputs,arginp)):
-                    f = os.path.join(Payette_Inputs,arginp)
+                elif os.path.isfile(os.path.join(PAYETTE_INPUTS,arginp)):
+                    f = os.path.join(PAYETTE_INPUTS,arginp)
                     writeMessage(__file__,"Using " + f + " as input")
                 else: pass
                 pass
@@ -268,7 +296,7 @@ def runPayette(argc,argv):
             if not f:
                 writeWarning(__file__,"{0} not found in {1}, {2}, or {3}"
                              .format(arg,os.path.dirname(os.path.realpath(arg)),
-                                     os.getcwd(),Payette_Inputs))
+                                     os.getcwd(),PAYETTE_INPUTS))
                 badf.append(arg)
                 continue
 
@@ -305,7 +333,7 @@ def runPayette(argc,argv):
 
     # number of processors
     nproc = min(min(mp.cpu_count(),opts.nproc),len(user_input_dict))
-    opts.verbosity = int(opts.verbosity) if nproc == 1 else 0
+    opts.verbosity = opts.verbosity if nproc == 1 else 0
 
     if nproc > 1:
         writeWarning(__file__,
@@ -315,7 +343,9 @@ def runPayette(argc,argv):
              "         in the background with [ctrl-z] and then kill it")
         pass
 
-    logmes(Payette_intro)
+    if opts.verbosity:
+        logmes(PAYETTE_INTRO)
+
     # loop through simulations and run them
     if opts.timing: t0 = time.time()
     if nproc > 1 and len(user_input_dict.keys()) > 1:
@@ -427,7 +457,7 @@ def testPayette(argc,argv):
     parser.add_option("-d","--dir",
                       dest="TESTDIR",
                       action="store",
-                      default=Payette_Tests,
+                      default=PAYETTE_TESTS,
                       help="Directory to scan for benchmarks [default: %default].")
     parser.add_option("-i","--index",
                       dest="INDEX",
@@ -480,7 +510,7 @@ def testPayette(argc,argv):
 
     (topts,args) = parser.parse_args(argv)
 
-    if not os.path.isfile(Payette_Materials_File):
+    if not os.path.isfile(PAYETTE_MATERIALS_FILE):
         logerr("buildPayette must be run to generate "
                "Source/Materials/Payette_installed_materials.py")
         sys.exit(130)
@@ -497,7 +527,8 @@ def testPayette(argc,argv):
         topts.NOKEYWORDS.append("electromech")
         pass
 
-    logmes(Payette_intro)
+    logmes(PAYETTE_INTRO)
+
     # find tests
     loginf("Testing Payette")
     loginf("Gathering Payette tests from {0}".format(topts.TESTDIR))
@@ -790,7 +821,7 @@ def runPayetteTest(py_file):
     test = py_module.Test()
 
     # directory where test will be run
-    testbase = os.path.dirname(py_file).split(Payette_Tests + os.sep)[1]
+    testbase = os.path.dirname(py_file).split(PAYETTE_TESTS + os.sep)[1]
     benchdir = os.path.join(testresdir,testbase,test.name)
 
     # check if benchmark has been run
@@ -1015,7 +1046,7 @@ def buildPayette(argc,argv):
         sys.exit(0)
         pass
 
-    logmes(Payette_intro)
+    logmes(PAYETTE_INTRO)
     # determine if we build all materials, or just a selection
     if opts.DSC: opts.mtllib.append("domain_switching_ceramic")
     if opts.KMM: opts.mtllib.append("kayenta")
@@ -1024,7 +1055,7 @@ def buildPayette(argc,argv):
     libstobuild = ["all"] if not buildselect else opts.mtllib
 
     if opts.FORCEREBUILD:
-        try: os.remove(Payette_Materials_File)
+        try: os.remove(PAYETTE_MATERIALS_FILE)
         except: pass
         pass
 
@@ -1040,15 +1071,15 @@ def buildPayette(argc,argv):
     loginf("Building Payette\n")
 
     # prepare compiler options
-    if Payette_fcompiler:
-        f2pyopts = ["--fcompiler={0}".format(Payette_fcompiler)]
+    if PAYETTE_FCOMPILER:
+        f2pyopts = ["--fcompiler={0}".format(PAYETTE_FCOMPILER)]
     else:
-        f2pyopts = ["--f77exec={0}".format(Payette_f77exec),
-                    "--f90exec={0}".format(Payette_f90exec)]
+        f2pyopts = ["--f77exec={0}".format(PAYETTE_F77EXEC),
+                    "--f90exec={0}".format(PAYETTE_F90EXEC)]
         pass
 
     # compiler options to send to the build scripts
-    compiler_info = {"f2py":{"compiler":Payette_f2py,"options":f2pyopts}}
+    compiler_info = {"f2py":{"compiler":PAYETTE_F2PY,"options":f2pyopts}}
 
     if not opts.nobuildlibs:
 
@@ -1061,7 +1092,7 @@ def buildPayette(argc,argv):
         errors, payette_materials = buildPayetteMaterials(payette_materials,
                                                           compiler_info)
         # material libraries built, now write the
-        # Source/Materials/Payette_Materials file containing all materials
+        # Source/Materials/PAYETTE_MATERIALS file containing all materials
         writePayetteMaterials(payette_materials)
 
     else:
@@ -1103,7 +1134,7 @@ def testRunPayette(test):
     """
 
     begmes("INFO: testing that runPayette [-h] executes normally",pre="")
-    cmd = [Payette_runPayette,"-h"]
+    cmd = [RUNPAYETTE,"-h"]
     runcheck = sbp.Popen(cmd,stdout=sbp.PIPE,stderr=sbp.STDOUT)
     runcheck.wait()
     if runcheck.returncode != 0:
@@ -1154,15 +1185,15 @@ def writePayetteMaterials(payette_materials):
     """
 
     loginf("writing {0}"
-           .format("$PAYETTE_ROOT" + Payette_Materials_File.split(Payette_Root)[1]))
+           .format("$PAYETTE_ROOT" + PAYETTE_MATERIALS_FILE.split(PAYETTE_ROOT)[1]))
 
-    try: lines = open(Payette_Materials_File,"r").readlines()
+    try: lines = open(PAYETTE_MATERIALS_FILE,"r").readlines()
     except: lines = []
 
     # get list of previously installed materials
     installed_materials = []
     for line in lines:
-        if "Payette_Installed_Materials" in line:
+        if "PAYETTE_INSTALLED_MATERIALS" in line:
             installed_materials = eval(line.strip().split("=")[1])
             break
         continue
@@ -1194,8 +1225,8 @@ def writePayetteMaterials(payette_materials):
         continue
     installed_materials = [ x for x in installed_materials if x in all_materials]
 
-    # write the Payette_Materials_File file
-    with open(Payette_Materials_File,"w") as f:
+    # write the PAYETTE_MATERIALS_FILE file
+    with open(PAYETTE_MATERIALS_FILE,"w") as f:
         intro = (
 """# ****************************************************************************** #
 #                                                                                #
@@ -1214,10 +1245,10 @@ def writePayetteMaterials(payette_materials):
 """)
         f.write(intro)
         begmes("writing successfully installed materials",pre=build_sp)
-        f.write("Payette_Installed_Materials={0}\n".format(installed_materials))
+        f.write("PAYETTE_INSTALLED_MATERIALS={0}\n".format(installed_materials))
         endmes("successfully installed materials written")
 
-        f.write("Payette_Constitutive_Models={}\n")
+        f.write("PAYETTE_CONSTITUTIVE_MODELS={}\n")
 
         begmes("writing constitutive model declarations",pre=build_sp)
         for material in installed_materials:
@@ -1228,7 +1259,7 @@ def writePayetteMaterials(payette_materials):
             class_name = payette_material["class name"]
             py_path = "Source.Materials." + py_module
             f.write("from {0} import {1}\n".format(py_path, class_name))
-            f.write('Payette_Constitutive_Models["{0}"]='
+            f.write('PAYETTE_CONSTITUTIVE_MODELS["{0}"]='
                     '{{"class name":{1},'
                     '"aliases":{2}}}\n'.format(name,class_name,aliases))
             continue
@@ -1236,7 +1267,7 @@ def writePayetteMaterials(payette_materials):
         endmes("constitutive model declarations written")
 
     loginf("{0} written\n"
-           .format("$PAYETTE_ROOT" + Payette_Materials_File.split(Payette_Root)[1]))
+           .format("$PAYETTE_ROOT" + PAYETTE_MATERIALS_FILE.split(PAYETTE_ROOT)[1]))
     return
 
 def buildPayetteMaterials(payette_materials,compiler_info):
@@ -1298,17 +1329,17 @@ def buildPayetteMaterials(payette_materials,compiler_info):
             build_error = error.errno
             pass
 
-        except Exception as error:
-            build_error = error.errno
-            if build_error not in [1,2,5,10,35,40,66]:
-                # raise what ever error came through
-                raise
-            else:
-                if hasattr(error,"message"):
-                    logwrn(error.message,pre=build_sp)
-                else: raise
-                pass
-            pass
+#        except Exception as error:
+#            build_error = error.errno
+#            if build_error not in [1,2,5,10,35,40,66]:
+#                # raise what ever error came through
+#                raise
+#            else:
+#                if hasattr(error,"message"):
+#                    logwrn(error.message,pre=build_sp)
+#                else: raise
+#                pass
+#            pass
 
         if build_error:
             errors += 1
@@ -1353,7 +1384,7 @@ def buildPayetteMaterials(payette_materials,compiler_info):
         pass
 
     # remove cruft
-    for f in [x for x in os.listdir(Payette_Toolset)
+    for f in [x for x in os.listdir(PAYETTE_TOOLSET)
               if x.split(".")[-1] in ["so","o"]]:
         os.remove(f)
         continue
@@ -1386,8 +1417,8 @@ def getPayetteMaterials(requested_libs=["all"],options=[]):
         return super_class_names
 
     payette_materials, material_depends = {}, {}
-    py_files = [os.path.join(Payette_Materials,x)
-                for x in os.listdir(Payette_Materials) if x.endswith(".py")]
+    py_files = [os.path.join(PAYETTE_MATERIALS,x)
+                for x in os.listdir(PAYETTE_MATERIALS) if x.endswith(".py")]
 
     # go through list of python files in
     for py_file in py_files:
@@ -1430,7 +1461,7 @@ def getPayetteMaterials(requested_libs=["all"],options=[]):
         name = name.replace(" ","_").lower()
 
         try: libname = attributes["libname"]
-        except: libname = name + Payette_Extension_Module_Fext
+        except: libname = name + PAYETTE_EXTENSION_MODULE_FEXT
 
         # material type
         try: material_type = attributes["material type"]
@@ -1583,7 +1614,7 @@ def write_summary_to_screen():
     No_Payette_Inp_Files = len([x for x in Payette_Files if x.endswith(".inp")])
     No_Payette_Py_Files = len([x for x in Payette_Files
                               if x.endswith(".py") or x.endswith(".pyf")])
-    logmes(Payette_intro)
+    logmes(PAYETTE_INTRO)
     logmes("Summary of Project:")
     logmes("\tNumber of files in project:         {0:d}".format(No_Payette_Files))
     logmes("\tNumber of directories in project:   {0:d}".format(No_Payette_Dirs))
@@ -1670,11 +1701,11 @@ def Payette(args):
 def payette_built(built):
     """ write to the global config file that Payette built """
     built = bool(built)
-    lines = open(Payette_config_file).readlines()
-    with open(Payette_config_file,"w") as f:
+    lines = open(PAYETTE_CONFIG_FILE).readlines()
+    with open(PAYETTE_CONFIG_FILE,"w") as f:
         for line in lines:
-            if line.split() and line.strip().split()[0] == "Payette_built":
-                line = "Payette_built = {0}\n".format(bool(built))
+            if line.split() and line.strip().split()[0] == "PAYETTE_BUILT":
+                line = "PAYETTE_BUILT = {0}\n".format(bool(built))
                 pass
             f.write(line)
             continue

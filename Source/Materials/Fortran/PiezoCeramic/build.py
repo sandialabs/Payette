@@ -12,7 +12,7 @@ class Build(MaterialBuilder):
         fdir,fnam = os.path.split(os.path.realpath(__file__))
 
         # fortran source files
-        if not Payette_AlegraNevada:
+        if not PAYETTE_ALEGRANEVADA:
             raise BuildError("{0} environment variable not found, skipping {1}"
                              .format("PAYETTE_ALEGRA",self.libname),5)
 
@@ -23,7 +23,7 @@ class Build(MaterialBuilder):
 
     def build_extension_module(self):
 
-        emechd = os.path.join(Payette_AlegraNevada,
+        emechd = os.path.join(PAYETTE_ALEGRANEVADA,
                               "alegra/material_libs/electromech")
         if  not os.path.isdir(emechd):
             raise BuildError("{0} not found, skipping {1}"

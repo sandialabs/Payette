@@ -19,7 +19,7 @@ attributes = {
     "payette material":True,
     "name":"kayenta",
     "fortran source":True,
-    "build script":os.path.join(Payette_Materials_Fortran,"Kayenta/build.py"),
+    "build script":os.path.join(PAYETTE_MATERIALS_FORTRAN,"Kayenta/build.py"),
     "aliases":[],
     "material type":["mechanical"]
     }
@@ -209,7 +209,7 @@ class Kayenta(ConstitutiveModelPrototype):
         svold = matdat.getData("extra variables")
 
         a = [dt,self.ui,self.ui,self.dc,sigold,d,svold,migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
+        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
         signew,svnew,usm = mtllib.kayenta_calc(*a)
 
         if svnew[18] < 0.:
@@ -232,11 +232,11 @@ class Kayenta(ConstitutiveModelPrototype):
     def _check_props(self):
         props = np.array(self.ui0)
         a = [props,props,self.dc,migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
+        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
         return mtllib.kayenta_chk(*a)
 
     def _set_field(self):
         a = [self.ui,self.ui,self.dc,migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
+        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
         return mtllib.kayenta_rxv(*a)
 

@@ -19,7 +19,7 @@ attributes = {
     "payette material":True,
     "name":'kayenta_dual_soft',
     "fortran source":True,
-    "build script":os.path.join(Payette_Materials_Fortran,
+    "build script":os.path.join(PAYETTE_MATERIALS_FORTRAN,
                                 "Kayenta_Dual_Soft/build.py"),
     "aliases":[],
     "material type":["special"]
@@ -169,12 +169,12 @@ class KayentaDualSoft(ConstitutiveModelPrototype):
     # Private methods
     def _check_props(self,**kwargs):
         a = [kwargs["props"],kwargs["props"],np.zeros(13),migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
+        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
         return mtllib.kayenta_chk(*a)
 
     def _set_field(self,*args,**kwargs):
         a = [self.ui,self.ui,self.dc,migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
+        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
         return mtllib.kayenta_rxv(*a)
 
     # Public Methods
@@ -199,7 +199,7 @@ class KayentaDualSoft(ConstitutiveModelPrototype):
         '''
         dt,d,fold,fnew,efield,sigold,svold = args
         a = [dt,self.ui,self.ui,self.dc,sigold,d,svold,migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
+        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
         signew,svnew,usm = mtllib.kayenta_calc(*a)
         self.sv = np.array(svnew)
         return signew,svnew

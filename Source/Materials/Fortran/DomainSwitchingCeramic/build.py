@@ -12,12 +12,12 @@ class Build(MaterialBuilder):
         fdir,fnam = os.path.split(os.path.realpath(__file__))
 
         # domain switching model requires nlopt
-        if not Payette_nlopt:
+        if not PAYETTE_NLOPT:
             raise BuildError("{0} environment variable not set, skipping {1}.\n"
                              .format("NLOPTLOC",self.libname),5)
-        elif not os.path.isdir(Payette_nlopt):
+        elif not os.path.isdir(PAYETTE_NLOPT):
             raise BuildError("{0} not found, skipping {1}\n."
-                             .format(Payette_nlopt,self.libname),10)
+                             .format(PAYETTE_NLOPT,self.libname),10)
 
         # initialize base class
         MaterialBuilder.__init__(self,name,libname,fdir,compiler_info)
@@ -26,16 +26,16 @@ class Build(MaterialBuilder):
 
     def build_extension_module(self):
 
-        self.incdirs.append(os.path.join(Payette_nlopt,"include"))
-        self.libdirs.append(os.path.join(Payette_nlopt,"lib"))
+        self.incdirs.append(os.path.join(PAYETTE_NLOPT,"include"))
+        self.libdirs.append(os.path.join(PAYETTE_NLOPT,"lib"))
         self.libs.extend(["nlopt","m"])
 
         # fortran source files
-        if not Payette_AlegraNevada:
+        if not PAYETTE_ALEGRANEVADA:
             raise BuildError("{0} environment variable not found, skipping {1}"
                              .format("PAYETTE_ALEGRA",self.libname),5)
 
-        emechd = os.path.join(Payette_AlegraNevada,
+        emechd = os.path.join(PAYETTE_ALEGRANEVADA,
                               "alegra/material_libs/electromech")
         if  not os.path.isdir(emechd):
             raise BuildError("{0} not found, skipping {1}"

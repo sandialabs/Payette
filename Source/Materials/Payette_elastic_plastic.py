@@ -39,7 +39,7 @@ attributes = {
     "payette material":True,
     "name":"elastic_plastic",
     "fortran source":True,
-    "build script":os.path.join(Payette_Materials_Fortran,"ElasticPlastic/build.py"),
+    "build script":os.path.join(PAYETTE_MATERIALS_FORTRAN,"ElasticPlastic/build.py"),
     "aliases":["inuced anisotropy"],
     "material type":["mechanical"]
     }
@@ -132,7 +132,7 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         sigold = matdat.getData("stress")
         svold = matdat.getData("extra variables")
         a = [1,dt,self.ui,sigold,d,svold,migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
+        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
         a.append(self.nsv)
         signew,svnew,usm = mtllib.diamm_calc(*a)
 
@@ -147,12 +147,12 @@ class ElasticPlastic(ConstitutiveModelPrototype):
     def _check_props(self,**kwargs):
         props = np.array(self.ui0)
         a = [props,migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
+        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
         ui = mtllib.dmmchk(*a)
         return ui
 
     def _set_field(self,*args,**kwargs):
         a = [self.ui,migError,migMessage]
-        if not Payette_F2Py_Callback: a = a[:-2]
+        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
         return mtllib.dmmrxv(*a)
 

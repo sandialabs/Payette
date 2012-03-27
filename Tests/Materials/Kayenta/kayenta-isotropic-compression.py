@@ -19,7 +19,7 @@ class Test(PayetteTest):
         self.infile = "{0}.inp".format(os.path.join(self.tdir,self.name))
         self.outfile = "{0}.out".format(self.name)
         self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
-        self.keywords = ['kayenta', 'medium', 'isotropic compression',
+        self.keywords = ['kayenta', 'long', 'isotropic compression',
                          'verification', 'hardening']
         self.runcommand = ["runPayette","--no-restart",self.infile]
 

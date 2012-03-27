@@ -123,7 +123,7 @@ class PayetteBarf(object):
 
         # get the constitutive model
         cmod,tmp,version = self.lines[0].lower().split()
-        if cmod not in Payette_Installed_Materials:
+        if cmod not in PAYETTE_INSTALLED_MATERIALS:
             error(iam,"constitutive model {0} not installed".format(cmod))
             pass
 
@@ -135,7 +135,7 @@ class PayetteBarf(object):
         self.time_step = None
 
         # instantiate the constitutive model class
-        cmod = Payette_Constitutive_Models[cmod]["class name"]()
+        cmod = PAYETTE_CONSTITUTIVE_MODELS[cmod]["class name"]()
 
         in_props, props = 0, []
         in_derived_consts, self.derived_consts = 0, []

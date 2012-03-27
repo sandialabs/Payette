@@ -266,13 +266,13 @@ class PayetteTest:
         if os.path.isfile(exenam):
             found = True
 
-        elif exenam in Payette_Executables:
-            exenam = Payette_Executables[exenam]
+        elif exenam in PAYETTE_EXECUTABLES:
+            exenam = PAYETTE_EXECUTABLES[exenam]
             found = True
 
         else:
             path = os.getenv("PATH").split(os.pathsep)
-            path.insert(0,Payette_Toolset)
+            path.insert(0,PAYETTE_TOOLSET)
             for p in path:
                 exenam = os.path.join(p,exenam)
                 if os.path.isfile(exenam):
@@ -854,7 +854,7 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
             pass
         pass
     else:
-        test_dir = Payette_Tests
+        test_dir = PAYETTE_TESTS
         pass
 
     # reqkws are user specified keywords
@@ -864,7 +864,7 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
     if spectests: spectests = [x.lower() for x in spectests]
 
     # do not run the kayenta tests if kayenta not installed
-    if "kayenta" not in Payette_Installed_Materials:
+    if "kayenta" not in PAYETTE_INSTALLED_MATERIALS:
         unreqkws.append("kayenta")
         if "kayenta" in reqkws:
             errors += 1
@@ -873,7 +873,7 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
         pass
 
     # do not run the piezo electric material's tests if not installed
-    if "domain_switching_ceramic" not in Payette_Constitutive_Models:
+    if "domain_switching_ceramic" not in PAYETTE_CONSTITUTIVE_MODELS:
         unreqkws.append("domain_switching_ceramic")
         if "domain_switching_ceramic" in reqkws:
             errors += 1
@@ -882,7 +882,7 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
             pass
         pass
 
-    if "piezo_ceramic" not in Payette_Constitutive_Models:
+    if "piezo_ceramic" not in PAYETTE_CONSTITUTIVE_MODELS:
         unreqkws.append("piezo_ceramic")
         if "piezo_ceramic" in reqkws:
             errors += 1

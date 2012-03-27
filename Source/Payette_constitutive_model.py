@@ -100,9 +100,6 @@ class ConstitutiveModelPrototype:
             pass
 
         if self.J0 == None:
-            msg = ( "iniatial Jacobian not defined by {0}".format(name)
-                    + ", assuming isotropy to assign initial value" )
-            reportWarning(iam,msg)
             self.computeInitialJacobian()
             pass
 

@@ -22,7 +22,7 @@ attributes = {
     "payette material":True,
     "name":"piezo_ceramic",
     "fortran source":True,
-    "build script":os.path.join(Payette_Materials_Fortran,"PiezoCeramic/build.py"),
+    "build script":os.path.join(PAYETTE_MATERIALS_FORTRAN,"PiezoCeramic/build.py"),
     "aliases":["linear piezo","piezo electric"],
     "material type":["electromechanical"]
     }
@@ -138,7 +138,7 @@ class PiezoCeramic(ConstitutiveModelPrototype):
 
         args = [self.ui,self.ui,self.dc,xtra,Lstretch,R,igeom,efield,dielec,polrzn,
                 sigold,scratch,migError,migMessage]
-        if not Payette_F2Py_Callback: args = args[:-2]
+        if not PAYETTE_F2PY_CALLBACK: args = args[:-2]
         dielec,polrzn,signew,scratch = mtllib.qsedr2(*args)
 
         # update data
@@ -153,11 +153,11 @@ class PiezoCeramic(ConstitutiveModelPrototype):
         props = np.array(self.ui0)
         dc = np.zeros(self.ndc)
         args = [props,props,dc,migError,migMessage]
-        if not Payette_F2Py_Callback: args = args[-2:]
+        if not PAYETTE_F2PY_CALLBACK: args = args[-2:]
         return mtllib.qseck2(*args)
 
     def _set_field(self,*args,**kwargs):
         args =[self.ui,self.ui,self.dc,migError,migMessage]
-        if not Payette_F2Py_Callback: args = args[:-2]
+        if not PAYETTE_F2PY_CALLBACK: args = args[:-2]
         return mtllib.qsexv2(*args)
 
