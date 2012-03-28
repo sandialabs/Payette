@@ -19,6 +19,8 @@ except:
     imported = False
     pass
 
+from Payette_config import PAYETTE_MATERIALS_FORTRAN, PAYETTE_F2PY_CALLBACK
+
 attributes = {
     "payette material":True,
     "name":"domain_switching_ceramic",

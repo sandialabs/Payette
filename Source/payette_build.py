@@ -23,36 +23,43 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+"""Main Payette building file.
+None of the functions in this file should be called directly, but only through
+the executable script $PAYETTE_ROOT/Toolset/buildPayette
+
+AUTHORS
+Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
+M. Scot Swan, Sandia National Laboratories, mswan@sandia.gov
+
 """
-   Main Payette file.  None of the functions in this file should be called
-   directly, but only through the executable scripts in
-   $PAYETTE_ROOT/Toolset
-"""
+
 from __future__ import print_function
 import sys
 import imp
 import os
 import optparse
 import subprocess as sbp
+import multiprocessing as mp
 
-from Payette_utils import PAYETTE_INTRO
-from Payette_utils import PAYETTE_TOOLSET, PAYETTE_ROOT
-from Payette_utils import PAYETTE_MATERIALS, PAYETTE_MATERIALS_FILE
-from Payette_utils import PAYETTE_CONFIG_FILE
-from Payette_utils import PAYETTE_EXTENSION_MODULE_FEXT
-from Payette_utils import RUNPAYETTE
-from Payette_utils import PAYETTE_FCOMPILER
-from Payette_utils import PAYETTE_F77EXEC, PAYETTE_F90EXEC, PAYETTE_F2PY
+from Payette_utils import (
+    BuildError, begmes, endmes, logmes, loginf, logwrn, logerr,
+    get_module_name_and_path)
 
-from Payette_utils import BuildError
-from Payette_utils import begmes, endmes, logmes, loginf, logwrn, logerr
-from Payette_utils import get_module_name_and_path
+from Payette_config import (
+    PAYETTE_INTRO, PAYETTE_TOOLSET, PAYETTE_ROOT,
+    PAYETTE_MATERIALS, PAYETTE_MATERIALS_FILE, PAYETTE_CONFIG_FILE,
+    PAYETTE_EXTENSION_MODULE_FEXT, RUNPAYETTE,
+    PAYETTE_FCOMPILER, PAYETTE_F2PY, PAYETTE_F77EXEC, PAYETTE_F90EXEC)
 
-# spacing used for logs to console
-SPACE = "      "
+# --- module level constants
+SPACE = "      "  # spacing used for logs to console
+COMPILER_INFO = {}
 
 def build_payette(argv):
+
     """ create/build: material library files """
+
+    global COMPILER_INFO
 
     # *************************************************************************
     # -- command line option parsing
@@ -115,6 +122,13 @@ def build_payette(argv):
         action="store_true",
         default=False,
         help="write summary to screen [default: %default]")
+    parser.add_option(
+        "-j",
+        dest="NPROC",
+        action="store",
+        type=int,
+        default=1,
+        help="number of simultaneous jobs [default: %default]")
     (opts, args) = parser.parse_args(argv)
 
     if len(args) > 0:
@@ -164,7 +178,7 @@ def build_payette(argv):
                     "--f90exec={0}".format(PAYETTE_F90EXEC)]
 
     # compiler options to send to the build scripts
-    compiler_info = {"f2py": {"compiler": PAYETTE_F2PY,
+    COMPILER_INFO = {"f2py": {"compiler": PAYETTE_F2PY,
                               "options": f2pyopts}}
 
     if not opts.nobuildlibs:
@@ -175,8 +189,9 @@ def build_payette(argv):
         loginf("Payette materials found\n")
 
         # build the requested material libraries
+        nproc = min(mp.cpu_count(), opts.NPROC)
         errors, payette_materials = build_payette_mtls(payette_materials,
-                                                       compiler_info)
+                                                       COMPILER_INFO, nproc)
         # material libraries built, now write the
         # Source/Materials/PAYETTE_MATERIALS file containing all materials
         write_payette_materials(payette_materials)
@@ -207,6 +222,7 @@ def build_payette(argv):
 
 
 def test_run_payette(test):
+
     """ test that runPayette executes properly for [-h] """
 
     begmes("INFO: testing that runPayette [-h] executes normally", pre="")
@@ -262,6 +278,7 @@ def write_payette_materials(payette_materials):
 
     """ Write the Source/Materials/Payette_materials.py file containing a
     dictionary of installed models and model attributes
+
     """
 
     loginf("writing {0}".format("$PAYETTE_ROOT" +
@@ -358,14 +375,12 @@ def write_payette_materials(payette_materials):
     return
 
 
-def build_payette_mtls(payette_materials, compiler_info):
+def build_payette_mtls(payette_materials, COMPILER_INFO, nproc=1):
 
     """ build the library files for each material.  most materials are
     are implemented as fortran files and need to be compiled with
     f2py.
 
-    AUTHORS
-    Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     """
 
     loginf("building Payette material libraries")
@@ -378,7 +393,10 @@ def build_payette_mtls(payette_materials, compiler_info):
     if not requested_builds:
         logmes("no material libraries to build", pre=SPACE)
 
-    for material in requested_builds:
+
+    def _build_lib(material):
+
+        """ build the material library for payette_material """
 
         # get attributes
         name = payette_materials[material]["name"]
@@ -390,12 +408,12 @@ def build_payette_mtls(payette_materials, compiler_info):
         if parse_err:
             payette_materials[material]["build failed"] = True
             endmes("{0} skipped due to previous errors".format(libname))
-            continue
+            return
 
         if not build_script:
             payette_materials[material]["build succeeded"] = True
             endmes("{0} built ".format(libname))
-            continue
+            return
 
         # import build script
         py_mod, py_path = get_module_name_and_path(build_script)
@@ -404,26 +422,11 @@ def build_payette_mtls(payette_materials, compiler_info):
         fobj.close()
 
         try:
-            build = build.Build(name, libname, compiler_info)
+            build = build.Build(name, libname, COMPILER_INFO)
             build_error = build.build_extension_module()
-
-#        except AttributeError:
-#            build_error = 66
 
         except BuildError as error:
             build_error = error.errno
-
-#        except Exception as error:
-#            build_error = error.errno
-#            if build_error not in [1,2,5,10,35,40,66]:
-#                # raise what ever error came through
-#                raise
-#            else:
-#                if hasattr(error, "message"):
-#                    logwrn(error.message, pre=SPACE)
-#                else:
-#                    raise
-#
 
         if build_error:
             errors += 1
@@ -447,7 +450,24 @@ def build_payette_mtls(payette_materials, compiler_info):
         except OSError:
             pass
 
-        continue
+        return  # end of _build_lib
+
+
+    # build the libraries
+    nproc = min(nproc, len(requested_builds))
+    # disabling multiple builds. the reason is, up above in the _build_libs
+    # function, we import another module and load its functions.
+    # mp.Pool().map() doesn't like this and I haven't figured out why, yet.
+    nproc = 1
+    if nproc > 1 and len(requested_builds) > 1:
+        pool = mp.Pool(processes=nproc)
+        pool.map(_build_lib, requested_builds)
+        pool.close()
+        pool.join()
+    else:
+        for material in requested_builds:
+            _build_lib(material)
+            continue
 
     loginf("Payette material libraries built\n")
     failed_materials = [payette_materials[x]["libname"]
@@ -477,17 +497,26 @@ def build_payette_mtls(payette_materials, compiler_info):
     return errors, payette_materials
 
 
-def get_payette_mtls(requested_libs=["all"], options=[]):
-    """Read python files in Source/Materials and determine which are
-       interface files for material models.  If they are, add them to the
-       payette_materials dictionary, along with their attributes
-       """
+def get_payette_mtls(requested_libs=None, options=None):
+
+    """Read python files in Source/Materials and determine which are interface
+    files for material models. If they are, add them to the payette_materials
+    dictionary, along with their attributes
+
+    """
 
     import pyclbr
+
+    if requested_libs is None:
+        requested_libs = ["all"]
+
+    if options is None:
+        options = []
 
     buildselect = False if requested_libs[0] == "all" else True
 
     def get_super_classes(data):
+
         """ return the super class name from data """
 
         super_class_names = []
@@ -680,6 +709,7 @@ def get_payette_mtls(requested_libs=["all"], options=[]):
 
 
 def build_fail(msg):
+
     """ warn that the build failed """
 
     msg = msg.split("\n")
@@ -693,11 +723,13 @@ def build_fail(msg):
 
 
 def write_summary_to_screen():
+
     """ write summary of entire Payette project to the screen """
 
     from os.path import dirname, realpath, join, splitext, islink
 
     def num_code_lines(fpath):
+
         """ return the number of lines of code in fpath """
 
         nlines = 0
@@ -744,22 +776,6 @@ def write_summary_to_screen():
     return
 
 
-def payette_built(built):
-    """ write to the global config file that Payette built """
-
-    built = bool(built)
-    lines = open(PAYETTE_CONFIG_FILE).readlines()
-    with open(PAYETTE_CONFIG_FILE, "w") as ftmp:
-        for line in lines:
-            if line.split() and line.strip().split()[0] == "PAYETTE_BUILT":
-                line = "PAYETTE_BUILT = {0}\n".format(bool(built))
-
-            ftmp.write(line)
-            continue
-
-    return
-
-
 if __name__ == "__main__":
 
     BUILD = build_payette(sys.argv[1:])
@@ -780,11 +796,6 @@ if __name__ == "__main__":
     else:
         logerr("buildPayette failed\n")
         ERROR += 1
-
-    if ERROR:
-        payette_built(False)
-    else:
-        payette_built(True)
 
     if not ERROR and not WARN:
         logmes("Enjoy Payette!")

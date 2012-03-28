@@ -35,12 +35,13 @@ if __name__ == "__main__":
     srcd = os.path.dirname(thisd)
     sys.path.append(srcd)
 
-from Source.Payette_utils import *
+from Payette_utils import *
 
-try: from Source.Materials.Payette_installed_materials import *
-except ImportError:
-    reportError(__file__,"Toolset/buildPayette must be run to create "
-                "Source/Materials/Payette_installed_materials.py")
+from Payette_config import (
+    PAYETTE_EXECUTABLES, PAYETTE_TOOLSET, PAYETTE_TESTS)
+
+from Payette_installed_materials import (
+    PAYETTE_INSTALLED_MATERIALS, PAYETTE_CONSTITUTIVE_MODELS)
 
 speed_kws = ["fast","medium","long"]
 type_kws = ["verification","validation","prototype","regression"]

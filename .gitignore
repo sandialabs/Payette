@@ -12,6 +12,9 @@ f2py
 *.out
 *.log
 *.diff
+*.tmp
+*/.DS_Store
+.DS_Store
 *.prf
 *.echo
 *.props

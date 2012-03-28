@@ -22,7 +22,15 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-""" setup and run a Payette simulation """
+"""Main Payette simulation file.
+None of the functions in this file should be called directly, but only through
+the executable script in $PAYETTE_ROOT/Toolset/runPayette
+
+AUTHORS
+Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
+M. Scot Swan, Sandia National Laboratories, mswan@sandia.gov
+
+"""
 
 from __future__ import print_function
 import sys
@@ -32,22 +40,28 @@ import optparse
 import time
 import multiprocessing as mp
 
-from Payette_utils import PAYETTE_MATERIALS_FILE, PAYETTE_INTRO
-from Payette_utils import PAYETTE_INPUTS
-from Payette_utils import logerr, logwrn, loginf, logmes
-from Payette_utils import writeMessage, writeWarning, readUserInput
-from Payette_utils import reportMessage
+from Payette_utils import (
+    logerr, logwrn, loginf, logmes,
+    writeMessage, writeWarning, readUserInput)
+
+from Payette_config import (
+    PAYETTE_MATERIALS_FILE, PAYETTE_INTRO, PAYETTE_INPUTS)
+
 
 def run_payette(argv):
-    """ run the user input """
+
+    """Main function for running a Payette job.
+    Read the user inputs from argv, parse options, read user input, and run
+    the jobs.
+
+    """
 
     import Source.Payette_driver as pdrvr
     import Source.Payette_container as pcntnr
 
     def _run_job(job):
-        """ run each individual job """
 
-        iam = "run_payette"
+        """ run each individual job """
 
         if opts.timing:
             tim0 = time.time()
@@ -81,7 +95,7 @@ def run_payette(argv):
 
         return 0
 
-    # *************************************************************************
+    # ************************************************************************
     # -- command line option parsing
     usage = "usage: runPayette [options] <input file>"
     parser = optparse.OptionParser(usage=usage, version="runPayette 1.0")
@@ -210,11 +224,6 @@ def run_payette(argv):
         help=("Write equivalent velocity and displacement table "
               "[default: %default]"))
     (opts, args) = parser.parse_args(argv)
-
-    if not os.path.isfile(PAYETTE_MATERIALS_FILE):
-        logerr("buildPayette must be run to generate "
-               "Source/Materials/Payette_installed_materials.py")
-        sys.exit(130)
 
     payette_exts = [".log", ".math1", ".math2", ".props", ".echo", ".prf"]
     if opts.cleanall:
@@ -404,6 +413,7 @@ def run_payette(argv):
 
 
 def print_timing_info(tim0, tim1, tim2, name=None):
+
     """ print timing info """
 
     ttot = time.time() - tim0
@@ -415,6 +425,7 @@ def print_timing_info(tim0, tim1, tim2, name=None):
 
 
 def print_final_timing_info(tim0):
+
     """ print timing info from end of run"""
 
     ttot = time.time() - tim0

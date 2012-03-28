@@ -270,7 +270,7 @@ PAYETTE_CONFIG["PAYETTE_SCIPY_VERSION"] = PAYETTE_SCIPY_VERSION
 SAGE = True if "sage" in PAYETTE_PYINT.lower() else False
 
 # --- set up the environment
-PAYETTE_ENVIRON = {}
+ENV = {}
 ENVS = ["MPLCONFIGDIR", "PYTHONPATH", "ECLDIR", "GPDOCDIR", "RHOME",
         "GP_DATA_DIR", "PKG_CONFIG_PATH", "PYTHONHOME", "LD_LIBRARY_PATH",
         "LIBRARY_PATH", "DYLD_LIBRARY_PATH", "PATH", "SINGULAR_EXECUTABLE",
@@ -349,19 +349,18 @@ def configure_payette(argv):
         PAYETTE_CONFIG["PAYETTE_F90EXEC"] = get_exe_path(opts.F90EXEC)
 
     for item in ENVS:
-        try:
-            PAYETTE_ENVIRON[item] = os.environ[item]
-        except KeyError:
-            pass
+        if item in os.environ:
+            ENV[item] = os.environ[item]
         continue
 
     # make sure PAYETTE_ROOT is first on PYTHONPATH
-    try:
-        pypath = PAYETTE_ROOT + os.pathsep + PAYETTE_ENVIRON["PYTHONPATH"]
-    except KeyError:
-        pypath = PAYETTE_ROOT
-    pypath = os.pathsep.join(set(pypath.split(os.pathsep)))
-    PAYETTE_ENVIRON["PYTHONPATH"] = pypath
+    pypath = os.pathsep.join([PAYETTE_ROOT, PAYETTE_TOOLSET,
+                              PAYETTE_MATERIALS])
+    if "PYTHONPATH" in ENV:
+        pypath += (os.pathsep +
+                   os.pathsep.join([x for x in ENV["PYTHONPATH"].split(os.pathsep)
+                                    if x not in pypath.split(os.pathsep)]))
+    ENV["PYTHONPATH"] = pypath
 
     # write the the configuration file
     begmes("writing Payette_config.py", pre=SPACE)
@@ -373,17 +372,16 @@ def configure_payette(argv):
             continue
         fnew.write("if PAYETTE_ROOT not in sys.path: "
                    "sys.path.insert(0, PAYETTE_ROOT)\n")
-        for key, val in PAYETTE_ENVIRON.items():
+        for key, val in ENV.items():
             fnew.write('os.environ["{0}"] = "{1}"\n'.format(key, val))
             continue
-        fnew.write("PAYETTE_BUILT = False\n")
 
     endmes("Payette_config.py written")
 
     # try importing the file we just wrote to test if it is importable
     try:
         import Payette_config
-        if not Payette_config.PAYETTE_BUILT:
+        if not Payette_config.PAYETTE_BUILT_EXECUTABLES:
             pass
     except ImportError:
         print("ERROR: Payette_config.py not importable")
@@ -399,6 +397,15 @@ def create_payette_exececutables():
     """ create the Payette executables """
 
     loginf("writing executable scripts")
+
+    # message for executables that require Payette be built
+    exit_msg = """
+if [ ! -f {0} ]; then
+   echo "buildPayette must be executed to create {0}"
+   exit
+fi
+
+""".format(PAYETTE_MATERIALS_FILE)
 
     for nam, path in PAYETTE_BUILT_EXECUTABLES.items():
 
@@ -417,7 +424,7 @@ def create_payette_exececutables():
 
         with open(path, "w") as fnew:
             fnew.write("#!/bin/sh -f\n")
-            for key, val in PAYETTE_ENVIRON.items():
+            for key, val in ENV.items():
                 fnew.write("export {0}={1}\n".format(key, val))
                 continue
 
@@ -426,10 +433,12 @@ def create_payette_exececutables():
                            .format(PAYETTE_PYINT, THIS_FILE, "clean"))
 
             elif path == RUNPAYETTE:
+                fnew.write(exit_msg)
                 fnew.write("{0} {1} $* 2>&1\n"
                            .format(PAYETTE_PYINT, PAYETTE_RUN))
 
             elif path == TESTPAYETTE:
+                fnew.write(exit_msg)
                 fnew.write("{0} {1} $* 2>&1\n"
                            .format(PAYETTE_PYINT, PAYETTE_RUNTEST))
 
