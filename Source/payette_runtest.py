@@ -171,8 +171,9 @@ def test_payette(argv):
         opts.RUN = True
 
     # adjust keywords
-    if not opts.ELECTROMECH:
-        opts.NOKEYWORDS.append("electromech")
+    if not opts.SPECTESTS:
+        if not opts.ELECTROMECH:
+            opts.NOKEYWORDS.append("electromech")
 
     logmes(PAYETTE_INTRO)
 

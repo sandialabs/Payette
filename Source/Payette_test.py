@@ -883,7 +883,7 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
             pass
         pass
 
-    if "piezo_ceramic" not in PAYETTE_CONSTITUTIVE_MODELS:
+    if "piezo_ceramic" not in PAYETTE_INSTALLED_MATERIALS:
         unreqkws.append("piezo_ceramic")
         if "piezo_ceramic" in reqkws:
             errors += 1
@@ -977,11 +977,14 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
             warn(iam,"disabled test: {0} encountered".format(py_mod))
             continue
 
-        if spectests and test.name not in spectests:
-            # test not in user requested tests
-            continue
+        if spectests:
+            if test.name not in spectests:
+                # test not in user requested tests
+                continue
+            else:
+                include = True
 
-        if not reqkws and not unreqkws:
+        elif not reqkws and not unreqkws:
             # if user has not specified any kw or kw negations
             # append to conform
             include = True
