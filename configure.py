@@ -76,6 +76,82 @@ def check_exists(itemnam, item):
     return 0
 
 
+def begmes(msg, pre="", end="  "):
+
+    """ begin message """
+
+    print("{0}{1}...".format(pre, msg), end=end)
+    return
+
+
+def endmes(msg, pre="", end="\n"):
+
+    """ end message """
+
+    print("{0}{1}".format(pre, msg), end=end)
+    return
+
+
+def loginf(msg, pre="", end="\n"):
+
+    """ log info """
+
+    print("{0}INFO: {1}".format(pre, msg), end=end)
+    return
+
+
+def logmes(msg, pre="", end="\n"):
+
+    """ log message """
+
+    print("{0}{1}".format(pre, msg), end=end)
+    return
+
+
+def logwrn(msg, pre="", end="\n"):
+
+    """ log warning """
+
+    print("{0}WARNING: {1}".format(pre, msg), end=end)
+    return
+
+
+def logerr(msg, pre="", end="\n"):
+
+    """ log error """
+
+    print("{0}ERROR: {1}".format(pre, msg), end=end)
+    return
+
+
+def dictfrmt(key, val):
+
+    """ format dictionary for pretty printing """
+
+    if isinstance(val, str):
+        return '{0} = "{1}"'.format(key, val)
+    return '{0} = {1}'.format(key, val)
+
+
+def get_exe_path(exe):
+
+    """ return the absolute path to the executable exe """
+
+    if os.path.isfile(exe):
+        return exe
+
+    try:
+        path = os.getenv("PATH").split(os.pathsep)
+    except AttributeError:
+        path = []
+
+    for dirname in path:
+        if os.path.isfile(os.path.join(dirname, exe)):
+            return os.path.join(dirname, exe)
+
+    sys.exit("ERROR: executable {0} not found".format(exe))
+
+
 def write_f2py(pyint, destdir):
 
     """
@@ -148,7 +224,7 @@ if PAYETTE_ROOT not in sys.path:
     sys.path.insert(0, PAYETTE_ROOT)
 ERRORS += check_exists("PAYETTE_ROOT", PAYETTE_ROOT)
 ERRORS += check_exists("PAYETTE_AUX", PAYETTE_AUX)
-ERRORS += check_exists("PAYETTE_DOCUMENTS", PAYETTE_DOCUMENTS)
+check_exists("PAYETTE_DOCUMENTS", PAYETTE_DOCUMENTS)
 ERRORS += check_exists("PAYETTE_SOURCE", PAYETTE_SOURCE)
 ERRORS += check_exists("PAYETTE_TESTS", PAYETTE_TESTS)
 ERRORS += check_exists("PAYETTE_TOOLSET", PAYETTE_TOOLSET)
@@ -453,82 +529,6 @@ fi
     loginf("executable scripts written\n")
 
     return ERRORS
-
-
-def begmes(msg, pre="", end="  "):
-
-    """ begin message """
-
-    print("{0}{1}...".format(pre, msg), end=end)
-    return
-
-
-def endmes(msg, pre="", end="\n"):
-
-    """ end message """
-
-    print("{0}{1}".format(pre, msg), end=end)
-    return
-
-
-def loginf(msg, pre="", end="\n"):
-
-    """ log info """
-
-    print("{0}INFO: {1}".format(pre, msg), end=end)
-    return
-
-
-def logmes(msg, pre="", end="\n"):
-
-    """ log message """
-
-    print("{0}{1}".format(pre, msg), end=end)
-    return
-
-
-def logwrn(msg, pre="", end="\n"):
-
-    """ log warning """
-
-    print("{0}WARNING: {1}".format(pre, msg), end=end)
-    return
-
-
-def logerr(msg, pre="", end="\n"):
-
-    """ log error """
-
-    print("{0}ERROR: {1}".format(pre, msg), end=end)
-    return
-
-
-def dictfrmt(key, val):
-
-    """ format dictionary for pretty printing """
-
-    if isinstance(val, str):
-        return '{0} = "{1}"'.format(key, val)
-    return '{0} = {1}'.format(key, val)
-
-
-def get_exe_path(exe):
-
-    """ return the absolute path to the executable exe """
-
-    if os.path.isfile(exe):
-        return exe
-
-    try:
-        path = os.getenv("PATH").split(os.pathsep)
-    except AttributeError:
-        path = []
-
-    for dirname in path:
-        if os.path.isfile(os.path.join(dirname, exe)):
-            return os.path.join(dirname, exe)
-
-    sys.exit("ERROR: executable {0} not found".format(exe))
 
 
 PREAMBLE = """

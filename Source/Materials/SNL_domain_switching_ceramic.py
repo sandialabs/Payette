@@ -202,7 +202,7 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         props = np.array(self.ui0)
         dc = np.zeros(13)
         argv = [props,props,dc,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: argv = argv[-2:]
+        if not PAYETTE_F2PY_CALLBACK: argv = argv[:-2]
         props,dc = mtllib.qseck7(*argv)
         return props,dc
 

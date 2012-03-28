@@ -157,7 +157,7 @@ class PiezoCeramic(ConstitutiveModelPrototype):
         props = np.array(self.ui0)
         dc = np.zeros(self.ndc)
         args = [props,props,dc,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: args = args[-2:]
+        if not PAYETTE_F2PY_CALLBACK: args = args[:-2]
         return mtllib.qseck2(*args)
 
     def _set_field(self,*args,**kwargs):
