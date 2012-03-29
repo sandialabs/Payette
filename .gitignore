@@ -1,4 +1,4 @@
-# Payette executables 
+# Payette executables that are built by Payette 
 buildPayette
 cleanPayette
 runPayette
