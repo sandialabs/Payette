@@ -38,7 +38,7 @@ if __name__ == "__main__":
 from Payette_utils import *
 
 from Payette_config import (
-    PAYETTE_EXECUTABLES, PAYETTE_TOOLSET, PAYETTE_TESTS)
+    PC_EXES, PC_TOOLS, PC_TESTS)
 
 from Payette_installed_materials import (
     PAYETTE_INSTALLED_MATERIALS, PAYETTE_CONSTITUTIVE_MODELS)
@@ -267,13 +267,13 @@ class PayetteTest:
         if os.path.isfile(exenam):
             found = True
 
-        elif exenam in PAYETTE_EXECUTABLES:
-            exenam = PAYETTE_EXECUTABLES[exenam]
+        elif exenam in PC_EXES:
+            exenam = PC_EXES[exenam]
             found = True
 
         else:
             path = os.getenv("PATH").split(os.pathsep)
-            path.insert(0,PAYETTE_TOOLSET)
+            path.insert(0,PC_TOOLS)
             for p in path:
                 exenam = os.path.join(p,exenam)
                 if os.path.isfile(exenam):
@@ -855,7 +855,7 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
             pass
         pass
     else:
-        test_dir = PAYETTE_TESTS
+        test_dir = PC_TESTS
         pass
 
     # reqkws are user specified keywords

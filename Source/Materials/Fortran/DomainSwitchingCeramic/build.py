@@ -12,12 +12,12 @@ class Build(MaterialBuilder):
         fdir,fnam = os.path.split(os.path.realpath(__file__))
 
         # domain switching model requires nlopt
-        if not PAYETTE_NLOPT:
+        if not PC_NLOPT:
             raise BuildError("{0} environment variable not set, skipping {1}.\n"
                              .format("NLOPTLOC",self.libname),5)
-        elif not os.path.isdir(PAYETTE_NLOPT):
+        elif not os.path.isdir(PC_NLOPT):
             raise BuildError("{0} not found, skipping {1}\n."
-                             .format(PAYETTE_NLOPT,self.libname),10)
+                             .format(PC_NLOPT,self.libname),10)
 
         # initialize base class
         MaterialBuilder.__init__(self,name,libname,fdir,compiler_info)
@@ -26,22 +26,22 @@ class Build(MaterialBuilder):
 
     def build_extension_module(self):
 
-        self.incdirs.append(os.path.join(PAYETTE_NLOPT,"include"))
-        self.libdirs.append(os.path.join(PAYETTE_NLOPT,"lib"))
+        self.incdirs.append(os.path.join(PC_NLOPT,"include"))
+        self.libdirs.append(os.path.join(PC_NLOPT,"lib"))
         self.libs.extend(["nlopt","m"])
 
         # fortran source files
-        if not PAYETTE_ALEGRANEVADA:
+        if not PC_ALEGRANEVADA:
             raise BuildError("{0} environment variable not found, skipping {1}"
                              .format("PAYETTE_ALEGRA",self.libname),5)
 
-        emechd = os.path.join(PAYETTE_ALEGRANEVADA,
+        emechd = os.path.join(PC_ALEGRANEVADA,
                               "alegra/material_libs/electromech")
         if  not os.path.isdir(emechd):
             raise BuildError("{0} not found, skipping {1}"
                              .format(emechd,self.libname),10)
 
-        srcs = ["domain_switching_modules.f90","emech7.f90","domain_switching.f90"]
+        srcs = ["domain_switching.f90"]
         self.source_files.extend([os.path.join(emechd,x) for x in srcs])
 
         self.build_extension_module_with_f2py()

@@ -77,15 +77,17 @@ class PayetteBarf(object):
             the_model = pcntnr.Payette(key,val,opts)
             break
 
-        sys.exit("here in Payette_barf, not done yet")
         # the model has been set up, now advance the stress and state variables
         # to where they need to be based on barf file
-        the_model.matdat.advanceData("extra variables",self.extra)
-        the_model.matdat.advanceData("stress",self.stress)
-        the_model.matdat.advanceData("derived constants")
-        the_model.simdat.advanceData("rate of deformation",self.strain_rate)
+        simdat = the_model.simulationData()
+        material = simdat.MATERIAL
+        matdat = material.materialData()
+        material.constitutive_model.dc = self.derived_consts
+        matdat.advanceData("stress",self.stress)
+        simdat.advanceData("rate of deformation",self.strain_rate)
+        matdat.advanceData("extra variables",self.extra)
 
-        pass
+        sys.exit("here in Payette_barf, not done yet")
 
     def _get_barf_info(self):
 
@@ -138,10 +140,10 @@ class PayetteBarf(object):
         cmod = PAYETTE_CONSTITUTIVE_MODELS[cmod]["class name"]()
 
         in_props, props = 0, []
-        in_derived_consts, self.derived_consts = 0, []
-        in_stress, self.stress = 0, []
-        in_strain_rate, self.strain_rate = 0, []
-        in_extra, self.extra = 0, []
+        in_derived_consts, derived_consts = 0, []
+        in_stress, stress = 0, []
+        in_strain_rate, strain_rate = 0, []
+        in_extra, extra = 0, []
 
         idx, ixv = 0, 0
         for line in self.lines:
@@ -180,21 +182,23 @@ class PayetteBarf(object):
             if in_props:
                 nam = cmod.parameter_table_idx_map[idx]
                 val = line[1]
+                if idx == 59:
+                    eos = val > 0
+                    val = 0
                 props.append("{0} = {1}".format(nam,val))
                 idx += 1
-                if idx == 59: eos = val > 0
 
             elif in_derived_consts:
-                self.derived_consts.append(line[1])
+                derived_consts.append(line[1])
 
             elif in_stress:
-                self.stress.append(line[0])
+                stress.append(line[0])
 
             elif in_strain_rate:
-                self.strain_rate.append(line[0])
+                strain_rate.append(line[0])
 
             elif in_extra:
-                self.extra.append(line[1])
+                extra.append(line[1])
                 if eos and ixv == 44:
                     bmod = line[1]
                 if eos and ixv == 45:
@@ -206,19 +210,20 @@ class PayetteBarf(object):
 
             continue
 
-        if len(self.strain_rate) != 6:
+        if len(strain_rate) != 6:
             ls = len(self.strain_rate)
             self.error(iam,"len(strain_rate) = {0} != 6".format(ls))
-            pass
+        else:
+            self.strain_rate = np.array(strain_rate)
 
-        if len(self.stress) != 6:
+        if len(stress) != 6:
             ls = len(self.stress)
             self.error(iam,"len(stress) = {0} != 6".format(ls))
-            pass
+        else:
+            self.stress = np.array(stress)
 
         if self.time_step == None:
             self.error(iam,"time step not found")
-            pass
 
         if eos:
             for iprop, prop in enumerate(props):
@@ -232,8 +237,11 @@ class PayetteBarf(object):
                 continue
             pass
 
-        self.props = "\n".join(props)
-        pass
+        self.props = np.array("\n".join(props))
+        self.extra = np.array(extra)
+        self.derived_consts = np.array(derived_consts)
+
+        return
 
     def _convert_to_Payette(self):
 

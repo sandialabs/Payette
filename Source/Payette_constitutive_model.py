@@ -99,7 +99,7 @@ class ConstitutiveModelPrototype:
             reportError(iam,"shear modulus not defined")
             pass
 
-        if self.J0 == None:
+        if self.J0 is None:
             self.computeInitialJacobian()
             pass
 

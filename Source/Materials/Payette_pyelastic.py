@@ -28,7 +28,7 @@ import numpy as np
 from Source.Payette_utils import *
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 
-from Payette_config import PAYETTE_MATERIALS_FORTRAN, PAYETTE_F2PY_CALLBACK
+from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 
 attributes = {
     "payette material":True,

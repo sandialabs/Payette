@@ -33,7 +33,7 @@ THIS_DIR = os.path.dirname(THIS_FILE)
 if not os.path.isfile(os.path.join(THIS_DIR,"../Payette_config.py")):
     sys.exit("ERROR: Payette_config.py must be written by configure.py")
 
-from Payette_config import PAYETTE_INTRO, PAYETTE_AUX
+from Payette_config import PC_INTRO, PC_AUX
 
 debug = False
 wcount, wthresh, wmax = 0, 0, 1000
@@ -80,7 +80,7 @@ def reportWarning(f,msg,limit=False):
         pass
     msg = 'WARNING: {0} (reported from [{1}])\n'.format(msg,f)
     simlog.write(msg)
-    sys.stderr.write(msg)
+    if loglevel > 0: sys.stdout.write(msg)
     return
 
 def writeMessage(f,msg):
@@ -95,7 +95,7 @@ def reportMessage(f,msg,pre="INFO: "):
 #    msg = 'INFO: {0} (reported from [{1}])\n'.format(msg,f)
     msg = '{0}{1}\n'.format(pre,msg)
     simlog.write(msg)
-    if loglevel > 0: sys.stderr.write(msg)
+    if loglevel > 0: sys.stdout.write(msg)
     return
 
 def writeToLog(msg):
@@ -123,7 +123,7 @@ def fixFLength(f):
     return basename
 
 def payetteParametersDir():
-    lpd = os.path.join(PAYETTE_AUX,'MaterialsDatabase')
+    lpd = os.path.join(PC_AUX,'MaterialsDatabase')
     if not os.path.isdir(lpd):
         reportError(__file__,'Aux/MaterialsDatabase directory not found')
         return 1
@@ -169,7 +169,7 @@ def setupLogger(logfile,level,mode="w"):
     global loglevel,simlog
     loglevel = level
     simlog = open(logfile,mode)
-    if mode == "w": simlog.write(PAYETTE_INTRO + "\n")
+    if mode == "w": simlog.write(PC_INTRO + "\n")
     return
 
 def readUserInput(user_input,user_cchar=None):
@@ -387,6 +387,8 @@ def writeMathPlot(simdat,matdat):
     Write the $SIMNAME.math1 file for mathematica post processing
     """
 
+    iam = "writeMathPlot"
+
     math1 = simdat.MATH1
     math2 = simdat.MATH2
     outfile = simdat.OUTFILE
@@ -453,7 +455,7 @@ def writeMathPlot(simdat,matdat):
         if tmp:
             msg = ("requested plot variable{0:s} {1:s} not available for mathplot"
                    .format("s" if len(tmp) > 1 else "", ", ".join(tmp)))
-            reportWarning(__file__,msg)
+            reportWarning(iam,msg)
             pass
 
         pass
@@ -705,11 +707,12 @@ class BuildError(Exception):
         return repr(self.errno)
 
 def get_module_name_and_path(py_file):
-    return os.path.splitext(os.path.basename(py_file))[0],[os.path.dirname(py_file)]
+    return (os.path.splitext(os.path.basename(py_file))[0],
+            [os.path.dirname(py_file)])
 
 def get_module_name(py_file):
     """ return the module name of py_file """
-    return os.path.splitext(os.path.basename(py_file))[0]
+    return get_module_name_and_path(py_file)[0]
 
 def begmes(msg,pre="",end="  "):
     print("{0}{1}...".format(pre,msg),end=end)

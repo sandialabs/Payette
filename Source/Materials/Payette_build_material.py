@@ -31,7 +31,7 @@ class MaterialBuilder():
         # format the signature file
         self.format_signature_file()
 
-        if not PAYETTE_F2PY_CALLBACK:
+        if not PC_F2PY_CALLBACK:
             self.pre_directives.append("-DNOPYCALLBACK")
             pass
 
@@ -39,7 +39,7 @@ class MaterialBuilder():
             raise BuildError("{0} signature file not found".format(self.name),40)
 
         self.incdirs = [ ".", "{0}".format(self.source_directory),
-                         "{0}".format(PAYETTE_MATERIALS_FORTRAN_INCLUDES) ]
+                         "{0}".format(PC_MTLS_FORTRAN_INCLUDES) ]
         self.libdirs = []
         self.libs = []
 
@@ -68,14 +68,14 @@ class MaterialBuilder():
             continue
 
         # remove extension module files if they exist
-        for d in [self.source_directory, PAYETTE_MATERIALS_LIBRARY]:
+        for d in [self.source_directory, PC_MTLS_LIBRARY]:
             try: os.remove(os.path.join(d,self.libname))
             except: pass
             continue
 
         # f2py pulls its arguments from sys.argv. Here, we build sys.argv to what
         # f2py expects. Later sys.argv will be restored.
-        ffiles = self.source_files + [ PAYETTE_MIG_UTILS ]
+        ffiles = self.source_files + [ PC_MIG_UTILS ]
         incsearch = ["-I{0}".format(x) for x in self.incdirs]
         libsearch = ["-L{0}".format(x) for x in self.libdirs]
         libs = ["-l{0}".format(x) for x in self.libs]
@@ -132,7 +132,7 @@ class MaterialBuilder():
 
         # copy the extension module file to the library directory
         shutil.move(self.libname,
-                    os.path.join(PAYETTE_MATERIALS_LIBRARY,self.libname))
+                    os.path.join(PC_MTLS_LIBRARY,self.libname))
 
         try: os.remove(echo)
         except: pass
@@ -143,7 +143,7 @@ class MaterialBuilder():
 
         """ format signature file from original sigature file """
 
-        if PAYETTE_F2PY_CALLBACK:
+        if PC_F2PY_CALLBACK:
             return
 
         sigf_lines = open(self.signature_file,"r").readlines()

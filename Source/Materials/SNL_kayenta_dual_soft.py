@@ -15,13 +15,13 @@ except:
     imported = False
     pass
 
-from Payette_config import PAYETTE_MATERIALS_FORTRAN, PAYETTE_F2PY_CALLBACK
+from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 
 attributes = {
     "payette material":True,
     "name":'kayenta_dual_soft',
     "fortran source":True,
-    "build script":os.path.join(PAYETTE_MATERIALS_FORTRAN,
+    "build script":os.path.join(PC_MTLS_FORTRAN,
                                 "Kayenta_Dual_Soft/build.py"),
     "aliases":[],
     "material type":["special"]
@@ -171,12 +171,12 @@ class KayentaDualSoft(ConstitutiveModelPrototype):
     # Private methods
     def _check_props(self,**kwargs):
         a = [kwargs["props"],kwargs["props"],np.zeros(13),migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
+        if not PC_F2PY_CALLBACK: a = a[:-2]
         return mtllib.kayenta_chk(*a)
 
     def _set_field(self,*args,**kwargs):
         a = [self.ui,self.ui,self.dc,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
+        if not PC_F2PY_CALLBACK: a = a[:-2]
         return mtllib.kayenta_rxv(*a)
 
     # Public Methods
@@ -201,7 +201,7 @@ class KayentaDualSoft(ConstitutiveModelPrototype):
         '''
         dt,d,fold,fnew,efield,sigold,svold = args
         a = [dt,self.ui,self.ui,self.dc,sigold,d,svold,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
+        if not PC_F2PY_CALLBACK: a = a[:-2]
         signew,svnew,usm = mtllib.kayenta_calc(*a)
         self.sv = np.array(svnew)
         return signew,svnew

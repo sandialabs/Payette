@@ -11,7 +11,7 @@ from Source.Payette_utils import *
 from Source.Payette_tensor import *
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 
-from Payette_config import PAYETTE_MATERIALS_FORTRAN, PAYETTE_F2PY_CALLBACK
+from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 
 try:
     import Source.Materials.Library.piezo_ceramic as mtllib
@@ -20,13 +20,13 @@ except:
     imported = False
     pass
 
-from Payette_config import PAYETTE_MATERIALS_FORTRAN, PAYETTE_F2PY_CALLBACK
+from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 
 attributes = {
     "payette material":True,
     "name":"piezo_ceramic",
     "fortran source":True,
-    "build script":os.path.join(PAYETTE_MATERIALS_FORTRAN,"PiezoCeramic/build.py"),
+    "build script":os.path.join(PC_MTLS_FORTRAN,"PiezoCeramic/build.py"),
     "aliases":["linear piezo","piezo electric"],
     "material type":["electromechanical"]
     }
@@ -142,7 +142,7 @@ class PiezoCeramic(ConstitutiveModelPrototype):
 
         args = [self.ui,self.ui,self.dc,xtra,Lstretch,R,igeom,efield,dielec,polrzn,
                 sigold,scratch,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: args = args[:-2]
+        if not PC_F2PY_CALLBACK: args = args[:-2]
         dielec,polrzn,signew,scratch = mtllib.qsedr2(*args)
 
         # update data
@@ -157,11 +157,11 @@ class PiezoCeramic(ConstitutiveModelPrototype):
         props = np.array(self.ui0)
         dc = np.zeros(self.ndc)
         args = [props,props,dc,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: args = args[:-2]
+        if not PC_F2PY_CALLBACK: args = args[:-2]
         return mtllib.qseck2(*args)
 
     def _set_field(self,*args,**kwargs):
         args =[self.ui,self.ui,self.dc,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: args = args[:-2]
+        if not PC_F2PY_CALLBACK: args = args[:-2]
         return mtllib.qsexv2(*args)
 

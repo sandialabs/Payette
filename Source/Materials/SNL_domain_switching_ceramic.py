@@ -19,13 +19,13 @@ except:
     imported = False
     pass
 
-from Payette_config import PAYETTE_MATERIALS_FORTRAN, PAYETTE_F2PY_CALLBACK
+from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 
 attributes = {
     "payette material":True,
     "name":"domain_switching_ceramic",
     "fortran source":True,
-    "build script":os.path.join(PAYETTE_MATERIALS_FORTRAN,
+    "build script":os.path.join(PC_MTLS_FORTRAN,
                                 "DomainSwitchingCeramic/build.py"),
     "aliases":["multi domain ceramic"],
     "material type":["electromechanical"]
@@ -185,7 +185,7 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
 
         argv = [1,self.ui,self.ui,self.dc,svold,Rstretch,rotation,efield,
                 sigold,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: argv = argv[:-2]
+        if not PC_F2PY_CALLBACK: argv = argv[:-2]
         svnew,permtv,polrzn,edisp,signew = mtllib.qsedr7(*argv)
 
         # update data
@@ -202,14 +202,14 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         props = np.array(self.ui0)
         dc = np.zeros(13)
         argv = [props,props,dc,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: argv = argv[:-2]
+        if not PC_F2PY_CALLBACK: argv = argv[:-2]
         props,dc = mtllib.qseck7(*argv)
         return props,dc
 
     def _set_field(self,*args,**kwargs):
         ui,dc = args[0],args[1]
         argv =[ui,ui,dc,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: argv = argv[:-2]
+        if not PC_F2PY_CALLBACK: argv = argv[:-2]
 
         # request the extra variables
         ui,nsv,namea,keya,sv,rdim,iadvct,itype,iscal = mtllib.qsexv7(*argv)
@@ -219,7 +219,7 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         bkd = np.zeros(lbd)
         ibflg = 0
         argv = [ibflg,lbd,ui,ui,dc,nsv,bkd,lbd,sv,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: argv = argv[:-2]
+        if not PC_F2PY_CALLBACK: argv = argv[:-2]
         ui,bkd,permtv,polrzn,sv = mtllib.dsc_init(*argv)
 
         return ui,nsv,namea,keya,sv,rdim,iadvct,itype,iscal,bkd,permtv,polrzn

@@ -16,7 +16,7 @@ except:
     imported = False
     pass
 
-from Payette_config import PAYETTE_MATERIALS_FORTRAN, PAYETTE_F2PY_CALLBACK
+from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 
 attributes = {
     "payette material":True,
@@ -91,7 +91,7 @@ class KayentaQSFail(Parent):
         svnew = matdat.getData("extra variables")
 
         a = [dt,self.ui,self.dc,d,sigold,svold,crkflg,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
+        if not PC_F2PY_CALLBACK: a = a[:-2]
         updated_state = mtllib.kayenta_update_state(*a)
 
         signew,svnew,crkflg,decay,fratio,usm = updated_state
@@ -108,11 +108,11 @@ class KayentaQSFail(Parent):
     def _check_props(self):
         props = np.array(self.ui0)
         a = [props,props,self.dc,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
+        if not PC_F2PY_CALLBACK: a = a[:-2]
         return mtllib.kayenta_chk(*a)
 
     def _set_field(self,*args,**kwargs):
         a = [self.ui,self.ui,self.dc,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
+        if not PC_F2PY_CALLBACK: a = a[:-2]
         return mtllib.kayenta_rxv(*a)
 

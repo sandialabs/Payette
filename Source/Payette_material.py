@@ -66,7 +66,7 @@ class Material:
                    "the extension module.\n"
                    "If rebuilding Payette does not fix the problem, "
                    "please contact the Payette\ndevelopers."
-                   .format(self.constitutive_model.name,PAYETTE_MATERIALS_LIBRARY))
+                   .format(self.constitutive_model.name,PC_MTLS_LIBRARY))
             reportError(iam,msg)
             pass
 

@@ -24,7 +24,7 @@
 
 """Main Payette simulation file.
 None of the functions in this file should be called directly, but only through
-the executable script in $PAYETTE_ROOT/Toolset/runPayette
+the executable script in $PC_ROOT/Toolset/runPayette
 
 AUTHORS
 Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
@@ -40,13 +40,17 @@ import optparse
 import time
 import multiprocessing as mp
 
-from Payette_utils import (
-    logerr, logwrn, loginf, logmes,
-    writeMessage, writeWarning, readUserInput)
+import Payette_config as pc
+import Source.Payette_utils as pu
+import Source.Payette_driver as pdrvr
+import Source.Payette_container as pcntnr
 
-from Payette_config import (
-    PAYETTE_MATERIALS_FILE, PAYETTE_INTRO, PAYETTE_INPUTS)
 
+# --- module level variables
+USER_INPUT_DICT = {}
+OPTS = {}
+TIMING = False
+RESTART = False
 
 def run_payette(argv):
 
@@ -56,44 +60,7 @@ def run_payette(argv):
 
     """
 
-    import Source.Payette_driver as pdrvr
-    import Source.Payette_container as pcntnr
-
-    def _run_job(job):
-
-        """ run each individual job """
-
-        if opts.timing:
-            tim0 = time.time()
-
-        # instantiate Payette object
-        if restart:
-            the_model = user_input_dict[job]
-            the_model.setupRestart()
-        else:
-            the_model = pcntnr.Payette(job, user_input_dict[job], opts)
-
-        # run the problem
-        if opts.timing:
-            tim1 = time.time()
-
-        solve = pdrvr.runProblem(the_model, restart=restart)
-
-        if solve != 0:
-            sys.exit("ERROR: simulation failed")
-
-        if opts.timing:
-            tim2 = time.time()
-
-        # finish up
-        the_model.finish()
-        del the_model
-
-        # print timing info
-        if opts.timing:
-            print_timing_info(tim0, tim1, tim2, the_model.name)
-
-        return 0
+    global USER_INPUT_DICT, TIMING, OPTS, RESTART
 
     # ************************************************************************
     # -- command line option parsing
@@ -223,16 +190,16 @@ def run_payette(argv):
         default=False,
         help=("Write equivalent velocity and displacement table "
               "[default: %default]"))
-    (opts, args) = parser.parse_args(argv)
+    (OPTS, args) = parser.parse_args(argv)
 
     payette_exts = [".log", ".math1", ".math2", ".props", ".echo", ".prf"]
-    if opts.cleanall:
+    if OPTS.cleanall:
         payette_exts.extend([".out"])
-        opts.clean = True
+        OPTS.clean = True
 
-    opts.verbosity = int(opts.verbosity)
+    OPTS.verbosity = int(OPTS.verbosity)
 
-    if opts.clean:
+    if OPTS.clean:
         cleaned = False
         # clean all the payette output and exit
         for arg in args:
@@ -240,10 +207,10 @@ def run_payette(argv):
             argnam = os.path.splitext(arg)[0]
             if argnam not in [os.path.splitext(x)[0]
                               for x in os.listdir(argdir)]:
-                logwrn("no Payette output for {0} found in {1}"
-                       .format(arg, argdir))
+                pu.logwrn("no Payette output for {0} found in {1}"
+                          .format(arg, argdir))
                 continue
-            loginf("cleaning output for {0}".format(argnam))
+            pu.loginf("cleaning output for {0}".format(argnam))
             for ext in payette_exts:
                 try:
                     os.remove(argnam + ext)
@@ -256,16 +223,18 @@ def run_payette(argv):
         sys.exit(msg)
 
     # ----------------------------------------------- start: get the user input
-    restart = False
     input_lines = []
-    if opts.inputstr:
+    if OPTS.inputstr:
         # user gave input directly
-        input_lines.extend(opts.inputstr.split("\n"))
+        input_lines.extend(OPTS.inputstr.split("\n"))
 
     # make sure input file is given and exists
     if len(args) < 1 and not input_lines:
         parser.print_help()
         parser.error("No input given")
+
+    # pass options to global module variables
+    TIMING = OPTS.timing
 
     # first check for barf files
     barf_files = [x for x in args if "barf" in os.path.splitext(x)[1]
@@ -281,8 +250,8 @@ def run_payette(argv):
             if not os.path.isfile(barf_file):
                 parser.error("barf file {0} not found".format(barf_file))
 
-            if opts.verbosity:
-                logmes(PAYETTE_INTRO)
+            if OPTS.verbosity:
+                pu.logmes(pc.PC_INTRO)
 
             PayetteBarf(barf_file)
 
@@ -305,10 +274,10 @@ def run_payette(argv):
         if not os.path.isfile(rfile):
             parser.error("Restart file {0} not found".format(rfile))
 
-        restart = True
+        RESTART = True
         with open(rfile, "rb") as ftmp:
             the_model = pickle.load(ftmp)
-        user_input_dict = {"restart": the_model}
+        USER_INPUT_DICT = {"restart": the_model}
 
     else:
         # get a list of all input files, order of where to look for file f:
@@ -331,25 +300,26 @@ def run_payette(argv):
                 ftmp = arg
             elif os.path.isfile(os.path.realpath(arg)):
                 ftmp = os.path.realpath(arg)
-            elif os.path.isfile(os.path.join(PAYETTE_INPUTS, arg)):
-                ftmp = os.path.join(PAYETTE_INPUTS, arg)
-                writeMessage(__file__, "Using " + ftmp + " as input")
+            elif os.path.isfile(os.path.join(pc.PC_INPUTS, arg)):
+                ftmp = os.path.join(pc.PC_INPUTS, arg)
+                pu.writeMessage(__file__, "Using " + ftmp + " as input")
             elif not fext or fext == ".":
                 # add .inp extension to arg
                 arginp = fbase + ".inp"
                 if os.path.isfile(arginp):
                     ftmp = arginp
-                    writeMessage(__file__, "Using " + ftmp + " as input")
-                elif os.path.isfile(os.path.join(PAYETTE_INPUTS, arginp)):
-                    ftmp = os.path.join(PAYETTE_INPUTS, arginp)
-                    writeMessage(__file__, "Using " + ftmp + " as input")
+                    pu.writeMessage(__file__, "Using " + ftmp + " as input")
+                elif os.path.isfile(os.path.join(pc.PC_INPUTS, arginp)):
+                    ftmp = os.path.join(pc.PC_INPUTS, arginp)
+                    pu.writeMessage(__file__, "Using " + ftmp + " as input")
 
             if not ftmp:
-                writeWarning(__file__, "{0} not found in {1}, {2}, or {3}"
-                             .format(arg,
-                                     os.path.dirname(os.path.realpath(arg)),
-                                     os.getcwd(),
-                                     PAYETTE_INPUTS))
+                pu.writeWarning(
+                    __file__, "{0} not found in {1}, {2}, or {3}"
+                    .format(arg,
+                            os.path.dirname(os.path.realpath(arg)),
+                            os.getcwd(),
+                            pc.PC_INPUTS))
                 badf.append(arg)
                 continue
 
@@ -360,8 +330,8 @@ def run_payette(argv):
             continue
 
         if badf:
-            writeWarning(__file__, "The following files were not found: {0}"
-                         .format(", ".join(badf)))
+            pu.writeWarning(__file__, "The following files were not found: {0}"
+                            .format(", ".join(badf)))
 
         if not foundf and not input_lines:
             parser.print_help()
@@ -373,41 +343,78 @@ def run_payette(argv):
             continue
 
         # read the user input
-        user_input_dict = readUserInput(input_lines, opts.cchar)
-        if not user_input_dict:
+        USER_INPUT_DICT = pu.readUserInput(input_lines, OPTS.cchar)
+        if not USER_INPUT_DICT:
             sys.exit("ERROR: user input not found in {0:s}"
                      .format(", ".join(foundf)))
     # ----------------------------------------------------- end: get user input
 
     # number of processors
-    nproc = min(min(mp.cpu_count(), opts.nproc), len(user_input_dict))
-    opts.verbosity = opts.verbosity if nproc == 1 else 0
+    nproc = min(min(mp.cpu_count(), OPTS.nproc), len(USER_INPUT_DICT))
+    OPTS.verbosity = OPTS.verbosity if nproc == 1 else 0
 
     if nproc > 1:
-        writeWarning(__file__, """
+        pu.writeWarning(__file__, """
              Running with multiple processors.  Logging to the console
              has been turned off.  If a job hangs, [ctrl-c] at the
              console will not shut down Payette.  Instead, put the job
              in the background with [ctrl-z] and then kill it""")
 
-    if opts.verbosity:
-        logmes(PAYETTE_INTRO)
+    if OPTS.verbosity:
+        pu.logmes(pc.PC_INTRO)
 
     # loop through simulations and run them
-    if opts.timing:
+    if TIMING:
         tim0 = time.time()
-    if nproc > 1 and len(user_input_dict.keys()) > 1:
+    if nproc > 1 and len(USER_INPUT_DICT.keys()) > 1:
         pool = mp.Pool(processes=nproc)
-        pool.map(_run_job, user_input_dict.keys())
+        pool.map(_run_job, USER_INPUT_DICT.keys())
         pool.close()
         pool.join()
     else:
-        for key in user_input_dict:
+        for key in USER_INPUT_DICT:
             _run_job(key)
             continue
 
-    if opts.timing:
+    if TIMING:
         print_final_timing_info(tim0)
+
+    return 0
+
+
+def _run_job(job):
+
+    """ run each individual job """
+
+    if TIMING:
+        tim0 = time.time()
+
+    # instantiate Payette object
+    if RESTART:
+        the_model = USER_INPUT_DICT[job]
+        the_model.setupRestart()
+    else:
+        the_model = pcntnr.Payette(job, USER_INPUT_DICT[job], OPTS)
+
+    # run the problem
+    if TIMING:
+        tim1 = time.time()
+
+    solve = pdrvr.runProblem(the_model, restart=RESTART)
+
+    if solve != 0:
+        sys.exit("ERROR: simulation failed")
+
+    if TIMING:
+        tim2 = time.time()
+
+    # finish up
+    the_model.finish()
+    del the_model
+
+    # print timing info
+    if TIMING:
+        print_timing_info(tim0, tim1, tim2, the_model.name)
 
     return 0
 
@@ -418,9 +425,9 @@ def print_timing_info(tim0, tim1, tim2, name=None):
 
     ttot = time.time() - tim0
     texe = tim2 - tim1
-    logmes("\n-------------- {0} timing info --------------".format(name))
-    logmes("total problem execution time:\t{0:f}".format(texe))
-    logmes("total simulation time:\t\t{0:f}\n".format(ttot))
+    pu.logmes("\n-------------- {0} timing info --------------".format(name))
+    pu.logmes("total problem execution time:\t{0:f}".format(texe))
+    pu.logmes("total simulation time:\t\t{0:f}\n".format(ttot))
     return None
 
 
@@ -429,8 +436,8 @@ def print_final_timing_info(tim0):
     """ print timing info from end of run"""
 
     ttot = time.time() - tim0
-    logmes("\n-------------- simulation timing info --------------")
-    logmes("total simulation time:\t\t{0:f}".format(ttot))
+    pu.logmes("\n-------------- simulation timing info --------------")
+    pu.logmes("total simulation time:\t\t{0:f}".format(ttot))
     return None
 
 

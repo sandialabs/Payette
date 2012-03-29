@@ -25,7 +25,7 @@
 
 """Main Payette testing file.
 None of the functions in this file should be called directly, but only through
-the executable script in $PAYETTE_ROOT/Toolset/testPayette
+the executable script in $PC_ROOT/Toolset/testPayette
 
 AUTHORS
 Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
@@ -46,13 +46,11 @@ from shutil import copyfile, rmtree
 import datetime
 import getpass
 
-from Payette_test import findTests
-
-from Payette_utils import (
-    logmes, logwrn, logerr, loginf, get_module_name)
-
-from Payette_config import (
-    PAYETTE_TESTS, PAYETTE_MATERIALS_FILE, PAYETTE_INTRO)
+import Payette_config as pc
+import Source.Payette_utils as pu
+import Source.Payette_notify as pn
+from Source.Payette_test import findTests
+import Toolset.postprocess as pp
 
 # --- module level variables
 CWD = os.getcwd()
@@ -101,7 +99,7 @@ def test_payette(argv):
         "-d", "--dir",
         dest="TESTDIR",
         action="store",
-        default=PAYETTE_TESTS,
+        default=pc.PC_TESTS,
         help="Directory to scan for benchmarks [default: %default].")
     parser.add_option(
         "-i", "--index",
@@ -171,19 +169,19 @@ def test_payette(argv):
         opts.RUN = True
 
     # adjust keywords
-    if not opts.SPECTESTS:
+    if not opts.SPECTESTS and not opts.KEYWORDS:
         if not opts.ELECTROMECH:
             opts.NOKEYWORDS.append("electromech")
 
-    logmes(PAYETTE_INTRO)
+    pu.logmes(pc.PC_INTRO)
 
     # pass user option to global variables
     FORCERERUN = opts.FORCERERUN
     POSTPROCESS = opts.POSTPROCESS
 
     # find tests
-    loginf("Testing Payette")
-    loginf("Gathering Payette tests from {0}".format(opts.TESTDIR))
+    pu.loginf("Testing Payette")
+    pu.loginf("Gathering Payette tests from {0}".format(opts.TESTDIR))
     errors, found_tests = findTests(opts.KEYWORDS, opts.NOKEYWORDS,
                                     opts.SPECTESTS, opts.TESTDIR)
 
@@ -211,7 +209,7 @@ def test_payette(argv):
     if errors and not opts.IGNOREERROR:
         sys.exit("fix nonconforming benchmarks before continuing")
 
-    loginf("Found {0} Payette tests".format(len(conforming)), end="\n\n")
+    pu.loginf("Found {0} Payette tests".format(len(conforming)), end="\n\n")
 
     if opts.INDEX:
         out = sys.stderr
@@ -256,7 +254,7 @@ def test_payette(argv):
         summhtml = os.path.splitext(summpy)[0] + ".html"
         if os.path.isfile(summpy):
             py_path = [os.path.dirname(summpy)]
-            py_mod = get_module_name(summpy)
+            py_mod = pu.get_module_name(summpy)
             fobj, pathname, description = imp.find_module(py_mod, py_path)
             py_module = imp.load_module(py_mod, fobj, pathname, description)
             fobj.close()
@@ -287,9 +285,9 @@ def test_payette(argv):
             test_res[i] = {}
             continue
 
-        logmes("=" * WIDTH_TERM)
-        logmes("Running {0} benchmarks:".format(len(conforming)))
-        logmes("=" * WIDTH_TERM)
+        pu.logmes("=" * WIDTH_TERM)
+        pu.logmes("Running {0} benchmarks:".format(len(conforming)))
+        pu.logmes("=" * WIDTH_TERM)
 
         # run the tests on multiple processors using the multiprocessor map
         # ONLY f nprocs > 1. For debug purposes, when nprocs=1, run without
@@ -305,7 +303,7 @@ def test_payette(argv):
             pool.join()
 
         ttot = time.time() - runtimer
-        logmes("=" * WIDTH_TERM)
+        pu.logmes("=" * WIDTH_TERM)
 
         # copy the mathematica notebooks to the output directory
         for mtldir, mathnb in mathnbs.items():
@@ -356,7 +354,7 @@ def test_payette(argv):
                 if status not in test_statuses:
                     msg = ("return code {0} from {1} not recognized"
                            .format(status, name))
-                    logwrn(msg)
+                    pu.logwrn(msg)
                     continue
                 tcompletion = summary["completion time"]
                 benchdir = summary["benchmark directory"]
@@ -386,8 +384,6 @@ def test_payette(argv):
         # Make a long summary including the names of what passed and
         # what didn't as well as system information.
         str_date = datetime.datetime.today().strftime("%A, %d. %B %Y %I:%M%p")
-        major, minor, micro = sys.version_info[0:3]
-        py_version = "{0}.{1}.{2}".format(major, minor, micro)
 
         longtxtsummary = (
              "=" * WIDTH_TERM + "\nLONG SUMMARY\n" +
@@ -398,7 +394,7 @@ def test_payette(argv):
              "   Username:         {0:<}\n".format(getpass.getuser()) +
              "   Hostname:         {0:<}\n".format(os.uname()[1]) +
              "   Platform:         {0:<}\n".format(sys.platform) +
-             "   Python Version:   {0:<}\n".format(py_version))
+             "   Python Version:   {0:<}\n".format(pc.PC_PYVER))
 
         # List each category (diff, fail, notrun, and pass) and the tests
         test_result_statuses = test_res.keys()
@@ -430,14 +426,13 @@ def test_payette(argv):
 
         # This sends an email to everyone on the mailing list.
         if opts.NOTIFY:
-            import Payette_notify
-            logmes("Sending results to mailing list.")
-            Payette_notify.notify("Payette Benchmarks", longtxtsummary)
+            pu.logmes("Sending results to mailing list.")
+            pn.notify("Payette Benchmarks", longtxtsummary)
 
-        logmes(longtxtsummary)
-        logmes("=" * WIDTH_TERM)
-        logmes(txtsummary)
-        logmes("=" * WIDTH_TERM)
+        pu.logmes(longtxtsummary)
+        pu.logmes("=" * WIDTH_TERM)
+        pu.logmes(txtsummary)
+        pu.logmes("=" * WIDTH_TERM)
 
         # write out the results to the summary file
         write_py_summary(summpy, test_res)
@@ -467,7 +462,7 @@ def run_payette_test(py_file):
     """ run the payette test in py_file """
 
     py_path = [os.path.dirname(py_file)]
-    py_mod = get_module_name(py_file)
+    py_mod = pu.get_module_name(py_file)
     fobj, pathname, description = imp.find_module(py_mod, py_path)
     py_module = imp.load_module(py_mod, fobj, pathname, description)
     fobj.close()
@@ -475,18 +470,18 @@ def run_payette_test(py_file):
     test = py_module.Test()
 
     # directory where test will be run
-    testbase = os.path.dirname(py_file).split(PAYETTE_TESTS + os.sep)[1]
+    testbase = os.path.dirname(py_file).split(pc.PC_TESTS + os.sep)[1]
     benchdir = os.path.join(TESTRESDIR, testbase, test.name)
 
     # check if benchmark has been run
     ran = [x for x in RANTESTS if x == test.name]
 
     if not FORCERERUN and ran and os.path.isdir(benchdir):
-        logmes("{0}".format(test.name) +
-               " " * (50 - len(test.name)) +
-               "{0:>10s}".format("notrun\n") +
-               "Test already ran. " +
-               "Use -F option to force a rerun")
+        pu.logmes("{0}".format(test.name) +
+                  " " * (50 - len(test.name)) +
+                  "{0:>10s}".format("notrun\n") +
+                  "Test already ran. " +
+                  "Use -F option to force a rerun")
         result = {test.name: {"status": "notrun",
                               "keywords": test.keywords,
                               "completion time": "NA",
@@ -494,8 +489,8 @@ def run_payette_test(py_file):
         return result
 
     # Let the user know which test is running
-    logmes("{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
-           "{0:>{1}s}".format("RUNNING", WIDTH_INFO))
+    pu.logmes("{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
+              "{0:>{1}s}".format("RUNNING", WIDTH_INFO))
 
     # Create benchmark directory and copy the input and baseline files into the
     # new directory
@@ -530,8 +525,7 @@ def run_payette_test(py_file):
     retcode = test.runTest()
 
     if POSTPROCESS and os.path.isfile(test.outfile):
-        import Toolset.postprocess as PP
-        PP.postprocess(test.outfile, verbosity=0)
+        pp.postprocess(test.outfile, verbosity=0)
 
     retcode = ("bad input" if retcode == test.badincode else
                "pass" if retcode == test.passcode else
@@ -543,8 +537,8 @@ def run_payette_test(py_file):
     # Print output at completion
     tcompletion = time.time() - starttime
     info_string = "{0} ({1:6.02f}s)".format(retcode.upper(), tcompletion)
-    logmes("{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
-           "{0:>{1}s}".format(info_string, WIDTH_INFO))
+    pu.logmes("{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
+              "{0:>{1}s}".format(info_string, WIDTH_INFO))
 
     # return to the directory we came from
     os.chdir(CWD)

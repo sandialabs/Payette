@@ -22,7 +22,7 @@ class Build(MaterialBuilder):
         # fortran files
         self.source_files = [os.path.join(self.fdir,x) for x in os.listdir(self.fdir)
                              if x.endswith(".F")]
-        kerleyd = PAYETTE_KAYENTA
+        kerleyd = PC_KAYENTA
         if kerleyd:
             kerley = os.path.join(kerleyd,"Kerley_eos.F")
             if os.path.isfile(kerley):

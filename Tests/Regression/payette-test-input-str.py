@@ -2,7 +2,7 @@
 
 from Payette_config import *
 from Source.Payette_test import PayetteTest
-from Source.payette_run import run_payette
+from Source.Payette_run import run_payette
 
 class Test(PayetteTest):
 

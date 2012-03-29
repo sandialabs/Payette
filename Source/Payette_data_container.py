@@ -62,7 +62,8 @@ class DataContainer:
         self.ntens = 9
         pass
 
-    def registerData(self,name,typ,init_val=None,plot_key=None,dim=None):
+    def registerData(self, name, typ, init_val=None, plot_key=None,
+                     dim=None, constant=False):
 
         """
             register data to the data container
@@ -88,7 +89,7 @@ class DataContainer:
 
         shape = None
         if typ in self.tensor_vars:
-            if ( init_val != None and
+            if ( init_val is not None and
                  init_val != "Identity" and
                  not isinstance(init_val,(list,np.ndarray)) ):
                 msg = ("{0} data {1} must be a list "
@@ -97,7 +98,7 @@ class DataContainer:
                 pass
 
             if typ == "SymTensor":
-                if init_val == None:
+                if init_val is None:
                     init_val = np.zeros(self.nsym)
                 elif init_val == "Identity":
                     init_val = self.I6
@@ -108,7 +109,7 @@ class DataContainer:
                 pass
 
             elif typ == "Tensor":
-                if init_val == None:
+                if init_val is None:
                     init_val = np.zeros(self.ntens)
                 elif init_val == "Identity":
                     init_val = self.I9
@@ -119,7 +120,7 @@ class DataContainer:
                 pass
 
             elif typ == "Vector":
-                if init_val == None:
+                if init_val is None:
                     init_val = np.zeros(self.nvec)
                 elif init_val == "Identity":
                     init_val = self.I3
@@ -130,8 +131,8 @@ class DataContainer:
                 pass
 
             elif typ == "Matrix":
-                if init_val == None:
-                    if dim == None:
+                if init_val is None:
+                    if dim is None:
                         msg="no dim specified for {0}".format(name)
                         reportError(iam,msg)
                         pass
@@ -161,7 +162,7 @@ class DataContainer:
 
         elif typ == "List":
 
-            if init_val == None: init_val = []
+            if init_val is None: init_val = []
 
             if not isinstance(init_val,(list,tuple)):
                 msg = "List data {0} must be a list".format(name)
@@ -174,7 +175,7 @@ class DataContainer:
 
         elif typ == "Integer Array":
 
-            if init_val == None: init_val = []
+            if init_val is None: init_val = []
 
             if not isinstance(init_val,(np.ndarray,list,tuple)):
                 msg = "Integer Array data {0} must not be a np.ndarray".format(name)
@@ -187,7 +188,7 @@ class DataContainer:
 
         elif typ == "Array":
 
-            if init_val == None: init_val = []
+            if init_val is None: init_val = []
 
             if not isinstance(init_val,(np.ndarray,list,tuple)):
                 msg = "Array data {0} must be a np.ndarray".format(name)
@@ -200,7 +201,7 @@ class DataContainer:
 
         elif typ == "Scalar":
 
-            if init_val == None: init_val = 0.
+            if init_val is None: init_val = 0.
 
             if isinstance(init_val,(list,tuple,np.ndarray)):
                 msg = "Scalar data {0} must ba scalar".format(name)
@@ -213,7 +214,7 @@ class DataContainer:
 
         elif typ == "Boolean":
 
-            if init_val == None: init_val = False
+            if init_val is None: init_val = False
 
             if not isinstance(init_val,bool):
                 msg = ("Boolean data {0} must be boolean, got {1}"
@@ -226,7 +227,7 @@ class DataContainer:
             stashed_value = init_val
             pass
 
-        plotable = plot_key != None
+        plotable = plot_key is not None
         if not plotable: plot_name = None
         if plotable:
             if not isinstance(plot_key,str):
@@ -268,16 +269,17 @@ class DataContainer:
                              for i in range(self.ntens)]
 
         # register the data
-        self.data_container[name] = { "name":name,
-                                      "plot key":plot_key,
-                                      "plot name":plot_name,
-                                      "idx":self.data_container_idx,
-                                      "type":typ,
-                                      "shape":shape,
-                                      "value":value,
-                                      "old value":old_value,
-                                      "stashed value":old_value,
-                                      "plotable":plotable }
+        self.data_container[name] = { "name": name,
+                                      "plot key": plot_key,
+                                      "plot name": plot_name,
+                                      "idx": self.data_container_idx,
+                                      "type": typ,
+                                      "shape": shape,
+                                      "value": value,
+                                      "old value": old_value,
+                                      "stashed value": old_value,
+                                      "constant": constant,
+                                      "plotable": plotable }
         self.data_container_idx += 1
         setattr(self,name.replace(" ","_").upper(),old_value)
         pass
@@ -432,7 +434,6 @@ class DataContainer:
 
         if old and stash:
             reportError(iam,"can only store old or stash not both")
-            pass
 
         if stash: valtyp = "stashed value"
         elif old: valtyp = "old value"
@@ -459,6 +460,9 @@ class DataContainer:
             raise
 
         typ = data["type"]
+
+        if data["constant"]:
+            return
 
         if typ in self.tensor_vars:
 
@@ -566,9 +570,10 @@ class DataContainer:
         iam = "{0}.advanceData(self,name)".format(self.name)
 
         if name == "extra variables":
-            if value != None:
+            if value is not None:
                 if len(value) != self.num_extra:
-                    reportError(iam,"len(value) != num_extra")
+                    reportError(iam,"len(value [{0:d}]) != num_extra [{1:d}]"
+                                .format(len(value),self.num_extra))
                     pass
                 for idx, exval in enumerate(value):
                     name = self.extra_vars_map[idx]
@@ -591,7 +596,7 @@ class DataContainer:
             reportError(iam,msg)
             pass
 
-        if value == None: value = self.getData(name,cur=True)
+        if value is None: value = self.getData(name,cur=True)
         self.storeData(name,value,old=True)
         setattr(self,name.replace(" ","_").upper(),value)
 
@@ -643,7 +648,7 @@ class DataContainer:
 
             continue
 
-        plot_keys = [x for x in plot_keys if x != None]
+        plot_keys = [x for x in plot_keys if x is not None]
 
         # return flattened plot keys
         return flatten(plot_keys)
@@ -670,7 +675,7 @@ class DataContainer:
 
             continue
 
-        plot_data = [x for x in plot_data if x != None]
+        plot_data = [x for x in plot_data if x is not None]
 
         # return flattened plot keys
         return flatten(plot_data)

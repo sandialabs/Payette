@@ -19,9 +19,10 @@ class Test(PayetteTest):
         self.infile = "{0}.inp".format(os.path.join(self.tdir,self.name))
         self.outfile = "{0}.out".format(self.name)
         self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
-        self.keywords = ["domain_switching_ceramic","dsc","prototype",
-                         "fast","piezo ceramic","electromech"]
-        self.runcommand = ["runPayette","--no-restart","--no-writeprops",self.infile]
+        self.keywords = ["domain_switching_ceramic", "dsc", "prototype",
+                         "fast", "piezo ceramic", "electromech"]
+        self.runcommand = ["runPayette", "--no-restart",
+                           "--no-writeprops", self.infile]
 
         self.owner = "Tim Fuller"
         self.date = "March 11, 2012"

@@ -25,7 +25,7 @@
 
 """Main Payette building file.
 None of the functions in this file should be called directly, but only through
-the executable script $PAYETTE_ROOT/Toolset/buildPayette
+the executable script $PC_ROOT/Toolset/buildPayette
 
 AUTHORS
 Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
@@ -40,26 +40,24 @@ import os
 import optparse
 import subprocess as sbp
 import multiprocessing as mp
+import pyclbr
 
-from Payette_utils import (
-    BuildError, begmes, endmes, logmes, loginf, logwrn, logerr,
-    get_module_name_and_path)
-
-from Payette_config import (
-    PAYETTE_INTRO, PAYETTE_TOOLSET, PAYETTE_ROOT,
-    PAYETTE_MATERIALS, PAYETTE_MATERIALS_FILE, PAYETTE_CONFIG_FILE,
-    PAYETTE_EXTENSION_MODULE_FEXT, RUNPAYETTE,
-    PAYETTE_FCOMPILER, PAYETTE_F2PY, PAYETTE_F77EXEC, PAYETTE_F90EXEC)
+import Payette_config as pc
+import Source.Payette_utils as pu
+from Source.Payette_utils import BuildError
 
 # --- module level constants
 SPACE = "      "  # spacing used for logs to console
 COMPILER_INFO = {}
+MATERIALS = {}
+VERBOSE = True
+BUILD_ERRORS = 0
 
 def build_payette(argv):
 
     """ create/build: material library files """
 
-    global COMPILER_INFO
+    global COMPILER_INFO, MATERIALS
 
     # *************************************************************************
     # -- command line option parsing
@@ -139,7 +137,7 @@ def build_payette(argv):
         write_summary_to_screen()
         sys.exit(0)
 
-    logmes(PAYETTE_INTRO)
+    pu.logmes(pc.PC_INTRO)
     # determine if we build all materials, or just a selection
     if opts.DSC:
         opts.mtllib.append("domain_switching_ceramic")
@@ -152,7 +150,7 @@ def build_payette(argv):
 
     if opts.FORCEREBUILD:
         try:
-            os.remove(PAYETTE_MATERIALS_FILE)
+            os.remove(pc.PC_MTLS_FILE)
         except OSError:
             pass
 
@@ -168,33 +166,33 @@ def build_payette(argv):
         continue
 
     # intro message
-    loginf("Building Payette\n")
+    pu.loginf("Building Payette\n")
 
     # prepare compiler options
-    if PAYETTE_FCOMPILER:
-        f2pyopts = ["--fcompiler={0}".format(PAYETTE_FCOMPILER)]
+    if pc.PC_FCOMPILER:
+        f2pyopts = ["--fcompiler={0}".format(pc.PC_FCOMPILER)]
     else:
-        f2pyopts = ["--f77exec={0}".format(PAYETTE_F77EXEC),
-                    "--f90exec={0}".format(PAYETTE_F90EXEC)]
+        f2pyopts = ["--f77exec={0}".format(pc.PC_F77EXEC),
+                    "--f90exec={0}".format(pc.PC_F90EXEC)]
 
     # compiler options to send to the build scripts
-    COMPILER_INFO = {"f2py": {"compiler": PAYETTE_F2PY,
+    COMPILER_INFO = {"f2py": {"compiler": pc.PC_F2PY,
                               "options": f2pyopts}}
 
     if not opts.nobuildlibs:
 
         # get names of materials from Source/Materials
-        loginf("finding Payette materials")
-        payette_materials = get_payette_mtls(libstobuild, options)
-        loginf("Payette materials found\n")
+        pu.loginf("finding Payette materials")
+        MATERIALS = get_payette_mtls(libstobuild, options)
+        pu.loginf("Payette materials found\n")
 
         # build the requested material libraries
         nproc = min(mp.cpu_count(), opts.NPROC)
-        errors, payette_materials = build_payette_mtls(payette_materials,
-                                                       COMPILER_INFO, nproc)
+        errors = build_payette_mtls(nproc)
         # material libraries built, now write the
-        # Source/Materials/PAYETTE_MATERIALS file containing all materials
-        write_payette_materials(payette_materials)
+        # Source/Materials/Payette_installed_materials.py file containing all
+        # materials
+        write_payette_materials(MATERIALS)
 
     else:
         errors = 0
@@ -225,8 +223,8 @@ def test_run_payette(test):
 
     """ test that runPayette executes properly for [-h] """
 
-    begmes("INFO: testing that runPayette [-h] executes normally", pre="")
-    cmd = [RUNPAYETTE, "-h"]
+    pu.begmes("INFO: testing that runPayette [-h] executes normally", pre="")
+    cmd = [pc.PC_RUNPAYETTE, "-h"]
     runcheck = sbp.Popen(cmd, stdout=sbp.PIPE, stderr=sbp.STDOUT)
     runcheck.wait()
     if runcheck.returncode != 0:
@@ -241,18 +239,19 @@ def test_run_payette(test):
                                 " End Error\n"))
         build_fail(message)
 
-        logmes("<<< IF >>> no other build errors were encountered, "
-               "please let the Payette developers know so a fix can be found")
+        pu.logmes("<<< IF >>> no other build errors were encountered, "
+                  "please let the Payette developers know so a fix "
+                  "can be found")
         return 1
     else:
-        endmes("runPayette [-h] executed normally\n")
+        pu.endmes("runPayette [-h] executed normally\n")
 
     if not test:
         return 0
 
-    begmes("INFO: testing that testPayette [-k elastic -K kayenta] "
-             "executes normally")
-    cmd = [os.path.join(PAYETTE_TOOLSET, "testPayette"), "-k", "elastic",
+    pu.begmes("INFO: testing that testPayette [-k elastic -K kayenta] "
+              "executes normally")
+    cmd = [os.path.join(pc.PC_TOOLS, "testPayette"), "-k", "elastic",
            "-K", "kayenta", "-F", "buildPayette"]
     runcheck = sbp.Popen(cmd, stdout=sbp.PIPE, stderr=sbp.STDOUT)
     runcheck.wait()
@@ -266,10 +265,10 @@ def test_run_payette(test):
         build_fail(message)
         message = ("please let the Payette developers know so a "
                    "fix can be found")
-        logmes(message)
+        pu.logmes(message)
         return 1
     else:
-        endmes("testPayette [-k elastic -K kayenta] executed normally\n")
+        pu.endmes("testPayette [-k elastic -K kayenta] executed normally\n")
 
     return 0
 
@@ -281,12 +280,12 @@ def write_payette_materials(payette_materials):
 
     """
 
-    loginf("writing {0}".format("$PAYETTE_ROOT" +
-                                PAYETTE_MATERIALS_FILE.split(PAYETTE_ROOT)[1]))
+    pu.loginf("writing {0}".format("$PC_ROOT" +
+                                   pc.PC_MTLS_FILE.split(pc.PC_ROOT)[1]))
 
     lines = []
-    if os.path.isfile(PAYETTE_MATERIALS_FILE):
-        lines.extend(open(PAYETTE_MATERIALS_FILE, "r").readlines())
+    if os.path.isfile(pc.PC_MTLS_FILE):
+        lines.extend(open(pc.PC_MTLS_FILE, "r").readlines())
 
     # get list of previously installed materials
     installed_materials = []
@@ -319,15 +318,15 @@ def write_payette_materials(payette_materials):
     all_materials = [payette_materials[x]["name"] for x in payette_materials]
     for material in installed_materials:
         if material not in all_materials:
-            logwrn("installed material {0} not in payette_materials"
-                   .format(material))
+            pu.logwrn("installed material {0} not in payette_materials"
+                      .format(material))
 
         continue
     installed_materials = [x for x in installed_materials
                            if x in all_materials]
 
-    # write the PAYETTE_MATERIALS_FILE file
-    with open(PAYETTE_MATERIALS_FILE, "w") as ftmp:
+    # write the PC_MTLS_FILE file
+    with open(pc.PC_MTLS_FILE, "w") as ftmp:
         intro = ("""
 # *********************************************************************** #
 #                                                                         #
@@ -346,14 +345,14 @@ def write_payette_materials(payette_materials):
 # *********************************************************************** #
 """)
         ftmp.write(intro)
-        begmes("writing successfully installed materials", pre=SPACE)
+        pu.begmes("writing successfully installed materials", pre=SPACE)
         ftmp.write("PAYETTE_INSTALLED_MATERIALS={0}\n"
                    .format(installed_materials))
-        endmes("successfully installed materials written")
+        pu.endmes("successfully installed materials written")
 
         ftmp.write("PAYETTE_CONSTITUTIVE_MODELS={}\n")
 
-        begmes("writing constitutive model declarations", pre=SPACE)
+        pu.begmes("writing constitutive model declarations", pre=SPACE)
         for material in installed_materials:
             payette_material = payette_materials[material]
             py_module = payette_material["module"]
@@ -367,15 +366,14 @@ def write_payette_materials(payette_materials):
                        '"aliases":{2}}}\n'.format(name, class_name, aliases))
             continue
 
-        endmes("constitutive model declarations written")
+        pu.endmes("constitutive model declarations written")
 
-    loginf("{0} written\n"
-           .format("$PAYETTE_ROOT" +
-                   PAYETTE_MATERIALS_FILE.split(PAYETTE_ROOT)[1]))
+    pu.loginf("{0} written\n".format("$PC_ROOT" +
+                                     pc.PC_MTLS_FILE.split(pc.PC_ROOT)[1]))
     return
 
 
-def build_payette_mtls(payette_materials, COMPILER_INFO, nproc=1):
+def build_payette_mtls(nproc=1):
 
     """ build the library files for each material.  most materials are
     are implemented as fortran files and need to be compiled with
@@ -383,40 +381,86 @@ def build_payette_mtls(payette_materials, COMPILER_INFO, nproc=1):
 
     """
 
-    loginf("building Payette material libraries")
+    global VERBOSE, MATERIALS
+
+    pu.loginf("building Payette material libraries")
 
     # now build the materials
-    errors = 0
-
-    requested_builds = [x for x in payette_materials
-                        if payette_materials[x]["build requested"]]
+    requested_builds = [x for x in MATERIALS
+                        if MATERIALS[x]["build requested"]]
     if not requested_builds:
-        logmes("no material libraries to build", pre=SPACE)
+        pu.logmes("no material libraries to build", pre=SPACE)
+
+    # build the libraries
+    nproc = min(nproc, len(requested_builds))
+    if nproc > 1:
+        VERBOSE = False
+        pool = mp.Pool(processes=nproc)
+        build_results = pool.map(_build_lib, requested_builds)
+        pool.close()
+        pool.join()
+    else:
+        build_results = [_build_lib(material) for material in requested_builds]
+
+    # reconstruct materials from build_results
+    for item in build_results:
+        MATERIALS[item[0]] = item[1]
+
+    pu.loginf("Payette material libraries built\n")
+    failed_materials = [MATERIALS[x]["libname"]
+                        for x in MATERIALS
+                        if MATERIALS[x]["build requested"]
+                        and MATERIALS[x]["build failed"]]
+    built_materials = [MATERIALS[x]["libname"]
+                       for x in MATERIALS
+                       if MATERIALS[x]["build requested"]
+                       and MATERIALS[x]["build succeeded"]]
+
+    if failed_materials:
+        errors = 55
+        pu.logwrn("The following material libraries WERE NOT built: {0}\n"
+                  .format(", ".join(failed_materials)))
+
+    if built_materials:
+        pu.loginf("The following material libraries WERE built: {0}\n"
+                  .format(", ".join(built_materials)))
+
+    # remove cruft
+    for ftmp in [x for x in os.listdir(pc.PC_TOOLS)
+              if x.split(".")[-1] in ["so", "o"]]:
+        os.remove(ftmp)
+        continue
+
+    return BUILD_ERRORS
 
 
-    def _build_lib(material):
+def _build_lib(material):
 
-        """ build the material library for payette_material """
+    """ build the material library for payette_material """
 
-        # get attributes
-        name = payette_materials[material]["name"]
-        libname = payette_materials[material]["libname"]
-        build_script = payette_materials[material]["build script"]
-        parse_err = payette_materials[material]["parse error"]
-        begmes("building {0}".format(libname), pre=SPACE)
+    global MATERIALS, BUILD_ERRORS
 
-        if parse_err:
-            payette_materials[material]["build failed"] = True
-            endmes("{0} skipped due to previous errors".format(libname))
-            return
+    # get attributes
+    name = MATERIALS[material]["name"]
+    libname = MATERIALS[material]["libname"]
+    build_script = MATERIALS[material]["build script"]
+    parse_err = MATERIALS[material]["parse error"]
+    if VERBOSE:
+        pu.begmes("building {0}".format(libname), pre=SPACE)
 
-        if not build_script:
-            payette_materials[material]["build succeeded"] = True
-            endmes("{0} built ".format(libname))
-            return
+    if parse_err:
+        MATERIALS[material]["build failed"] = True
+        if VERBOSE:
+            pu.endmes("{0} skipped due to previous errors".format(libname))
 
+    elif build_script is None:
+        MATERIALS[material]["build succeeded"] = True
+        if VERBOSE:
+            pu.endmes("{0} built ".format(libname))
+
+    else:
         # import build script
-        py_mod, py_path = get_module_name_and_path(build_script)
+        py_mod, py_path = pu.get_module_name_and_path(build_script)
         fobj, pathname, description = imp.find_module(py_mod, py_path)
         build = imp.load_module(py_mod, fobj, pathname, description)
         fobj.close()
@@ -429,20 +473,21 @@ def build_payette_mtls(payette_materials, COMPILER_INFO, nproc=1):
             build_error = error.errno
 
         if build_error:
-            errors += 1
-            payette_materials[material]["build failed"] = True
+            BUILD_ERRORS += 1
+            MATERIALS[material]["build failed"] = True
             if build_error == 5 or build_error == 10 or build_error == 40:
                 pass
             elif build_error == 66:
-                logwrn("{0}: missing attribute: build".format(build_script))
+                pu.logwrn("{0}: missing attribute: build".format(build_script))
             else:
                 msg = ("failed to build {0} extension module. see {1}"
                        .format(libname, "build.echo"))
-                logwrn(msg, pre="\t\t")
+                pu.logwrn(msg, pre="\t\t")
 
         else:
-            endmes("{0} built ".format(libname))
-            payette_materials[material]["build succeeded"] = True
+            MATERIALS[material]["build succeeded"] = True
+            if VERBOSE:
+                pu.endmes("{0} built ".format(libname))
 
         # remove bite compiled files
         try:
@@ -450,51 +495,7 @@ def build_payette_mtls(payette_materials, COMPILER_INFO, nproc=1):
         except OSError:
             pass
 
-        return  # end of _build_lib
-
-
-    # build the libraries
-    nproc = min(nproc, len(requested_builds))
-    # disabling multiple builds. the reason is, up above in the _build_libs
-    # function, we import another module and load its functions.
-    # mp.Pool().map() doesn't like this and I haven't figured out why, yet.
-    nproc = 1
-    if nproc > 1 and len(requested_builds) > 1:
-        pool = mp.Pool(processes=nproc)
-        pool.map(_build_lib, requested_builds)
-        pool.close()
-        pool.join()
-    else:
-        for material in requested_builds:
-            _build_lib(material)
-            continue
-
-    loginf("Payette material libraries built\n")
-    failed_materials = [payette_materials[x]["libname"]
-                        for x in payette_materials
-                        if payette_materials[x]["build requested"]
-                        and payette_materials[x]["build failed"]]
-    built_materials = [payette_materials[x]["libname"]
-                       for x in payette_materials
-                       if payette_materials[x]["build requested"]
-                       and payette_materials[x]["build succeeded"]]
-
-    if failed_materials:
-        errors = 55
-        logwrn("The following material libraries WERE NOT built: {0}\n"
-               .format(", ".join(failed_materials)))
-
-    if built_materials:
-        loginf("The following material libraries WERE built: {0}\n"
-               .format(", ".join(built_materials)))
-
-    # remove cruft
-    for ftmp in [x for x in os.listdir(PAYETTE_TOOLSET)
-              if x.split(".")[-1] in ["so", "o"]]:
-        os.remove(ftmp)
-        continue
-
-    return errors, payette_materials
+    return [material,MATERIALS[material]] # end of _build_lib
 
 
 def get_payette_mtls(requested_libs=None, options=None):
@@ -504,8 +505,6 @@ def get_payette_mtls(requested_libs=None, options=None):
     dictionary, along with their attributes
 
     """
-
-    import pyclbr
 
     if requested_libs is None:
         requested_libs = ["all"]
@@ -532,15 +531,15 @@ def get_payette_mtls(requested_libs=None, options=None):
         return super_class_names
 
     payette_materials = {}
-    py_files = [os.path.join(PAYETTE_MATERIALS, x)
-                for x in os.listdir(PAYETTE_MATERIALS) if x.endswith(".py")]
+    py_files = [os.path.join(pc.PC_MTLS, x)
+                for x in os.listdir(pc.PC_MTLS) if x.endswith(".py")]
 
     # go through list of python files in
     for py_file in py_files:
 
         parse_err = False
 
-        py_mod, py_path = get_module_name_and_path(py_file)
+        py_mod, py_path = pu.get_module_name_and_path(py_file)
         fobj, pathname, description = imp.find_module(py_mod, py_path)
         py_module = imp.load_module(py_mod, fobj, pathname, description)
         fobj.close()
@@ -558,7 +557,7 @@ def get_payette_mtls(requested_libs=None, options=None):
             continue
 
         # check if a constitutive model class is defined
-        class_data = pyclbr.readmodule(py_mod, path=[os.path.dirname(py_file)])
+        class_data = pyclbr.readmodule(py_mod, path=py_path)
 
         try:
             proto = class_data["Parent"].name
@@ -580,19 +579,19 @@ def get_payette_mtls(requested_libs=None, options=None):
         try:
             name = attributes["name"]
         except KeyError:
-            logerr("No name attribute given in {0}".format(py_file))
+            pu.logerr("No name attribute given in {0}".format(py_file))
         name = name.replace(" ", "_").lower()
 
         try:
             libname = attributes["libname"]
         except KeyError:
-            libname = name + PAYETTE_EXTENSION_MODULE_FEXT
+            libname = name + pc.PC_EXT_MOD_FEXT
 
         # material type
         try:
             material_type = attributes["material type"]
         except KeyError:
-            logerr("No material type attribute given in {0}".format(py_file))
+            pu.logerr("No material type attribute given in {0}".format(py_file))
         electromtl = bool([x for x in material_type if "electro" in x])
         specialmtl = bool([x for x in material_type if "special" in x])
 
@@ -622,8 +621,8 @@ def get_payette_mtls(requested_libs=None, options=None):
         # all fortran models must give a build script
         if fortran_source and not build_script:
             parse_err = True
-            logerr("No build script given for fortran source in {0} for {1}"
-                   .format(py_file, libname), pre=SPACE)
+            pu.logerr("No build script given for fortran source in {0} for {1}"
+                      .format(py_file, libname), pre=SPACE)
 
         # unless it is not needed...
         elif build_script == "Not_Needed":
@@ -633,7 +632,7 @@ def get_payette_mtls(requested_libs=None, options=None):
         elif build_script is not None:
             if not os.path.isfile(build_script):
                 parse_err = True
-                logerr("build script {0} not found".format(build_script))
+                pu.logerr("build script {0} not found".format(build_script))
 
         # collect all parts
         mtl_dict = {
@@ -702,8 +701,8 @@ def get_payette_mtls(requested_libs=None, options=None):
                 non_existent.append(name)
             continue
         if non_existent:
-            logwrn("requested material[s] {0} not found"
-                   .format(", ".join(non_existent)), pre=SPACE)
+            pu.logwrn("requested material[s] {0} not found"
+                      .format(", ".join(non_existent)), pre=SPACE)
 
     return payette_materials
 
@@ -715,10 +714,10 @@ def build_fail(msg):
     msg = msg.split("\n")
     err = "BUILD FAILED"
     sss = r"*" * int((80 - len(err)) / 2)
-    logmes("\n\n{0} {1} {2}\n".format(sss, err, sss))
+    pu.logmes("\n\n{0} {1} {2}\n".format(sss, err, sss))
     for line in msg:
-        logmes("BUILD FAIL: {0}".format(line))
-    logmes("\n\n")
+        pu.logmes("BUILD FAIL: {0}".format(line))
+    pu.logmes("\n\n")
     return
 
 
@@ -726,14 +725,12 @@ def write_summary_to_screen():
 
     """ write summary of entire Payette project to the screen """
 
-    from os.path import dirname, realpath, join, splitext, islink
-
     def num_code_lines(fpath):
 
         """ return the number of lines of code in fpath """
 
         nlines = 0
-        if splitext(fpath)[1] not in code_exts:
+        if os.path.splitext(fpath)[1] not in code_exts:
             return nlines
         for line in open(fpath, "r").readlines():
             line = line.strip().split()
@@ -743,17 +740,16 @@ def write_summary_to_screen():
             continue
         return nlines
 
-    rootd = dirname(dirname(realpath(__file__)))
     all_dirs, all_files = [], []
     code_exts = [".py", ".pyf", "", ".F", ".C", ".f"]
     all_exts = code_exts + [".inp", ".tex", ".pdf"]
-    for dirnam, dirs, files in os.walk(rootd):
-        if ".svn" in dirnam:
+    for dirnam, dirs, files in os.walk(PC_ROOT):
+        if ".git" in dirnam:
             continue
-        all_dirs.extend([join(dirnam, d) for d in dirs])
-        all_files.extend([join(dirnam, ftmp) for ftmp in files
-                          if not islink(join(dirnam, ftmp))
-                          and splitext(ftmp)[1] in all_exts])
+        all_dirs.extend([os.path.join(dirnam, d) for d in dirs])
+        all_files.extend([os.path.join(dirnam, ftmp) for ftmp in files
+                          if not os.path.islink(os.path.join(dirnam, ftmp))
+                          and os.path.splitext(ftmp)[1] in all_exts])
         continue
     num_lines = sum([num_code_lines(ftmp) for ftmp in all_files])
     num_dirs = len(all_dirs)
@@ -761,18 +757,18 @@ def write_summary_to_screen():
     num_infiles = len([x for x in all_files if x.endswith(".inp")])
     num_pyfiles = len([x for x in all_files
                        if x.endswith(".py") or x.endswith(".pyf")])
-    logmes(PAYETTE_INTRO)
-    logmes("Summary of Project:")
-    logmes("\tNumber of files in project:         {0:d}"
-           .format(num_files))
-    logmes("\tNumber of directories in project:   {0:d}"
-           .format(num_dirs))
-    logmes("\tNumber of input files in project:   {0:d}"
-           .format(num_infiles))
-    logmes("\tNumber of python files in project:  {0:d}"
-           .format(num_pyfiles))
-    logmes("\tNumber of lines of code in project: {0:d}"
-           .format(num_lines))
+    pu.logmes(pc.PC_INTRO)
+    pu.logmes("Summary of Project:")
+    pu.logmes("\tNumber of files in project:         {0:d}"
+              .format(num_files))
+    pu.logmes("\tNumber of directories in project:   {0:d}"
+              .format(num_dirs))
+    pu.logmes("\tNumber of input files in project:   {0:d}"
+              .format(num_infiles))
+    pu.logmes("\tNumber of python files in project:  {0:d}"
+              .format(num_pyfiles))
+    pu.logmes("\tNumber of lines of code in project: {0:d}"
+              .format(num_lines))
     return
 
 
@@ -782,27 +778,27 @@ if __name__ == "__main__":
 
     ERROR, WARN = 0, 0
     if BUILD == 0:
-        loginf("buildPayette succeeded\n")
+        pu.loginf("buildPayette succeeded\n")
 
     elif BUILD == 55:
         WARN += 1
-        logwrn("buildPayette failed to build one or "
-               "more material libraries\n")
+        pu.logwrn("buildPayette failed to build one or "
+                  "more material libraries\n")
 
     elif BUILD == 75:
         ERROR += 1
-        logerr("buildPayette failed due to an unknown error\n")
+        pu.logerr("buildPayette failed due to an unknown error\n")
 
     else:
-        logerr("buildPayette failed\n")
+        pu.logerr("buildPayette failed\n")
         ERROR += 1
 
     if not ERROR and not WARN:
-        logmes("Enjoy Payette!")
+        pu.logmes("Enjoy Payette!")
     elif WARN:
-        logmes("You've been warned, tread lightly!")
+        pu.logmes("You've been warned, tread lightly!")
     else:
-        logmes("Better luck next time!")
+        pu.logmes("Better luck next time!")
 
     sys.exit(BUILD)
 

@@ -35,13 +35,13 @@ except:
     imported = False
     pass
 
-from Payette_config import PAYETTE_MATERIALS_FORTRAN, PAYETTE_F2PY_CALLBACK
+from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 
 attributes = {
     "payette material":True,
     "name":"elastic_plastic",
     "fortran source":True,
-    "build script":os.path.join(PAYETTE_MATERIALS_FORTRAN,"ElasticPlastic/build.py"),
+    "build script":os.path.join(PC_MTLS_FORTRAN,"ElasticPlastic/build.py"),
     "aliases":["inuced anisotropy"],
     "material type":["mechanical"]
     }
@@ -134,7 +134,7 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         sigold = matdat.getData("stress")
         svold = matdat.getData("extra variables")
         a = [1,dt,self.ui,sigold,d,svold,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
+        if not PC_F2PY_CALLBACK: a = a[:-2]
         a.append(self.nsv)
         signew,svnew,usm = mtllib.diamm_calc(*a)
 
@@ -149,12 +149,12 @@ class ElasticPlastic(ConstitutiveModelPrototype):
     def _check_props(self,**kwargs):
         props = np.array(self.ui0)
         a = [props,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
+        if not PC_F2PY_CALLBACK: a = a[:-2]
         ui = mtllib.dmmchk(*a)
         return ui
 
     def _set_field(self,*args,**kwargs):
         a = [self.ui,migError,migMessage]
-        if not PAYETTE_F2PY_CALLBACK: a = a[:-2]
+        if not PC_F2PY_CALLBACK: a = a[:-2]
         return mtllib.dmmrxv(*a)
 
