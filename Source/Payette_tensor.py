@@ -120,7 +120,7 @@ def powm(a,m,strict=False):
 def expm(a,strict=False):
     if isdiag(a) and not strict: a[di3] = np.exp(np.diag(a))
     elif strict: a = np.real(scipy.linalg.expm(a))
-    else: a = I + a + np.dot(a,a)/2.
+    else: a = I3x3 + a + np.dot(a,a)/2.
     return a
 
 def sqrtm(a,strict=False):
@@ -136,7 +136,7 @@ def sqrtm(a,strict=False):
 def logm(a,strict=False):
     if isdiag(a) and not strict: a[di3] = np.log(np.diag(a))
     elif strict: a = np.real(scipy.linalg.logm(a))
-    else: a = (a-I)-np.dot(a-I,a-I)/2.+np.dot(a-I,np.dot(a-I,a-I))/3.
+    else: a = (a-I3x3)-np.dot(a-I3x3,a-I3x3)/2.+np.dot(a-I3x3,np.dot(a-I3x3,a-I3x3))/3.
     return a
 
 def isdiag(a):
