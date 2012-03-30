@@ -21,231 +21,209 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import os
+"""Process and run a barf file.
+Barf files are dumps from a material model of the form:
 
-from Source.Payette_utils import *
+    model version X.x
+    svn revsion xxx
+    barf message
+    ----------------------------------------
+    x = nblk   y=iblk
+    xx = ninsv
+    xxx = nprop
+    xxxxxx.E+xx = dt
+    ################ property array
+    .
+    .
+    ################ derived constants array
+    .
+    .
+    ################ stress array
+    .
+    .
+    ################ strain rate
+    .
+    .
+    ################ state variable array
+    .
+    .
+
+"""
+
+import sys
+import numpy as np
+
+import Source.Payette_utils as pu
+import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr
-try: from Source.Materials.Payette_installed_materials import *
+try:
+    import Source.Materials.Payette_installed_materials as pim
 except ImportError:
     sys.exit("buildPayette must be run to create "
              "Source/Materials/Payette_installed_materials.py")
 
 
-class Options(object):
-    def __init__(self):
-        self.debug = False
-        self.verbosity = 4
-        self.keep = False
-        self.sqa = False
-        self.write_vandd_table = False
-        self.use_table = False
-        self.debug = False
-        self.testrestart = False
-        self.norestart = True
-        self.nowriteprops = True
+def error(caller, message):
+
+    """ Give error message and exit. """
+
+    sys.exit("ERROR: {0} [reported by: {1}]".format(message, caller))
+
+
+def inform(message):
+
+    """ Write info to user. """
+
+    sys.stdout.write("INFO: {0}\n".format(message))
+    return
+
 
 class PayetteBarf(object):
 
+    """ General Payette barf class. Converts barf file to Payette class object
+    and runs the driver.
+
     """
-        general Payette barf class. converts barf file to Payette class object
-        and runs the driver
-    """
 
-    def __init__(self,barf_file):
+    def __init__(self, barf_file, opts):
 
-        self.barf_file = barf_file
-        self.lines = open(self.barf_file,"r").readlines()
+        inform("running barf file: {0}".format(barf_file))
 
-        self._get_barf_info()
+        self.barf = {}
+        self.barf["lines"] = []
+        for line in open(barf_file, "r").readlines():
+            if not line.split():
+                continue
+            self.barf["lines"].append(line)
+            continue
 
-        self.inform("running barf file: {0}".format(self.barf_file))
-        self.inform("constitutive model: {0}".format(self.constitutive_model))
-        self.inform("constitutive model version: {0}".format(self.version))
-        self.inform("constitutive model revision: {0}".format(self.revision))
-        self.inform("barf message: {0}".format(self.message))
+        # get the barf info
+        self.get_barf_info()
+        self.read_barf_file()
 
-        self._convert_to_Payette()
+        # write message to screen
+        inform("constitutive model: {0}"
+               .format(self.barf["constitutive model"]))
+        inform("constitutive model version: {0}"
+               .format(self.barf["model version"]))
+        inform("constitutive model revision: {0}"
+               .format(self.barf["model revision"]))
+        inform("barf message: {0}"
+               .format(self.barf["barf message"]))
+
+        # convert the barf file to a payette input
+        self.payette_input = self._convert_to_payette()
 
         # parse the input
-        self.payette_input_dict = readUserInput(self.payette_input.split("\n"))
-
-        # dummpy options to send to Payette
-        opts = Options()
+        input_dict = pu.readUserInput(self.payette_input)
 
         # instantiate the Payette object
-        for key, val in self.payette_input_dict.items():
-            the_model = pcntnr.Payette(key,val,opts)
+        for key, val in input_dict.items():
+            the_model = pcntnr.Payette(key, val, opts)
             break
 
         # the model has been set up, now advance the stress and state variables
         # to where they need to be based on barf file
         simdat = the_model.simulationData()
-        material = simdat.MATERIAL
+        material = the_model.material
         matdat = material.materialData()
-        material.constitutive_model.dc = self.derived_consts
-        matdat.advanceData("stress",self.stress)
-        simdat.advanceData("rate of deformation",self.strain_rate)
-        matdat.advanceData("extra variables",self.extra)
+        material.constitutive_model.dc = self.barf["derived constsants"]
+        matdat.advanceData("stress", self.barf["stress"])
+        simdat.advanceData("rate of deformation", self.barf["strain rate"])
+        matdat.advanceData("extra variables", self.barf["extra variables"])
 
-        sys.exit("here in Payette_barf, not done yet")
+        pdrvr.runProblem(the_model)
 
-    def _get_barf_info(self):
+        pass
 
-        """
-            read the first line of the barf file and get info
+    def get_barf_info(self):
 
-            the header of all barf files are of the form:
+        """Read the first line of the barf file and get info. """
 
-            model version X.x
-            svn revsion XXX
-            barf message
-            ----------------------------------------
-            x = nblk   y=iblk
-            xx = ninsv
-            xxx = nprop
-            xxxxxx.E+xx = dt
-            ################ property array
-            .
-            .
-            ################ derived constants array
-            .
-            .
-            ################ stress array
-            .
-            .
-            ################ strain rate
-            .
-            .
-            ################ state variable array
-            .
-            .
-        """
-
-        iam = "PayetteBarf._get_barf_info(self)"
+        iam = "PayetteBarf.get_barf_info(self)"
 
         # get the constitutive model
-        cmod,tmp,version = self.lines[0].lower().split()
-        if cmod not in PAYETTE_INSTALLED_MATERIALS:
-            error(iam,"constitutive model {0} not installed".format(cmod))
-            pass
+        tmp = self.barf["lines"][0].lower().split()
+        cmod, version = tmp[0], tmp[2]
+        if cmod not in pim.PAYETTE_INSTALLED_MATERIALS:
+            error(iam, "constitutive model {0} not installed".format(cmod))
 
-        self.constitutive_model = cmod
-        self.version = version
-        self.revision = self.lines[1].split()[2]
-        self.message = self.lines[2].strip()
-        self.name = self.message.replace(" ","_")
-        self.time_step = None
+        message = self.barf["lines"][2].strip()
 
         # instantiate the constitutive model class
-        cmod = PAYETTE_CONSTITUTIVE_MODELS[cmod]["class name"]()
+        cmod_obj = pim.PAYETTE_CONSTITUTIVE_MODELS[cmod]["class name"]()
 
-        in_props, props = 0, []
-        in_derived_consts, derived_consts = 0, []
-        in_stress, stress = 0, []
-        in_strain_rate, strain_rate = 0, []
-        in_extra, extra = 0, []
-
-        idx, ixv = 0, 0
-        for line in self.lines:
-
-            line = line.strip().split()
-            if not line: continue
-
-            if "dt" in line:
-                self.time_step = line[0]
-                continue
-
-            if "#####" in line[0]:
-                if "property" in line[1]:
-                    in_props = 1
-                    continue
-                elif "derived" in line[1]:
-                    in_props = 0
-                    in_derived_consts = 1
-                    continue
-                elif "stress" in line[1]:
-                    in_derived_consts = 0
-                    in_stress = 1
-                    continue
-                elif "strain" in line[1]:
-                    in_stress = 0
-                    in_strain_rate = 1
-                    continue
-                elif "state" in line[1]:
-                    in_strain_rate = 0
-                    in_extra = 1
-                    continue
-                pass
-            elif "relevant" in line[0]:
-                break
-
-            if in_props:
-                nam = cmod.parameter_table_idx_map[idx]
-                val = line[1]
-                if idx == 59:
-                    eos = val > 0
-                    val = 0
-                props.append("{0} = {1}".format(nam,val))
-                idx += 1
-
-            elif in_derived_consts:
-                derived_consts.append(line[1])
-
-            elif in_stress:
-                stress.append(line[0])
-
-            elif in_strain_rate:
-                strain_rate.append(line[0])
-
-            elif in_extra:
-                extra.append(line[1])
-                if eos and ixv == 44:
-                    bmod = line[1]
-                if eos and ixv == 45:
-                    smod = line[1]
-                ixv += 1
-
-            else:
-                pass
-
-            continue
-
-        if len(strain_rate) != 6:
-            ls = len(self.strain_rate)
-            self.error(iam,"len(strain_rate) = {0} != 6".format(ls))
-        else:
-            self.strain_rate = np.array(strain_rate)
-
-        if len(stress) != 6:
-            ls = len(self.stress)
-            self.error(iam,"len(stress) = {0} != 6".format(ls))
-        else:
-            self.stress = np.array(stress)
-
-        if self.time_step == None:
-            self.error(iam,"time step not found")
-
-        if eos:
-            for iprop, prop in enumerate(props):
-                prop = prop.split()
-                if "b0" in prop[0].lower():
-                    props[iprop] = "B0 = {0}".format(bmod)
-                    continue
-                if "g0" in prop[0].lower():
-                    props[iprop] = "G0 = {0}".format(smod)
-                    break
-                continue
-            pass
-
-        self.props = np.array("\n".join(props))
-        self.extra = np.array(extra)
-        self.derived_consts = np.array(derived_consts)
+        self.barf["constitutive model instance"] = cmod_obj
+        self.barf["constitutive model"] = cmod
+        self.barf["model version"] = version
+        self.barf["model revision"] = self.barf["lines"][1].split()[2]
+        self.barf["barf message"] = self.barf["lines"][2].strip()
+        self.barf["name"] = message.replace(" ", "_")
+        self.barf["time step"] = None
 
         return
 
-    def _convert_to_Payette(self):
+    def read_barf_file(self):
 
-        self.payette_input = """
+        """ Read the barf file. """
+
+        iam = "PayetteBarf.read_barf_file(self)"
+
+        dtime = eval(self.get_block("dt", block_delim=None)[0])
+        parameters = self.parse_parameters(self.get_block("property"))
+        derived_consts = self.get_block("derived", place=1)
+        stress = self.get_block("stress", place=0)
+        strain_rate = self.get_block("strain", place=0)
+        extra_variables = self.get_block("state", place=1)
+
+        if self.barf["using eos"]:
+            # if the code used a host EOS, replace the bulk and shear moduli
+            # with current values
+            bmod = extra_variables[44]
+            smod = extra_variables[45]
+            for idx, param in enumerate(parameters):
+                param = param.split()
+                if "b0" in param[0].lower():
+                    parameters[idx] = "B0 = {0}".format(bmod)
+                    continue
+
+                if "g0" in param[0].lower():
+                    parameters[idx] = "G0 = {0}".format(smod)
+                    break
+
+                continue
+
+        if len(strain_rate) != 6:
+            error(iam, "len(strain_rate) = {0} != 6".format(len(strain_rate)))
+        else:
+            self.barf["strain rate"] = np.array(strain_rate)
+
+        if len(stress) != 6:
+            error(iam, "len(stress) = {0} != 6".format(len(stress)))
+        else:
+            self.barf["stress"] = np.array(stress)
+
+        if not dtime:
+            error(iam, "invalid timestep {0}".format(dtime))
+        else:
+            self.barf["time step"] = dtime
+
+        self.barf["parameters"] = "\n".join(parameters)
+        self.barf["extra variables"] = np.array(extra_variables)
+        self.barf["derived constsants"] = np.array(derived_consts)
+
+        return
+
+    def _convert_to_payette(self):
+
+        """ Convert a barf file to Payette input. """
+
+        name = self.barf["name"]
+        dtime = self.barf["time step"]
+        rod = self.barf["strain rate"]
+        cmod = self.barf["constitutive model"]
+        params = self.barf["parameters"]
+        input_file = """
 begin simulation {0}
 begin boundary
 begin legs
@@ -258,15 +236,70 @@ constitutive model {8}
 {9}
 end material
 end simulation
-""".format(self.name, self.time_step,
-           self.strain_rate[0], self.strain_rate[1], self.strain_rate[2],
-           self.strain_rate[3], self.strain_rate[4], self.strain_rate[5],
-           self.constitutive_model, self.props)
+""".format(name, dtime,
+           rod[0], rod[1], rod[2], rod[3], rod[4], rod[5],
+           cmod, params)
 
-        return
+        return input_file.split("\n")
 
-    def error(self,caller,message):
-        sys.exit("ERROR: {0} [reported by: {1}]".format(message,caller))
+    def get_block(self, name, block_delim="#####", place=None):
 
-    def inform(self,message):
-        print("INFO: {0}".format(message))
+        """ Find the strain rate in the barf file """
+
+        in_block = False
+        block = []
+        for line in self.barf["lines"]:
+
+            line = line.split()
+
+            if block_delim is None:
+                # if no block delimeter, then the line is of the form
+                #           val = name
+                if name in line:
+                    block = line
+                    break
+
+            else:
+
+                if in_block and block_delim in line[0]:
+                    break
+
+                if "relevant" in line[0]:
+                    break
+
+                if block_delim in line[0] and name in line[1]:
+                    in_block = True
+                    continue
+
+                if in_block:
+                    if place is None:
+                        block.append(line)
+
+                    else:
+                        block.append(eval(line[place]))
+
+                continue
+
+            continue
+
+        return block
+
+    def parse_parameters(self, params):
+
+        """ parse the parameters """
+
+        cmod = self.barf["constitutive model instance"]
+        props = []
+        for idx, val in params:
+
+            idx = int(idx) - 1
+            nam = cmod.parameter_table_idx_map[idx]
+
+            if idx == 59:
+                self.barf["using eos"] = val > 0
+                val = 0
+
+            props.append("{0} = {1}".format(nam, val))
+            continue
+
+        return props

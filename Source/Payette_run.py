@@ -253,7 +253,7 @@ def run_payette(argv):
             if OPTS.verbosity:
                 pu.logmes(pc.PC_INTRO)
 
-            PayetteBarf(barf_file)
+            PayetteBarf(barf_file, OPTS)
 
         return 0
 

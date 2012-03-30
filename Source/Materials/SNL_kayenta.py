@@ -126,7 +126,7 @@ class Kayenta(ConstitutiveModelPrototype):
         self.registerParameter("FSLOPEF",57,aliases=[])
         self.registerParameter("FAILSTAT",58,aliases=[])
         self.registerParameter("IEOSID",59,aliases=['EOSID'])
-        self.registerParameter("USEHOSTEOS",60,aliases=[])
+        self.registerParameter("EVLEOS",60,aliases=[])
         self.registerParameter("DILATLIM",61,aliases=[])
         self.registerParameter("FREE1",62,aliases=['FREE01'])
         self.registerParameter("FREE2",63,aliases=['FREE02'])

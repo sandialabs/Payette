@@ -577,7 +577,7 @@ class DataContainer:
                     pass
                 for idx, exval in enumerate(value):
                     name = self.extra_vars_map[idx]
-                    self.storeData(name,value,old=True)
+                    self.storeData(name,exval,old=True)
                     continue
                 pass
             else:

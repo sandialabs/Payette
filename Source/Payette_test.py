@@ -325,7 +325,7 @@ class PayetteTest:
             pass
 
         if errors:
-            return badincode
+            return self.badincode
 
         # read in header
         outheader = [x.lower() for x in self.get_header(outf)]
@@ -344,7 +344,7 @@ class PayetteTest:
             pass
 
         if errors:
-            return badincode
+            return self.badincode
 
         # read in data
         out = self.read_data(outf)

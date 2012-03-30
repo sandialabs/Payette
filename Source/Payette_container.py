@@ -434,22 +434,70 @@ class Payette:
         lcontrol = []
         kappa = bcontrol['kappa']
         sigc = False
+
+        g_cntrl, g_steps, g_leg_no, g_time = None, None, 0, 0.
+        allowed_legs = {
+            "strain rate": {"num": 1, "len": 6},
+            "strain": {"num": 2, "len": 6},
+            "stress rate": {"num": 3, "len": 6},
+            "stress": {"num": 4, "len": 6},
+            "deformation gradient": {"num": 5, "len": 9},
+            "electric field": {"num": 6, "len": 3},
+            "displacement": {"num": 8, "len": 3}}
+
+        # control should be a group of letters describing what type of
+        # control type the leg is. valid options are:
+        #  1: strain rate control
+        #  2: strain control
+        #  3: stress rate control
+        #  4: stress control
+        #  5: deformation gradient control
+        #  6: electric field
+        #  8: displacement
         for ileg,leg in enumerate(legs):
 
             leg = [x.strip() for x in leg.replace(',',' ').split(' ') if x]
 
-            if len(leg) < 5:
-                parseError('leg %s input must be of form: \n'
-                           '       leg number, time, steps, type, c[ij]'%leg[0])
-                pass
-            leg_no = int(float(leg[0]))
-            leg_t = bcontrol['tfac']*float(leg[1])
-            leg_steps = int(bcontrol['stepstar']*float(leg[2]))
-            if ileg != 0 and leg_steps == 0:
-                parseError("leg number {0} has no steps".format(leg_no))
-                pass
-            control = leg[3].strip()
-            c = [float(eval(y)) for y in leg[4:]]
+            if ileg == 0 and leg[0] == "using":
+                t_typ = leg[1]
+                if t_typ not in ["time","dt"]:
+                    parseError("requested bad time type {0}"
+                               .format(t_typ))
+                use_typ = " ".join(leg[2:])
+                if use_typ not in allowed_legs:
+                    parseError("requested bad control type {0}"
+                               .format(use_typ))
+                g_cntrl = ("{0}".format(allowed_legs[use_typ]["num"])
+                           * allowed_legs[use_typ]["len"])
+                g_steps = int(bcontrol['stepstar'])
+                continue
+
+            if g_cntrl is not None:
+                control = g_cntrl
+                leg_steps = g_steps
+                leg_no = g_leg_no
+                g_leg_no += 1
+                if t_typ == "dt":
+                    g_time += float(leg[0])
+                else:
+                    g_time = float(leg[0])
+                leg_t = bcontrol['tfac']*g_time
+                c = [float(eval(y)) for y in leg[1:]]
+
+            else:
+
+                if len(leg) < 5:
+                    parseError('leg %s input must be of form: \n'
+                               '       leg number, time, steps, type, c[ij]'%leg[0])
+                leg_no = int(float(leg[0]))
+                leg_t = bcontrol['tfac']*float(leg[1])
+                leg_steps = int(bcontrol['stepstar']*float(leg[2]))
+                if ileg != 0 and leg_steps == 0:
+                    parseError("leg number {0} has no steps".format(leg_no))
+                    pass
+                control = leg[3].strip()
+                c = [float(eval(y)) for y in leg[4:]]
+
             # control should be a group of letters describing what type of
             # control type the leg is. valid options are:
             #  1: strain rate control
