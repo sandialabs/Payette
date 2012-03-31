@@ -73,8 +73,9 @@ in this document. <tt class="file docutils literal"><span class="pre">runPayette
 comment characters and the user can pass the optional <tt class="docutils literal"><span class="pre">--cchar=userchar</span></tt> to
 specify any character <tt class="docutils literal"><span class="pre">userchar</span></tt> to be used as a comment character.</p>
 </div>
+</div>
 <div class="section" id="required-blocks">
-<span id="id2"></span><h3>Required Blocks<a class="headerlink" href="#required-blocks" title="Permalink to this headline">¶</a></h3>
+<span id="id2"></span><h2>Required Blocks<a class="headerlink" href="#required-blocks" title="Permalink to this headline">¶</a></h2>
 <p>The blocks required by <tt class="file docutils literal"><span class="pre">runPayette</span></tt> are:</p>
 <div class="highlight-python"><pre>begin simulation &lt;title&gt;
 
@@ -96,7 +97,7 @@ end simulation</pre>
 However, all blocks for a given simulation must be nested in the <tt class="docutils literal"><span class="pre">simulation</span></tt>
 block. Details of the required content of each block follows.</p>
 <div class="section" id="the-simulation-block">
-<span id="simulation-block"></span><h4>The <tt class="docutils literal"><span class="pre">simulation</span></tt> Block<a class="headerlink" href="#the-simulation-block" title="Permalink to this headline">¶</a></h4>
+<span id="simulation-block"></span><h3>The <tt class="docutils literal"><span class="pre">simulation</span></tt> Block<a class="headerlink" href="#the-simulation-block" title="Permalink to this headline">¶</a></h3>
 <p>Each input file must have a <tt class="docutils literal"><span class="pre">simulation</span></tt> block with title for that simulation. The
 title of the simulation will serve as the basename for all simulation output,
 with spaces replaced with underscores.</p>
@@ -107,7 +108,7 @@ single input file.</p>
 </div>
 </div>
 <div class="section" id="the-material-block">
-<span id="material-block"></span><h4>The <tt class="docutils literal"><span class="pre">material</span></tt> Block<a class="headerlink" href="#the-material-block" title="Permalink to this headline">¶</a></h4>
+<span id="material-block"></span><h3>The <tt class="docutils literal"><span class="pre">material</span></tt> Block<a class="headerlink" href="#the-material-block" title="Permalink to this headline">¶</a></h3>
 <p>In the <tt class="docutils literal"><span class="pre">material</span></tt> block, the constitutive model and material parameters are
 defined. A <tt class="docutils literal"><span class="pre">material</span></tt> block takes the following form:</p>
 <div class="highlight-python"><pre>begin material
@@ -132,7 +133,7 @@ end material</pre>
 </div>
 </div>
 <div class="section" id="the-boundary-block">
-<span id="boundary-block"></span><h4>The <tt class="docutils literal"><span class="pre">boundary</span></tt> Block<a class="headerlink" href="#the-boundary-block" title="Permalink to this headline">¶</a></h4>
+<span id="boundary-block"></span><h3>The <tt class="docutils literal"><span class="pre">boundary</span></tt> Block<a class="headerlink" href="#the-boundary-block" title="Permalink to this headline">¶</a></h3>
 <p>In the <tt class="docutils literal"><span class="pre">boundary</span></tt> block, the boundary conditions for the simulation are
 defined. The <tt class="docutils literal"><span class="pre">boundary</span></tt> block is comprised of keyword instructions to
 <em>Payette</em> and a <tt class="docutils literal"><span class="pre">legs</span></tt> block. In the <tt class="docutils literal"><span class="pre">boundary</span></tt> block below, the default
@@ -157,8 +158,9 @@ values for available keywords are shown:</p>
 end boundary</pre>
 </div>
 <p>The various keywords and the <tt class="docutils literal"><span class="pre">legs</span></tt> block are described in the following sections.</p>
+</div>
 <div class="section" id="the-boundary-block-keywords">
-<span id="legs-keywords"></span><h5>The <tt class="docutils literal"><span class="pre">boundary</span></tt> Block Keywords<a class="headerlink" href="#the-boundary-block-keywords" title="Permalink to this headline">¶</a></h5>
+<span id="legs-keywords"></span><h3>The <tt class="docutils literal"><span class="pre">boundary</span></tt> Block Keywords<a class="headerlink" href="#the-boundary-block-keywords" title="Permalink to this headline">¶</a></h3>
 <span class="target" id="xstar-keywords"></span><dl class="data">
 <dt>
 <tt class="descname">[t,s,e,f,d,ef,step]star</tt></dt>
@@ -248,12 +250,16 @@ names for each (there is some ambiguity in the names) are:</p>
 </table>
 </div></blockquote>
 </div>
-</div>
 <div class="section" id="the-legs-block">
-<span id="legs-block"></span><h4>The <tt class="docutils literal"><span class="pre">legs</span></tt> Block<a class="headerlink" href="#the-legs-block" title="Permalink to this headline">¶</a></h4>
-<p>The <tt class="docutils literal"><span class="pre">legs</span></tt> block defines the material states that will be applied to the single
-element throughout the simulation. In the most general case, each leg will be
-defined as follows:</p>
+<span id="legs-block"></span><h3>The <tt class="docutils literal"><span class="pre">legs</span></tt> Block<a class="headerlink" href="#the-legs-block" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">legs</span></tt> block defines the material states that will be applied to the
+single element during each &#8220;<tt class="docutils literal"><span class="pre">leg</span></tt>&#8221; of the simulation. Legs may be defined in
+one of two ways: 1) a general method in which all of the control parameters of
+each leg are explicitly defined or, 2) time, deformation type table. Each method
+of specifying <tt class="docutils literal"><span class="pre">legs</span></tt> is described below.</p>
+<div class="section" id="general-leg-specification">
+<h4>General Leg Specification<a class="headerlink" href="#general-leg-specification" title="Permalink to this headline">¶</a></h4>
+<p>In the most general case, each leg will be defined as follows:</p>
 <div class="highlight-python"><pre>begin legs
   &lt;leg no&gt; &lt;time&gt; &lt;nsteps&gt; &lt;ltyp&gt;  &lt;c[ij]&gt;
 end legs</pre>
@@ -326,47 +332,29 @@ least the first three must be defined (the <span class="math">\(x\)</span>, <spa
 components). If any variables are given beyond this, it fills in the matrix in
 that order up to the maximum number of components.</p>
 </div>
+<div class="section" id="time-deformation-type-tables">
+<h4>Time/Deformation Type Tables<a class="headerlink" href="#time-deformation-type-tables" title="Permalink to this headline">¶</a></h4>
+<p>In the event that the deformation control type is constant for all legs (e.g.,
+all legs are strain controlled), a more convenient method of defining each leg
+is through specifying a time/deformation type table. In this specialized case,
+the legs block is defined as:</p>
+<div class="highlight-python"><pre>begin legs
+  using &lt;time,dt&gt;, &lt;deformation type&gt;
+  &lt;time,dt&gt; components of deformation...
+                 .
+                 .
+                 .
+  &lt;time,dt&gt; components of deformation...
+end legs</pre>
 </div>
-<div class="section" id="optional-blocks">
-<span id="id3"></span><h3>Optional Blocks<a class="headerlink" href="#optional-blocks" title="Permalink to this headline">¶</a></h3>
-<p>The following blocks are optional: <tt class="docutils literal"><span class="pre">mathplot</span></tt>.</p>
-<div class="section" id="mathplot-block">
-<h4><tt class="docutils literal"><span class="pre">mathplot</span></tt> Block<a class="headerlink" href="#mathplot-block" title="Permalink to this headline">¶</a></h4>
-<p>The <tt class="docutils literal"><span class="pre">mathplot</span></tt> block is used to specify optional plotting information written
-to the <tt class="file docutils literal"><span class="pre">simnam.math[1,2]</span></tt> output files for use in Rebecca Brannon&#8217;s
-Mathematica post processing files. The basic syntax is:</p>
-<div class="highlight-python"><pre>begin mathplot
-  var1 var2 var3
-  var4, var5, var6
-  var7; ...; varn
-end mathplot</pre>
-</div>
-<p>where <tt class="docutils literal"><span class="pre">var?</span></tt> are <em>Payette</em> and material model variables. A complete list of
-plotable variables is listed in each simulation&#8217;s log file. Each line in the
-<tt class="docutils literal"><span class="pre">mathplot</span></tt> block can contain an arbitrary number of space, comma, or semi-colon
-delimited variables.</p>
+<p>This method of input is convenient for reading in history files from finite
+element simulations, or data collection software.</p>
 </div>
 </div>
-</div>
-<div class="section" id="inserting-external-files">
-<span id="inserting-files"></span><h2>Inserting External Files<a class="headerlink" href="#inserting-external-files" title="Permalink to this headline">¶</a></h2>
-<p>External files containing formatted <em>Payette</em> input can be included anywhere in
-the input file through the <tt class="docutils literal"><span class="pre">include</span></tt> and <tt class="docutils literal"><span class="pre">insert</span></tt> directives. For
-example, material parameters can be kept in a separate parameter file and
-inserted in to an input file by:</p>
-<div class="highlight-python"><pre>begin material
-  constitutive model kayenta
-  insert salem_limestone.dat
-end material</pre>
-</div>
-<p>When <em>Payette</em> encounters an <tt class="docutils literal"><span class="pre">[insert,include]</span></tt> directive, it looks for the
-inserted file by it&#8217;s absolute path, in the current directory, and in the
-<tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Aux/MaterialsDatabase</span></tt> directory, in that order.</p>
-</div>
-<div class="section" id="examples">
-<span id="id4"></span><h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="legs-examples">
+<h3><tt class="docutils literal"><span class="pre">legs</span></tt> Examples<a class="headerlink" href="#legs-examples" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="example-1-deformation-gradient-uniaxial-extension">
-<span id="example-1"></span><h3>Example 1: Deformation Gradient, Uniaxial Extension<a class="headerlink" href="#example-1-deformation-gradient-uniaxial-extension" title="Permalink to this headline">¶</a></h3>
+<span id="example-1"></span><h4>Example 1: Deformation Gradient, Uniaxial Extension<a class="headerlink" href="#example-1-deformation-gradient-uniaxial-extension" title="Permalink to this headline">¶</a></h4>
 <p>This example extends the material in the <span class="math">\(x\)</span>-direction:</p>
 <div class="highlight-python"><pre>begin legs
   0, 0.0, 0, 555555555, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0
@@ -375,7 +363,7 @@ end legs</pre>
 </div>
 </div>
 <div class="section" id="example-2-strain-control-uniaxial-extension">
-<span id="example-2"></span><h3>Example 2: Strain Control, Uniaxial Extension<a class="headerlink" href="#example-2-strain-control-uniaxial-extension" title="Permalink to this headline">¶</a></h3>
+<span id="example-2"></span><h4>Example 2: Strain Control, Uniaxial Extension<a class="headerlink" href="#example-2-strain-control-uniaxial-extension" title="Permalink to this headline">¶</a></h4>
 <p>All of the following produce equivalent behavior (uniaxial strain extension).
 Remember to set <tt class="docutils literal"><span class="pre">kappa</span></tt> to the desired value.:</p>
 <div class="highlight-python"><pre>begin legs
@@ -385,7 +373,7 @@ end legs</pre>
 </div>
 </div>
 <div class="section" id="example-3-stress-control-uniaxial-tension">
-<span id="example-3"></span><h3>Example 3: Stress Control, Uniaxial Tension<a class="headerlink" href="#example-3-stress-control-uniaxial-tension" title="Permalink to this headline">¶</a></h3>
+<span id="example-3"></span><h4>Example 3: Stress Control, Uniaxial Tension<a class="headerlink" href="#example-3-stress-control-uniaxial-tension" title="Permalink to this headline">¶</a></h4>
 <p>Stress control can be defined in much the same way as strain control (see example
 2). Assuming that the material parameters are defined in MKS, stress will be
 defined in terms of Pa.:</p>
@@ -396,7 +384,7 @@ end legs</pre>
 </div>
 </div>
 <div class="section" id="example-4-mixed-control">
-<span id="example-4"></span><h3>Example 4: Mixed Control<a class="headerlink" href="#example-4-mixed-control" title="Permalink to this headline">¶</a></h3>
+<span id="example-4"></span><h4>Example 4: Mixed Control<a class="headerlink" href="#example-4-mixed-control" title="Permalink to this headline">¶</a></h4>
 <p>This example could be used to reproduce the stress state found in the standard
 tension test when the strain is known. Specifically, we prescribe the strain
 value in the <span class="math">\(x\)</span>-direction while prescribing the lateral stresses to be
@@ -443,9 +431,67 @@ can also perform flawlessly. Be aware of the limits of the objective functions
 when choosing.</p>
 </div>
 </div>
+<div class="section" id="example-5-using-time-deformation-type-table">
+<span id="example-5"></span><h4>Example 5: Using Time/Deformation Type Table<a class="headerlink" href="#example-5-using-time-deformation-type-table" title="Permalink to this headline">¶</a></h4>
+<p>In this example, the strain path of <a class="reference internal" href="#example-2"><em>Example 2: Strain Control, Uniaxial Extension</em></a> is specified with a time,
+strain table</p>
+<div class="highlight-python"><pre>begin legs
+  using time, strain
+  0. 0.0 0.0 0.0 0.0 0.0 0.0
+  1. 0.1 0.0 0.0 0.0 0.0 0.0
+end legs</pre>
 </div>
-<div class="section" id="a-complete-input-file">
-<span id="complete-input-file"></span><h2>A Complete Input File<a class="headerlink" href="#a-complete-input-file" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="example-6-using-dt-deformation-type-table">
+<h4>Example 6: Using dt/Deformation Type Table<a class="headerlink" href="#example-6-using-dt-deformation-type-table" title="Permalink to this headline">¶</a></h4>
+<p>In this example, the strain path of <a class="reference internal" href="#example-2"><em>Example 2: Strain Control, Uniaxial Extension</em></a> is specified with a time
+step, strain table</p>
+<div class="highlight-python"><pre>begin legs
+  using dt, strain
+  0. 0.0 0.0 0.0 0.0 0.0 0.0
+  .1 0.1 0.0 0.0 0.0 0.0 0.0
+end legs</pre>
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="optional-blocks">
+<span id="id3"></span><h2>Optional Blocks<a class="headerlink" href="#optional-blocks" title="Permalink to this headline">¶</a></h2>
+<p>The following blocks are optional: <tt class="docutils literal"><span class="pre">mathplot</span></tt>.</p>
+<div class="section" id="mathplot-block">
+<h3><tt class="docutils literal"><span class="pre">mathplot</span></tt> Block<a class="headerlink" href="#mathplot-block" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">mathplot</span></tt> block is used to specify optional plotting information written
+to the <tt class="file docutils literal"><span class="pre">simnam.math[1,2]</span></tt> output files for use in Rebecca Brannon&#8217;s
+Mathematica post processing files. The basic syntax is:</p>
+<div class="highlight-python"><pre>begin mathplot
+  var1 var2 var3
+  var4, var5, var6
+  var7; ...; varn
+end mathplot</pre>
+</div>
+<p>where <tt class="docutils literal"><span class="pre">var?</span></tt> are <em>Payette</em> and material model variables. A complete list of
+plotable variables is listed in each simulation&#8217;s log file. Each line in the
+<tt class="docutils literal"><span class="pre">mathplot</span></tt> block can contain an arbitrary number of space, comma, or semi-colon
+delimited variables.</p>
+</div>
+</div>
+<div class="section" id="inserting-external-files">
+<span id="inserting-files"></span><h2>Inserting External Files<a class="headerlink" href="#inserting-external-files" title="Permalink to this headline">¶</a></h2>
+<p>External files containing formatted <em>Payette</em> input can be included anywhere in
+the input file through the <tt class="docutils literal"><span class="pre">include</span></tt> and <tt class="docutils literal"><span class="pre">insert</span></tt> directives. For
+example, material parameters can be kept in a separate parameter file and
+inserted in to an input file by:</p>
+<div class="highlight-python"><pre>begin material
+  constitutive model kayenta
+  insert salem_limestone.dat
+end material</pre>
+</div>
+<p>When <em>Payette</em> encounters an <tt class="docutils literal"><span class="pre">[insert,include]</span></tt> directive, it looks for the
+inserted file by it&#8217;s absolute path, in the current directory, and in the
+<tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Aux/MaterialsDatabase</span></tt> directory, in that order.</p>
+</div>
+<div class="section" id="example-a-complete-input-file">
+<span id="complete-input-file"></span><span id="examples"></span><h2>Example: A Complete Input File<a class="headerlink" href="#example-a-complete-input-file" title="Permalink to this headline">¶</a></h2>
 <p>Below is an input file, any keywords not given take the default values shown in
 <a class="reference internal" href="#legs-keywords"><em>The boundary Block Keywords</em></a>. In this input file, a material defined by the <tt class="docutils literal"><span class="pre">elastic</span></tt>
 constitutive model is cycled through the same deformation path by first
@@ -499,39 +545,41 @@ end simulation</pre>
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#"><em>Payette</em> Input File Formatting</a><ul>
-<li><a class="reference internal" href="#input-file-blocks">Input File Blocks</a><ul>
+<li><a class="reference internal" href="#input-file-blocks">Input File Blocks</a></li>
 <li><a class="reference internal" href="#required-blocks">Required Blocks</a><ul>
 <li><a class="reference internal" href="#the-simulation-block">The <tt class="docutils literal"><span class="pre">simulation</span></tt> Block</a></li>
 <li><a class="reference internal" href="#the-material-block">The <tt class="docutils literal"><span class="pre">material</span></tt> Block</a></li>
-<li><a class="reference internal" href="#the-boundary-block">The <tt class="docutils literal"><span class="pre">boundary</span></tt> Block</a><ul>
+<li><a class="reference internal" href="#the-boundary-block">The <tt class="docutils literal"><span class="pre">boundary</span></tt> Block</a></li>
 <li><a class="reference internal" href="#the-boundary-block-keywords">The <tt class="docutils literal"><span class="pre">boundary</span></tt> Block Keywords</a></li>
+<li><a class="reference internal" href="#the-legs-block">The <tt class="docutils literal"><span class="pre">legs</span></tt> Block</a><ul>
+<li><a class="reference internal" href="#general-leg-specification">General Leg Specification</a></li>
+<li><a class="reference internal" href="#time-deformation-type-tables">Time/Deformation Type Tables</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#the-legs-block">The <tt class="docutils literal"><span class="pre">legs</span></tt> Block</a></li>
+<li><a class="reference internal" href="#legs-examples"><tt class="docutils literal"><span class="pre">legs</span></tt> Examples</a><ul>
+<li><a class="reference internal" href="#example-1-deformation-gradient-uniaxial-extension">Example 1: Deformation Gradient, Uniaxial Extension</a></li>
+<li><a class="reference internal" href="#example-2-strain-control-uniaxial-extension">Example 2: Strain Control, Uniaxial Extension</a></li>
+<li><a class="reference internal" href="#example-3-stress-control-uniaxial-tension">Example 3: Stress Control, Uniaxial Tension</a></li>
+<li><a class="reference internal" href="#example-4-mixed-control">Example 4: Mixed Control</a></li>
+<li><a class="reference internal" href="#example-5-using-time-deformation-type-table">Example 5: Using Time/Deformation Type Table</a></li>
+<li><a class="reference internal" href="#example-6-using-dt-deformation-type-table">Example 6: Using dt/Deformation Type Table</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#optional-blocks">Optional Blocks</a><ul>
 <li><a class="reference internal" href="#mathplot-block"><tt class="docutils literal"><span class="pre">mathplot</span></tt> Block</a></li>
 </ul>
 </li>
-</ul>
-</li>
 <li><a class="reference internal" href="#inserting-external-files">Inserting External Files</a></li>
-<li><a class="reference internal" href="#examples">Examples</a><ul>
-<li><a class="reference internal" href="#example-1-deformation-gradient-uniaxial-extension">Example 1: Deformation Gradient, Uniaxial Extension</a></li>
-<li><a class="reference internal" href="#example-2-strain-control-uniaxial-extension">Example 2: Strain Control, Uniaxial Extension</a></li>
-<li><a class="reference internal" href="#example-3-stress-control-uniaxial-tension">Example 3: Stress Control, Uniaxial Tension</a></li>
-<li><a class="reference internal" href="#example-4-mixed-control">Example 4: Mixed Control</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#a-complete-input-file">A Complete Input File</a></li>
+<li><a class="reference internal" href="#example-a-complete-input-file">Example: A Complete Input File</a></li>
 </ul>
 </li>
 </ul>
 
   <h4>Previous topic</h4>
   <p class="topless"><a href="running_payette.html"
-                        title="previous chapter">Running Payette</a></p>
+                        title="previous chapter">Running <em>Payette</em></a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="test_payette.html"
                         title="next chapter">Running Tests</a></p>

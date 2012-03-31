@@ -1,11 +1,11 @@
-
+###############################
 *Payette* Input File Formatting
-=================================
+###############################
 
 .. _input_file_blocks:
 
 Input File Blocks
------------------
+=================
 
 Input files are comprised of several "blocks" of instruction for
 :file:`runPayette`. A block is a group of instructions contained in a ``begin
@@ -30,7 +30,7 @@ Input files are comprised of several "blocks" of instruction for
 .. _required_blocks:
 
 Required Blocks
-^^^^^^^^^^^^^^^
+===============
 
 The blocks required by :file:`runPayette` are::
 
@@ -58,7 +58,7 @@ block. Details of the required content of each block follows.
 .. _simulation_block:
 
 The ``simulation`` Block
-""""""""""""""""""""""""
+------------------------
 Each input file must have a ``simulation`` block with title for that simulation. The
 title of the simulation will serve as the basename for all simulation output,
 with spaces replaced with underscores.
@@ -72,7 +72,7 @@ with spaces replaced with underscores.
 .. _material_block:
 
 The ``material`` Block
-""""""""""""""""""""""
+----------------------
 
 In the ``material`` block, the constitutive model and material parameters are
 defined. A ``material`` block takes the following form::
@@ -102,7 +102,7 @@ An example ``material`` input block for an elastic material would look like::
 .. _boundary_block:
 
 The ``boundary`` Block
-""""""""""""""""""""""
+----------------------
 
 In the ``boundary`` block, the boundary conditions for the simulation are
 defined. The ``boundary`` block is comprised of keyword instructions to
@@ -134,7 +134,7 @@ The various keywords and the ``legs`` block are described in the following secti
 .. _legs_keywords:
 
 The ``boundary`` Block Keywords
-'''''''''''''''''''''''''''''''
+-------------------------------
 
 .. _xstar_keywords:
 
@@ -219,11 +219,19 @@ names for each (there is some ambiguity in the names) are:
 .. _legs_block:
 
 The ``legs`` Block
-""""""""""""""""""
+------------------
 
-The ``legs`` block defines the material states that will be applied to the single
-element throughout the simulation. In the most general case, each leg will be
-defined as follows::
+The ``legs`` block defines the material states that will be applied to the
+single element during each "``leg``" of the simulation. Legs may be defined in
+one of two ways: 1) a general method in which all of the control parameters of
+each leg are explicitly defined or, 2) time, deformation type table. Each method
+of specifying ``legs`` is described below.
+
+
+General Leg Specification
+"""""""""""""""""""""""""
+
+In the most general case, each leg will be defined as follows::
 
   begin legs
     <leg no> <time> <nsteps> <ltyp>  <c[ij]>
@@ -303,64 +311,33 @@ least the first three must be defined (the :math:`x`, :math:`y`, and :math:`z`
 components). If any variables are given beyond this, it fills in the matrix in
 that order up to the maximum number of components.
 
+Time/Deformation Type Tables
+""""""""""""""""""""""""""""
 
-.. _optional_blocks:
+In the event that the deformation control type is constant for all legs (e.g.,
+all legs are strain controlled), a more convenient method of defining each leg
+is through specifying a time/deformation type table. In this specialized case,
+the legs block is defined as::
 
-Optional Blocks
-^^^^^^^^^^^^^^^
+  begin legs
+    using <time,dt>, <deformation type>
+    <time,dt> components of deformation...
+                   .
+                   .
+                   .
+    <time,dt> components of deformation...
+  end legs
 
-The following blocks are optional: ``mathplot``.
+This method of input is convenient for reading in history files from finite
+element simulations, or data collection software.
 
-
-``mathplot`` Block
-""""""""""""""""""
-
-The ``mathplot`` block is used to specify optional plotting information written
-to the :file:`simnam.math[1,2]` output files for use in Rebecca Brannon's
-Mathematica post processing files. The basic syntax is::
-
-  begin mathplot
-    var1 var2 var3
-    var4, var5, var6
-    var7; ...; varn
-  end mathplot
-
-where ``var?`` are *Payette* and material model variables. A complete list of
-plotable variables is listed in each simulation's log file. Each line in the
-``mathplot`` block can contain an arbitrary number of space, comma, or semi-colon
-delimited variables.
-
-
-.. _inserting_files:
-
-Inserting External Files
-------------------------
-
-External files containing formatted *Payette* input can be included anywhere in
-the input file through the ``include`` and ``insert`` directives. For
-example, material parameters can be kept in a separate parameter file and
-inserted in to an input file by::
-
-  begin material
-    constitutive model kayenta
-    insert salem_limestone.dat
-  end material
-
-
-When *Payette* encounters an ``[insert,include]`` directive, it looks for the
-inserted file by it's absolute path, in the current directory, and in the
-:file:`PAYETTE_ROOT/Aux/MaterialsDatabase` directory, in that order.
-
-
-.. _examples:
-
-Examples
---------
+``legs`` Examples
+-----------------
 
 .. _example_1:
 
 Example 1: Deformation Gradient, Uniaxial Extension
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""""""""""""""""""""""""""""""
 
 This example extends the material in the :math:`x`\-direction::
 
@@ -373,7 +350,7 @@ This example extends the material in the :math:`x`\-direction::
 .. _example_2:
 
 Example 2: Strain Control, Uniaxial Extension
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""""""""""""""""""""""""
 
 All of the following produce equivalent behavior (uniaxial strain extension).
 Remember to set ``kappa`` to the desired value.::
@@ -387,7 +364,7 @@ Remember to set ``kappa`` to the desired value.::
 .. _example_3:
 
 Example 3: Stress Control, Uniaxial Tension
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""""""""""""""""""""""
 
 Stress control can be defined in much the same way as strain control (see example
 2). Assuming that the material parameters are defined in MKS, stress will be
@@ -402,7 +379,7 @@ defined in terms of Pa.::
 .. _example_4:
 
 Example 4: Mixed Control
-^^^^^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""""""
 
 This example could be used to reproduce the stress state found in the standard
 tension test when the strain is known. Specifically, we prescribe the strain
@@ -453,11 +430,89 @@ held at zero stress.::
    when choosing.
 
 
+.. _example_5:
+
+Example 5: Using Time/Deformation Type Table
+""""""""""""""""""""""""""""""""""""""""""""
+
+In this example, the strain path of :ref:`example_2` is specified with a time,
+strain table ::
+
+  begin legs
+    using time, strain
+    0. 0.0 0.0 0.0 0.0 0.0 0.0
+    1. 0.1 0.0 0.0 0.0 0.0 0.0
+  end legs
+
+Example 6: Using dt/Deformation Type Table
+""""""""""""""""""""""""""""""""""""""""""
+
+In this example, the strain path of :ref:`example_2` is specified with a time
+step, strain table ::
+
+  begin legs
+    using dt, strain
+    0. 0.0 0.0 0.0 0.0 0.0 0.0
+    .1 0.1 0.0 0.0 0.0 0.0 0.0
+  end legs
+
+
+
+
+.. _optional_blocks:
+
+Optional Blocks
+===============
+
+The following blocks are optional: ``mathplot``.
+
+
+``mathplot`` Block
+------------------
+
+The ``mathplot`` block is used to specify optional plotting information written
+to the :file:`simnam.math[1,2]` output files for use in Rebecca Brannon's
+Mathematica post processing files. The basic syntax is::
+
+  begin mathplot
+    var1 var2 var3
+    var4, var5, var6
+    var7; ...; varn
+  end mathplot
+
+where ``var?`` are *Payette* and material model variables. A complete list of
+plotable variables is listed in each simulation's log file. Each line in the
+``mathplot`` block can contain an arbitrary number of space, comma, or semi-colon
+delimited variables.
+
+
+.. _inserting_files:
+
+Inserting External Files
+========================
+
+External files containing formatted *Payette* input can be included anywhere in
+the input file through the ``include`` and ``insert`` directives. For
+example, material parameters can be kept in a separate parameter file and
+inserted in to an input file by::
+
+  begin material
+    constitutive model kayenta
+    insert salem_limestone.dat
+  end material
+
+
+When *Payette* encounters an ``[insert,include]`` directive, it looks for the
+inserted file by it's absolute path, in the current directory, and in the
+:file:`PAYETTE_ROOT/Aux/MaterialsDatabase` directory, in that order.
+
+
+.. _examples:
 
 .. _complete_input_file:
 
-A Complete Input File
----------------------
+Example: A Complete Input File
+==============================
 
 Below is an input file, any keywords not given take the default values shown in
 :ref:`legs_keywords`. In this input file, a material defined by the ``elastic``

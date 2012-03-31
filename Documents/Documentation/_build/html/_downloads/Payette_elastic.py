@@ -35,6 +35,8 @@ except:
     imported = False
     pass
 
+from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
+
 attributes = {
     "payette material":True,
     "name":"elastic",
