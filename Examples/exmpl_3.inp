@@ -1,0 +1,29 @@
+# Example 3
+# Title: exmpl_3
+# Author: Tim Fuller, tjfulle@sandia.gov
+# Keywords: table, insert, strain control
+# Comments: This example is the same as exmpl_2 but we use the timestep as the
+#           time delimiter.
+
+begin simulation exmpl_3
+  nowriteprops
+  norestart
+
+  begin boundary
+    kappa = 0
+    tstar = 1.
+    ampl = 1
+
+    begin legs
+      using dt, strain, from columns 2, 3:8
+      insert exmpls.tbl
+    end legs
+  end boundary
+
+  begin material
+    constitutive model hooke
+    G 53.e9
+    K 135.e9
+  end material
+
+end simulation

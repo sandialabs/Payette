@@ -26,6 +26,7 @@ import os, sys
 import logging
 import re
 import math
+import linecache
 import numpy as np
 
 THIS_FILE = os.path.realpath(__file__)
@@ -213,6 +214,7 @@ def readUserInput(user_input,user_cchar=None):
     user_dict = {}
     i, maxit = 0, len(all_input)
     while True:
+
         simulation,simid = findBlock(all_input,'simulation')
         if simulation and not simid:
             parse_error('did not find simulation name.  Simulation block '
@@ -222,10 +224,25 @@ def readUserInput(user_input,user_cchar=None):
         elif simulation:
             simkey = simid.replace(' ','_')
             user_dict[simkey] = simulation
-        else: break
-        if i >= maxit: break
+
+        else:
+            break
+
+        if i >= maxit:
+            break
+
         i += 1
+
         continue
+
+    for key, val in user_dict.items():
+
+        opt = has_block(val, "optimization")
+        if any(opt):
+            user_dict[key].append("optimize")
+
+        continue
+
     return user_dict
 
 def removeComments(aline,cchars):
@@ -304,6 +321,56 @@ def findBlock(ilist,keyword):
         pass
     return block,bid
 
+
+def has_block(ilist, keyword):
+    '''
+    NAME
+       has_block
+
+    PURPOSE
+       check if input has the keyword block, or not
+
+    AUTHORS
+       Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
+    '''
+    kwd = str(keyword)
+    idx_beg, idx_end = None, None
+
+    for item in ilist:
+        if item[:len('begin {0}'.format(kwd))].strip() == 'begin {0}'.format(kwd):
+            idx_beg = ilist.index(item)+1
+
+        else:
+            pass
+
+        if idx_beg is not None:
+            break
+
+        continue
+
+    if idx_beg is None:
+        return False, None, None
+
+    for item in ilist[idx_beg:]:
+        if item.strip() == 'end {0}'.format(kwd):
+            idx_end = ilist.index(item)
+
+        elif 'end {0}'.format(kwd) in item.strip():
+            idx_end = ilist.index(item)
+
+        else:
+            pass
+
+        if idx_end:
+            break
+
+        continue
+
+    if idx_end is None:
+        return False, None, None
+
+    return True, idx_beg, idx_end
+
 def textformat(var):
     """
     textformat() is used to get consistent formatting for all of
@@ -324,10 +391,11 @@ def textformat(var):
     else:
         return "{0:>20}".format(str(var))
 
-def setupOutputFile(simdat,matdat,restart):
+def setupOutputFile(simdat, matdat, restart):
 
     global ofile,vtable,dtable
-    if restart: ofile = open(simdat.OUTFILE,'a')
+    if restart:
+        ofile = open(simdat.OUTFILE,'a')
     else:
         ofile = open(simdat.OUTFILE,'w')
 
@@ -344,7 +412,8 @@ def setupOutputFile(simdat,matdat,restart):
         dname = os.path.splitext(simdat.OUTFILE)[0] + ".dtable"
 
         # set up velocity and displacement table files
-        if restart: vtable = open(vname,'a')
+        if restart:
+            vtable = open(vname,'a')
         else:
             vtable = open(vname,'w')
             default = ['time','v1','v2','v3']
@@ -352,7 +421,8 @@ def setupOutputFile(simdat,matdat,restart):
             vtable.write('\n')
             pass
 
-        if restart: dtable = open(dname,'a')
+        if restart:
+            dtable = open(dname,'a')
         else:
             dtable = open(dname,'w')
             default = ['time','d1','d2','d3']
@@ -573,6 +643,7 @@ def writeAvailableDataToLog(simdat,matdat):
 
 def closeFiles():
     ofile.write("\n")
+    ofile.flush()
     ofile.close()
     simlog.close()
 
@@ -738,4 +809,17 @@ def logerr(msg,pre="",end="\n"):
     print("{0}ERROR: {1}".format(pre,msg),end=end)
     return
 
+def get_header(f):
+    """ get the header of f """
+    return linecache.getline(f, 1).split()
+
+def read_data(f):
+    """Reads in a whitespace-delimed data file f. It is assumed that the first
+    line contains text (the name of the column). All other lines contain
+    floats.
+
+    Returns m x n dimensional numpy ndarray where m is the number of data
+    points (rows) and n the number of data fields (columns)
+    """
+    return np.loadtxt(f, skiprows=1)
 

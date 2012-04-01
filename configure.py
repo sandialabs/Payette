@@ -239,20 +239,20 @@ PC_PYVER = "{0} {1}.{2}.{3}".format(PC_PYVER,MAJOR,MINOR,MICRO)
 PC_RUNTEST = os.path.join(PC_SOURCE, "Payette_runtest.py")
 PC_RUN = os.path.join(PC_SOURCE, "Payette_run.py")
 PC_BUILD = os.path.join(PC_SOURCE, "Payette_build.py")
+PC_EXTRACT = os.path.join(PC_SOURCE, "Payette_extract.py")
 PC_RUNPAYETTE = os.path.join(PC_TOOLS, "runPayette")
 PC_BUILDPAYETTE = os.path.join(PC_TOOLS, "buildPayette")
 PC_CLEANPAYETTE = os.path.join(PC_TOOLS, "cleanPayette")
-PC_EXTRACTPAYETTE = os.path.join(PC_TOOLS, "extractPayette.py")
+PC_EXTRACTPAYETTE = os.path.join(PC_TOOLS, "extractPayette")
 PC_TESTPAYETTE = os.path.join(PC_TOOLS, "testPayette")
 PC_F2PY = os.path.join(PC_TOOLS,"f2py")
 PC_BUILT_EXES = {"runPayette": PC_RUNPAYETTE,
                              "testPayette": PC_TESTPAYETTE,
                              "buildPayette": PC_BUILDPAYETTE,
                              "cleanPayette": PC_CLEANPAYETTE,
+                             "extractPayette": PC_EXTRACTPAYETTE,
                              "f2py": PC_F2PY}
-PC_EXES = {"extractPayette.py": PC_EXTRACTPAYETTE}
-ERRORS += check_exists("extractPayette", PC_EXTRACTPAYETTE)
-
+PC_EXES = {}
 for exe_nam, exe_path in PC_BUILT_EXES.items():
     PC_EXES[exe_nam] = exe_path
     continue
@@ -332,6 +332,7 @@ PAYETTE_CONFIG["PC_OSTYPE"] = PC_OSTYPE
 PAYETTE_CONFIG["PC_RUNTEST"] = PC_RUNTEST
 PAYETTE_CONFIG["PC_RUN"] = PC_RUN
 PAYETTE_CONFIG["PC_BUILD"] = PC_BUILD
+PAYETTE_CONFIG["PC_EXTRACT"] = PC_EXTRACT
 PAYETTE_CONFIG["PC_EXES"] = PC_EXES
 PAYETTE_CONFIG["PC_CONFIG_FILE"] = PC_CONFIG_FILE
 PAYETTE_CONFIG["PC_KAYENTA"] = PC_KAYENTA
@@ -342,6 +343,7 @@ PAYETTE_CONFIG["PC_RUNPAYETTE"] = PC_RUNPAYETTE
 PAYETTE_CONFIG["PC_TESTPAYETTE"] = PC_TESTPAYETTE
 PAYETTE_CONFIG["PC_BUILDPAYETTE"] = PC_BUILDPAYETTE
 PAYETTE_CONFIG["PC_CLEANPAYETTE"] = PC_CLEANPAYETTE
+PAYETTE_CONFIG["PC_EXTRACTPAYETTE"] = PC_EXTRACTPAYETTE
 PAYETTE_CONFIG["PC_BUILT_EXES"] = PC_BUILT_EXES
 PAYETTE_CONFIG["PC_NUMPY_VER"] = PC_NUMPY_VER
 PAYETTE_CONFIG["PC_SCIPY_VER"] = PC_SCIPY_VER
@@ -524,6 +526,10 @@ fi
             elif path == PC_BUILDPAYETTE:
                 fnew.write("{0} {1} $* 2>&1\n"
                            .format(PC_PYINT, PC_BUILD))
+
+            elif path == PC_EXTRACTPAYETTE:
+                fnew.write("{0} {1} $* 2>&1\n"
+                           .format(PC_PYINT, PC_EXTRACT))
 
         os.chmod(path, 0o750)
         endmes("{0} script written".format(nam))

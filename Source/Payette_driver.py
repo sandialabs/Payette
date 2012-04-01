@@ -130,8 +130,10 @@ def runProblem(the_model,**kwargs):
 
     # -------------------- initialize and copy passed values to local variables
 
-    try: restart = kwargs["restart"]
-    except: restart = False
+    try:
+        restart = kwargs["restart"]
+    except:
+        restart = False
 
     # --- simulation data
     simdat = the_model.simulationData()
@@ -157,7 +159,7 @@ def runProblem(the_model,**kwargs):
     # --- start output file and Mathematica files
     msg = "starting calculations for simulation %s"%simdat.SIMNAME
     reportMessage(iam,msg)
-    setupOutputFile(simdat,matdat,restart)
+    setupOutputFile(simdat, matdat, restart)
 
     # write the mathematica files
     if simdat.MATHPLOT_VARS: writeMathPlot(simdat,matdat)

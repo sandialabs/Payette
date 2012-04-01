@@ -1,0 +1,142 @@
+# Example 0
+# Title: exmpl_0
+# Author: Tim Fuller, tjfulle@sandia.gov
+# Keywords: legs, strain control, introduction
+# Comments:
+# 0. Execute the file by
+#         % runPayette exmpl_0
+#    after configuring and building Payette, of course.
+# 1. Payette recognizes the characters "#" and "$" as comment delimiters.
+# 2. Comments may be on their own line or inline.
+# 3. Indentation is ignored by Payette but is used for readability
+# 4. For the most part, all keywords are case insensitive. If a keyword is
+#    encountered that is not case insensitive, please let me know!
+
+# This example file has many more comments than any of the others. For the
+# most part, the other examples only have comments for the features not
+# specified in this file. i.e., this input serves as the prerequisite
+# understanding for the other input files.
+
+# Payette input files are made up of several "blocks". The required blocks
+# are: simulation, boundary, material. Other optional blocks will be described
+# as they are used. Blocks are of the form:
+
+# begin <block> [name]
+#      .
+#      .
+#      .
+# end <block>
+
+# The order of the blocks in the input file does not matter, so long as they
+# are nested in the simulation block.
+
+# Payette creates several files:
+#    simnam.log -> log file
+#    simnam.out -> output file
+#    simnam.prf -> restart file
+#    simnam.props -> property file
+
+# In the other examples, input file directives for suppressing the creation of
+# property and restart files are shown. They can also be suppressed with
+# command line options to runPayette
+
+begin simulation exmpl_0
+
+  begin boundary
+
+    # The boundary block tells Payette the load/deformation path to drive the
+    # material. The boundary block accepts many keywords for fine tuning the
+    # simulation. See the documentation for a complete list.
+
+    kappa = 0   # Seth-Hill specification
+    tstar = 1.  # multiplier on the time
+    ampl = 1    # multiplier on all components of deformation
+
+    begin legs
+
+      # In the legs block we give the actual load/deformation path. Each leg
+      # has a very specific format and must be specified as:
+
+      # leg number, time, number of steps, control type, components
+
+      # control type definitions - 1: strain rate
+      #                            2: strain
+      #                            3: stress rate
+      #                            4: stress
+      #                            5: deformation gradient
+      #                            6: electric field
+      #                            8: displacement
+
+      # Tensors are input as arrays with the following order:
+
+      #   Symmetric tensors:
+      #        C11, C12, C13, C21, C22, C23, C13, C23, C33
+
+      #   Symmetric tensors:
+      #        C11, C22, C33, C12, C23, C13
+
+      # Every component need not be specified, any component not specified
+      # is assumed to be 0, with the following exception: if only one componet
+      # of strain is specified it is assumed to be the volumetric strain.
+
+      0,     0.,   0.,   222222, 0., 0., 0., 0., 0., 0.
+      1,     1.,   1.,   222222, .1, 0., 0., 0., 0., 0.
+      2,     2.,   1.,   222222, 0., 0., 0., 0., 0., 0.
+      3,     3.,   1.,   888, .10517091808, 0., 0.
+      4,     4.,   1.,   888, 0., 0., 0.
+      5,     5.,   1.,   555555555, 1.10517091808, 0, 0, 0, 1, 0, 0, 0, 1
+      6,     6.,   1.,   555555555, 1, 0, 0, 0, 1, 0, 0, 0, 1
+      7,     7.,   1.,   2, .03
+      8,     8.,   1.,   2, 0.0
+      9,     9.,   1.,   222, .01, .01, .01
+      10,    10.,  1.,   222, .0, .0, .0
+
+    end legs
+
+  end boundary
+
+  begin material
+
+    # Model "hooke" is a fortran linear elastic model.
+    # Many constitutive models have aliases.  hooke, for example, can also
+    # be specified by "elastic", "elasticity", or "linear elastic"
+
+    constitutive model hooke
+
+    # The linear elastic model doesn't actually use RHO or A1. The input
+    # parser will warn you of that but will not stop the calculation. This
+    # allows changing the constitutive model without having to change all of
+    # the parameters. This assumes, of course, that many of the models use
+    # parameters with the same name. Since parameters are allowed to have
+    # aliases, like the constitutive model above, it is easy to make sure that
+    # new models use parameter names common to the other models.
+
+    # Parameters can be specified in the following three ways:
+
+    RHO, 1000  # comma separated
+    A1 = 23e6  # space separated
+    G 53.e9    # = separated
+    K 135.e9
+
+  end material
+
+  begin mathplot
+
+    # the mathplot section tells Payette to write two files:
+    #   simnam.{math1, math2}
+    # which can be read in to Mathematic for postprocessing. On their own,
+    # these files are useless, they are used to give directives to a
+    # Mathematica notebooks written by Prof. Rebecca Brannon at the Dept. of
+    # Mech. Eng. at the University of Utah. The only Mathematic notebook that
+    # currently uses the .math? files is in
+    # PAYETTE_ROOT/Tests/Materils/Kayenta/nb/{kayenta,kayenta_init}.nb To
+    # implement this feature for other models, copy the entire nb/ directory
+    # and modify the Mathematica notebooks for your model.
+
+
+    sig11, sig22, sig33,  # Values can be space or comma delimited
+    qssigxx # and can span several lines.
+
+  end mathplot
+
+end simulation

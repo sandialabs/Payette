@@ -44,6 +44,7 @@ import Payette_config as pc
 import Source.Payette_utils as pu
 import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr
+import Source.Payette_optimize as po
 
 
 # --- module level variables
@@ -389,18 +390,31 @@ def _run_job(job):
     if TIMING:
         tim0 = time.time()
 
-    # instantiate Payette object
-    if RESTART:
-        the_model = USER_INPUT_DICT[job]
-        the_model.setupRestart()
+    if "optimize" in USER_INPUT_DICT[job]:
+        # intantiate the Optimize object
+        USER_INPUT_DICT[job].remove("optimize")
+        the_model = po.Optimize(job, USER_INPUT_DICT[job], OPTS)
+
+        # run the optimization problem
+        if TIMING:
+            tim1 = time.time()
+
+        solve = the_model.optimize()
+
     else:
-        the_model = pcntnr.Payette(job, USER_INPUT_DICT[job], OPTS)
+        # instantiate Payette object
+        if RESTART:
+            the_model = USER_INPUT_DICT[job]
+            the_model.setupRestart()
 
-    # run the problem
-    if TIMING:
-        tim1 = time.time()
+        else:
+            the_model = pcntnr.Payette(job, USER_INPUT_DICT[job], OPTS)
 
-    solve = pdrvr.runProblem(the_model, restart=RESTART)
+        # run the problem
+        if TIMING:
+            tim1 = time.time()
+
+        solve = pdrvr.runProblem(the_model, restart=RESTART)
 
     if solve != 0:
         sys.exit("ERROR: simulation failed")

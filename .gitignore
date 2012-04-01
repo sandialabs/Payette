@@ -1,9 +1,10 @@
 # Payette executables that are built by Payette 
 buildPayette
 cleanPayette
+extractPayette
+f2py
 runPayette
 testPayette
-f2py
 
 # Backups
 *~

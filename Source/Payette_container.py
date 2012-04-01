@@ -22,7 +22,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-from __future__ import print_function
+#from __future__ import print_function
 import os
 import sys
 import re
@@ -188,9 +188,13 @@ class Payette:
                 reportWarning(iam,msg)
                 continue
 
-            if len(split_item) == 1: split_item.append("True")
-            try: val = eval(split_item[1])
-            except: val = str(split_item[1])
+            if len(split_item) == 1:
+                split_item.append("True")
+            try:
+                val = eval(split_item[1])
+            except:
+                val = str(split_item[1])
+
             self.simdat.registerOption(split_item[0],val)
             continue
 
@@ -206,7 +210,6 @@ class Payette:
         self.simdat.registerOption("use table",opts.use_table)
         self.simdat.registerOption("debug",opts.debug)
         self.simdat.registerOption("test restart",opts.testrestart)
-        self.simdat.registerOption("write restart",not opts.norestart)
         self.simdat.registerOption("initial time",self.t0)
         self.simdat.registerOption("termination time",self.tf)
         self.simdat.registerOption("kappa",self.bcontrol["kappa"])
@@ -222,6 +225,8 @@ class Payette:
         self.simdat.registerOption("math2",
                                    os.path.join(basedir, simname + ".math2"))
 
+        # Below are obligatory options that may have been specified in the
+        # input file.
         if "proportional" not in self.simdat.getAllOptions():
             self.simdat.registerOption("proportional",False)
             pass
@@ -230,8 +235,17 @@ class Payette:
             self.simdat.registerOption("strict",False)
             pass
 
+        if "nowriteprops" not in self.simdat.getAllOptions():
+            self.simdat.registerOption("nowriteprops", opts.nowriteprops)
+
+        if "norestart" in self.simdat.getAllOptions():
+            self.simdat.registerOption("write restart",False)
+        else:
+            self.simdat.registerOption("write restart",not opts.norestart)
+
         # write out properties
-        if not opts.nowriteprops: self.writeMaterialParameters()
+        if not self.simdat.NOWRITEPROPS:
+            self.writeMaterialParameters()
 
         # if the material does not support electric fields, remove the electric
         # field data from the simdat data container, we must register and then
@@ -435,16 +449,6 @@ class Payette:
         kappa = bcontrol['kappa']
         sigc = False
 
-        g_cntrl, g_steps, g_leg_no, g_time = None, None, 0, 0.
-        allowed_legs = {
-            "strain rate": {"num": 1, "len": 6},
-            "strain": {"num": 2, "len": 6},
-            "stress rate": {"num": 3, "len": 6},
-            "stress": {"num": 4, "len": 6},
-            "deformation gradient": {"num": 5, "len": 9},
-            "electric field": {"num": 6, "len": 3},
-            "displacement": {"num": 8, "len": 3}}
-
         # control should be a group of letters describing what type of
         # control type the leg is. valid options are:
         #  1: strain rate control
@@ -454,38 +458,38 @@ class Payette:
         #  5: deformation gradient control
         #  6: electric field
         #  8: displacement
-        for ileg,leg in enumerate(legs):
+        for ileg, leg in enumerate(legs):
 
             leg = [x.strip() for x in leg.replace(',',' ').split(' ') if x]
 
-            if ileg == 0 and leg[0] == "using":
-                t_typ = leg[1]
-                if t_typ not in ["time","dt"]:
-                    parseError("requested bad time type {0}"
-                               .format(t_typ))
-                use_typ = " ".join(leg[2:])
-                if use_typ not in allowed_legs:
-                    parseError("requested bad control type {0}"
-                               .format(use_typ))
-                g_cntrl = ("{0}".format(allowed_legs[use_typ]["num"])
-                           * allowed_legs[use_typ]["len"])
-                g_steps = int(bcontrol['stepstar'])
-                continue
+            if ileg == 0:
+                g_inf = parse_first_leg(leg)
 
-            if g_cntrl is not None:
-                control = g_cntrl
-                leg_steps = g_steps
+                if g_inf["table"]:
+                    # the first leg let us know the user specified a table,
+                    # continu on to the actual table
+                    g_leg_no = 0
+                    g_time = 0.
+                    continue
+
+            if g_inf["table"]:
+                if leg[0].lower() == "time":
+                    # table could have
+                    continue
+
+                control = g_inf["control"]
+                leg_steps = int(bcontrol['stepstar'])
                 leg_no = g_leg_no
                 g_leg_no += 1
-                if t_typ == "dt":
-                    g_time += float(leg[0])
+                if g_inf["ttyp"] == "dt":
+                    g_time += float(leg[g_inf["col_idxs"][0]])
                 else:
-                    g_time = float(leg[0])
+                    g_time = float(leg[g_inf["col_idxs"][0]])
+
                 leg_t = bcontrol['tfac']*g_time
-                c = [float(eval(y)) for y in leg[1:]]
+                c = [float(eval(leg[x])) for x in g_inf["col_idxs"][1:]]
 
             else:
-
                 if len(leg) < 5:
                     parseError('leg %s input must be of form: \n'
                                '       leg number, time, steps, type, c[ij]'%leg[0])
@@ -715,6 +719,187 @@ class Payette:
         setupLogger(self.simdat.LOGFILE,self.simdat.LOGLEVEL,mode="a")
         msg = "setting up simulation %s"%self.simdat.SIMNAME
         reportMessage(__file__,msg)
+
+def parse_first_leg(leg):
+    """Parse the first leg of the legs block.
+
+    The first leg of the legs block may be in one of two forms.  The usual
+
+              <leg_no>, <leg_t>, <leg_steps>, <leg_cntrl>, <c[ij]>
+
+    or, if the user is prescribing the legs through a table
+
+              using <time, dt>, <deformation type> [from columns ...]
+
+    here, we determine what kind of legs the user is prescrbing.
+
+    Parameters
+    ----------
+    leg: list
+        First leg in the legs block of the user input
+
+    Returns
+    -------
+    leg_inf: dict
+
+    Raises
+    ------
+
+    See also
+    --------
+
+    Notes
+    -----
+
+    Examples
+    --------
+    >>> parse_first_leg([0, 0., 0, 222222, 0, 0, 0, 0, 0, 0])
+    {"table": False}
+
+    >>> parse_first_leg(["using", "dt", "strain"])
+    {"table": True, "ttyp": "dt", "deftyp": "strain", "len": 6,
+     "colidx": range(7)}
+
+    >>> parse_first_leg(["using", "dt", "strain", "from", "columns", "1:7"])
+    {"table": True, "ttyp": "dt", "deftyp": "strain", "len": 6,
+     "colidx": range(7)}
+
+    >>> parse_first_leg(["using", "dt", "stress", "from",
+                         "columns", "1,2,3,4,5,6,7"])
+    {"table": True, "ttyp": "dt", "deftyp": "strain", "len": 6,
+     "colidx": range(7)}
+
+    >>> parse_first_leg(["using", "dt", "strain", "from", "columns", "1-7"])
+    {"table": True, "ttyp": "dt", "deftyp": "strain", "len": 6,
+     "colidx": range(7)}
+
+    >>> parse_first_leg(["using", "dt", "strain", "from", "columns", "1,5-10"])
+    {"table": True, "ttyp": "dt", "deftyp": "strain", "len": 6,
+     "colidx": [0,4,5,6,7,8,9,20]}
+
+    >>> parse_first_leg(["using", "dt", "strain", "from", "columns", "1,5-7"])
+    {"table": True, "ttyp": "dt", "deftyp": "strain", "len": 6,
+     "colidx": [0,4,5,6]}
+
+    """
+
+    errors = 0
+    allowed_legs = {
+        "strain rate": {"num": 1, "len": 6},
+        "strain": {"num": 2, "len": 6},
+        "stress rate": {"num": 3, "len": 6},
+        "stress": {"num": 4, "len": 6},
+        "deformation gradient": {"num": 5, "len": 9},
+        "electric field": {"num": 6, "len": 3},
+        "displacement": {"num": 8, "len": 3}}
+    allowed_t = ["time", "dt"]
+
+    if "using" not in leg[0]:
+        return {"table": False}
+
+    t_typ = leg[1]
+
+    if t_typ not in allowed_t:
+        errors += 1
+        msg = ("requested bad time type {0} in {1}, expected one of [{2}]"
+               .format(t_typ, leg, ", ".join(allowed_t)))
+        parseError(msg)
+
+    col_spec =[x for x in leg[2:] if "from" in x or "column" in x]
+
+    if not col_spec:
+        # default value for col_idxs
+        use_typ = " ".join(leg[2:])
+        if use_typ not in allowed_legs:
+            parseError("requested bad control type {0}".format(use_typ))
+
+        col_idxs = range(allowed_legs[use_typ]["len"] + 1)
+
+    elif col_spec and len(col_spec) != 2:
+        # user specified a line of the form
+        # using <dt,time> <deftyp> from ...
+        # or
+        # using <dt,time> <deftyp> columns ...
+        msg = ("expected {0} <deftyp> from columns ..., got {1}"
+               .format(t_typ, leg))
+        parseError(msg)
+
+    else:
+        use_typ = " ".join(leg[2:leg.index(col_spec[0])])
+        if use_typ not in allowed_legs:
+            parseError("requested bad control type {0}".format(use_typ))
+
+        # now we need to find the column indexes
+        col_idxs = " ".join(leg[leg.index(col_spec[-1])+1:])
+        col_idxs = col_idxs.replace("-", ":")
+
+        if ":" in col_idxs.split():
+            tmpl = col_idxs.split()
+
+            # user may have specified something like 1 - 6 which would now be
+            # 1 : 6, which is a bad range specifier, we need to fix it
+            idx = tmpl.index(":")
+
+            if len(tmpl) == 3 and idx == 1:
+                # of form: from columns 1:7
+                col_idxs = "".join(tmpl)
+
+            elif len(tmpl) == 4 and idx != 2:
+                # of form: from columns 1:6, 7 -> not allowed
+                parseError("bad column range specifier in: '{0}'"
+                           .format(" ".join(leg)))
+
+            elif len(tmpl) == 4:
+                # of form: from columns 1, 2:7
+                col_idxs = tmpl[0] + " " + "".join(tmpl[1:])
+
+        if col_idxs.count(":") > 1:
+            # only one range allowed
+            parseError("only one column range supported".format(use_typ))
+
+        col_idxs = col_idxs.split()
+        if len(col_idxs) == 1 and not [x for x in col_idxs if ":" in x]:
+            # of form: from columns 8 -> not allowed
+            parseError("not enough columns specified in: '{0}'"
+                       .format(" ".join(leg)))
+
+        elif len(col_idxs) == 1 and [x for x in col_idxs if ":" in x]:
+            # of form: from columns 2:8
+            col_idxs = col_idxs[0].split(":")
+            col_idxs = range(int(col_idxs[0]) - 1, int(col_idxs[1]))
+
+        elif len(col_idxs) == 2 and [x for x in col_idxs if ":" in x]:
+            # specified a single index and range
+            if col_idxs.index([x for x in col_idxs if ":" in x][0]) != 1:
+                # of form: from columns 2:8, 1 -> not allowed
+                parseError("bad column range specifier in: '{0}'"
+                           .format(" ".join(leg)))
+            else:
+                # of form: from columns 1, 2:8
+                tmp = col_idxs[1].split(":")
+                col_idxs = [int(col_idxs[0]) - 1]
+                col_idxs.extend(range(int(tmp[0]) - 1, int(tmp[1])))
+        else:
+            # specified all columns individually, convert to 0 index
+            col_idxs = [int(x) - 1 for x in col_idxs]
+
+        # we have now parsed the first line, assemble leg_ing
+        if len(col_idxs) > allowed_legs[use_typ]["len"] + 1:
+            parseError("too many columns specified")
+
+    # we have exhausted all ways of specifying columns that I can think of,
+    # save the info and return
+    leg_inf = {
+        "table": True,
+        "col_idxs": col_idxs,
+        "ttyp": t_typ,
+        "deftyp": use_typ,
+        "len": allowed_legs[use_typ]["len"],
+        "control":("{0}".format(allowed_legs[use_typ]["num"])
+                   * allowed_legs[use_typ]["len"])
+        }
+
+    return leg_inf
 
 if __name__ == "__main__":
     sys.exit("Payette_container.py must be called by runPayette")
