@@ -1,0 +1,38 @@
+# Example opt
+# Title: exmpl_8
+# Author: Tim Fuller, tjfulle@sandia.gov
+# Keywords: optimization
+# Comments: This input file demonstrates the parameter optimization
+#           functionality of Payette using time/stress.
+
+begin simulation exmpl_8
+  nowriteprops
+  norestart
+
+  begin boundary
+    kappa = 0
+    tstar = 1.
+    ampl = 1
+    begin legs
+      using time, stress, from columns 1, 34:39
+      insert exmpls.tbl
+    end legs
+  end boundary
+
+  begin material
+    constitutive model hooke
+    G 54.e9  # 53.e9 -> value used to create exmpls.tbl
+    K 129.e9  # 135.e9 -> value used to create exmpls.tbl
+  end material
+
+  begin optimization
+    method fmin  # downhill simplex algorithm [fmin] <fmin, fmin_powell>
+    maxiter 25  # maximum number of iterations [25]
+    tolerance 1.e-2  # tolerance between out and gold file [1.e-4]
+    optimize K, ubound 150.e9, lbound 125.e9  # parameter to optimize
+    optimize G, ubound 45.e9, lbound 57.e9  # parameter to optimize
+    gold file exmpls.gold
+    minimize sig11, sig22, sig33
+  end optimization
+
+end simulation

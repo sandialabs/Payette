@@ -31,19 +31,19 @@ from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 try:
     import Source.Materials.Library.elastic as mtllib
     imported = True
-except:
+except ImportError:
     imported = False
     pass
 
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 
 attributes = {
-    "payette material":True,
-    "name":"elastic",
-    "fortran source":True,
-    "build script":os.path.join(PC_MTLS_FORTRAN,"Elastic/build.py"),
-    "aliases":["hooke","elasticity"],
-    "material type":["mechanical"]
+    "payette material": True,
+    "name": "elastic",
+    "fortran source": True,
+    "build script": os.path.join(PC_MTLS_FORTRAN,"Elastic/build.py"),
+    "aliases": ["hooke", "elasticity", "linear elastic"],
+    "material type": ["mechanical"]
     }
 
 class Elastic(ConstitutiveModelPrototype):

@@ -1,0 +1,28 @@
+# Example 6
+# Title: exmpl_6
+# Author: Tim Fuller, tjfulle@sandia.gov
+# Comments: This example is similar to exmpl_5, but we specify every column of
+#           the table explicitly.
+
+begin simulation exmpl_6
+  nowriteprops
+  norestart
+
+  begin boundary
+    kappa = 0
+    tstar = 1.
+    ampl = 1
+
+    begin legs
+      using dt, stress, from columns 2, 34, 35, 36, 37, 38, 39
+      insert exmpls.tbl
+    end legs
+  end boundary
+
+  begin material
+    constitutive model hooke
+    G 53.e9
+    K 135.e9
+  end material
+
+end simulation

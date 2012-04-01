@@ -1,0 +1,63 @@
+# Example 1
+# Title: exmpl_1
+# Author: Tim Fuller, tjfulle@sandia.gov
+# Keywords: table, strain control
+# Comments: Rather than specify the deformation legs explicitly as in exmpl_0,
+#           we demsonstrate Payette's ability to read in data from a table.
+
+begin simulation exmpl_1
+
+  # The following directives tell Payette not to write out the properties file
+  # and restart file. They are similar to the command line directives to
+  # runPayette, but can be specified in the file.
+
+  nowriteprops
+  norestart
+
+  begin boundary
+    kappa = 0
+    tstar = 1.
+    ampl = 1
+
+    begin legs
+
+      # In this example, rather than use the legs specification like in
+      # exmpl_0, we tell Payette to use a table. Tables are specified with the
+      # following format:
+
+      #       using <dt, time>, <deformation type>, [from columns ...]
+
+      # For the table specification, all tensor components must be of the same
+      # form, i.e., you can't have mixed deformations (e.g. mixing
+      # stress/strain). The tensor ordering in Payette is always the same as
+      # in exmpl_0, so the columns of the table must be ordered accordingly -
+      # unless the optional [from columns ...] is specified. The [from columns
+      # ...] option is described in exmpl_2.
+
+      using time, strain
+      #TIME     STRAIN11  STRAIN22  STRAIN33  STRAIN12  STRAIN23  STRAIN13
+      0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00
+      1.00E+00  1.00E-01  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00
+      2.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00
+      3.00E+00  1.00E-01  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00
+      4.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00
+      5.00E+00  1.00167E-01  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00
+      6.00E+00 -1.67586E-04  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00
+      7.00E+00  1.00E-02  1.00E-02  1.00E-02  0.00E+00  0.00E+00  0.00E+00
+      8.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00
+      9.00E+00  1.00E-02  1.00E-02  1.00E-02  0.00E+00  0.00E+00  0.00E+00
+      1.00E+01  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00  0.00E+00
+
+    end legs
+
+  end boundary
+
+  begin material
+
+    constitutive model hooke
+    G 53.e9
+    K 135.e9
+
+  end material
+
+end simulation

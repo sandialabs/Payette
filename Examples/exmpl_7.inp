@@ -1,0 +1,57 @@
+# Example opt
+# Title: exmpl_7
+# Author: Tim Fuller, tjfulle@sandia.gov
+# Keywords: optimization
+# Comments: This input file demonstrates the parameter optimization
+#           functionality of Payette.
+
+begin simulation exmpl_7
+  nowriteprops
+  norestart
+
+  begin boundary
+    kappa = 0
+    tstar = 1.
+    ampl = 1
+    begin legs
+      using time, strain, from columns 1, 3:8
+      insert exmpls.tbl
+    end legs
+  end boundary
+
+  begin material
+    constitutive model hooke
+    G 54.e9  # 53.e9 -> value used to create exmpls.tbl
+    K 129.e9  # 135.e9 -> value used to create exmpls.tbl
+  end material
+
+  begin optimization
+
+    # This is the main optimization block. We specify every available option
+    # showing its default value in brackets, along with other available
+    # options in braces, if applicable.
+
+    # Below, we specify the optimization method and options. Thus far, all of
+    # the optimization methods are form scipy.optimize module.
+    method fmin  # downhill simplex algorithm [fmin] <fmin, fmin_powell>
+    maxiter 25  # maximum number of iterations [25]
+    tolerance 1.e-4  # tolerance between out and gold file [1.e-4]
+
+    # below we specify which parameters to optimize. The ubound and lbound are
+    # optional. In fact, they are not yet implemented but we leave them as a
+    # reminder to implement the feature!
+    optimize K, ubound 150.e9, lbound 125.e9  # parameter to optimize
+    optimize G, ubound 45.e9, lbound 57.e9  # parameter to optimize
+
+    # below we specify the "gold file" that has the results against which we
+    # compare the output from the simulation, along with the minimizing
+    # variables from that file. The optimization algorithm optimizes the
+    # parameters specified above by minimizing the difference between the
+    # minimizing variables in the gold file and the simulation output file.
+    gold file exmpls.gold
+    minimize sig11, sig22, sig33
+
+
+  end optimization
+
+end simulation

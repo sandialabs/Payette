@@ -18,6 +18,7 @@ OUTPUT
     basename.xout
 """
 
+SILENT = False
 exe = os.path.basename(__file__)
 manpage=\
 """
@@ -52,11 +53,15 @@ optokens = [ "+", "-", "*", "/", "**", "^" ]
 tokens = optokens + [kwtoken] + [coltoken]
 opchoices = ["","print"]
 
-def extractPayette(argc,argv):
+def extract(argv):
+
+    global SILENT
 
     def col2int(col):
-        if col[0] == coltoken: return int(col[1:])
-        else: error("bad column specifier {0} sent to col2int".format(col))
+        if col[0] == coltoken:
+            return int(col[1:])
+        else:
+            logerr("bad column specifier {0} sent to col2int".format(col), 5)
         return
 
     usage =\
@@ -76,6 +81,8 @@ def extractPayette(argc,argv):
     parser.add_option("--xout",dest="XOUT",action="store_true",default=False,
                       help=("write results to file 'input_file.xout'"
                             " [default: %default]"))
+    parser.add_option("--silent",dest="SILENT",action="store_true",default=False,
+                      help=("silent operation [default: %default]"))
     parser.add_option("--operation",dest="OPP",action="store",default=None,
                       type="choice",choices=(None,"print"),
                       help=("Operation to perform, choose from ({0})"
@@ -90,6 +97,8 @@ def extractPayette(argc,argv):
         parser.print_help()
         parser.error("Must specify file name")
         pass
+
+    SILENT = opts.SILENT
 
     sep = {"space":" ", "tab":"\t", "comma":","}[opts.SEP]
 
@@ -157,22 +166,27 @@ def extractPayette(argc,argv):
             logger.write(sep.join([ffrmt(x) for x in datline]))
             continue
         del logger
+        sys.stdout = sys.__stdout__
 
         # for any further processing, convert to numpy array
         # data = numpy.array(data)
 
         continue
 
-    return
+    return 0
 
 def ffrmt(x):
     return "{0:12.5E}".format(x)
 
 def message(msg):
+    if SILENT:
+        return
     sys.stdout.write("{0}: INFO: {1}\n".format(exe, msg))
+    return
 
-def error(msg):
-    sys.exit("{0}: ERROR: {1}".format(exe, msg))
+def logerr(msg, errno):
+    sys.stdout.write("{0}: ERROR: {1}\n".format(exe, msg))
+    sys.exit(errno)
 
 def args2dict(args,sep):
 
@@ -201,10 +215,9 @@ def args2dict(args,sep):
             if iline == 0: length = len(linedat)
             else:
                 if len(linedat) != length:
-                    error("Number of columns in line {0} of {1} not consistent"
-                          .format(iline+1,argf))
-                    pass
-                pass
+                    msg = ("Number of columns in line {0} of {1} not consistent"
+                           .format(iline+1,argf))
+                    logerr(msg, 6)
             continue
         return
 
@@ -212,8 +225,11 @@ def args2dict(args,sep):
         try:
             col = head_dict[kw.lower()]["col"]
             nam = head_dict[kw.lower()]["nam"]
-        except: error("keyword {0} not in {1}, choose from: {2}"
-                      .format(kw,argf,header))
+        except:
+            msg = ("keyword {0} not in {1}, choose from\n: {2}"
+                   .format(kw,argf,header))
+            logerr(msg, 4)
+
         return col, nam
 
     def col2col(col):
@@ -222,13 +238,14 @@ def args2dict(args,sep):
             col = int(col) - 1
             nam = header.split()[col]
         except ValueError:
-            error("non integer column number {0}".format(col))
+            logerr("non integer column number {0}".format(col), 7)
         except IndexError:
-            error("{0} has only {1} columns, requested column {2}"
-                  .format(argf,len(header.split()),col+1))
+            msg = ("{0} has only {1} columns, requested column {2}"
+                   .format(argf,len(header.split()),col+1))
+            logerr(msg, 8)
         except:
-            error("error processing {0} in {1}" .format(arg,args))
-            pass
+            logerr("error processing {0} in {1}" .format(arg,args), 9)
+
         col = coltoken + str(col)
         return col, nam
 
@@ -239,13 +256,11 @@ def args2dict(args,sep):
         argf = args[iarg]
 
         if not os.path.isfile(argf):
-            error("Expected valid file, got {0}".format(argf))
-            pass
+            logerr("Expected valid file, got {0}".format(argf), 10)
 
         # check if same file is repeated
         if [True for x in parsed_args if args[iarg] in x]:
-            error("file {0} sent multiple times".format(argf))
-            pass
+            logerr("file {0} sent multiple times".format(argf), 11)
 
         # add file to tmparg and move on to next item in args
         check_file()
@@ -299,11 +314,13 @@ def args2dict(args,sep):
                 for ix,x in enumerate(tmparg):
                     if x[0] == kwtoken:
                         if len(x) == 1:
-                            error("empty keyword identifier".format(args))
+                            msg = "empty keyword identifier".format(args)
+                            logerr(msg, 12)
                         tmparg[ix],nam = kw2col(x[1:])
                     elif x[0] == coltoken:
                         if len(x) == 1:
-                            error("empty column identifier".format(args))
+                            msg = "empty column identifier".format(args)
+                            logerr(msg, 13)
                         tmparg[ix],nam = col2col(x[1:])
                     else:
                         nam = x
@@ -318,12 +335,12 @@ def args2dict(args,sep):
 
                 if arg[0] == kwtoken:
                     if len(arg) == 1:
-                        error("empty keyword identifier".format(args))
+                        logerr("empty keyword identifier".format(args), 12)
                         pass
-                    arg,nam = kw2col(arg[1:])
+                    arg, nam = kw2col(arg[1:])
                 elif arg[0] == coltoken:
                     if len(arg) == 1:
-                        error("empty column identifier".format(args))
+                        logerr("empty column identifier".format(args), 12)
                         pass
                     arg,nam = col2col(arg[1:])
                 else:
@@ -342,8 +359,10 @@ def args2dict(args,sep):
                 xval = "".join([x.replace(coltoken,"") for x in item])
             else:
                 xval = item.replace(coltoken,"")
-            try: eval("".join([x.replace(coltoken,"") for x in item]))
-            except: error("bad extraction request: {0}".format(item))
+            try:
+                eval("".join([x.replace(coltoken,"") for x in item]))
+            except:
+                logerr("bad extraction request: {0}".format(item), 2)
             continue
 
         # header is now a list, join it with the user requested separation
@@ -363,16 +382,16 @@ def header2dict(header):
     return dicthead
 
 def bad_op(op,args):
-    sys.exit("""bad operation specification "{0}" in "{1}".
+    sys.stout.write("""bad operation specification "{0}" in "{1}".
 Operations between entries must not be padded with any whitespace in the
 argument list.  i.e., specify @kw1+@kw2 and not @kw1 + @kw2"""
-             .format(op," ".join(args)))
-    return
+                    .format(op," ".join(args)))
+    return 1
 
 def ambiguous_op(op,args):
-    sys.exit("ambiguous operation specification '{0}' in '{1}'"
-             .format(op," ".join(args)))
-    return
+    sys.stoud.write("ambiguous operation specification '{0}' in '{1}'"
+                    .format(op," ".join(args)))
+    return 3
 
 def arg2list(arg):
     if not isinstance(arg, (tuple,list)):
@@ -395,26 +414,67 @@ def print_cols(fnam,header):
     with open(fnam + ".cols", "w") as colf:
         for i, col in enumerate(header):
             item = "{0:d}\t{1:s}\n".format(i+1, col)
-            sys.stdout.write(item)
+            if not SILENT:
+                sys.stdout.write(item)
             colf.write(item)
             continue
         pass
     return
 
 class Logger(object):
+
     def __init__(self,name,mode):
         self.stdout = sys.stdout
-        if name: self.file = open(name,mode)
-        else: self.file = None
+        if name is not None:
+            self.file = open(name,mode)
+        else:
+            self.file = None
         sys.stdout = self
         pass
+
     def __del__(self):
-        sys.stdout = self.stdout
+        sys.stdout = sys.__stdout__
         if self.file: self.file.close()
         pass
+
     def write(self,data):
         if self.file: self.file.write(data + "\n")
-        self.stdout.write(data + "\n")
+        if not SILENT:
+            self.stdout.write(data + "\n")
 
 if __name__ == "__main__":
-    extractPayette(len(sys.argv[1:]),sys.argv[1:])
+
+    EXTRACTION = extract(sys.argv[1:])
+
+    sys.exit(EXTRACTION)
+    """Return values:
+    if EXTRACTION == 0:
+        # good
+    elif EXTRACTION == 1:
+        # bad op
+    elif EXTRACTION == 2:
+        # error
+    elif EXTRACTION == 3:
+        # ambiguous operation
+    elif EXTRACTION == 4:
+        # bad keyword
+    elif EXTRACTION == 5:
+        # bad column specifier
+    elif EXTRACTION == 6:
+        # bad number of columns
+    elif EXTRACTION == 7:
+        # non integer column number
+    elif EXTRACTION == 8:
+        # bad column number request
+    elif EXTRACTION == 9:
+        # error
+    elif EXTRACTION == 10:
+        # bad file
+    elif EXTRACTION == 11:
+        # file sent multiple times
+    elif EXTRACTION == 12:
+        # bad keyword
+    elif EXTRACTION == 13:
+        # bad column
+
+   """

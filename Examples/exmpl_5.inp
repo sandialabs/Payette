@@ -1,0 +1,29 @@
+# Example 5
+# Title: exmpl_5
+# Author: Tim Fuller, tjfulle@sandia.gov
+# Comments: This example is similar to exmpl_4 but we use dt as the time
+#           delimiter and we specify the column specifier a little
+#           differently.
+
+begin simulation exmpl_5
+  nowriteprops
+  norestart
+
+  begin boundary
+    kappa = 0
+    tstar = 1.
+    ampl = 1
+
+    begin legs
+      using dt, stress, from columns 2, 34 - 39
+      insert exmpls.tbl
+    end legs
+  end boundary
+
+  begin material
+    constitutive model hooke
+    G 53.e9
+    K 135.e9
+  end material
+
+end simulation
