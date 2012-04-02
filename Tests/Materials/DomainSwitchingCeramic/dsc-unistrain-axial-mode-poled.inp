@@ -9,17 +9,9 @@ begin boundary
   stepstar = 10.
 
   begin legs
-  # leg, time, steps, type, c11 c22 c33 c12 c23 c13
-  # type definitions - 1: strain rate
-  #                    2: strain
-  #                    3: stress rate
-  #                    4: stress
-  #                    5: deformation gradient
-  #                    6: electric field
-  #                    8: displacement
-  using time, strain
-  0., 0., 0., 0., 0., 0., 0.
-  1., 1., 0., 0., 0., 0., 0.,
+    using time, strain
+    0., 0., 0., 0., 0., 0., 0.
+    1., 1., 0., 0., 0., 0., 0.,
   end legs
 
 end boundary
