@@ -100,9 +100,9 @@ def extract(argv):
 
     SILENT = opts.SILENT
 
-    sep = {"space":" ", "tab":"\t", "comma":","}[opts.SEP]
+    sep = {"space": " ", "tab": "\t", "comma": ","}[opts.SEP]
 
-    args = args2dict(passed_args,sep)
+    args = args2dict(passed_args, sep)
 
     # args is now a list of the form
     # [{"file":file_1,"extract":[things to extract],"extract header":"header str"},
