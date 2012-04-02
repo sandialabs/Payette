@@ -6,6 +6,7 @@ begin boundary
   ampl = -1.
   estar = 0.01
   screenout = 1
+  stepstar = 10.
 
   begin legs
   # leg, time, steps, type, c11 c22 c33 c12 c23 c13
@@ -16,9 +17,9 @@ begin boundary
   #                    5: deformation gradient
   #                    6: electric field
   #                    8: displacement
-    0,     0.,   0.,   222222666, 0., 0., 0., 0., 0., 0., 0., 0., 0.
-    1,     1.,   10, 222222666, 1., 0., 0., 0., 0., 0., 0., 0., 0.
-#    1,     1.,   10, 222222666, 0., 0., 0., 0., 0., 0., 0., 0., 1.E+5
+  using time, strain
+  0., 0., 0., 0., 0., 0., 0.
+  1., 1., 0., 0., 0., 0., 0.,
   end legs
 
 end boundary
@@ -60,7 +61,4 @@ begin material
   NBIN = 0.E+00
   DBG = 1
 end material
-begin mathplot
-  sig11
-end mathplot
 end simulation

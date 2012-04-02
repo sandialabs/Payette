@@ -22,7 +22,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-#from __future__ import print_function
+from __future__ import print_function
 import os
 import sys
 import re
@@ -32,7 +32,8 @@ import numpy as np
 import time
 
 from Source.Payette_utils import *
-from Source.Payette_material import PAYETTE_CONSTITUTIVE_MODELS, Material
+from Source.Payette_material import Material
+import Source.Materials.Payette_installed_materials as pim
 import Source.Payette_driver as cdriver
 from Source.Payette_data_container import DataContainer
 
@@ -346,7 +347,7 @@ class Payette:
         # constitutive model given, now see if it is available, here we replace
         # spaces with _ in all model names and convert to lower case
         mdlname = constitutive_model.lower().replace(" ","_")
-        available_models = PAYETTE_CONSTITUTIVE_MODELS
+        available_models = pim.PAYETTE_CONSTITUTIVE_MODELS
         for key in available_models:
             if mdlname == key or mdlname in available_models[key]["aliases"]:
                 constitutive_model = key

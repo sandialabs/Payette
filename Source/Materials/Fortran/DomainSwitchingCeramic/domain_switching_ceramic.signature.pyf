@@ -18,7 +18,7 @@ end python module payette__user__routines
 
 python module domain_switching_ceramic
     interface
-        subroutine qseck7(ui,gc,dc)
+        subroutine dsc_check(ui,gc,dc)
             use payette__user__routines
             integer,parameter :: nui=44
             integer,parameter :: ndc=13
@@ -29,8 +29,8 @@ python module domain_switching_ceramic
             external migerror
             intent(callback) migmessage
             external migmessage
-        end subroutine qseck7
-        subroutine qsexv7(ui,gc,dc,nx,namea,keya,rinit,rdim,iadvct,itype,iscal)
+        end subroutine dsc_check
+        subroutine dsc_extra(ui,gc,dc,nx,namea,keya,rinit,rdim,iadvct,itype,iscal)
             use payette__user__routines
             integer,parameter :: nui=44
             integer,parameter :: nsv=27
@@ -52,7 +52,7 @@ python module domain_switching_ceramic
             external migerror
             intent(callback) migmessage
             external migmessage
-        end subroutine qsexv7
+        end subroutine dsc_extra
         subroutine dsc_init(ibflg,idb,ui,gc,dc,nx,bkd,lbd,permtv,polrzn,sv )
           use payette__user__routines
           integer,parameter :: nui=44
@@ -71,7 +71,7 @@ python module domain_switching_ceramic
           intent(callback) migmessage
           external migmessage
         end subroutine dsc_init
-        subroutine qsedr7(nc,ui,gc,dc,nx,sv,u,r,efield,permtv,polrzn,edisp,sig)
+        subroutine dsc_drvr(nc,ui,gc,dc,nx,sv,u,r,efield,permtv,polrzn,edisp,sig)
             use payette__user__routines
             integer intent(in) :: nx
             integer intent(in) :: nc
@@ -93,7 +93,7 @@ python module domain_switching_ceramic
             external migerror
             intent(callback) migmessage
             external migmessage
-        end subroutine qsedr7
+        end subroutine dsc_drvr
     end interface
 end python module domain_switching_ceramic
 

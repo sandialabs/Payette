@@ -25,10 +25,9 @@ import copy
 import sys
 import logging
 
-from Payette_utils import *
+from Source.Payette_utils import *
 
-from Payette_installed_materials import *
-
+import Source.Materials.Payette_installed_materials as pim
 from Source.Payette_data_container import DataContainer
 
 class Material:
@@ -50,7 +49,8 @@ class Material:
     def __init__(self, constitutive_model_name, simdat, user_params, f_params ):
 
         iam = "Material.__init__(self, constitutive_model_name)"
-        cmod = PAYETTE_CONSTITUTIVE_MODELS[constitutive_model_name]["class name"]
+        cmod = pim.PAYETTE_CONSTITUTIVE_MODELS[
+            constitutive_model_name]["class name"]
 
         # instantiate the constiutive model
         self.constitutive_model = cmod()

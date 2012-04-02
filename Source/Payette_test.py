@@ -37,11 +37,8 @@ if __name__ == "__main__":
 
 from Payette_utils import *
 
-from Payette_config import (
-    PC_EXES, PC_TOOLS, PC_TESTS)
-
-from Payette_installed_materials import (
-    PAYETTE_INSTALLED_MATERIALS, PAYETTE_CONSTITUTIVE_MODELS)
+import Payette_config as pc
+import Source.Materials.Payette_installed_materials as pim
 
 speed_kws = ["fast","medium","long"]
 type_kws = ["verification","validation","prototype","regression"]
@@ -267,13 +264,13 @@ class PayetteTest:
         if os.path.isfile(exenam):
             found = True
 
-        elif exenam in PC_EXES:
-            exenam = PC_EXES[exenam]
+        elif exenam in pc.PC_EXES:
+            exenam = pc.PC_EXES[exenam]
             found = True
 
         else:
             path = os.getenv("PATH").split(os.pathsep)
-            path.insert(0,PC_TOOLS)
+            path.insert(0, pc.PC_TOOLS)
             for p in path:
                 exenam = os.path.join(p,exenam)
                 if os.path.isfile(exenam):
@@ -433,7 +430,8 @@ class PayetteTest:
         return linecache.getline(f,1).split()
 
     def clean_tracks(self):
-        for ext in [".out",".diff",".log",".prf",".pyc",".echo",".props",".pyc"]:
+        for ext in [".out", ".diff", ".log", ".prf", ".pyc", ".echo",
+                    ".props", ".pyc", ".math1", ".math2"]:
             try: os.remove(self.name + ext)
             except: pass
             continue
@@ -855,7 +853,7 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
             pass
         pass
     else:
-        test_dir = PC_TESTS
+        test_dir = pc.PC_TESTS
         pass
 
     # reqkws are user specified keywords
@@ -865,7 +863,7 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
     if spectests: spectests = [x.lower() for x in spectests]
 
     # do not run the kayenta tests if kayenta not installed
-    if "kayenta" not in PAYETTE_INSTALLED_MATERIALS:
+    if "kayenta" not in pim.PAYETTE_INSTALLED_MATERIALS:
         unreqkws.append("kayenta")
         if "kayenta" in reqkws:
             errors += 1
@@ -874,7 +872,7 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
         pass
 
     # do not run the piezo electric material's tests if not installed
-    if "domain_switching_ceramic" not in PAYETTE_CONSTITUTIVE_MODELS:
+    if "domain_switching_ceramic" not in pim.PAYETTE_CONSTITUTIVE_MODELS:
         unreqkws.append("domain_switching_ceramic")
         if "domain_switching_ceramic" in reqkws:
             errors += 1
@@ -883,7 +881,7 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
             pass
         pass
 
-    if "piezo_ceramic" not in PAYETTE_INSTALLED_MATERIALS:
+    if "piezo_ceramic" not in pim.PAYETTE_INSTALLED_MATERIALS:
         unreqkws.append("piezo_ceramic")
         if "piezo_ceramic" in reqkws:
             errors += 1

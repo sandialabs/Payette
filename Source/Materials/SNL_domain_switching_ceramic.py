@@ -58,9 +58,9 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
        The module Library/domain_switching is created by f2py.
        domain_switching.F defines the following public subroutines
 
-          qseck7: fortran data check routine called by _check_props
-          qsexv7: fortran field initialization  routine called by _set_field
-          qsedr7: fortran stress update called by updateState
+          dsc_check: fortran data check routine called by _check_props
+          dsc_extra: fortran field initialization  routine called by _set_field
+          dsc_drvr: fortran stress update called by updateState
 
     AUTHORS
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
@@ -186,7 +186,7 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         argv = [1,self.ui,self.ui,self.dc,svold,Rstretch,rotation,efield,
                 sigold,migError,migMessage]
         if not PC_F2PY_CALLBACK: argv = argv[:-2]
-        svnew,permtv,polrzn,edisp,signew = mtllib.qsedr7(*argv)
+        svnew,permtv,polrzn,edisp,signew = mtllib.dsc_drvr(*argv)
 
         # update data
         simdat.storeData("permittivity",permtv)
@@ -203,7 +203,7 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         dc = np.zeros(13)
         argv = [props,props,dc,migError,migMessage]
         if not PC_F2PY_CALLBACK: argv = argv[:-2]
-        props,dc = mtllib.qseck7(*argv)
+        props,dc = mtllib.dsc_check(*argv)
         return props,dc
 
     def _set_field(self,*args,**kwargs):
@@ -212,7 +212,8 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         if not PC_F2PY_CALLBACK: argv = argv[:-2]
 
         # request the extra variables
-        ui,nsv,namea,keya,sv,rdim,iadvct,itype,iscal = mtllib.qsexv7(*argv)
+        (ui, nsv, namea, keya, sv, rdim, iadvct, itype, iscal) = (
+            mtllib.dsc_extra(*argv))
 
         # initialize
         lbd = 3*(4+int(ui[self.parameter_table["NBIN"]["ui pos"]]))
