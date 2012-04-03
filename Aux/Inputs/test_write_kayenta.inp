@@ -1,0 +1,23 @@
+begin simulation test write kayenta
+begin boundary
+  kappa = 0.
+  tstar = 1.
+  ampl = 1.
+  stepstar = 100
+  begin legs
+    using dt, strain
+    .1, 0., 0., 0., 0., 0., 0.
+    .1, 0.1, 0., 0., 0., 0., 0.
+    .2, -0.1, 0., 0., 0., 0., 0.
+  end legs
+end boundary
+
+begin material
+  constitutive model kayenta
+  a1 = 1.e99
+  shmod 26.e9
+  bkmod 76.e9
+  free04 = 1
+end material
+
+end simulation
