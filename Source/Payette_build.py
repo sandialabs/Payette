@@ -25,7 +25,7 @@
 
 """Main Payette building file.
 None of the functions in this file should be called directly, but only through
-the executable script $PC_ROOT/Toolset/buildPayette
+the executable script PAYETTE_ROOT/Toolset/buildPayette
 
 AUTHORS
 Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
@@ -280,7 +280,7 @@ def write_payette_materials(payette_materials):
 
     """
 
-    pu.loginf("writing {0}".format("$PC_ROOT" +
+    pu.loginf("writing {0}".format("PAYETTE_ROOT" +
                                    pc.PC_MTLS_FILE.split(pc.PC_ROOT)[1]))
 
     lines = []
@@ -368,7 +368,7 @@ def write_payette_materials(payette_materials):
 
         pu.endmes("constitutive model declarations written")
 
-    pu.loginf("{0} written\n".format("$PC_ROOT" +
+    pu.loginf("{0} written\n".format("PAYETTE_ROOT" +
                                      pc.PC_MTLS_FILE.split(pc.PC_ROOT)[1]))
     return
 
