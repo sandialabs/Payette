@@ -194,8 +194,9 @@ class Kayenta(ConstitutiveModelPrototype):
         namea = parseToken(self.nsv,namea)
         keya = parseToken(self.nsv,keya)
 
-        # element number
-        sv[-1] = 1
+        # (minus the) element number
+        if self.ui[65] != 0.:
+            sv[-1] = -1
 
         # register the extra variables with the payette object
         matdat.registerExtraVariables(self.nsv,namea,keya,sv)
