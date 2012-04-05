@@ -17,10 +17,8 @@ C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
 C  ...reals
 C     REFR: a characteristic scale for the Lode r coordinate
 C     REFZ: a characteristic scale for the Lode z coordinate
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION B0,B1,B2,G0,G1,G2,G3,TWOG1,A1,A2,A4G,A3,A4,PRAT
       DOUBLE PRECISION T1,T2,T3,T4,RHO0,T0,TM,C0,S1,GP,CV,XP,A5,A6
-#endif
       SAVE /DMMPROPR/
       COMMON /DMMPROPR/B0,B1,B2,G0,G1,G2,G3,TWOG1,A1,A2,A4G,A3,A4,PRAT,
      $T1,T2,T3,T4,RHO0,T0,TM,C0,S1,GP,CV,XP,A5,A6

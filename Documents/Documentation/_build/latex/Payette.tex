@@ -117,8 +117,15 @@
 
 \chapter{Introduction}
 \label{Files/introduction:introduction}\label{Files/introduction::doc}\label{Files/introduction:payette-material-model-driver-official-documentation}
-\emph{Payette} is an object oriented material model driver written in \href{http://www.python.org}{Python} designed for rapid development and testing of material
-models.
+\href{http://www.eng.utah.edu/~timothyf}{Payette} is an object oriented
+material model driver written in \href{http://www.python.org}{Python} designed
+for rapid development and testing of material models. The core of the
+\emph{Payette} code base is written in Python, with the exception of many material
+models and optimization routines that are written in Fortran and wrapped by
+\href{http://www.scipy.org/F2py}{*f2py*}.
+
+\emph{Payette} is free software released under the
+\href{http://www.wikipedia.org/wiki/MIT\_License}{MIT License}
 
 
 \section{Why a Single Element Driver?}
@@ -165,12 +172,12 @@ than those written in a compiled language, modern packages and computers make th
 speed up difference between python and a compiled language for single element
 problems almost insignificant.
 
-For numeric computations, the \href{http://www.numpy.org}{NumPy} and SciPy modules allow programs written in Python to leverage a large
-set of numerical routines provided by the \code{LAPACK}, \code{BLASPACK}, \code{EIGPACK},
-etc. Python's APIs also allow for calling subroutines written in C or Fortran (in
-addition to a number of other languages), a prerequisite for model development as
-most legacy material models are written in Fortran. In fact, most modern material
-models are still written in Fortran to this day.
+For numeric computations, the \href{http://www.numpy.org}{NumPy} and \href{http://www.scipy.org}{SciPy} modules allow programs written in Python to leverage
+a large set of numerical routines provided by \code{LAPACK}, \code{BLASPACK},
+\code{EIGPACK}, etc. Python's APIs also allow for calling subroutines written in
+C or Fortran (in addition to a number of other languages), a prerequisite for
+model development as most legacy material models are written in Fortran. In
+fact, most modern material models are still written in Fortran to this day.
 
 Python's object oriented nature allows for rapid installation of new material
 models.
@@ -233,31 +240,60 @@ Electric field
 \end{itemize}
 
 
-\chapter{Layout}
-\label{Files/layout:layout}\label{Files/layout::doc}
-The \code{Payette} project has the following directory structure:
+\chapter{Developer Guide}
+\label{Files/layout::doc}\label{Files/layout:developer-guide}
+
+\section{\emph{Payette} Directory Structure}
+\label{Files/layout:payette-directory-structure}
+The \code{Payette} project has the following directory structure
 
 \begin{Verbatim}[commandchars=\\\{\}]
 PAYETTE\_ROOT
   configure.py
   \_\_init\_\_.py
-  INSTALL
+  README
+
   Aux/
     Inputs/
-    MaterialsDatabase/
+
+  MaterialsDatabase/
+
   Documents/
     Documentation/
     Presentations/
+
+  Examples/
+
   Source/
     Fortran/
     Materials/
       Fortran/
       Library/
+
   Tests/
     Materials/
     Regression/
+
   Toolset/
 \end{Verbatim}
+
+
+\section{Coding Style Guide}
+\label{Files/layout:coding-style-guide}
+All new code in \emph{Payette} should adhere sctrictly to the style described in
+Python's \href{http://www.python.org/dev/peps/pep-0008/}{PEP-0008} and docstrings
+should follow NumPy's \href{https://github.com/numpy/numpy/blob/master/doc/HOWTO\_DOCUMENT.rst.txt}{docstring guide}. One
+exception to the Python style guide is the naming convention of files in
+\emph{Payette}: all file names begin with \code{Payette\_}.
+
+It is highly recommended to use tools such as \emph{pylint} and \emph{pep8} to perform
+code analysis on all new and existing code.
+
+\begin{notice}{note}{Note:}
+Many of the original files in \emph{Payette} were not written to the
+Python style guide. As time allows, these files are being modified to
+adhere to the standards.
+\end{notice}
 
 
 \chapter{Obtaining \emph{Payette}}
@@ -1228,7 +1264,7 @@ independent of host finite element code implementation. Important prerequisites
 in the design of \emph{Payette} were ease of model installation and support for
 constitutive routines written in Fortran. This requirement is met by providing a
 simple API with which a model developer can install a material in \emph{Payette} as
-a new Python class and use f2py to compile
+a new Python class and use \href{http://www.scipy.org/F2py}{f2py} to compile
 Python extension modules from the material's Fortran source (if applicable). In
 this section, the required elements of the constitutive model interface and
 instructions on compiling the material's Fortran source (if applicable) are

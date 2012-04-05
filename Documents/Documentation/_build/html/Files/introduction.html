@@ -27,7 +27,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="Payette 1.0 documentation" href="../index.html" />
-    <link rel="next" title="Layout" href="layout.html" />
+    <link rel="next" title="Developer Guide" href="layout.html" />
     <link rel="prev" title="Payette Material Model Driver - Official Documentation" href="../index.html" /> 
   </head>
   <body>
@@ -38,7 +38,7 @@
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="layout.html" title="Layout"
+          <a href="layout.html" title="Developer Guide"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="../index.html" title="Payette Material Model Driver - Official Documentation"
@@ -54,8 +54,14 @@
             
   <div class="section" id="introduction">
 <h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
-<p><em>Payette</em> is an object oriented material model driver written in <a class="reference external" href="http://www.python.org">Python</a> designed for rapid development and testing of material
-models.</p>
+<p><a class="reference external" href="http://www.eng.utah.edu/~timothyf">Payette</a> is an object oriented
+material model driver written in <a class="reference external" href="http://www.python.org">Python</a> designed
+for rapid development and testing of material models. The core of the
+<em>Payette</em> code base is written in Python, with the exception of many material
+models and optimization routines that are written in Fortran and wrapped by
+<a class="reference external" href="http://www.scipy.org/F2py">*f2py*</a>.</p>
+<p><em>Payette</em> is free software released under the
+<a class="reference external" href="http://www.wikipedia.org/wiki/MIT_License">MIT License</a></p>
 <div class="section" id="why-a-single-element-driver">
 <h2>Why a Single Element Driver?<a class="headerlink" href="#why-a-single-element-driver" title="Permalink to this headline">¶</a></h2>
 <p>Due to their complexity, it is often over kill to use a finite element code for
@@ -90,12 +96,12 @@ require a compiling step. While this might make programs written in python slowe
 than those written in a compiled language, modern packages and computers make the
 speed up difference between python and a compiled language for single element
 problems almost insignificant.</p>
-<p>For numeric computations, the <a class="reference external" href="http://www.numpy.org">NumPy</a> and <a class="reference external" href="www.scipy.org">SciPy</a> modules allow programs written in Python to leverage a large
-set of numerical routines provided by the <tt class="docutils literal"><span class="pre">LAPACK</span></tt>, <tt class="docutils literal"><span class="pre">BLASPACK</span></tt>, <tt class="docutils literal"><span class="pre">EIGPACK</span></tt>,
-etc. Python&#8217;s APIs also allow for calling subroutines written in C or Fortran (in
-addition to a number of other languages), a prerequisite for model development as
-most legacy material models are written in Fortran. In fact, most modern material
-models are still written in Fortran to this day.</p>
+<p>For numeric computations, the <a class="reference external" href="http://www.numpy.org">NumPy</a> and <a class="reference external" href="http://www.scipy.org">SciPy</a> modules allow programs written in Python to leverage
+a large set of numerical routines provided by <tt class="docutils literal"><span class="pre">LAPACK</span></tt>, <tt class="docutils literal"><span class="pre">BLASPACK</span></tt>,
+<tt class="docutils literal"><span class="pre">EIGPACK</span></tt>, etc. Python&#8217;s APIs also allow for calling subroutines written in
+C or Fortran (in addition to a number of other languages), a prerequisite for
+model development as most legacy material models are written in Fortran. In
+fact, most modern material models are still written in Fortran to this day.</p>
 <p>Python&#8217;s object oriented nature allows for rapid installation of new material
 models.</p>
 </div>
@@ -163,10 +169,10 @@ specified mechanical and electrical inputs.</p>
 
   <h4>Previous topic</h4>
   <p class="topless"><a href="../index.html"
-                        title="previous chapter"><em>Payette</em> Material Model Driver - Official Documentation</a></p>
+                        title="previous chapter">Payette Material Model Driver - Official Documentation</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="layout.html"
-                        title="next chapter">Layout</a></p>
+                        title="next chapter">Developer Guide</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="../_sources/Files/introduction.txt"
@@ -196,7 +202,7 @@ specified mechanical and electrical inputs.</p>
           <a href="../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="layout.html" title="Layout"
+          <a href="layout.html" title="Developer Guide"
              >next</a> |</li>
         <li class="right" >
           <a href="../index.html" title="Payette Material Model Driver - Official Documentation"

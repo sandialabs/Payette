@@ -29,15 +29,15 @@ import math
 import linecache
 import numpy as np
 
-THIS_FILE = os.path.realpath(__file__)
-THIS_DIR = os.path.dirname(THIS_FILE)
-if not os.path.isfile(os.path.join(THIS_DIR,"../Payette_config.py")):
-    sys.exit("ERROR: Payette_config.py must be written by configure.py")
+import Payette_config as pc
 
-from Payette_config import PC_INTRO, PC_AUX
+if not os.path.isfile(os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),"../Payette_config.py")):
+    sys.exit("ERROR: Payette_config.py must be written by configure.py")
 
 debug = False
 wcount, wthresh, wmax = 0, 0, 1000
+EPSILON = np.finfo(np.float).eps
 
 '''
 NAME
@@ -53,23 +53,25 @@ AUTHORS
 '''
 
 class PayetteError(Exception):
-    def __init__(self,msg):
+    def __init__(self, msg):
         if 'MIG' in msg: sys.tracebacklimit = 3
         l = 79 # should be odd number
-        st,stsp = '*'*l + '\n', '*' + ' '*(l-2) + '*\n'
+        st, stsp = '*'*l + '\n', '*' + ' '*(l-2) + '*\n'
         psf = 'Payette simulation failed'
         ll = (l - len(psf) - 2)/2
         psa = '*' + ' '*ll + psf + ' '*ll + '*\n'
         head = '\n\n' + st + stsp + psa + stsp + st
-        Exception.__init__(self,head+msg)
+        Exception.__init__(self, head+msg)
 
-def reportError(f,msg):
+
+def reportError(f, msg):
     f = fixFLength(f)
-    msg = '{0} (reported from [{1}])'.format(msg,f)
+    msg = '{0} (reported from [{1}])'.format(msg, f)
     raise PayetteError(msg)
     return
 
-def reportWarning(f,msg,limit=False):
+
+def reportWarning(f, msg, limit=False):
     global wcount, wthresh, wmax
     if limit:
         if wcount <= wmax/200-1: wthresh = wcount+1
@@ -79,43 +81,51 @@ def reportWarning(f,msg,limit=False):
         wcount += 1
         if wcount != wthresh: return
         pass
-    msg = 'WARNING: {0} (reported from [{1}])\n'.format(msg,f)
+    msg = 'WARNING: {0} (reported from [{1}])\n'.format(msg, f)
     simlog.write(msg)
     if loglevel > 0: sys.stdout.write(msg)
     return
 
-def writeMessage(f,msg):
+
+def writeMessage(f, msg):
     sys.stdout.write("INFO: {0:s}\n".format(msg))
     return
 
-def writeWarning(f,msg):
+
+def writeWarning(f, msg):
     sys.stdout.write("WARNING: {0:s}\n".format(msg))
     return
 
-def reportMessage(f,msg,pre="INFO: "):
-#    msg = 'INFO: {0} (reported from [{1}])\n'.format(msg,f)
-    msg = '{0}{1}\n'.format(pre,msg)
+
+def reportMessage(f, msg, pre="INFO: "):
+#    msg = 'INFO: {0} (reported from [{1}])\n'.format(msg, f)
+    msg = '{0}{1}\n'.format(pre, msg)
     simlog.write(msg)
     if loglevel > 0: sys.stdout.write(msg)
     return
+
 
 def writeToLog(msg):
     msg = "{0:s}\n".format(msg)
     simlog.write(msg)
     return
 
+
 def migMessage(msg):
     reportMessage('MIG',msg)
     return
+
 
 def migError(msg):
     msg = ' '.join([x for x in msg.split(' ') if x])
     reportError('MIG',msg)
     return
 
+
 def migWarning(msg):
     reportWarning('MIG',msg)
     return
+
 
 def fixFLength(f):
     if not os.path.isfile(f): return f
@@ -123,20 +133,24 @@ def fixFLength(f):
     basename,fext = os.path.splitext(f)
     return basename
 
+
 def payetteParametersDir():
-    lpd = os.path.join(PC_AUX,'MaterialsDatabase')
+    lpd = os.path.join(pc.PC_AUX,'MaterialsDatabase')
     if not os.path.isdir(lpd):
         reportError(__file__,'Aux/MaterialsDatabase directory not found')
         return 1
     else:
         return lpd
 
+
 def epsilon():
     return np.finfo(np.float).eps
+
 
 def accuracyLim():
     acc_per = .0001
     return acc_per/100.
+
 
 def parseToken(n,stringa,token=r'|'):
     parsed_string = []
@@ -161,17 +175,20 @@ def parseToken(n,stringa,token=r'|'):
         continue
     return parsed_string
 
+
 def checkPythonVersion():
     (major, minor, micro, releaselevel, serial) = sys.version_info
     if (major != 3 and major != 2) or (major == 2 and minor < 6):
         raise SystemExit("Payette requires Python >= 2.6\n")
 
+
 def setupLogger(logfile,level,mode="w"):
     global loglevel,simlog
     loglevel = level
     simlog = open(logfile,mode)
-    if mode == "w": simlog.write(PC_INTRO + "\n")
+    if mode == "w": simlog.write(pc.PC_INTRO + "\n")
     return
+
 
 def readUserInput(user_input,user_cchar=None):
     """
@@ -245,6 +262,7 @@ def readUserInput(user_input,user_cchar=None):
 
     return user_dict
 
+
 def removeComments(aline,cchars):
     for cchar in cchars:
         while cchar in aline:
@@ -253,6 +271,7 @@ def removeComments(aline,cchars):
             continue
         continue
     return aline
+
 
 def checkForInserts(aline):
     magic = ["insert","include"]
@@ -280,6 +299,7 @@ def checkForInserts(aline):
     else: pass
 
     return None
+
 
 def findBlock(ilist,keyword):
     '''
@@ -371,6 +391,7 @@ def has_block(ilist, keyword):
 
     return True, idx_beg, idx_end
 
+
 def textformat(var):
     """
     textformat() is used to get consistent formatting for all of
@@ -390,6 +411,7 @@ def textformat(var):
         return "{0:20.10E}".format(float(var))
     else:
         return "{0:>20}".format(str(var))
+
 
 def setupOutputFile(simdat, matdat, restart):
 
@@ -438,6 +460,7 @@ def setupOutputFile(simdat, matdat, restart):
 
     return
 
+
 def writeState(simdat,matdat):
 
     """ write the simulation and material data to the output file """
@@ -450,6 +473,7 @@ def writeState(simdat,matdat):
     ofile.write('\n')
 
     return None
+
 
 def writeMathPlot(simdat,matdat):
 
@@ -531,6 +555,7 @@ def writeMathPlot(simdat,matdat):
         pass
 
     return
+
 
 def writeAvailableDataToLog(simdat,matdat):
 
@@ -641,11 +666,13 @@ def writeAvailableDataToLog(simdat,matdat):
 
     return
 
+
 def closeFiles():
     ofile.write("\n")
     ofile.flush()
     ofile.close()
     simlog.close()
+
 
 def writeVelAndDispTable(t0,tf,tbeg,tend,epsbeg,epsend,kappa):
     """
@@ -730,6 +757,7 @@ def writeVelAndDispTable(t0,tf,tbeg,tend,epsbeg,epsend,kappa):
 def parse_error(message):
     sys.exit("ERROR: {0}".format(message))
 
+
 def flatten(x):
     """flatten(sequence) -> list
 
@@ -777,49 +805,294 @@ class BuildError(Exception):
     def __str__(self):
         return repr(self.errno)
 
+
 def get_module_name_and_path(py_file):
     return (os.path.splitext(os.path.basename(py_file))[0],
             [os.path.dirname(py_file)])
+
 
 def get_module_name(py_file):
     """ return the module name of py_file """
     return get_module_name_and_path(py_file)[0]
 
-def begmes(msg,pre="",end="  "):
-    print("{0}{1}...".format(pre,msg),end=end)
+
+def begmes(msg, pre="", end="  "):
+    print("{0}{1}...".format(pre, msg), end=end)
     return
 
-def endmes(msg,pre="",end="\n"):
-    print("{0}{1}".format(pre,msg),end=end)
+
+def endmes(msg, pre="", end="\n"):
+    print("{0}{1}".format(pre, msg), end=end)
     return
 
-def loginf(msg,pre="",end="\n"):
-    print("{0}INFO: {1}".format(pre,msg),end=end)
+
+def loginf(msg, pre="", end="\n", caller=None):
+    if caller is not None:
+        msg = "{0} [reported by {1}]".format(msg, caller)
+    print("{0}INFO: {1}".format(pre, msg), end=end)
     return
 
-def logmes(msg,pre="",end="\n"):
-    print("{0}{1}".format(pre,msg),end=end)
+
+def logmes(msg, pre="", end="\n", caller=None):
+    if caller is not None:
+        msg = "{0} [reported by {1}]".format(msg, caller)
+    print("{0}{1}".format(pre, msg), end=end)
     return
 
-def logwrn(msg,pre="",end="\n"):
-    print("{0}WARNING: {1}".format(pre,msg),end=end)
+
+def logwrn(msg, pre="", end="\n", caller=None):
+    if caller is not None:
+        msg = "{0} [reported by {1}]".format(msg, caller)
+
+    print("{0}WARNING: {1}".format(pre, msg), end=end)
     return
 
-def logerr(msg,pre="",end="\n"):
-    print("{0}ERROR: {1}".format(pre,msg),end=end)
+
+def logerr(msg, pre="", end="\n", caller=None):
+    if caller is not None:
+        msg = "{0} [reported by {1}]".format(msg, caller)
+
+    print("{0}ERROR: {1}".format(pre, msg), end=end)
     return
 
-def get_header(f):
-    """ get the header of f """
-    return linecache.getline(f, 1).split()
 
-def read_data(f):
-    """Reads in a whitespace-delimed data file f. It is assumed that the first
-    line contains text (the name of the column). All other lines contain
-    floats.
+def get_header(fpath):
+    """Get the header of f
 
-    Returns m x n dimensional numpy ndarray where m is the number of data
-    points (rows) and n the number of data fields (columns)
+    Parameters
+    ----------
+    fpath : str
+        Path to file
+
+    Returns
+    -------
+    head : array_like
+        list of strings containing column names
+
     """
-    return np.loadtxt(f, skiprows=1)
+    return linecache.getline(fpath, 1).split()
 
+def read_data(fpath):
+    """Reads in a whitespace-delimed data file f with numpy.loadtxt.
+
+    It is assumed that the first line contains text (the name of the column).
+    All other lines contain floats.
+
+    Parameters
+    ----------
+    fpath : str
+        Path to file
+
+    Returns
+    -------
+    data : array_like
+        m x n dimensional numpy ndarray where m is the number of data points
+        (rows) and n the number of data fields (columns)
+
+    """
+    return np.loadtxt(fpath, skiprows=1)
+
+
+def compute_rms(set1x, set1y, set2x, set2y, step=1):
+    r"""Compute the root mean square difference between data in set1{x, y} and
+    set2{x, y}.
+
+    Determines the rms of the error between two piecewise functions. In almost
+    all cases, the abscissa variables (set1x and set2x) will be time.
+    Currently, the abscissa variables are required to be monotonically
+    increasing (for easier computing). Interpolations are used to compare data
+    points where data is missing in the other set.
+
+    "set2{x, y}" is compared against "set1{x, y}".
+
+    len(set1x) == len(set1y)
+    len(set2x) == len(set2y)
+
+    Parameters
+    ----------
+    set1x : array_like
+        Abscissa of set 1
+    set1y : array_like
+        Range of set 1
+    set2x : array_like
+        Abscissa of set 2
+    set2y : array_like
+        Range of set 2
+    step : {1,}, optional
+        Used for large data sets. This gives the benchmark developer more
+        control over how the error is computed (choosing accuracy vs. speed).
+
+    Returns
+    -------
+    rmsd : float
+        root mean square difference between gold and out
+    nrmsd : float
+        normalized root mean square difference between gold and out
+
+    """
+
+    # check the lengths of the arrays passed
+    lset1x, lset1y, lset2x, lset2y = [len(x)
+                                      for x in [set1x, set1y, set2x, set2y]]
+    if lset1x != lset1y:
+        sys.exit("len(set1x) != len(set1y)")
+    if lset2x != lset2y:
+        sys.exit("len(set2x) != len(set2y)")
+
+    # Use a shortcut if the lengths of the x and y data sets are the same.
+    # Also, before using the shortcut, do a quick check by computing the RMS
+    # on every 10th x value. The RMS check on the x-values only gets computed
+    # if len(set1y) == len(set2y). This check allows for the possibility of
+    # the lengths of the data to be equal but for the spacing to be not equal.
+    if (lset1y == lset2y and
+        np.sum((set1x[::10] - set2x[::10]) ** 2) < 1.0e-6 * np.amax(set1x)):
+        return compute_fast_rms(set1y, set2y)
+
+    else:
+
+        # compute the running square of the difference
+        err = 0.0
+        for i in range(0, lset2x, step):
+
+            for j in range(0, lset1x - 1, step):
+
+                # mss: Very expensive look. Optimize.
+                # if set2x is between set1x pair, do linear interpolation
+                if set1x[j] <= set2x[i] <= set1x[j + 1]:
+                    x_0 = set1x[j]
+                    y_0 = set1y[j]
+                    x_1 = set1x[j + 1]
+                    y_1 = set1y[j + 1]
+                    y_f = y_0 + (set2x[i] - x_0) * (y_1 - y_0) / (x_1 - x_0)
+
+                    # Add the square of the difference to err
+                    err += (set2y[i] - y_f) ** 2
+                    break
+                continue
+            continue
+
+    rmsd = math.sqrt(err / float(lset1x))
+    dnom = abs(np.amax(set1y) - np.amin(set1y))
+    nrmsd = rmsd / dnom if dnom >= 2.e-16 else rmsd
+    return rmsd, nrmsd
+
+
+def compute_fast_rms(gold, out):
+    r"""Determines the RMS of the error between two piecewise functions of same
+    length.
+
+    This should only be called if the timestep sizes of the gold simulation
+    and the simulation that produced out are the same. This function makes no
+    attempt to make that determination, it is up to the caller.
+
+    Parameters
+    ----------
+    gold : str
+        Path to gold file
+    out : str
+        Path to out file
+
+    Returns
+    -------
+    rmsd : float
+        root mean square difference between gold and out
+    nrmsd : float
+        normalized root mean square difference between gold and out
+
+    """
+
+    rmsd = math.sqrt(np.sum((gold - out) ** 2) / float(len(gold)))
+    dnom = abs(np.amax(gold) - np.amin(gold))
+    nrmsd = rmsd / dnom if dnom >= EPSILON else rmsd
+    return rmsd, nrmsd
+
+
+def compare_out_to_gold_rms(gold_f, out_f, to_skip=None):
+    r"""Compare results from out file to those in baseline (gold) file
+
+    Parameters
+    ----------
+    gold_f : str
+        Path to gold file
+    out_f : str
+        Path to out file
+
+    Returns
+    -------
+    returncode : int
+        0 success, !=0 otherwise
+    armsd : array_like
+        accumulated root mean square error
+    anrmsd : array_like
+        accumulated normalized root mean square error
+
+    """
+
+    iam = "compare_out_to_gold_rms(gold_f, out_f)"
+    errors = 0
+
+    if not os.path.isfile(gold_f):
+        logerr("gold file {0} not found".format(gold_f), caller=iam)
+        errors += 1
+        pass
+
+    if not os.path.isfile(out_f):
+        logerr("output file {0} not found".format(out_f), caller=iam)
+        errors += 1
+        pass
+
+    if errors:
+        return errors, None, None
+
+    # read in header
+    out_h = [x.lower() for x in get_header(out_f)]
+    gold_h = [x.lower() for x in get_header(gold_f)]
+
+    if out_h[0] != "time":
+        errors += 1
+        logerr("time not in outfile {0}".format(out_f), caller=iam)
+
+    if gold_h[0] != "time":
+        errors += 1
+        logerr("time not in gold file {0}".format(gold_f), caller=iam)
+
+    if errors:
+        return errors, None, None
+
+    # read in data
+    out = read_data(out_f)
+    gold = read_data(gold_f)
+
+    # check that time is same (lengths must be the same)
+    if len(gold[:, 0]) == len(out[:, 0]):
+        rmsd, nrmsd = compute_fast_rms(gold[:, 0], out[:, 0])
+
+    else:
+        rmsd, nrmsd = 1.0e99, 1.0e99
+
+    if nrmsd > EPSILON:
+        errors += 1
+        logerr("time step error between {0} and {1}".format(out_f, gold_f),
+               caller=iam)
+
+    if errors:
+        return 1, None, None
+
+    # get items to skip and compare
+    if to_skip is None:
+        to_skip = []
+
+    to_compare = [x for x in out_h if x in gold_h if x not in to_skip]
+
+    # do the comparison
+    anrmsd, armsd = [], []
+    for val in to_compare:
+        gidx = gold_h.index(val)
+        oidx = out_h.index(val)
+        rmsd, nrmsd = compute_rms(gold[:, 0], gold[:, gidx],
+                                  out[:, 0], out[:, oidx])
+        anrmsd.append(nrmsd)
+        armsd.append(rmsd)
+        continue
+
+    return 0, np.array(anrmsd), np.array(armsd)

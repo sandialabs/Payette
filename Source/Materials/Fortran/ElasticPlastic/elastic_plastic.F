@@ -30,19 +30,13 @@ C      stresss and strains, plastic strain tensors
 C          11, 22, 33, 12, 23, 13
 C
 C***********************************************************************
-#ifdef TJF_IMPLNONE
       IMPLICIT NONE
-#else
-#include "precision.Blk"
-#endif
 C
 C.............................................................parameters
 #include "elastic_plastic_pnt.Blk"
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION PTHIRD,PHALF,P3HALF,P2THIRD
       DOUBLE PRECISION PZERO,PONE,PTWO,PTHREE,ROOT2
       DOUBLE PRECISION TOL1M10,YLDTOL
-#endif
       PARAMETER (PTHIRD=0.333333333333333333333333333333333333333333D0)
       PARAMETER (P2THIRD=0.66666666666666666666666666666666666666667D0)
       PARAMETER (  ROOT2=0.141421356237309504880168872420969807856967D1)
@@ -52,14 +46,11 @@ C.............................................................parameters
 C.................................................................common
 #include "elastic_plastic_prop.h"
 C.................................................................passed
-#ifdef TJF_IMPLNONE
       INTEGER NBLK,NINSV
       DOUBLE PRECISION SV,SIG,USM,UI,D,DT
-#endif
       DIMENSION SV(NINSV),SIG(6),USM(NBLK)
       DIMENSION UI(*),D(6)
 C..................................................................local
-#ifdef TJF_IMPLNONE
       INTEGER IJ,I
       DOUBLE PRECISION DUMA
       DOUBLE PRECISION DUM,RJN
@@ -67,7 +58,7 @@ C..................................................................local
       DOUBLE PRECISION T,TMLT,U,RHO,DTE,DTP
       DOUBLE PRECISION DELTA,FAC
       DOUBLE PRECISION TRDTAU,SINVDTAU
-      DOUBLE PRECISION S,TAUN,QSTAUN,QSTAUT,QSTAUP,TAUP,RI1,RTJ2
+      DOUBLE PRECISION S,TAUN,QSTAUN,QSTAUT,QSTAUP,TAUP
       DOUBLE PRECISION QSTH
       DOUBLE PRECISION DTAUT,DTAU,DTAUISO,DTAUDEV,APART
       DOUBLE PRECISION DE,DEISO,DEDEV,DEP,DEE
@@ -78,7 +69,6 @@ C..................................................................local
       DOUBLE PRECISION DFDI1,DFDJ2,DGDI1,DGDJ2
       DOUBLE PRECISION ALPHA1,ALPHA2,DDD,BETA,Y1,Y2,ZETA
       DOUBLE PRECISION H
-#endif
 C     symmetric stress tensors
       DIMENSION S(6),TAUN(6),TAUP(6)
       DIMENSION DTAUT(6),DTAU(6),DTAUISO(6),DTAUDEV(6)
@@ -98,11 +88,9 @@ C     Needed for induced anisotropy
 C...................................................................data
       LOGICAL INELASTIC
 C...............................................................external
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION DMMTR,DMMDBD,DMMEN,DMMYLD
       DOUBLE PRECISION DMMRJ2,DMMTS,DMMTMG
       DOUBLE PRECISION DMMAMA,DMMHRD
-#endif
 C....................................................statement functions
 Ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc DIAMM_CALC
 C
@@ -438,35 +426,23 @@ C  yymmdd|usrname|what was done
 C  ------ --- -------------
 C  100223|tjfulle|created routine
 C
-#ifdef TJF_IMPLNONE
       IMPLICIT NONE
-#else
-#include "precision.Blk"
-#endif
 C............................................................parameters
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION PZERO,PONE,PTHREE,PTHIRD,PHALF
-#endif
       PARAMETER (PZERO=0.D0,PONE=1.D0,PTHREE=3.D0)
       PARAMETER (PTHIRD=0.333333333333333333333333333333333333333333D0)
       PARAMETER (PHALF=0.5D0)
 C.................................................................passed
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION A,FINVA,SINVA,AISO,ADEV
-#endif
       DIMENSION A(6),AISO(6),ADEV(6)
 C..................................................................local
-#ifdef TJF_IMPLNONE
       INTEGER IJ
       DOUBLE PRECISION TMP,DELTA
-#endif
       DIMENSION DELTA(6)
       SAVE DELTA
       DATA DELTA/PONE,PONE,PONE,PZERO,PZERO,PZERO/
 C...............................................................external
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION DMMDBD
-#endif
 Ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       FINVA= A(1)+A(2)+A(3)
       DO IJ=1,6
@@ -488,26 +464,16 @@ C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       SUBROUTINE DMMDEV(A,ADEV)
 C***********************************************************************
 C     PURPOSE: Return deviatoric part of second order tensor
-#ifdef TJF_IMPLNONE
       IMPLICIT NONE
-#else
-#include "precision.Blk"
-#endif
 C............................................................parameters
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION PZERO,PONE,PTHREE,PTHIRD
-#endif
       PARAMETER (PZERO=0.D0,PONE=1.D0,PTHREE=3.D0,PTHIRD=PONE/PTHREE)
 C.................................................................passed
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION A,ADEV
-#endif
       DIMENSION A(6),ADEV(6)
 C..................................................................local
-#ifdef TJF_IMPLNONE
       INTEGER IJ
       DOUBLE PRECISION TMP,DELTA
-#endif
       DIMENSION DELTA(6)
       SAVE DELTA
       DATA DELTA/PONE,PONE,PONE,PZERO,PZERO,PZERO/
@@ -548,15 +514,9 @@ C  yymmdd|usrname|what was done
 C  ------ --- -------------
 C  100223|tjfulle|created routine
 C
-#ifdef TJF_IMPLNONE
       IMPLICIT NONE
-#else
-#include "precision.Blk"
-#endif
 C.............................................................parameters
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION PZERO,PTWO,PTHREE,PSIX,ROOT3,TOOR3,ROOT23,PTHIRD
-#endif
       PARAMETER (PZERO=0.0D0,PTWO=0.2D1,PTHREE=0.3D1,PSIX=6.0D0)
       PARAMETER (PTHIRD=0.3333333333333333333333333333333333333333333D0)
       PARAMETER (  ROOT3=0.173205080756887729352744634150587236694281D1)
@@ -566,9 +526,7 @@ C.............................................................parameters
 C.................................................................common
 #include "elastic_plastic_prop.h"
 C.................................................................passed
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION UI
-#endif
       DIMENSION UI(*)
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC DMMPAR
 C     Logicals
@@ -631,36 +589,22 @@ C  yymmdd|usrname|what was done
 C  ------ --- -------------
 C  100223|tjfulle|created routine
 C
-#ifdef TJF_IMPLNONE
       IMPLICIT NONE
-#else
-#include "precision.Blk"
-#endif
 C.............................................................parameters
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION TOL1M10,TOOR3,HUGE
-#endif
       PARAMETER (TOL1M10=1.D-10,HUGE=1.D90)
       PARAMETER (  TOOR3=0.577350269189625764509148780501957455647602D0)
 C.................................................................common
 C.................................................................passed
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION A,AZ,AR,ER
-#endif
       DIMENSION A(6),ER(6)
 C...............................................................external
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION DMMTR,DMMTMG
-#endif
 C..........................................................local scalars
-#ifdef TJF_IMPLNONE
       INTEGER IJ
       DOUBLE PRECISION DUM
-#endif
 C...........................................................local arrays
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION S
-#endif
       DIMENSION S(6)
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC DMMLOD
       AZ = TOOR3*DMMTR(A)
@@ -698,44 +642,33 @@ C  yymmdd|usrname|what was done
 C  ------ --- -------------
 C  100223|tjfulle|created routine
 C
-#ifdef TJF_IMPLNONE
       IMPLICIT NONE
-#else
-#include "precision.Blk"
-#endif
 C............................................................parameters
 #include "elastic_plastic_pnt.Blk"
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION PZERO,PHALF,PONE,PTWO,PTHREE,PTEN,PTHIRD
-#endif
       PARAMETER (PZERO=0.D0,PONE=1.D0,PTWO=2.D0,PTHREE=3.D0,PTEN=10.D0)
       PARAMETER (PHALF=0.5D0)
       PARAMETER (PTHIRD=0.333333333333333333333333333333333333333333D0)
 C.................................................................common
 #include "elastic_plastic_prop.h"
 C.................................................................passed
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION UI,U,RHO,T,EV,BM,SM,TAU
-#endif
       DIMENSION UI(*),TAU(6)
 C..................................................................local
-#ifdef TJF_IMPLNONE
       INTEGER IDK,IDG
-      DOUBLE PRECISION P,S,UIMG
+      DOUBLE PRECISION P
       DOUBLE PRECISION CS,RJFAC
-#endif
 #ifdef KERLEY_EOS_RTNS
+      DOUBLE PRECISION S,UIMG
       DIMENSION S(9),UIMG(22)
 #endif
 C...................................................................data
 C...............................................................external
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION DMMTR
-#endif
 C....................................................statement functions
 Ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc DMMMOD
-      IDK=UI(IPIDK)
-      IDG=UI(IPIDG)
+      IDK=NINT(UI(IPIDK))
+      IDG=NINT(UI(IPIDG))
       P= -PTHIRD*DMMTR(TAU)
       CS = PONE
       U = PONE
@@ -804,17 +737,11 @@ C  yymmdd|usrname|what was done
 C  ------ --- -------------
 C  100223|tjfulle|ported/modified Kayenta routine for DMM
 C
-#ifdef TJF_IMPLNONE
       IMPLICIT NONE
-#else
-#include "precision.Blk"
-#endif
 C
 C.............................................................parameters
 #include "elastic_plastic_pnt.Blk"
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION PTHIRD,PHALF,PZERO,PONE,PSIX,TOL1M20,EUNDERFLOW
-#endif
       PARAMETER (PTHIRD=0.3333333333333333333333333333333333333333333D0)
       PARAMETER (PHALF=0.5D0)
       PARAMETER (PZERO=0.D0,PONE=1.D0,PSIX=6.D0)
@@ -823,15 +750,11 @@ C.............................................................parameters
 C.................................................................common
 #include "elastic_plastic_prop.h"
 C.................................................................passed
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION DT,EQDOT,SIGOLD,QSSIGOLD,QSSIG,DSIGT,SIG,SV
-#endif
       DIMENSION SIGOLD(6),QSSIGOLD(6),QSSIG(6),DSIGT(6),SIG(6),SV(*)
 C..................................................................local
-#ifdef TJF_IMPLNONE
       INTEGER IJ,I
       DOUBLE PRECISION SIGV,DUM,TCHAR,RHI,RLO,RMID,RAT
-#endif
       DIMENSION SIGV(6)
 C...................................................................data
 C...............................................................external
@@ -912,7 +835,8 @@ C***********************************************************************
 C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMTMG(A)
 C     Purpose: Magnitude of second order tensor A
-#include "precision.Blk"
+      IMPLICIT NONE
+      DOUBLE PRECISION A,DMMTMG,DMMDBD
       DIMENSION A(6)
       DMMTMG=SQRT(DMMDBD(A,A))
       RETURN
@@ -920,7 +844,8 @@ C     Purpose: Magnitude of second order tensor A
 C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMDBD(A,B)
 C     Purpose: Double dot product of second order tensors A and B
-#include "precision.Blk"
+      IMPLICIT NONE
+      DOUBLE PRECISION A,B,PTWO,DMMDBD
       PARAMETER (PTWO=2.D0)
       DIMENSION A(6),B(6)
       DMMDBD=     A(1)*B(1)+A(2)*B(2)+A(3)*B(3)
@@ -930,7 +855,8 @@ C     Purpose: Double dot product of second order tensors A and B
 C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMTR(A)
 C     Purpose: Trace of second order tensor A
-#include "precision.Blk"
+      IMPLICIT NONE
+      DOUBLE PRECISION A,DMMTR,TOL,PZERO
       DIMENSION A(6)
       PARAMETER (TOL=1.D-15,PZERO=0.D0)
       DMMTR=A(1)+A(2)+A(3)
@@ -940,7 +866,8 @@ C     Purpose: Trace of second order tensor A
 C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMRJ2(A)
 C     Purpose: Square root of second invariant of second order tensor A
-#include "precision.Blk"
+      IMPLICIT NONE
+      DOUBLE PRECISION A,AD,PHALF,DMMDBD,DMMRJ2
       DIMENSION A(6),AD(6)
       PARAMETER (PHALF=0.5D0)
       CALL DMMDEV(A,AD)
@@ -950,7 +877,8 @@ C     Purpose: Square root of second invariant of second order tensor A
 C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMEN(A,B,RHO)
 C     Purpose: Energy inc. for stress A, strain inc. B and density RHO
-#include "precision.Blk"
+      IMPLICIT NONE
+      DOUBLE PRECISION A,RHO,B,DMMDBD,DMMEN
       DIMENSION A(6),B(6)
       DMMEN= DMMDBD(A,B)/RHO
       RETURN
@@ -958,8 +886,9 @@ C     Purpose: Energy inc. for stress A, strain inc. B and density RHO
 C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMTS(T)
 C     Purpose: Johnson-Cook homologous temperature
-#include "precision.Blk"
+      IMPLICIT NONE
 #include "elastic_plastic_prop.h"
+      DOUBLE PRECISION PZERO, PONE, TARG, DMMTS, T, DMMTMULT
       PARAMETER(PZERO=0.D0,PONE=1.D0)
       TARG= MAX(T-T0,PZERO)
       DMMTS= PONE-(TARG/(TM-T0))**XP
@@ -969,8 +898,10 @@ C     Purpose: Johnson-Cook homologous temperature
 C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMYLD(TAU,EQPS,T)
 C     Purpose: Value of yield function
-#include "precision.Blk"
+      IMPLICIT NONE
 #include "elastic_plastic_prop.h"
+      DOUBLE PRECISION EQPS,T, DMMTR, DMMTS
+      DOUBLE PRECISION ROOT23,TAU,RI1,FF,DMMYLD,DMMRJ2
       PARAMETER(ROOT23=0.816496580927726032732428024901963797321982D0)
       DIMENSION TAU(6)
 Ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -982,8 +913,9 @@ Ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMDYLDFNCDT(D1,D2,D3)
 C     Purpose: Derivative of yield function wrt T
-#include "precision.Blk"
+      IMPLICIT NONE
 #include "elastic_plastic_prop.h"
+      DOUBLE PRECISION PZERO, D1, D2, D3, TARG, DMMDYLDFNCDT
       PARAMETER(PZERO=0.D0)
       TARG= MAX(D3-T0,PZERO)
       IF(TARG.EQ.PZERO)THEN
@@ -997,7 +929,8 @@ C     Purpose: Derivative of yield function wrt T
 C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMHYFNC(A3,A4,EQPS,RMS)
 C     Purpose:
-#include "precision.Blk"
+      IMPLICIT NONE
+      DOUBLE PRECISION PZERO, A3, A4, EQPS, RMS, HY, DMMHYFNC
       PARAMETER(PZERO=0.D0)
       IF(EQPS.GT.PZERO)THEN
          HY= A3*A4*EQPS**A4*SQRT(RMS*RMS)/EQPS
@@ -1013,7 +946,8 @@ ctim
 C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMHTFNC(TAUN,RM,RHO0,CV)
 C     Purpose:
-#include "precision.Blk"
+      IMPLICIT NONE
+      DOUBLE PRECISION PZERO,TAUN,RM,RHO0,CV,DMMHTFNC,DMMEN
       PARAMETER (PZERO=0.D0)
       DIMENSION TAUN(6),RM(6)
       DMMHTFNC= DMMEN(TAUN,RM,RHO0)/CV
@@ -1024,7 +958,9 @@ C     Purpose:
 C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMAMA(BM,TWOG,TWOG1,EDEVMAGSQ)
 C     Purpose:
-#include "precision.Blk"
+      IMPLICIT NONE
+      DOUBLE PRECISION PONE,PTWO,PTHREE,PFIVE,PSIX,PNINE,PI
+      DOUBLE PRECISION XISOMAG,DMMAMA,BM,TWOG,TWOG1,EDEVMAGSQ,XMAG
       PARAMETER (PONE=1.D0,PTWO=2.D0,PTHREE=3.D0,PFIVE=5.D0,PSIX=6.D0)
       PARAMETER (PNINE=9.D0)
       PARAMETER (PI=3.1415926535897932384626433832795028841971693993D0)
@@ -1038,6 +974,7 @@ C     Scalar measure of anisotropy
 
 C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMHRD(DUM1,DUM2,DUM3,DUM4)
+      DOUBLE PRECISION DMMHRD,DUM1,DUM2,DUM3,DUM4
       DMMHRD=0.D0*(DUM1+DUM2+DUM3+DUM4)
       RETURN
       END
@@ -1062,18 +999,12 @@ C  yymmdd|usrname|what was done
 C  ------ --- -------------
 C  100422|tjfulle|created routine
 C
-#ifdef TJF_IMPLNONE
       IMPLICIT NONE
-#else
-#include "precision.Blk"
-#endif
 C............................................................parameters
 #include "elastic_plastic_pnt.Blk"
 C.................................................................common
 C.................................................................passed
-#ifdef TJF_IMPLNONE
       DOUBLE PRECISION UIOLD,UI
-#endif
       DIMENSION UIOLD(*),UI(*)
 C..................................................................local
 CccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccEOSUI
@@ -1165,9 +1096,10 @@ C  yymmdd:usernam:   m o d i f i c a t i o n
 C  ---------------------------------------------------------------------
 C  090713:tim fuller:Created original data check
 C
-#include "precision.Blk"
+      IMPLICIT NONE
 #include "elastic_plastic_pnt.Blk"
 C
+      DOUBLE PRECISION UI,PZERO,PONE,PTWO,PTHREE,HUGE,ROOT3,TOOR3
       DIMENSION UI(*)
       PARAMETER (PZERO=0.D0,PONE=1.D0,PTWO=2.D0,PTHREE=3.D0)
       PARAMETER (HUGE=1.D80)
@@ -1178,6 +1110,7 @@ C  ...local
       CHARACTER*6 IAM
       PARAMETER( IAM = 'DMMCHK' )
 #ifdef KERLEY_EOS_RTNS
+      DOUBLE PRECISION A,CS,GP,S1
       DIMENSION A(8)
 #endif
       LOGICAL DEJAVU
@@ -1384,11 +1317,14 @@ C  -------  ------  ----------------------------------------------------
 C  rmbrann  030809  Created original extra variable routine
 C
 
-#include "precision.Blk"
-#include "numbers.Blk"
+      IMPLICIT NONE
 #include "elastic_plastic_pnt.Blk"
 C
+      DOUBLE PRECISION PZERO,PONE,PTWO,PTHREE
+      PARAMETER (PZERO=0.D0,PONE=1.D0,PTWO=2.D0,PTHREE=3.D0)
       INTEGER MMCN,MMCK,MNUNIT,MMCNA,MMCKA
+      INTEGER NX, IADVCT, ITYPE
+      DOUBLE PRECISION UI,RINIT,RDIM
       PARAMETER (MMCN=50,MMCK=10,MNUNIT=7)
       PARAMETER (MMCNA=NDMMISV*MMCN,MMCKA=NDMMISV*MMCK)
 C
@@ -1398,6 +1334,8 @@ C
       DIMENSION IADVCT(*),ITYPE(*)
       DIMENSION UI(*), RINIT(*), RDIM(7,*)
 C
+      INTEGER ISV
+      DOUBLE PRECISION VINIT
       CHARACTER*6 IAM
       PARAMETER(IAM='DMMRXV')
 

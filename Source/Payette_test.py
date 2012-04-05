@@ -35,9 +35,8 @@ if __name__ == "__main__":
     srcd = os.path.dirname(thisd)
     sys.path.append(srcd)
 
-from Payette_utils import *
-
 import Payette_config as pc
+import Source.Payette_utils as pu
 import Source.Materials.Payette_installed_materials as pim
 
 speed_kws = ["fast","medium","long"]
@@ -104,22 +103,23 @@ class PayetteTest:
 
         if not self.name:
             errors += 1
-            self.warn(iam,"no name given for test")
+            pu.logwrn("no name given for test", caller=iam)
             pass
 
         if not self.tdir:
             errors += 1
-            self.warn(iam,"no test directory given for test")
+            pu.logwrn("no test directory given for test", caller=iam)
             pass
 
         if not self.keywords:
             errors += 1
-            self.warn(iam,"no keywords given")
+            pu.logwrn("no keywords given", caller=iam)
             pass
 
         if not isinstance(self.keywords,(list,tuple)):
             errors += 1
-            self.warn(iam,"keywords must be list, got {0}".format(self.keywords))
+            pu.logwrn("keywords must be list, got {0}".format(self.keywords),
+                      caller=iam)
             pass
 
         else:
@@ -132,35 +132,35 @@ class PayetteTest:
                 continue
             if not lkw:
                 msg = "keywords must specify one of {0}".format(", ".join(speed_kws))
-                self.warn(iam,msg)
+                pu.logwrn(msg, caller=iam)
             elif lkw > 1:
                 msg = ("keywords must specify only one of {0}"
                        .format(", ".join(speed_kws)))
-                self.warn(iam,msg)
+                pu.logwrn(msg, caller=iam)
                 pass
             if not tkw:
                 msg = "keywords must specify one of {0}".format(", ".join(type_kws))
-                self.warn(iam,msg)
+                pu.logwrn(msg, caller=iam)
             elif tkw > 1:
                 msg = ("keywords must specify only one of {0}"
                        .format(", ".join(type_kws)))
-                self.warn(iam,msg)
+                pu.logwrn(msg, caller=iam)
                 pass
             pass
 
         if not self.owner:
             errors += 1
-            self.warn(iam,"no owner specified")
+            pu.logwrn("no owner specified", caller=iam)
             pass
 
         if not self.date:
             errors += 1
-            self.warn(iam,"no date given")
+            pu.logwrn("no date given", caller=iam)
             pass
 
         if self.infile and not os.path.isfile(self.infile):
             errors += 1
-            self.warn(iam,"infile {0} not found".format(self.infile))
+            pu.logwrn("infile {0} not found".format(self.infile), caller=iam)
             pass
 
         if self.baseline:
@@ -168,36 +168,38 @@ class PayetteTest:
                 for fff in self.baseline:
                     if not os.path.isfile(fff):
                         errors += 1
-                        self.warn(iam,"baseline {0} not found".format(fff))
+                        pu.logwrn("baseline {0} not found".format(fff),
+                                  caller=iam)
                         pass
                     continue
             elif not os.path.isfile(self.baseline):
                 errors += 1
-                self.warn(iam,"baseline {0} not found".format(self.baseline))
+                pu.logwrn("baseline {0} not found".format(self.baseline),
+                          caller=iam)
                 pass
             pass
 
         if not self.description:
             errors += 1
-            self.warn(iam,"no description given")
+            pu.logwrn("no description given", caller=iam)
             pass
 
         if not isinstance(self.items_to_skip,(list,tuple)):
             errors += 1
-            self.warn(iam,"items to skip must be list, got {0}"
-                      .format(self.items_to_skip))
+            pu.logwrn("items to skip must be list, got {0}"
+                      .format(self.items_to_skip), caller=iam)
             pass
 
 
         if not isinstance(self.items_to_compare,(list,tuple)):
             errors += 1
-            self.warn(iam,"items to compare must be list, got {0}"
-                      .format(self.items_to_compare))
+            pu.logwrn("items to compare must be list, got {0}"
+                      .format(self.items_to_compare), caller=iam)
             pass
 
         # check for previous errors
         if errors:
-            self.error(iam,"fix previous warnings")
+            pu.logerr("fix previous warnings", caller=iam)
             pass
 
         return errors
@@ -215,21 +217,9 @@ class PayetteTest:
 
         return compare
 
-    def error(self,caller,message):
-        print "ERROR: {0} [reported by {1}]".format(message,caller)
-        return
-
-    def warn(self,caller,message):
-        print "WARNING: {0} [reported by {1}]".format(message,caller)
-        return
-
-    def inform(self,caller,message):
-        print "INFO: {0} [reported by {1}]".format(message,caller)
-        return
-
     def run_command(self,*cmd,**kwargs):
 
-        cmd,error = self.build_command(*cmd)
+        cmd, error = self.build_command(*cmd)
         if error:
             return error
 
@@ -280,14 +270,14 @@ class PayetteTest:
             pass
 
         if not found:
-            error(iam,"executable {0} not found".format(exenam))
-            return None,self.failcode
+            pu.error("executable {0} not found".format(exenam), caller=iam)
+            return None, self.failcode
 
         cmd[0] = exenam
 
         return [ x for x in cmd ], self.passcode
 
-    def compare_out_to_baseline_rms(self,baselinef=None,outf=None):
+    def compare_out_to_baseline_rms(self, baselinef=None, outf=None):
         """
             Compare results from out file to those in baseline
 
@@ -332,24 +322,22 @@ class PayetteTest:
             errors += 1
             log.error(iam,"time not first column of {0} for {1}".format(outf,
                                                                         self.name))
-            pass
-
         if goldheader[0] != "time":
             errors += 1
             log.error(iam,"time not first column of {0} for {1}".format(baselinef,
                                                                         self.name))
-            pass
 
         if errors:
             return self.badincode
 
         # read in data
-        out = self.read_data(outf)
-        gold = self.read_data(baselinef)
+        out = pu.read_data(outf)
+        gold = pu.read_data(baselinef)
 
         # check that time is same (lengths must be the same)
         if len(gold[:,0]) == len(out[:,0]):
-            rmsd, nrmsd = self.compute_fast_RMS(gold[:,0], out[:,0])
+            rmsd, nrmsd = pu.compute_fast_rms(gold[:,0], out[:,0])
+
         else:
             rmsd, nrmsd = 1.0e99, 1.0e99
 
@@ -369,43 +357,49 @@ class PayetteTest:
         log.write("TOLERANCES:")
         log.write("  diff tol: {0:10e}".format(self.difftol))
         log.write("  fail tol: {0:10e}\n".format(self.failtol))
-        errors = []
 
         # get items to skip
         # kayenta specific customization
         if "kayenta" in self.keywords:
-            self.items_to_skip.extend(["KAPPA","EOS1","EOS2","EOS3","EOS4",
-                                       "PLROOTJ2","SNDSP","ENRGY","RHO","TMPR"])
-            pass
+            self.items_to_skip.extend(
+                ["KAPPA","EOS1","EOS2","EOS3","EOS4",
+                 "PLROOTJ2","SNDSP","ENRGY","RHO","TMPR"])
+
         to_skip = [x.lower() for x in self.items_to_skip]
 
         if not self.items_to_compare:
             to_compare = [ x for x in outheader if x in goldheader
                            and x not in to_skip ]
-            pass
-        else: to_compare = [x.lower() for x in self.items_to_compare]
+
+        else:
+            to_compare = [x.lower() for x in self.items_to_compare]
 
         failed, diffed = False, False
+        ftol, dtol = self.failtol, self.difftol
         for val in to_compare:
             gidx = goldheader.index(val)
             oidx = outheader.index(val)
-            rmsd, nrmsd = self.compute_RMS(gold[:,0],gold[:,gidx],
-                                           out[:,0],out[:,oidx])
+            mxg = (np.amax(np.abs(gold[:, gidx])) if
+                   np.amax(np.abs(gold[:, gidx])) != 0. else 1.)
+
+            rmsd, nrmsd = pu.compute_rms(gold[:,0], gold[:,gidx],
+                                         out[:,0], out[:,oidx])
 
             # For good measure, write both the RMSD and normalized RMSD
             if nrmsd >= self.failtol:
                 failed = True
                 stat = "FAIL"
+
             elif nrmsd >= self.difftol:
                 diffed = True
                 stat = "DIFF"
+
             else:
                 stat = "PASS"
-                pass
-            log.write("{0}: {1}".format(val,stat))
+
+            log.write("{0}: {1}".format(val, stat))
             log.write("  Unscaled error: {0:.10e}".format(rmsd))
             log.write("    Scaled error: {0:.10e}".format(nrmsd))
-            errors.append(nrmsd)
             continue
 
         if failed:
@@ -436,102 +430,6 @@ class PayetteTest:
             except: pass
             continue
         return
-
-    def read_data(self,f):
-        """
-            Reads in a whitespace-delimed data file f. It is assumed that the
-            first line contains text (the name of the column). All other lines
-            contain floats.
-
-            Returns m x n dimensional numpy ndarray where m is the number of data
-            points (rows) and n the number of data fields (columns)
-        """
-        return np.loadtxt(f,skiprows=1)
-
-    def compute_fast_RMS(self,gold,out):
-        """
-            Determines the RMS of the error between two piecewise functions of
-            same length. This should only be called if the timestep sizes of the
-            gold simulation and the simulation that produced out are the same.
-            This function makes no attempt to make that determination, it is up
-            to the caller.
-
-            Tim Fuller, Sandia, National Laboratories, tjfulle@sandia.gov
-        """
-        rmsd = math.sqrt(np.sum((gold - out)**2)/float(len(gold)))
-        dnom = abs(np.amax(gold) - np.amin(gold))
-        nrmsd = rmsd/dnom if dnom >= np.finfo(np.float).eps else rmsd
-        return rmsd, nrmsd
-
-    def compute_RMS(self,set1x,set1y,set2x,set2y,step=1):
-        """
-        NAME:
-            compute_RMS( list(float)x4, step=int )
-
-        PURPOSE:
-            Determines the RMS of the error between two piecewise functions. In
-            almost all cases, the abscissa variables (set1x and set2x) will be
-            time. Currently, the abscissa variables are required to be
-            monotonically increasing (for easier computing). Interpolations are
-            used to compare data points where data is missing in the other set.
-
-            "set2{x,y}" is compared against "set1{x,y}".
-
-            len(set1x) == len(set1y)
-            len(set2x) == len(set2y)
-
-            The optional "step" argument is used for large data sets. This gives
-            the benchmark developer more control over how the error is computed
-            (choosing accuracy vs. speed).
-
-        AUTHORS:
-            M. Scot Swan, Sandia National Laboratories, mswan@sandia.gov
-
-        CHANGELOG:
-            20 Jun 2011   mswan   Created
-        """
-
-        # check the lengths of the arrays passed
-        lset1x,lset1y,lset2x,lset2y = map(len,[set1x,set1y,set2x,set2y])
-        if lset1x != lset1y: sys.exit("len(set1x) != len(set1y)")
-        if lset2x != lset2y: sys.exit("len(set2x) != len(set2y)")
-
-        # Use a shortcut if the lengths of the x and y data sets are the same.
-        # Also, before using the shortcut, do a quick check by computing the RMS
-        # on every 10th x value. The RMS check on the x-values only gets computed
-        # if len(set1y) == len(set2y). This check allows for the possibility of
-        # the lengths of the data to be equal but for the spacing to be not
-        # equal.
-        if (lset1y == lset2y and
-            np.sum((set1x[::10]-set2x[::10])**2) < 1.0e-6*np.amax(set1x)):
-            return self.compute_fast_RMS(set1y,set2y)
-
-        else:
-
-            # compute the running square of the difference
-            err = 0.0
-            for i in range(0,lset2x,step):
-
-                for j in range(0,lset1x-1,step):
-
-                    # mss: Very expensive look. Optimize.
-                    # if set2x is between set1x pair, do linear interpolation
-                    if set1x[j] <= set2x[i] <= set1x[j+1]:
-                        x0 = set1x[j];   y0 = set1y[j]
-                        x1 = set1x[j+1]; y1 = set1y[j+1]
-                        f = y0 + (set2x[i]-x0)*(y1-y0)/(x1-x0)
-
-                        # Add the square of the difference to err
-                        err += (set2y[i] - f)**2
-                        break
-                    continue
-                continue
-            pass
-
-        rmsd = math.sqrt(err/float(lset1x))
-        dnom = abs(np.amax(set1y) - np.amin(set1y))
-        nrmsd = rmsd/dnom if dnom >= 2.e-16 else rmsd
-        return rmsd, nrmsd
 
     def compare_constant_strain_at_failure(self,outf=None,epsfail=None):
         """ compare the constant strain at failure with expected """
@@ -592,7 +490,7 @@ class PayetteTest:
             return self.badincode
 
         # read in the data
-        out = self.read_data(outf)
+        out = pu.read_data(outf)
 
         # compare results
         failed, diffed = False, False
@@ -710,7 +608,7 @@ class PayetteTest:
 
         return
 
-    def diff_files(self,gold,out):
+    def diff_files(self, gold, out):
 
         """ compare gold with out """
 
@@ -1022,14 +920,6 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
         continue
 
     return errors, found_tests
-
-def warn(iam,message):
-    print("WARNING: {0} [reported by {1}]".format(message,iam))
-    return
-
-def error(iam,message):
-    print("ERROR: {0} [reported by {1}]".format(message,iam))
-    return
 
 if __name__ == "__main__":
     errors, found_tests = findTests(["elastic","fast"],[],[])

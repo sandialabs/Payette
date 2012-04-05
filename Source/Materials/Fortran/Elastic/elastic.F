@@ -63,11 +63,7 @@ C         every Hooke's Law element that is to be evaluated in rate form.
 !
 !***********************************************************************
 !
-#ifdef SIERRA_PARALLEL_MPI
-#include <src/material/Smod_precision.blk>
-#else
-#include "precision.Blk"
-#endif
+      IMPLICIT NONE
 !
 !***********************************************************************
 !
@@ -82,25 +78,27 @@ C         every Hooke's Law element that is to be evaluated in rate form.
 !
 C...parameters
 C...parameters (numbers)
+      DOUBLE PRECISION PTHIRD,PZERO,PONE,PTWO
       PARAMETER (PTHIRD=0.3333333333333333333333333333333333333333333D0)
       PARAMETER (PZERO=0.0D0,PONE=0.1D1,PTWO=0.2d1)
 #include "elastic.pnt"
 C...passed
+      INTEGER NBLK,NINSV,IBLK,I
+      DOUBLE PRECISION SVARG,SIGARG,USM,PROP,D,DT,ARG
       DIMENSION SVARG(NINSV,NBLK),SIGARG(6,NBLK),USM(NBLK)
       DIMENSION PROP(*),D(6,NBLK)
 C...local
       character*18 iam
       parameter (iam='HOOKE_INCREMENTAL')
+      DOUBLE PRECISION DUM, RLAM, TWOG, DEV
 C
-#ifdef BRANNON_DEBUG
-#include "debug.h"
-#endif
 C
 ! Statement functions
 C Specialized version of exponential, apparently implemented to prevent
 C underflow replacement of EXP(Z) by zero when Z is an extraordinarily
 C large negative number. For all practical purposes, EXPS should be
 C regarded as equivalent to EXP.
+      DOUBLE PRECISION EUNDERFLOW,EOVERFLOW,EXPS
       PARAMETER (EUNDERFLOW=-34.53877639491D0*PONE)
       PARAMETER (EOVERFLOW=92.1034037D0*PONE)
       EXPS(ARG) = EXP(MIN(MAX(ARG,EUNDERFLOW),EOVERFLOW))
@@ -158,15 +156,10 @@ C
 C  yymmdd:usernam: m o d i f i c a t i o n
 C  ---------------------------------------------------------------------
 C  111111:rmbrann:Created original data check
-#ifdef SIERRA_PARALLEL_MPI
-#include <src/material/Smod_precision.blk>
-#include <src/material/Smod_numbers.blk>
-#else
-#include "precision.Blk"
-#include "numbers.Blk"
-#endif
-#include "elastic.pnt"
 C ...local
+      IMPLICIT NONE
+#include "elastic.pnt"
+      DOUBLE PRECISION UI,GC,DC,DUM
       CHARACTER*8 IAM
       PARAMETER( IAM = 'HOOKECHK' )
 CCCC  character*60 jnkstr
@@ -220,10 +213,11 @@ C    who yymmdd M O D I F I C A T I O N
 C  ------- ------ ----------------------------------------------------
 C  rmbrann 111111 Created original extra variable routine
 C
-#include "precision.Blk"
-#include "numbers.Blk"
-#include "elastic.pnt"
 C
+      IMPLICIT NONE
+
+#include "elastic.pnt"
+      INTEGER NHOOKEISV,NX,IADVCT,ITYPE
       parameter (nhookeisv=2)
       INTEGER MMCN,MMCK,MNUNIT,MMCNA,MMCKA
       PARAMETER (MMCN=40,MMCK=10,MNUNIT=7)
@@ -233,6 +227,7 @@ C
       CHARACTER*(MMCK) KEY(NHOOKEISV)
       CHARACTER*1 NAMEA(*), KEYA(*)
       DIMENSION IADVCT(nhookeisv),ITYPE(nhookeisv)
+      DOUBLE PRECISION UI,GC,DC,RINIT,RDIM,DUM
       DIMENSION UI(*), GC(*), DC(*), RINIT(nhookeisv), RDIM(7,nhookeisv)
 C
       CHARACTER*8 IAM
@@ -328,17 +323,11 @@ C  ------ --- -------------
 C  080613|rmb|created routine
 C
 C
-#ifdef BRANNON_IMPLNONE
       IMPLICIT NONE
-#else
-#include "implicit.h"
-#endif
 C
 C.............................................................parameters
-#ifdef BRANNON_IMPLNONE
       INTEGER IPLAM,IPG,IPE,IPNU,IPK,IPH,IPKO,IPCL,IPCT,IPCO,IPCR
       INTEGER IPNEEDRHO,IPLAST
-#endif
       PARAMETER (IPLAM=1)
       PARAMETER (IPG  =2)
       PARAMETER (IPE  =3)
