@@ -9,7 +9,7 @@ independent of host finite element code implementation. Important prerequisites
 in the design of *Payette* were ease of model installation and support for
 constitutive routines written in Fortran. This requirement is met by providing a
 simple API with which a model developer can install a material in *Payette* as
-a new Python class and use `f2py <cens.ioc.ee/projects/f2py2e/>`_ to compile
+a new Python class and use `f2py <http://www.scipy.org/F2py>`_ to compile
 Python extension modules from the material's Fortran source (if applicable). In
 this section, the required elements of the constitutive model interface and
 instructions on compiling the material's Fortran source (if applicable) are

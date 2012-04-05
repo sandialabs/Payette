@@ -3,9 +3,15 @@
 Introduction
 ############
 
-*Payette* is an object oriented material model driver written in `Python
-<http://www.python.org>`_ designed for rapid development and testing of material
-models.
+`Payette <http://www.eng.utah.edu/~timothyf>`_ is an object oriented
+material model driver written in `Python <http://www.python.org>`_ designed
+for rapid development and testing of material models. The core of the
+*Payette* code base is written in Python, with the exception of many material
+models and optimization routines that are written in Fortran and wrapped by
+`*f2py* <http://www.scipy.org/F2py>`_.
+
+*Payette* is free software released under the
+`MIT License <http://www.wikipedia.org/wiki/MIT_License>`_
 
 
 Why a Single Element Driver?
@@ -47,12 +53,12 @@ speed up difference between python and a compiled language for single element
 problems almost insignificant.
 
 For numeric computations, the `NumPy <http://www.numpy.org>`_ and `SciPy
-<www.scipy.org>`_ modules allow programs written in Python to leverage a large
-set of numerical routines provided by the ``LAPACK``, ``BLASPACK``, ``EIGPACK``,
-etc. Python's APIs also allow for calling subroutines written in C or Fortran (in
-addition to a number of other languages), a prerequisite for model development as
-most legacy material models are written in Fortran. In fact, most modern material
-models are still written in Fortran to this day.
+<http://www.scipy.org>`_ modules allow programs written in Python to leverage
+a large set of numerical routines provided by ``LAPACK``, ``BLASPACK``,
+``EIGPACK``, etc. Python's APIs also allow for calling subroutines written in
+C or Fortran (in addition to a number of other languages), a prerequisite for
+model development as most legacy material models are written in Fortran. In
+fact, most modern material models are still written in Fortran to this day.
 
 Python's object oriented nature allows for rapid installation of new material
 models.

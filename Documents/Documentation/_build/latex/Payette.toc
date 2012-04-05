@@ -7,7 +7,9 @@
 \contentsline {subsection}{\numberline {1.4.1}Supported Drivers}{2}{subsection.1.4.1}
 \contentsline {subsubsection}{Mechanical}{2}{subsubsection*.3}
 \contentsline {subsubsection}{Electrical}{2}{subsubsection*.4}
-\contentsline {chapter}{\numberline {2}Layout}{3}{chapter.2}
+\contentsline {chapter}{\numberline {2}Developer Guide}{3}{chapter.2}
+\contentsline {section}{\numberline {2.1}\emph {Payette} Directory Structure}{3}{section.2.1}
+\contentsline {section}{\numberline {2.2}Coding Style Guide}{3}{section.2.2}
 \contentsline {chapter}{\numberline {3}Obtaining \emph {Payette}}{5}{chapter.3}
 \contentsline {chapter}{\numberline {4}Building \emph {Payette}}{7}{chapter.4}
 \contentsline {section}{\numberline {4.1}System Requirements}{7}{section.4.1}

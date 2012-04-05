@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Layout &mdash; Payette 1.0 documentation</title>
+    <title>Developer Guide &mdash; Payette 1.0 documentation</title>
     
     <link rel="stylesheet" href="../_static/default.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -52,28 +52,55 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="layout">
-<h1>Layout<a class="headerlink" href="#layout" title="Permalink to this headline">¶</a></h1>
-<p>The <tt class="docutils literal"><span class="pre">Payette</span></tt> project has the following directory structure:</p>
+  <div class="section" id="developer-guide">
+<h1>Developer Guide<a class="headerlink" href="#developer-guide" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="payette-directory-structure">
+<h2><em>Payette</em> Directory Structure<a class="headerlink" href="#payette-directory-structure" title="Permalink to this headline">¶</a></h2>
+<p>The <tt class="docutils literal"><span class="pre">Payette</span></tt> project has the following directory structure</p>
 <div class="highlight-python"><pre>PAYETTE_ROOT
   configure.py
   __init__.py
-  INSTALL
+  README
+
   Aux/
     Inputs/
-    MaterialsDatabase/
+
+  MaterialsDatabase/
+
   Documents/
     Documentation/
     Presentations/
+
+  Examples/
+
   Source/
     Fortran/
     Materials/
       Fortran/
       Library/
+
   Tests/
     Materials/
     Regression/
+
   Toolset/</pre>
+</div>
+</div>
+<div class="section" id="coding-style-guide">
+<h2>Coding Style Guide<a class="headerlink" href="#coding-style-guide" title="Permalink to this headline">¶</a></h2>
+<p>All new code in <em>Payette</em> should adhere sctrictly to the style described in
+Python&#8217;s <a class="reference external" href="http://www.python.org/dev/peps/pep-0008/">PEP-0008</a> and docstrings
+should follow NumPy&#8217;s <a class="reference external" href="https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt">docstring guide</a>. One
+exception to the Python style guide is the naming convention of files in
+<em>Payette</em>: all file names begin with <tt class="file docutils literal"><span class="pre">Payette_</span></tt>.</p>
+<p>It is highly recommended to use tools such as <em>pylint</em> and <em>pep8</em> to perform
+code analysis on all new and existing code.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Many of the original files in <em>Payette</em> were not written to the
+Python style guide. As time allows, these files are being modified to
+adhere to the standards.</p>
+</div>
 </div>
 </div>
 
@@ -83,6 +110,15 @@
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Developer Guide</a><ul>
+<li><a class="reference internal" href="#payette-directory-structure"><em>Payette</em> Directory Structure</a></li>
+<li><a class="reference internal" href="#coding-style-guide">Coding Style Guide</a></li>
+</ul>
+</li>
+</ul>
+
   <h4>Previous topic</h4>
   <p class="topless"><a href="introduction.html"
                         title="previous chapter">Introduction</a></p>

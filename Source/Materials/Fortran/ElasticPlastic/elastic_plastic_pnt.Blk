@@ -5,7 +5,6 @@ C  NBASICINPUTS: length of PROP array *not* including properties for
 C                "add-on" options such as joints, alternative equations
 C                of state, etc.
 C
-#ifdef TJF_IMPLNONE
       INTEGER NBASICINPUTS,NMGDC,NDMMPROP
       INTEGER IPB0,IPB1,IPB2,IPG0,IPG1,IPG2,IPG3
       INTEGER IPA1,IPA2,IPA3,IPA4,IPA5,IPA6
@@ -14,7 +13,6 @@ C
       INTEGER IPIDG,IPF1
       INTEGER IPDCPROP,IPDC1,IPDC2,IPDC3,IPDC4,IPDC5,IPDC6,IPDC7
       INTEGER IPDC8,IPDC9,IPDC10,IPDC11,IPDC12,IPDC13
-#endif
       PARAMETER (NBASICINPUTS=34,NMGDC=13)
 C
 C     Total number of properties
@@ -83,7 +81,6 @@ C@@@@@@@@@@   p o i n t e r s   t o  s t a t e   v a r i a b l e s  @@@@@@@@@@
 C@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 C  K[isvname]: pointers to the state variable array
 C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
-#ifdef TJF_IMPLNONE
       INTEGER NDMMISV,NISOSTART,NANISOSTART,NISV
       INTEGER KEQDOT,KI1,KROOTJ2,KEQPS,KPW,KT,KCS,KRHO,KEU,KRJ
       INTEGER KAM,KEQPV,KQSSIG,KQSSIGXX,KQSSIGYY,KQSSIGZZ
@@ -91,7 +88,6 @@ C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       INTEGER KE,KEXX,KEYY,KEZZ,KEXY,KEYZ,KEZX,KEYX,KEZY,KEXZ
       INTEGER KEJ2
       INTEGER KF1,KF2,KF3,KF4,KF5,KF6,KF7,KF8,KF9,KF10
-#endif
       PARAMETER (NISV=35)
       PARAMETER (NDMMISV=NISV) !hardwired for SQA
       PARAMETER (NISOSTART=NISV)
