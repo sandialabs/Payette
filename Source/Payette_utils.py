@@ -855,6 +855,19 @@ def logerr(msg, pre="", end="\n", caller=None):
     print("{0}ERROR: {1}".format(pre, msg), end=end)
     return
 
+def get_header(f):
+    """ get the header of f """
+    return linecache.getline(f, 1).split()
+
+def read_data(f):
+    """Reads in a whitespace-delimed data file f. It is assumed that the first
+    line contains text (the name of the column). All other lines contain
+    floats.
+
+    Returns m x n dimensional numpy ndarray where m is the number of data
+    points (rows) and n the number of data fields (columns)
+    """
+    return np.loadtxt(f, skiprows=1)
 
 def get_header(fpath):
     """Get the header of f

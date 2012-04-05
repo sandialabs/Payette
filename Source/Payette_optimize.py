@@ -330,6 +330,7 @@ class Optimize(object):
 
         """
 
+
         errors = 0
 
         # the input for the job
@@ -512,5 +513,3 @@ def func(opt_params, data, base_dir, job_opts, xgold):
     os.chdir(base_dir)
 
     return error
-
-
