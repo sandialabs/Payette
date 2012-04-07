@@ -26,7 +26,7 @@ begin simulation exmpl_8
   end material
 
   begin optimization
-    method fmin  # downhill simplex algorithm [fmin] <fmin, fmin_powell>
+    method simplex  # downhill simplex algorithm [simplex] <simplex, powell>
     maxiter 25  # maximum number of iterations [25]
     tolerance 1.e-2  # tolerance between out and gold file [1.e-4]
     optimize K, ubound 150.e9, lbound 125.e9  # parameter to optimize

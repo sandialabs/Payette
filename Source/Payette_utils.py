@@ -1109,3 +1109,67 @@ def compare_out_to_gold_rms(gold_f, out_f, to_skip=None):
         continue
 
     return 0, np.array(anrmsd), np.array(armsd)
+
+
+def compare_file_cols(file_1, file_2, cols=["all"]):
+    r"""Compare columns in file_1 to file_2
+
+    Parameters
+    ----------
+    file_1 : str
+        Path to first file
+    file_2 : str
+        Path to second file
+    cols : array_like
+        List of columns to compare
+
+    Returns
+    -------
+    returncode : int
+        0 success, !=0 otherwise
+    armsd : array_like
+        accumulated root mean square error
+    anrmsd : array_like
+        accumulated normalized root mean square error
+
+    """
+
+    iam = "compare_file_cols(file_1, file_2, cols)"
+    errors = 0
+
+    if not os.path.isfile(file_1):
+        logerr("file {0} not found".format(file_1), caller=iam)
+        errors += 1
+        pass
+
+    if not os.path.isfile(file_2):
+        logerr("file {0} not found".format(file_2), caller=iam)
+        errors += 1
+        pass
+
+    if errors:
+        return errors, None, None
+
+    # read in header
+    head_1 = [x.lower() for x in get_header(file_1)]
+    head_2 = [x.lower() for x in get_header(file_2)]
+
+    # read in data
+    dat_1 = read_data(file_1)
+    dat_2 = read_data(file_2)
+
+    to_compare = [x for x in head_2 if x in head_1] # if x not in to_skip]
+
+    # do the comparison
+    anrmsd, armsd = [], []
+    for val in to_compare:
+        idx_1 = head_1.index(val)
+        idx_2 = head_2.index(val)
+        rmsd = math.sqrt(np.mean((dat_2[:, idx_2] - dat_1[:, idx_1]) ** 2))
+        dnom = abs(np.amax(dat_1[:, idx_1]) - np.amin(dat_1[:, idx_1]))
+        nrmsd = rmsd / dnom if dnom >= 2.e-16 else rmsd
+        anrmsd.append(nrmsd)
+        armsd.append(rmsd)
+        continue
+
+    return 0, np.array(anrmsd), np.array(armsd)

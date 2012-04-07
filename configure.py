@@ -264,14 +264,6 @@ PC_NLOPT = os.getenv("NLOPTLOC")
 
 # --- configuration files
 PC_CONFIG_FILE = os.path.join(PC_ROOT, "Payette_config.py")
-try:
-    os.remove(PC_CONFIG_FILE)
-except OSError:
-    pass
-try:
-    os.remove(PC_CONFIG_FILE + "c")
-except OSError:
-    pass
 
 # --- subdirectories of PC_AUX
 PC_INPUTS = os.path.join(PC_ROOT, "Aux/Inputs")
@@ -374,7 +366,7 @@ def configure_payette(argv):
     # *************************************************************************
     # -- command line option parsing
     usage = ("usage: python %prog [options]\nmust be executed from "
-             "{0}".format(os.path.dirname(PC_ROOT)))
+             "{0}".format(PC_ROOT))
     parser = optparse.OptionParser(usage=usage, version="%prog 1.0")
     parser.add_option(
         "-o",
@@ -397,6 +389,12 @@ def configure_payette(argv):
         default="gfortran",
         help="Specify the path F77 to compiler [default: %default]")
     parser.add_option(
+        "--f2py-debug",
+        dest="F2PYDBG",
+        action="store_true",
+        default=False,
+        help="Compile (f2py) with debugging information [default: %default]")
+    parser.add_option(
         "--f90exec",
         dest="F90EXEC",
         action="store",
@@ -410,6 +408,18 @@ def configure_payette(argv):
         help="Compile with f2py callbacks functions [default: %default]")
 
     opts = parser.parse_args(argv)[0]
+
+    try:
+        os.remove(PC_CONFIG_FILE)
+    except OSError:
+        pass
+    try:
+        os.remove(PC_CONFIG_FILE + "c")
+    except OSError:
+        pass
+
+    # clean up first
+    clean_payette()
 
     # configure Payette
     loginf("configuring Payette environment")
@@ -428,6 +438,7 @@ def configure_payette(argv):
         PAYETTE_CONFIG["PC_FCOMPILER"] = None
         PAYETTE_CONFIG["PC_F77EXEC"] = get_exe_path(opts.F77EXEC)
         PAYETTE_CONFIG["PC_F90EXEC"] = get_exe_path(opts.F90EXEC)
+    PAYETTE_CONFIG["PC_F2PYDBG"] = opts.F2PYDBG
 
     for item in ENVS:
         if item in os.environ:
@@ -605,9 +616,6 @@ if __name__ == "__main__":
 
     # introduce yourself
     logmes(PC_INTRO)
-
-    # clean up first
-    clean_payette()
 
     # now configure
     CONFIGURE = configure_payette(sys.argv[1:])

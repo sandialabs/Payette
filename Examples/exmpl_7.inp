@@ -33,7 +33,7 @@ begin simulation exmpl_7
 
     # Below, we specify the optimization method and options. Thus far, all of
     # the optimization methods are form scipy.optimize module.
-    method fmin  # downhill simplex algorithm [fmin] <fmin, fmin_powell>
+    method simplex  # downhill simplex algorithm [simplex] <simplex, powell>
     maxiter 25  # maximum number of iterations [25]
     tolerance 1.e-4  # tolerance between out and gold file [1.e-4]
 
@@ -41,7 +41,7 @@ begin simulation exmpl_7
     # optional. In fact, they are not yet implemented but we leave them as a
     # reminder to implement the feature!
     optimize K, ubound 150.e9, lbound 125.e9  # parameter to optimize
-    optimize G, ubound 45.e9, lbound 57.e9  # parameter to optimize
+    optimize G, ubound 57.e9, lbound 45.e9  # parameter to optimize
 
     # below we specify the "gold file" that has the results against which we
     # compare the output from the simulation, along with the minimizing
