@@ -174,6 +174,8 @@ def build_payette(argv):
     else:
         f2pyopts = ["--f77exec={0}".format(pc.PC_F77EXEC),
                     "--f90exec={0}".format(pc.PC_F90EXEC)]
+    if pc.PC_F2PYDBG:
+        f2pyopts.append("--debug")
 
     # compiler options to send to the build scripts
     COMPILER_INFO = {"f2py": {"compiler": pc.PC_F2PY,

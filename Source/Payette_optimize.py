@@ -30,6 +30,7 @@ import sys
 import shutil
 import numpy as np
 import scipy
+import scipy.optimize
 import math
 
 import Source.Payette_utils as pu
@@ -39,6 +40,7 @@ import Source.Payette_extract as pe
 
 # Module level variables
 IOPT = -1
+FAC = []
 
 
 class Optimize(object):
@@ -86,11 +88,14 @@ class Optimize(object):
             pu.loginf("Optimizing {0}".format(job))
             pu.loginf("Optimization variables: {0}"
                       .format(", ".join(self.data["optimize"])))
-            minvars = ", ".join([x[1:] for x in self.data["minimize"][1:]])
+            minvars = ", ".join([x[1:] for x in self.data["minimize"]["vars"]])
             pu.loginf("Minimization variables: {0}".format(minvars))
+            if self.data["minimize"]["abscissa"] is not None:
+                pu.loginf("using {0} as abscissa"
+                          .format(self.data["minimize"]["abscissa"][1:]))
             pu.loginf("Gold file: {0}".format(self.data["gold file"]))
-            pu.loginf("Minimization method: {0}"
-                      .format(self.data["optimization method"].__name__))
+            pu.loginf("Optimization method: {0}"
+                      .format(self.data["optimization method"]["method"]))
 
     def optimize(self):
         r"""Run the optimization job
@@ -134,33 +139,46 @@ class Optimize(object):
         shutil.copyfile(self.data["gold file"], gold_f)
 
         # extract only what we want from the gold file
-        exargs = [gold_f, "--silent", "--xout"] + self.data["minimize"]
+        exargs = [gold_f, "--silent", "--xout"]
+        if self.data["minimize"]["abscissa"] is not None:
+            exargs.append(self.data["minimize"]["abscissa"])
+        exargs.extend(self.data["minimize"]["vars"])
         pe.extract(exargs)
 
         # extract created a file basename(gold_f).xout, change ext to .xgold
         xgold = gold_f.replace(".gold", ".xgold")
         shutil.move(gold_f.replace(".gold", ".xout"), xgold)
 
-        # initial guess for opt_params are those from input
+        # Initial guess for opt_params are those from input. opt_params must
+        # be in a consistent order throughout, here we arbitrarily set that
+        # order to be based on an alphabetical sort of the names of the
+        # parameters to be optimized.
         nams = [x for x in self.data["optimize"]]
         nams.sort()
         opt_params = [0.] * len(nams)
+        opt_bounds = [None] * len(nams)
         for idx, nam in enumerate(nams):
             opt_params[idx] = self.data["optimize"][nam]["initial value"]
+            opt_bounds[idx] = self.data["optimize"][nam]["bounds"]
             continue
 
         # set up args and call optimzation routine
-        args = [self.data, base_dir, self.job_opts, xgold]
-        maxiter = self.data["maximum iterations"]
-        tolerance = self.data["tolerance"]
-        opt_params = self.data["optimization method"](
-            func, opt_params, xtol=tolerance, ftol=tolerance,
-            args=args, maxiter=maxiter, disp=False)
+        opt_args = [self.data, base_dir, self.job_opts, xgold]
+        opt_method = self.data["optimization method"]["method"]
+        opt_options = {"maxiter": self.data["maximum iterations"],
+                       "xtol": self.data["tolerance"],
+                       "ftol": self.data["tolerance"],
+                       "disp": self.data["disp"],}
+
+        opt_params = minimize(
+            func, opt_params, args=opt_args, method=opt_method,
+            bounds=opt_bounds, options=opt_options,
+            )
 
         # optimum parameters found, write out final info
         msg = ["{0} = {1:12.6E}".format(nams[i], x)
                for i, x in enumerate(opt_params)]
-        pu.loginf("Optimized parameters found on the iteration {0:d}"
+        pu.loginf("Optimized parameters found on iteration {0:d}"
                   .format(IOPT))
         pu.loginf("Optimized parameters: {0}".format(", ".join(msg)))
 
@@ -203,11 +221,20 @@ class Optimize(object):
         """
         errors = 0
         gold_f = None
-        minimize = ["@time"]
-        allowed_methods = ["fmin", "fmin_powell"]
-        opt_method = "fmin"
+        minimize = {"abscissa": None, "vars": []}
+        allowed_methods = {
+            "simplex": {"method": "Nelder-Mead", "name": "fmin"},
+            "powell": {"method": "Powell", "name": "fmin_powell",
+                       "features": None},
+            "cobyla": {"method": "COBYLA", "name": "fmin_cobyla",
+                       "features": ["inequality constraints"]},
+            "slsqp": {"method": "SLSQP", "name":"fmin_slsqp",
+                      "features": ["inequality constraints",
+                                   "equality constraints"]}}
+        opt_method = "simplex"
         maxiter = 20
         tolerance = 1.e-4
+        disp = False
         optimize = {}
 
         for item in opt_block:
@@ -221,18 +248,20 @@ class Optimize(object):
                     gold_f = item[2]
 
             elif "minimize" in item[0].lower():
+                # get variables to minimize during the optimization
                 min_vars = item[1:]
                 for min_var in min_vars:
+                    if min_var == "versus":
+                        val = min_vars[min_vars.index("versus") + 1]
+                        if val[0] != "@":
+                            val = "@" + val
+                        minimize["abscissa"] = val
+                        break
                     if min_var[0] != "@":
                         min_var = "@" + min_var
-                    if min_var not in minimize:
-                        minimize.append(min_var)
+                    if min_var not in minimize["vars"]:
+                        minimize["vars"].append(min_var)
                     continue
-
-                # make sure time is in the list and it is first
-                for min_var in minimize:
-                    if not [x for x in minimize if "@time" in x.lower()]:
-                        minimize.append("@time")
 
             elif "optimize" in item[0].lower():
                 # set up this parameter to optimize
@@ -244,6 +273,8 @@ class Optimize(object):
                 # here. We will later check that this key was given in the
                 # material block.
                 optimize[key] = {"initial value": None}
+                ubnd = None
+                lbnd = None
 
                 # uppder bound
                 if "ubound" in vals:
@@ -251,11 +282,7 @@ class Optimize(object):
                         val = eval(vals[vals.index("ubound") + 1])
                     except NameError:
                         val = vals[vals.index("ubound") + 1]
-
-                    optimize[key]["ubound"] = val
-
-                else:
-                    optimize[key]["ubound"] = None
+                    ubnd = val
 
                 # lower bound
                 if "lbound" in vals:
@@ -263,16 +290,15 @@ class Optimize(object):
                         val = eval(vals[vals.index("lbound") + 1])
                     except NameError:
                         val = vals[vals.index("lbound") + 1]
+                    lbnd = val
 
-                    optimize[key]["lbound"] = val
-
-                else:
-                    optimize[key]["lbound"] = None
+                optimize[key]["bounds"] = (lbnd, ubnd)
 
             elif "method" in item[0].lower():
-                opt_method = item[1].lower()
-                if opt_method not in allowed_methods:
-                    pu.logerr("invalid method {0}".format(opt_method))
+                try:
+                    opt_method = allowed_methods[item[1].lower()]
+                except KeyError:
+                    pu.logerr("invalid method {0}".format(item[1].lower()))
                     errors += 1
 
             elif "maxiter" in item[0].lower():
@@ -280,6 +306,21 @@ class Optimize(object):
 
             elif "tolerance" in item[0].lower():
                 tolerance = float(item[1])
+
+            elif "disp" in item[0].lower():
+                disp = item[1].lower()
+                if disp == "true":
+                    disp = True
+                elif disp == "false":
+                    disp = False
+                else:
+                    try:
+                        disp = bool(float(item[1]))
+                    except ValueError:
+                        # the user specified disp in the input file, it is not
+                        # one of false, true, and is not a number. assume that
+                        # since it was set, the user wants disp to be true.
+                        disp = True
 
             continue
 
@@ -293,7 +334,7 @@ class Optimize(object):
             else:
                 gold_f = os.path.realpath(gold_f)
 
-        if not minimize:
+        if not minimize["vars"]:
             pu.logerr("No parameters to minimize given")
             errors += 1
 
@@ -310,8 +351,8 @@ class Optimize(object):
         self.data["optimize"] = optimize
         self.data["maximum iterations"] = maxiter
         self.data["tolerance"] = tolerance
-        self.data["optimization method"] = eval(
-            "{0}.{1}".format("scipy.optimize", opt_method))
+        self.data["optimization method"] = opt_method
+        self.data["disp"] = disp
 
         return
 
@@ -419,7 +460,9 @@ class Optimize(object):
         """
 
         exargs = [self.data["gold file"], "--silent"]
-        exargs.extend(self.data["minimize"])
+        if self.data["minimize"]["abscissa"] is not None:
+            exargs.append(self.data["minimize"]["abscissa"])
+        exargs.extend(self.data["minimize"]["vars"])
         extraction = pe.extract(exargs)
 
         return extraction
@@ -471,11 +514,27 @@ def func(opt_params, data, base_dir, job_opts, xgold):
         fobj.write("Parameters for iteration {0:d}\n".format(IOPT))
         for idx, nam in enumerate(nams):
             opt_val = opt_params[idx]
+
+            # Some methods do not allow for bounds and we can get negative
+            # trial values. This is a problem when optimizing, say, elastic
+            # moduli that cannot be negative since if we send a negative
+            # elastic modulus to the routine it will bomb and the optimization
+            # will stop. This is a way of forcing the optimizer to see a very
+            # large error if it tries to send in numbers above or below the
+            # user specified bounds -> essentially, we are using a penalty
+            # method of sorts to force the bounds we want.
+            lbnd, ubnd = data["optimize"][nam]["bounds"]
+            if lbnd is not None and opt_val < lbnd/FAC[idx]:
+                return 1.e3
+            if ubnd is not None and opt_val > ubnd/FAC[idx]:
+                return 1.e3
+
             line = data["optimize"][nam]["input idx"]
-            pstr = "{0} = {1:12.6E}".format(nam, opt_val)
+            pstr = "{0} = {1:12.6E}".format(nam, opt_val*FAC[idx])
             job_inp[line] = pstr
             fobj.write(pstr + "\n")
             msg.append(pstr)
+
             continue
 
     if data["verbosity"]:
@@ -498,18 +557,141 @@ def func(opt_params, data, base_dir, job_opts, xgold):
     if not os.path.isfile(out_f):
         sys.exit("out file {0} not created".format(out_f))
 
-    exargs = [out_f, "--silent", "--xout"] + data["minimize"]
+    exargs = [out_f, "--silent", "--xout"]
+    if data["minimize"]["abscissa"] is not None:
+        exargs.append(data["minimize"]["abscissa"])
+    exargs.extend(data["minimize"]["vars"])
     pe.extract(exargs)
     xout = out_f.replace(".out", ".xout")
 
-    # find the rms error between the out and gold
-    errors = pu.compare_out_to_gold_rms(xgold, xout)
+    if data["minimize"]["abscissa"] is not None:
+        # find the rms error between the out and gold
+        errors = pu.compare_out_to_gold_rms(xgold, xout)
+    else:
+        errors = pu.compare_file_cols(xgold, xout)
+
     if errors[0]:
         sys.exit("Resolve previous errors")
 
     error = math.sqrt(np.sum(errors[1] ** 2) / float(len(errors[1])))
 
+    with open(os.path.join(job_dir, job + ".opt"), "a") as fobj:
+        fobj.write("error = {0:12.6E}\n".format(error))
+
     # go back to the base_dir
     os.chdir(base_dir)
 
     return error
+
+
+def minimize(func, x0, args=(), method="Nelder-Mead",
+             bounds=None, options={}):
+    r"""Wrapper to the supported minimization methods
+
+    Parameters
+    ----------
+    func : callable
+        Objective function.
+    x0 : ndarray
+        Initial guess.
+    data : dict
+        Data container for problem
+    job_opts : sequence
+        List of options to be passed to runPayette
+    args : tuple, optional
+        Extra arguments passed to the objective function and its derivatives
+        (Jacobian, Hessian).
+    method : str, optional
+        Type of solver. Should be one of:
+            {"Nelder-Mead", "Powell", "COBYLA"}
+    bounds : sequence, optional
+        Bounds for variables (only for COBYLA). (min, max) pairs for each
+        element in x, defining the bounds on that parameter. Use None for one
+        of min or max when there is no bound in that direction.
+    options : dict, optional
+        A dictionary of solver options. All methods accept the following
+        generic options:
+        maxiter : int
+            Maximum number of iterations to perform.
+        xtol : float
+            Tolerance on x
+        ftol : float
+            Tolerance on func
+        disp : bool
+            Set to True to print convergence messages.
+
+    Returns
+    -------
+    xopt : ndarray
+        The solution.
+
+    """
+
+    global FAC
+    meth = method.lower()
+
+    # set up args and call optimzation routine
+    maxiter = options["maxiter"]
+    xtol = options["xtol"]
+    ftol = options["ftol"]
+    disp = options["disp"]
+
+    has_bounds = any([x for j in bounds for x in j])
+
+    # optimization methods work best with number around 1, here we normalize
+    # the optimization variables and save the multiplier to be used when the
+    # function gets called by the optimizer.
+    for val in x0:
+        mag_val = eval("1.e" + "{0:12.6E}".format(val).split("E")[1])
+        FAC.append(mag_val)
+    FAC = np.array(FAC)
+    x0 = x0/FAC
+
+    if meth in ["nelder-mead", "powell"] and has_bounds:
+        pu.logwrn("Method {0} cannot handle constraints nor bounds directly."
+                  .format(method))
+
+    if has_bounds:
+        # user has specified bounds on the parameters to be optimized. Here,
+        # we convert the bounds to inequality constraints
+        errors = 0
+        lcons, ucons = [], []
+        for ibnd, bound in enumerate(bounds):
+            lbnd, ubnd = bound
+            if lbnd is None:
+                lbnd = -1.e20
+            if ubnd is None:
+                ubnd = 1.e20
+            if lbnd > ubnd:
+                errors += 1
+                pu.logerr("lbnd({0:12.6E}) > ubnd({1:12.6E})"
+                          .format(lbnd, ubnd))
+            lcons.append(lambda x: x[ibnd] - lbnd/FAC[ibnd])
+            ucons.append(lambda x: ubnd/FAC[ibnd] - x[ibnd])
+            continue
+
+        if errors:
+            sys.exit("ERROR: Resolve previous errors")
+
+        cons = lcons + ucons
+
+    if meth == "nelder-mead":
+        xopt = scipy.optimize.fmin(
+            func, x0, xtol=xtol, ftol=ftol,
+            args=args, maxiter=maxiter, disp=disp)
+
+    elif meth == "powell":
+        xopt = scipy.optimize.fmin_powell(
+            func, x0, xtol=xtol, ftol=ftol,
+            args=args, maxiter=maxiter, disp=disp)
+
+    elif meth == "cobyla":
+        xopt = scipy.optimize.fmin_cobyla(
+            func, x0, cons, consargs=(),
+            args=args, disp=False)
+
+    else:
+        sys.exit("ERROR: Unrecognized method {0}".format(method))
+
+    return xopt
+

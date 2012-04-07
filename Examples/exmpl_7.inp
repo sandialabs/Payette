@@ -32,16 +32,20 @@ begin simulation exmpl_7
     # options in braces, if applicable.
 
     # Below, we specify the optimization method and options. Thus far, all of
-    # the optimization methods are form scipy.optimize module.
-    method fmin  # downhill simplex algorithm [fmin] <fmin, fmin_powell>
+    # the optimization methods are from scipy.optimize module.
+    method simplex  # optizing method [simplex] {simplex, powell, cobyla}
     maxiter 25  # maximum number of iterations [25]
     tolerance 1.e-4  # tolerance between out and gold file [1.e-4]
+    disp 0 # set to not zero to get detailed output from optimizer [0]
 
-    # below we specify which parameters to optimize. The ubound and lbound are
-    # optional. In fact, they are not yet implemented but we leave them as a
-    # reminder to implement the feature!
+    # below we specify which parameters to optimize with optional upper and
+    # lower bounds some methods do not accept bounds, but we have implemented
+    # a penalty method to force the bounds to be respected outside of the
+    # optimizer. For elastic moduli, bounds really should be used so the the
+    # optimizer does not send in invalid moduli that woudl crash the
+    # simulation.
     optimize K, ubound 150.e9, lbound 125.e9  # parameter to optimize
-    optimize G, ubound 45.e9, lbound 57.e9  # parameter to optimize
+    optimize G, ubound 57.e9, lbound 45.e9  # parameter to optimize
 
     # below we specify the "gold file" that has the results against which we
     # compare the output from the simulation, along with the minimizing
@@ -49,7 +53,7 @@ begin simulation exmpl_7
     # parameters specified above by minimizing the difference between the
     # minimizing variables in the gold file and the simulation output file.
     gold file exmpls.gold
-    minimize sig11, sig22, sig33
+    minimize sig11, sig22, sig33 versus time
 
 
   end optimization

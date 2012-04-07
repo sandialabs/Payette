@@ -1,11 +1,11 @@
 # Example opt
-# Title: exmpl_8
+# Title: exmpl_11
 # Author: Tim Fuller, tjfulle@sandia.gov
 # Keywords: optimization
 # Comments: This input file demonstrates the parameter optimization
 #           functionality of Payette using time/stress.
 
-begin simulation exmpl_8
+begin simulation exmpl_11
   nowriteprops
   norestart
 
@@ -14,7 +14,7 @@ begin simulation exmpl_8
     tstar = 1.
     ampl = 1
     begin legs
-      using time, strain, from columns 1, 3:8
+      using time, stress, from columns 1, 34:39
       insert exmpls.tbl
     end legs
   end boundary

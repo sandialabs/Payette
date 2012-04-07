@@ -1,11 +1,11 @@
 # Example opt
-# Title: exmpl_8
+# Title: exmpl_9
 # Author: Tim Fuller, tjfulle@sandia.gov
 # Keywords: optimization
 # Comments: This input file demonstrates the parameter optimization
-#           functionality of Payette using time/stress.
+#           functionality of Payette.
 
-begin simulation exmpl_8
+begin simulation exmpl_9
   nowriteprops
   norestart
 
@@ -26,14 +26,17 @@ begin simulation exmpl_8
   end material
 
   begin optimization
-    method powell  # optimizer method [simplex] {simplex, powell, cobyla}
+    method cobyla  # optizing method [simplex] {simplex, powell, cobyla}
     maxiter 25  # maximum number of iterations [25]
-    tolerance 1.e-6  # tolerance between out and gold file [1.e-4]
+    tolerance 1.e-4  # tolerance between out and gold file [1.e-4]
+    disp 0 # set to not zero to get detailed output from optimizer [0]
+
     optimize K, ubound 150.e9, lbound 125.e9  # parameter to optimize
     optimize G, ubound 57.e9, lbound 45.e9  # parameter to optimize
+
     gold file exmpls.gold
     minimize sig11, sig22, sig33 versus time
-    disp 0
+
   end optimization
 
 end simulation
