@@ -30,6 +30,7 @@ import sys
 import shutil
 import numpy as np
 import math
+import multiprocessing as mp
 
 import Source.Payette_utils as pu
 import Source.Payette_container as pc
@@ -124,26 +125,52 @@ class Visualize(object):
             continue
 
         # open up the index file
-        index_f = open(os.path.join(base_dir, "index.py"), "w")
-        index_f.write("index = {}\n")
+        index_f = os.path.join(base_dir, "index.py")
+        with open(index_f, "w") as fobj:
+            fobj.write("index = {}\n")
 
         # set up args and call visualization routine
         viz_args = [self.data, base_dir, self.job_opts, index_f, None]
 
         # call the function for each realization
         icall = 0
+
+        nproc = self.job_opts.nproc
+        nproc = min(min(mp.cpu_count(), nproc), max([len(x) for x in bounds]))
+        if nproc > 1:
+            self.data["verbosity"] = 0
+
         for iparam, param in enumerate(x0):
+
+            # set up for multiprocessor, if applicable
+            if nproc > 1:
+                aargv = []
+                pool = mp.Pool(processes=nproc)
+
             viz_params = [x for x in x0]
             for bound in bounds[iparam]:
                 viz_params[iparam] = bound
                 viz_args[-1] = icall
-                func(np.array(viz_params), *viz_args)
+                argv = [np.array(viz_params)] + viz_args
+                if nproc == 1:
+                    func(argv)
+                else:
+                    aargv.append(argv)
+
                 icall += 1
                 continue
+
+            if nproc > 1:
+                icallf = icall
+                icall0 = icall - len(bounds[iparam]) + 1
+                pu.loginf("Running jobs {0:d}-{1:d}".format(icall0, icallf))
+                pool.map(func, aargv)
+                pool.close()
+                pool.join()
+                del pool
+
             continue
 
-        index_f.flush()
-        index_f.close()
 
         os.chdir(cwd)
         return 0
@@ -334,8 +361,7 @@ class Visualize(object):
 
 
 
-def func(viz_params, data, base_dir, job_opts, index_f, icall):
-
+def func(argv):
     r"""Objective function
 
     Creates a directory to run the current job, runs the job through Payette
@@ -358,6 +384,8 @@ def func(viz_params, data, base_dir, job_opts, index_f, icall):
     retcode : int
 
     """
+
+    viz_params, data, base_dir, job_opts, index_f, icall = argv
 
     job = data["basename"] + ".{0:03d}".format(icall)
 
@@ -389,8 +417,9 @@ def func(viz_params, data, base_dir, job_opts, index_f, icall):
                   .format(icall, ", ".join(msg)))
 
     # write to the index file
-    index_f.write('index[{0}] = {{"params": "{1}"}}\n'
-                  .format(job, ", ".join(msg)))
+    with open(index_f, "w") as fobj:
+        fobj.write('index[{0}] = {{"params": "{1}"}}\n'
+                   .format(job, ", ".join(msg)))
 
     # instantiate Payette object
     the_model = pc.Payette(job, job_inp, job_opts)
