@@ -258,6 +258,10 @@ def readUserInput(user_input,user_cchar=None):
         if any(opt):
             user_dict[key].append("optimize")
 
+        viz = has_block(val, "visualization")
+        if any(viz):
+            user_dict[key].append("visualize")
+
         continue
 
     return user_dict

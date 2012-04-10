@@ -1,0 +1,41 @@
+# Example viz
+# Title: exmpl_13
+# Author: Tim Fuller, tjfulle@sandia.gov
+# Keywords: optimization
+# Comments: This input file demonstrates the parameter optimization
+#           functionality of Payette.
+
+begin simulation exmpl_13
+  nowriteprops
+  norestart
+
+  begin boundary
+    kappa = 0
+    tstar = 1.
+    ampl = 1
+    begin legs
+      using time, strain, from columns 1, 3:8
+      insert exmpls.tbl
+    end legs
+  end boundary
+
+  begin material
+    constitutive model hooke
+    G 54.e9  # 53.e9 -> value used to create exmpls.tbl
+    K 129.e9  # 135.e9 -> value used to create exmpls.tbl
+  end material
+
+  begin visualization
+
+    # This is the main visualization block. We specify every available option
+    # showing its default value in brackets, along with other available
+    # options in braces, if applicable.
+
+    # below we specify which parameters to visualize with optional upper and
+    # lower bounds.
+    vary K, ubound 150.e9, lbound 125.e9, realizations 10
+    vary G, ubound 57.e9, lbound 45.e9, realizations 5
+
+  end visualization
+
+end simulation

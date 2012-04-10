@@ -55,7 +55,6 @@ begin simulation exmpl_7
     gold file exmpls.gold
     minimize sig11, sig22, sig33 versus time
 
-
   end optimization
 
 end simulation
