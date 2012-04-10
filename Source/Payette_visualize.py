@@ -171,8 +171,8 @@ class Visualize(object):
 
             continue
 
-
         os.chdir(cwd)
+
         return 0
 
     def finish(self):
@@ -255,7 +255,7 @@ class Visualize(object):
                 # adjust the bounds to be a range
                 step = int((ubnd - lbnd) / float(realizations))
                 visualize[key]["bounds"] = (
-                    [lbnd + x*step for x in range(realizations)])
+                    [lbnd + x * step for x in range(realizations)])
 
             continue
 
@@ -267,7 +267,6 @@ class Visualize(object):
         if errors:
             pu.logerr("resolve previous errors")
             sys.exit(2)
-
 
         self.data["visualize"] = visualize
 

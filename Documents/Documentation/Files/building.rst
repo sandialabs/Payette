@@ -34,36 +34,39 @@ Required Software
 
 The required software may be obtained in one of several ways:
 
-    * *Install from your systems package manager*
+* *Use the* `Enthought <http://http://www.enthought.com/>`_ *Python distribution*
 
-      ``apt-get`` on Ubuntu, ``yum`` on Fedora, ``rpm`` on Red Hat, etc. On the
-      Mac, we have had great success using software installed by `MacPorts
-      <http://www.macports.org>`_.
+  This option is the simplest and, perhaps, most powerful as Enthought
+  provides a very complete Python distribution that has a promised "one click
+  installation". Both free and paid versions are available. The free version
+  provides all of the prerequisites for *Payette*.
 
-      .. warning::
+* *Install from your systems package manager*
 
-         We have had varying degrees of success using software installed by
-         package managers on various linux distributions and have had to resort
-         to building from source or using Sage, as described below.
+  ``apt-get`` on Ubuntu, ``yum`` on Fedora, ``rpm`` on Red Hat, etc. On the
+  Mac, we have had great success using software installed by `MacPorts
+  <http://www.macports.org>`_.
 
-    * *Build each from source*
+  .. warning::
 
-      An involved, but fairly straight forward process.
+     We have had varying degrees of success using software installed by
+     package managers on various linux distributions and have had to resort to
+     building from source or using Sage, as described below.
 
-    * *Use Python, NumPy, and SciPy installed with*
-      `Sage 4.7 <http://www.sagemath.org/>`_ *or newer*
+* *Build each from source*
 
-      This option is perhaps the easiest, since Sage provides prebuilt binaries
-      for the Mac and many linux platforms. Their build process has also proven
-      to be very robust on many platforms.
+  An involved, but fairly straight forward process.
 
-      .. note::
+* *Use Python, NumPy, and SciPy installed with* `Sage 4.7 <http://www.sagemath.org/>`_ *or newer*
 
-         * Some features are disabled when using Sage. In particular, callback
-      	   functions from Fortran subroutines to Python functions.
+  This option is foolproof, since Sage provides prebuilt binaries for the Mac
+  and many linux platforms. Their build process has also proven to be very
+  robust on many platforms.
 
-	 * Using Sage is not as extensively tested as using a seperate Python
-           installation.
+  .. note::
+
+     Some features are disabled when using Sage. In particular, callback
+     functions from Fortran subroutines to Python functions.
 
 
 
