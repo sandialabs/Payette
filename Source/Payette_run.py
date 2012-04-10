@@ -406,11 +406,11 @@ def _run_job(job):
         USER_INPUT_DICT[job].remove("visualize")
         the_model = pv.Visualize(job, USER_INPUT_DICT[job], OPTS)
 
-        # run the optimization problem
+        # run the visualization problem
         if TIMING:
             tim1 = time.time()
 
-        solve = the_model.optimize()
+        solve = the_model.visualize()
  
     else:
         # instantiate Payette object

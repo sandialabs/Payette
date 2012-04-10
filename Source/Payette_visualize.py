@@ -53,6 +53,9 @@ class Visualize(object):
         self.data = {}
         self.data["basename"] = job
         self.data["verbosity"] = job_opts.verbosity
+        self.data["input files"] = []
+        self.data["output dirs"] = []
+        self.data["OPTS"] = job_opts
 
         # set verbosity to 0 for Payette simulation
         self.job_opts.verbosity = 0
@@ -66,9 +69,14 @@ class Visualize(object):
         # fill the data with the optimization information
         self.get_vis_info(opt)
 
-        sys.exit("exit from Payette_visualize.py")
+        errors = self.check_viz_parameters()
+        if errors:
+            pu.logerr("exiting due to previous errors")
+            sys.exit(123)
 
-    def optimize(self):
+#        sys.exit("exit from Payette_visualize.py")
+
+    def visualize(self):
         r"""Run the optimization job
 
         Set up directory to run the optimization job and call the minimizer
@@ -85,8 +93,7 @@ class Visualize(object):
         """
 
         # make the directory to run the job
-        cwd = os.getcwd()
-        dnam = self.basename + ".opt"
+        dnam = self.basename + ".vis"
         base_dir = os.path.join(os.getcwd(), dnam)
         idir = 0
         while True:
@@ -99,71 +106,63 @@ class Visualize(object):
                 break
             idir += 1
         if self.data["verbosity"]:
-            pu.loginf("Optimization directory: {0}".format(base_dir))
+            pu.loginf("Visualization directory: {0}".format(base_dir))
+
+        digits=len(str(  len( self.data["permutations"] ) ))
 
         os.mkdir(base_dir)
-        os.chdir(base_dir)
+#        os.chdir(base_dir)
 
-        # copy gold file to base_dir
-        gold_f = os.path.join(base_dir,
-                              os.path.basename(self.data["gold file"]))
-        shutil.copyfile(self.data["gold file"], gold_f)
+        for idx, permutation in enumerate(self.data["permutations"]):
+            # Create the job directory
+            job_d = os.path.join(base_dir,"job.{0:0{1}d}".format(idx,digits))
+            os.mkdir(job_d)
 
-        # extract only what we want from the gold file
-        exargs = [gold_f, "--silent", "--xout"]
-        if self.data["minimize"]["abscissa"] is not None:
-            exargs.append(self.data["minimize"]["abscissa"])
-        exargs.extend(self.data["minimize"]["vars"])
-        pe.extract(exargs)
+            # Create the job .inp file.
+            job_f = os.path.join(job_d, self.data["basename"]+".inp")
+            tmp_baseinp = self.data["baseinp"]
+            for new_token in permutation:
+                new_value = permutation[new_token]
+                new_line = self.data["permute keys"][new_token]
+                new_string = "{0}={1}".format(new_token,new_value)
+                tmp_baseinp[new_line] = new_string
+            TMPFILE = open(job_f,"w")
+            TMPFILE.write("begin simulation {0}\n".format(self.data["basename"])+
+                          "\n".join(tmp_baseinp) +
+                          "\nend simulation")
+            TMPFILE.close()
+            self.data["input files"].append([x for x in tmp_baseinp])
+            self.data["output dirs"].append(job_d)
 
-        # extract created a file basename(gold_f).xout, change ext to .xgold
-        xgold = gold_f.replace(".gold", ".xgold")
-        shutil.move(gold_f.replace(".gold", ".xout"), xgold)
+#        self.data["permute keys"] = {}
+#        for iline, line in enumerate([x for x in self.data["baseinp"]]):
+#            for viz_param in viz_params:
+#                if viz_param.lower() in line.lower().split():
+#                    self.data["permute keys"][viz_param] = iline
+#        sys.exit("chicken wings")
 
-        # Initial guess for opt_params are those from input. opt_params must
-        # be in a consistent order throughout, here we arbitrarily set that
-        # order to be based on an alphabetical sort of the names of the
-        # parameters to be optimized.
-        nams = [x for x in self.data["optimize"]]
-        nams.sort()
-        opt_params = [0.] * len(nams)
-        opt_bounds = [None] * len(nams)
-        for idx, nam in enumerate(nams):
-            opt_params[idx] = self.data["optimize"][nam]["initial value"]
-            opt_bounds[idx] = self.data["optimize"][nam]["bounds"]
-            continue
+#        opt_params = minimize(
+#            func, opt_params, args=opt_args, method=opt_method,
+#            bounds=opt_bounds, options=opt_options,
+#            )
 
-        # set up args and call optimzation routine
-        opt_args = [self.data, base_dir, self.job_opts, xgold]
-        opt_method = self.data["optimization method"]["method"]
-        opt_options = {"maxiter": self.data["maximum iterations"],
-                       "xtol": self.data["tolerance"],
-                       "ftol": self.data["tolerance"],
-                       "disp": self.data["disp"],}
+        cwd = os.getcwd()
+        for idx, input_file in enumerate(self.data["input files"]):
+            os.chdir(self.data["output dirs"][idx])
 
-        opt_params = minimize(
-            func, opt_params, args=opt_args, method=opt_method,
-            bounds=opt_bounds, options=opt_options,
-            )
+            dum_inp = [x for x in input_file]
+            # instantiate Payette object
+            print(dum_inp)
+            the_model = pc.Payette(self.data["basename"], dum_inp, self.data["OPTS"])
+    
+            # run the job
+            solve = pd.runProblem(the_model, restart=False)
+        
+            the_model.finish()
 
-        # optimum parameters found, write out final info
-        msg = ["{0} = {1:12.6E}".format(nams[i], x)
-               for i, x in enumerate(opt_params)]
-        pu.loginf("Optimized parameters found on iteration {0:d}"
-                  .format(IOPT))
-        pu.loginf("Optimized parameters: {0}".format(", ".join(msg)))
+        if solve != 0:
+            sys.exit("ERROR: simulation failed")
 
-        # last_job = os.path.join(base_dir,
-        #                         self.basename + ".{0:03d}".format(IOPT))
-        # pu.loginf("Ultimate simulation directory: {0}".format(last_job))
-
-        # write out the optimized parameters
-        with open(os.path.join(base_dir, self.basename) + ".opt", "w") as fobj:
-            fobj.write("Optimized parameters\n")
-            for idx, nam in enumerate(nams):
-                opt_val = opt_params[idx]
-                fobj.write("{0} = {1:12.6E}\n".format(nam, opt_val))
-                continue
 
         os.chdir(cwd)
         return 0
@@ -255,7 +254,7 @@ class Visualize(object):
         self.data["permutations"] = permute_db
         return
 
-    def check_opt_parameters(self):
+    def check_viz_parameters(self):
         r"""Check that the minimization parameters were specified in the input
         file and exist in the parameter table for the instantiated material.
 
@@ -278,24 +277,8 @@ class Visualize(object):
 
         # check that the optimize variables were given in the input file
         mtl, idx0, idxf = pu.has_block(job_inp, "material")
-        opt_params = self.data["optimize"].keys()
-        opt_params.sort()
-        inp_params = []
-        inp_vals = {}
-        for line in job_inp[idx0:idxf]:
-            if "constitutive" in line:
-                continue
-            param = "_".join(line.split()[0:-1])
-            inp_params.append(param.lower())
-            inp_vals[param] = float(line.split()[-1])
-            continue
-
-        inp_params.sort()
-        not_in = [x for x in opt_params if x.lower() not in inp_params]
-        if not_in:
-            pu.logerr("Optimization parameter[s] {0} not in input parameters"
-                      .format(", ".join(not_in)))
-            errors += 1
+        viz_params = self.data["permutations"][0].keys()
+        viz_params.sort()
 
         # instantiate a Payette object
         the_model = pc.Payette(self.basename, job_inp, self.job_opts)
@@ -311,7 +294,7 @@ class Visualize(object):
             pass
 
         # check that the optimize variables are in this models parameters
-        not_in = [x for x in opt_params if x.lower() not in params]
+        not_in = [x for x in viz_params if x.lower() not in params]
         if not_in:
             pu.logerr("Optimization parameter[s] {0} not in model parameters"
                       .format(", ".join(not_in)))
@@ -322,22 +305,20 @@ class Visualize(object):
 
         # there are no errors, now we want to find the line number in the
         # input file for the optimized params
+        self.data["permute keys"] = {}
         for iline, line in enumerate([x for x in self.data["baseinp"]]):
-            for opt_param in opt_params:
-                if opt_param in line.split():
-                    self.data["optimize"][opt_param]["input idx"] = iline
+            for viz_param in viz_params:
+                if viz_param.lower() in line.lower().split():
+                    self.data["permute keys"][viz_param] = iline
                 continue
             continue
-
         # double check that data["optimize"] has a input idx for every
         # optimize variable, and set the initial value
-        for key, val in self.data["optimize"].items():
-            if "input idx" not in val:
+        for key in self.data["permutations"][0].keys():
+            if key not in self.data["permute keys"].keys():
                 errors += 1
-                pu.logerr("No input idx for optimize variable {0}".format(key))
+                pu.logerr("No input idx for optimize variable '{0}'".format(key))
                 continue
-
-            self.data["optimize"][key]["initial value"] = inp_vals[key]
             continue
 
         return errors
