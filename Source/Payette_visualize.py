@@ -412,6 +412,12 @@ def func(argv):
 
             continue
 
+    # write out the input file, not actually used, but nice to have
+    with open(os.path.join(job_dir, job + ".inp"), "w") as fobj:
+        fobj.write("begin simulation {0}\n".format(job))
+        fobj.write("\n".join(job_inp))
+        fobj.write("\nend simulation")
+
     if data["verbosity"]:
         pu.loginf("Iteration {0:d}, parameters: {1}"
                   .format(icall, ", ".join(msg)))
