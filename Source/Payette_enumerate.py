@@ -53,9 +53,14 @@ class Enumerate(object):
         self.data = {}
         self.data["basename"] = job
         self.data["verbosity"] = job_opts.verbosity
-        self.data["input files"] = []
-        self.data["output dirs"] = []
         self.data["OPTS"] = job_opts
+
+        # The following entries in the dictionary are special
+        # to the enumeration module
+        self.data["enumeration list"] = []  # Enumeration data
+        self.data["enumeration line index"] = {} # File line index for params
+        self.data["input string list"] = [] # input file stored as list of lines
+        self.data["output dir list"] = []   # List of output directories
 
         # set verbosity to 0 for Payette simulation
         self.job_opts.verbosity = 0
@@ -92,27 +97,28 @@ class Enumerate(object):
         """
 
         # make the directory to run the job
-        dnam = self.basename + ".enum"
-        base_dir = os.path.join(os.getcwd(), dnam)
+        dir_n = self.basename + ".enum"
+        base_dir = os.path.join(os.getcwd(), dir_n)
         idir = 0
         while True:
             if os.path.isdir(base_dir):
                 base_dir = os.path.join(
-                    os.getcwd(), dnam + ".{0:03d}".format(idir))
+                    os.getcwd(), dir_n + ".{0:03d}".format(idir))
             elif idir > 100:
                 sys.exit("ERROR: max number of dirs")
             else:
                 break
             idir += 1
+
+        os.mkdir(base_dir)
         if self.data["verbosity"]:
             pu.loginf("Enumeration directory: {0}".format(base_dir))
 
-        digits=len(str(  len( self.data["permutations"] ) ))
+        # This computes the number of digits we need for the current set
+        # of runs. No sense in having run.0000001 when there are only 3 runs.
+        digits=len(str(  len( self.data["enumeration list"] ) ))
 
-        os.mkdir(base_dir)
-#        os.chdir(base_dir)
-
-        for idx, permutation in enumerate(self.data["permutations"]):
+        for idx, enumeration in enumerate(self.data["enumeration list"]):
             # Create the job directory
             job_d = os.path.join(base_dir,"job.{0:0{1}d}".format(idx,digits))
             os.mkdir(job_d)
@@ -120,27 +126,33 @@ class Enumerate(object):
             # Create the job .inp file.
             job_f = os.path.join(job_d, self.data["basename"]+".inp")
             tmp_baseinp = self.data["baseinp"]
-            for new_token in permutation:
-                new_value = permutation[new_token]
-                new_line = self.data["permute keys"][new_token]
-                new_string = "{0}={1}".format(new_token,new_value)
-                tmp_baseinp[new_line] = new_string
-            TMPFILE = open(job_f,"w")
-            TMPFILE.write("begin simulation {0}\n".format(self.data["basename"])+
+            for new_token in enumeration:
+                new_value = enumeration[new_token]
+                new_line = self.data["enumeration line index"][new_token]
+                tmp_baseinp[new_line] = "{0}={1}".format(new_token, new_value)
+
+            # Write the job .inp file
+            TMPF = open(job_f,"w")
+            TMPF.write("begin simulation {0}\n".format(self.data["basename"])+
                           "\n".join(tmp_baseinp) +
                           "\nend simulation")
-            TMPFILE.close()
-            self.data["input files"].append([x for x in tmp_baseinp])
-            self.data["output dirs"].append(job_d)
+            TMPF.close()
+
+            self.data["input string list"].append([x for x in tmp_baseinp])
+            self.data["output dir list"].append(job_d)
 
         cwd = os.getcwd()
-        for idx, input_file in enumerate(self.data["input files"]):
-            os.chdir(self.data["output dirs"][idx])
+        for idx, input_file in enumerate(self.data["input string list"]):
+            # Move to the job directory
+            os.chdir(self.data["output dir list"][idx])
 
+            # Make a copy of the .inp file (because running it clobbers it)
             dum_inp = [x for x in input_file]
+
             # instantiate Payette object
-            print(dum_inp)
-            the_model = pc.Payette(self.data["basename"], dum_inp, self.data["OPTS"])
+            the_model = pc.Payette(self.data["basename"],
+                                   dum_inp,
+                                   self.data["OPTS"])
     
             # run the job
             solve = pd.runProblem(the_model, restart=False)
@@ -155,12 +167,12 @@ class Enumerate(object):
         return 0
 
     def finish(self):
-        r""" finish up the optimization job """
+        r""" finish up the enumeration job """
 
         pass
 
     def get_enum_info(self, opt_block):
-        r"""Get the required optimization information.
+        r"""Get the required enumeration information.
 
         Populates the self.data dict with information parsed from the
         optimization block of the input file. Sets defaults where not
@@ -183,25 +195,24 @@ class Enumerate(object):
         allowed_combination_types = ["straight","permutation"]
         combination_type = "straight"
 
-        permutations = {}
+        enumerations = {}
         for item in opt_block:
 
             item = item.replace(",", " ").replace("=", " ").split()
 
-            if "permute" in item[0].lower():
+            if "enumerate" in item[0].lower():
                 try:
                     tmp_key = item[1].lower()
                 except IndexError:
-                    pu.logerr("Invalid 'permute' statement.")
+                    pu.logerr("Invalid 'enumerate' statement.")
 
-                # Store as strings because strings might be permutted upon. 
-                permutations[item[1].lower()] = item[2:]
-                if len(permutations) == 0:
-                    pu.logerr("No values given with 'permute' statement.")
+                # Store as strings because strings might be enumerated upon. 
+                enumerations[item[1].lower()] = item[2:]
+                if len(enumerations) == 0:
+                    pu.logerr("No values given with 'enumerate' statement.")
 
                 continue
-            elif "combination" in item[0].lower():
-                print("Stuff going on",item)
+            elif "type" in item[0].lower():
                 try:
                     combination_type = item[1].lower()
                 except IndexError:
@@ -220,25 +231,31 @@ class Enumerate(object):
         # is given 'x' values and 'x' simulations are spawned) or permutation
         # (where 'x' of one parameter is given, and 'y' of another, and 
         # 'x*y' simulations are generated).
-        permute_db = []
+        enumerate_db = []
         if combination_type == "straight":
-            num_permutes = [len(permutations[x]) for x in permutations]
-            if not all(num_permutes[0] == x for x in num_permutes):
+            # Ensure that all the enumerations have the same number of entries.
+            num_values = [len(enumerations[x]) for x in enumerations]
+            if not all(num_values[0] == x for x in num_values):
                 pu.logerr("For 'straight' type combination, all params must"+
                           "have the same number of values.")
-            for idx in range(0,num_permutes[0]):
+
+            if len(num_values) == 0:
+                sys.exit("No enumerations detected.")
+
+            # This populates the enumeration list with dictionaries that
+            # define each individual enumeration.
+            for idx in range(0,num_values[0]):
                 tmp_dict = {}
-                for param in permutations.keys():
-                    tmp_dict[param] = permutations[param][idx]
-                permute_db.append(tmp_dict)
+                for param in enumerations.keys():
+                    tmp_dict[param] = enumerations[param][idx]
+                enumerate_db.append(tmp_dict)
+
         elif combination_type == "permutation":
-                pu.logerr("'permutation' not yet implemented.")
+                pu.logerr("Enumeration type 'permutation' not yet implemented.")
         else:
                 pu.logerr("combination type not recognized")
 
-        print(permute_db)
-
-        self.data["permutations"] = permute_db
+        self.data["enumeration list"] = enumerate_db
         return
 
     def check_enum_parameters(self):
@@ -256,15 +273,18 @@ class Enumerate(object):
 
         """
 
+        # If no enumerations
+        if len(self.data["enumeration list"]) == 0:
+            pu.logerr("No enumerations saved. Cannot proceed")
+            return 1
 
         errors = 0
-
         # the input for the job
         job_inp = [x for x in self.data["baseinp"]]
 
         # check that the optimize variables were given in the input file
         mtl, idx0, idxf = pu.has_block(job_inp, "material")
-        viz_params = self.data["permutations"][0].keys()
+        viz_params = self.data["enumeration list"][0].keys()
         viz_params.sort()
 
         # instantiate a Payette object
@@ -292,136 +312,20 @@ class Enumerate(object):
 
         # there are no errors, now we want to find the line number in the
         # input file for the optimized params
-        self.data["permute keys"] = {}
+        self.data["enumeration line index"] = {}
         for iline, line in enumerate([x for x in self.data["baseinp"]]):
             for viz_param in viz_params:
                 if viz_param.lower() in line.lower().split():
-                    self.data["permute keys"][viz_param] = iline
+                    self.data["enumeration line index"][viz_param] = iline
                 continue
             continue
         # double check that data["optimize"] has a input idx for every
         # optimize variable, and set the initial value
-        for key in self.data["permutations"][0].keys():
-            if key not in self.data["permute keys"].keys():
+        for key in self.data["enumeration list"][0].keys():
+            if key not in self.data["enumeration line index"].keys():
                 errors += 1
                 pu.logerr("No input idx for enumeration variable '{0}'".format(key))
                 continue
             continue
 
         return errors
-
-
-def func(opt_params, data, base_dir, job_opts, xgold):
-
-    r"""Objective function
-
-    Creates a directory to run the current job, runs the job through Payette
-    and then gets the average normalized root mean squared error between the
-    output and the gold file.
-
-    Parameters
-    ----------
-    opt_params : array_like
-        Current best guess for optimized parameters
-    data : dict
-        Optimization class data container
-    job_opts : instance
-        runPayette options
-    xgold : str
-        File path to gold file
-
-    Returns
-    -------
-    error : float
-        Average root mean squared error between the out file and gold file
-
-    """
-
-    global IOPT
-    IOPT += 1
-
-    job = data["basename"] + ".{0:03d}".format(IOPT)
-
-    job_dir = os.path.join(base_dir, job)
-    os.mkdir(job_dir)
-    os.chdir(job_dir)
-
-    # instantiate the Payette object
-    job_inp = [x for x in data["baseinp"]]
-
-    # replace the optimize variables with the updated and write params to file
-    nams = [x for x in data["optimize"]]
-    nams.sort()
-    msg = []
-    with open(os.path.join(job_dir, job + ".opt"), "w") as fobj:
-        fobj.write("Parameters for iteration {0:d}\n".format(IOPT))
-        for idx, nam in enumerate(nams):
-            opt_val = opt_params[idx]
-
-            # Some methods do not allow for bounds and we can get negative
-            # trial values. This is a problem when optimizing, say, elastic
-            # moduli that cannot be negative since if we send a negative
-            # elastic modulus to the routine it will bomb and the optimization
-            # will stop. This is a way of forcing the optimizer to see a very
-            # large error if it tries to send in numbers above or below the
-            # user specified bounds -> essentially, we are using a penalty
-            # method of sorts to force the bounds we want.
-            lbnd, ubnd = data["optimize"][nam]["bounds"]
-            if lbnd is not None and opt_val < lbnd/FAC[idx]:
-                return 1.e3
-            if ubnd is not None and opt_val > ubnd/FAC[idx]:
-                return 1.e3
-
-            line = data["optimize"][nam]["input idx"]
-            pstr = "{0} = {1:12.6E}".format(nam, opt_val*FAC[idx])
-            job_inp[line] = pstr
-            fobj.write(pstr + "\n")
-            msg.append(pstr)
-
-            continue
-
-    if data["verbosity"]:
-        pu.loginf("Iteration {0:d}, trial parameters: {1}"
-                  .format(IOPT, ", ".join(msg)))
-
-    # instantiate Payette object
-    the_model = pc.Payette(job, job_inp, job_opts)
-
-    # run the job
-    solve = pd.runProblem(the_model, restart=False)
-
-    the_model.finish()
-
-    if solve != 0:
-        sys.exit("ERROR: simulation failed")
-
-    # extract minimization variables from the simulation output
-    out_f = os.path.join(job_dir, job + ".out")
-    if not os.path.isfile(out_f):
-        sys.exit("out file {0} not created".format(out_f))
-
-    exargs = [out_f, "--silent", "--xout"]
-    if data["minimize"]["abscissa"] is not None:
-        exargs.append(data["minimize"]["abscissa"])
-    exargs.extend(data["minimize"]["vars"])
-    pe.extract(exargs)
-    xout = out_f.replace(".out", ".xout")
-
-    if data["minimize"]["abscissa"] is not None:
-        # find the rms error between the out and gold
-        errors = pu.compare_out_to_gold_rms(xgold, xout)
-    else:
-        errors = pu.compare_file_cols(xgold, xout)
-
-    if errors[0]:
-        sys.exit("Resolve previous errors")
-
-    error = math.sqrt(np.sum(errors[1] ** 2) / float(len(errors[1])))
-
-    with open(os.path.join(job_dir, job + ".opt"), "a") as fobj:
-        fobj.write("error = {0:12.6E}\n".format(error))
-
-    # go back to the base_dir
-    os.chdir(base_dir)
-
-    return error

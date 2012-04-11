@@ -40,7 +40,8 @@
 \contentsline {subsubsection}{Example 6: Using dt/Deformation Type Table}{19}{subsubsection*.25}
 \contentsline {section}{\numberline {6.3}Optional Blocks}{19}{section.6.3}
 \contentsline {subsection}{\numberline {6.3.1}\texttt {mathplot} Block}{19}{subsection.6.3.1}
-\contentsline {section}{\numberline {6.4}Inserting External Files}{19}{section.6.4}
+\contentsline {subsection}{\numberline {6.3.2}\texttt {enumeration} Block}{19}{subsection.6.3.2}
+\contentsline {section}{\numberline {6.4}Inserting External Files}{20}{section.6.4}
 \contentsline {section}{\numberline {6.5}Example: A Complete Input File}{20}{section.6.5}
 \contentsline {chapter}{\numberline {7}Running Tests}{21}{chapter.7}
 \contentsline {section}{\numberline {7.1}Basic Usage of \texttt {testPayette}}{21}{section.7.1}

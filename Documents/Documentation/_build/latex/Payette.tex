@@ -13,7 +13,7 @@
 
 
 \title{Payette Documentation}
-\date{April 02, 2012}
+\date{April 11, 2012}
 \release{1.0}
 \author{Tim Fuller, Scot Swan}
 \newcommand{\sphinxlogo}{}
@@ -1066,7 +1066,7 @@ end legs
 
 \section{Optional Blocks}
 \label{Files/input_file_formatting:optional-blocks}\label{Files/input_file_formatting:id3}
-The following blocks are optional: \code{mathplot}.
+The following blocks are optional: \code{mathplot} \code{enumerate}.
 
 
 \subsection{\texttt{mathplot} Block}
@@ -1087,6 +1087,30 @@ where \code{var?} are \emph{Payette} and material model variables. A complete li
 plotable variables is listed in each simulation's log file. Each line in the
 \code{mathplot} block can contain an arbitrary number of space, comma, or semi-colon
 delimited variables.
+
+
+\subsection{\texttt{enumeration} Block}
+\label{Files/input_file_formatting:enumeration-block}
+The \code{enumeration} block is used to run a batch of simulations that are
+very similar to the base input given. The basic syntax is:
+
+\begin{Verbatim}[commandchars=\\\{\}]
+begin enumeration
+  enumerate PARAM1 VAL1 VAL2 VAL3 ...
+  enumerate PARAM2 VAL4 VAL5 VAL6 ...
+  ...
+end enumeration
+\end{Verbatim}
+
+This would take the general input and spawn simulations where the value associated
+with PARAM1 is replace by VAL1 and the value associated with PARAM2 is replaced by
+VAL4, then another simulation where PARAM1-\textgreater{}VAL2 and PARAM2-\textgreater{}VAL5, etc.
+
+Directories containing each individual simulation and its output are put into a
+general directory called \code{SIMNAME.enum} with the individual simulations being
+contained in subdirectories named \code{job.X} where the \code{SIMNAME} is the simulation
+name defined in the first line of the input file (\code{begin simulation SIMNAME}) and \code{X} is
+replaced by the index of the job being run.
 
 
 \section{Inserting External Files}
