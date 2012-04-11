@@ -20,9 +20,9 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-"""Payette_optimize.py module. Contains classes and functions for optimizing
-parameters using Payette.
-
+"""Payette_enumerate.py module. Contains classes and functions for performing
+enumerations (and permutations) on material parameters and running simulations
+for each given instance.
 """
 
 import os
@@ -39,7 +39,7 @@ import Source.Payette_driver as pd
 import Source.Payette_extract as pe
 
 
-class Visualize(object):
+class Enumerate(object):
     r"""docstring -> needs to be completed """
 
     def __init__(self, job, job_inp, job_opts):
@@ -60,26 +60,25 @@ class Visualize(object):
         # set verbosity to 0 for Payette simulation
         self.job_opts.verbosity = 0
 
-        # get the optimization block
-        opt, optid = pu.findBlock(job_inp, "visualization")
+        # get the 'enumeration' block and remove it from 'job_inp'
+        opt, optid = pu.findBlock(job_inp, "enumeration")
 
-        # save the job_inp.  findBlock above removes the optimization block
+        # save the job_inp.
         self.data["baseinp"] = job_inp
 
         # fill the data with the optimization information
-        self.get_vis_info(opt)
+        self.get_enum_info(opt)
 
-        errors = self.check_viz_parameters()
+        errors = self.check_enum_parameters()
         if errors:
             pu.logerr("exiting due to previous errors")
             sys.exit(123)
+        return
 
-#        sys.exit("exit from Payette_visualize.py")
+    def enumerate(self):
+        r"""Run the enumerated simulations
 
-    def visualize(self):
-        r"""Run the optimization job
-
-        Set up directory to run the optimization job and call the minimizer
+        detailed info
 
         Parameters
         ----------
@@ -93,7 +92,7 @@ class Visualize(object):
         """
 
         # make the directory to run the job
-        dnam = self.basename + ".vis"
+        dnam = self.basename + ".enum"
         base_dir = os.path.join(os.getcwd(), dnam)
         idir = 0
         while True:
@@ -106,7 +105,7 @@ class Visualize(object):
                 break
             idir += 1
         if self.data["verbosity"]:
-            pu.loginf("Visualization directory: {0}".format(base_dir))
+            pu.loginf("Enumeration directory: {0}".format(base_dir))
 
         digits=len(str(  len( self.data["permutations"] ) ))
 
@@ -134,18 +133,6 @@ class Visualize(object):
             self.data["input files"].append([x for x in tmp_baseinp])
             self.data["output dirs"].append(job_d)
 
-#        self.data["permute keys"] = {}
-#        for iline, line in enumerate([x for x in self.data["baseinp"]]):
-#            for viz_param in viz_params:
-#                if viz_param.lower() in line.lower().split():
-#                    self.data["permute keys"][viz_param] = iline
-#        sys.exit("chicken wings")
-
-#        opt_params = minimize(
-#            func, opt_params, args=opt_args, method=opt_method,
-#            bounds=opt_bounds, options=opt_options,
-#            )
-
         cwd = os.getcwd()
         for idx, input_file in enumerate(self.data["input files"]):
             os.chdir(self.data["output dirs"][idx])
@@ -172,7 +159,7 @@ class Visualize(object):
 
         pass
 
-    def get_vis_info(self, opt_block):
+    def get_enum_info(self, opt_block):
         r"""Get the required optimization information.
 
         Populates the self.data dict with information parsed from the
@@ -254,7 +241,7 @@ class Visualize(object):
         self.data["permutations"] = permute_db
         return
 
-    def check_viz_parameters(self):
+    def check_enum_parameters(self):
         r"""Check that the minimization parameters were specified in the input
         file and exist in the parameter table for the instantiated material.
 
@@ -296,7 +283,7 @@ class Visualize(object):
         # check that the optimize variables are in this models parameters
         not_in = [x for x in viz_params if x.lower() not in params]
         if not_in:
-            pu.logerr("Optimization parameter[s] {0} not in model parameters"
+            pu.logerr("Enumeration parameter[s] {0} not in model parameters"
                       .format(", ".join(not_in)))
             errors += 1
 
@@ -317,7 +304,7 @@ class Visualize(object):
         for key in self.data["permutations"][0].keys():
             if key not in self.data["permute keys"].keys():
                 errors += 1
-                pu.logerr("No input idx for optimize variable '{0}'".format(key))
+                pu.logerr("No input idx for enumeration variable '{0}'".format(key))
                 continue
             continue
 
