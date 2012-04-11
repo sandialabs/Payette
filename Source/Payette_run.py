@@ -402,12 +402,12 @@ def _run_job(job):
 
         solve = the_model.optimize()
 
-    elif "visualize" in USER_INPUT_DICT[job]:
+    elif 'visualize' in USER_INPUT_DICT[job]:
         # intantiate the Optimize object
         USER_INPUT_DICT[job].remove("visualize")
         the_model = pv.Visualize(job, USER_INPUT_DICT[job], OPTS)
 
-        # run the optimization problem
+        # run the visualization problem
         if TIMING:
             tim1 = time.time()
 
