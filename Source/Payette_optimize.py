@@ -37,9 +37,10 @@ import Source.Payette_utils as pu
 import Source.Payette_container as pc
 import Source.Payette_driver as pd
 import Source.Payette_extract as pe
+import Toolset.KayentaParamConv as kpc
 
 # Module level variables
-IOPT = -1
+IOPT = 0
 FAC = []
 
 
@@ -57,6 +58,7 @@ class Optimize(object):
         self.data = {}
         self.data["basename"] = job
         self.data["verbosity"] = job_opts.verbosity
+        self.data["options"] = []
 
         # set verbosity to 0 for Payette simulation
         self.job_opts.verbosity = 0
@@ -76,7 +78,6 @@ class Optimize(object):
             pu.logerr("exiting due to previous errors")
             sys.exit(123)
 
-
         # check minimization variables
         errors += self.check_min_parameters()
         if errors:
@@ -94,6 +95,9 @@ class Optimize(object):
                 pu.loginf("using {0} as abscissa"
                           .format(self.data["minimize"]["abscissa"][1:]))
             pu.loginf("Gold file: {0}".format(self.data["gold file"]))
+            if self.data["options"]:
+                pu.loginf("Optimization options: {0}"
+                          .format(", ".join(self.data["options"])))
             pu.loginf("Optimization method: {0}"
                       .format(self.data["optimization method"]["method"]))
 
@@ -170,17 +174,31 @@ class Optimize(object):
                        "ftol": self.data["tolerance"],
                        "disp": self.data["disp"],}
 
+        shearfit = "shearfit" in self.data["options"]
+        if shearfit:
+            fcn = rtxc
+        else:
+            fcn = func
+
         opt_params = minimize(
-            func, opt_params, args=opt_args, method=opt_method,
+            fcn, opt_params, args=opt_args, method=opt_method,
             bounds=opt_bounds, options=opt_options,
             )
 
         # optimum parameters found, write out final info
-        msg = ["{0} = {1:12.6E}".format(nams[i], x)
-               for i, x in enumerate(opt_params)]
+        msg = ", ".join(["{0} = {1:12.6E}".format(nams[i], x)
+                         for i, x in enumerate(opt_params)])
+
+        if shearfit:
+            stren, peaki1, fslope, yslope = kpc.old_2_new(*opt_params)
+            msg += (
+                "\n" + " "*28
+              + "STREN = {0:12.6E}, PEAKI1 = {1:12.6E}, ".format(stren, peaki1)
+              + "FSLOPE = {0:12.6E}, YSLOPE = {1:12.6E}".format(fslope, yslope))
+
         pu.loginf("Optimized parameters found on iteration {0:d}"
                   .format(IOPT))
-        pu.loginf("Optimized parameters: {0}".format(", ".join(msg)))
+        pu.loginf("Optimized parameters: {0}".format(msg))
 
         # last_job = os.path.join(base_dir,
         #                         self.basename + ".{0:03d}".format(IOPT))
@@ -224,25 +242,51 @@ class Optimize(object):
         minimize = {"abscissa": None, "vars": []}
         allowed_methods = {
             "simplex": {"method": "Nelder-Mead", "name": "fmin"},
-            "powell": {"method": "Powell", "name": "fmin_powell",
-                       "features": None},
-            "cobyla": {"method": "COBYLA", "name": "fmin_cobyla",
-                       "features": ["inequality constraints"]},
-            "slsqp": {"method": "SLSQP", "name":"fmin_slsqp",
-                      "features": ["inequality constraints",
-                                   "equality constraints"]}}
-        opt_method = "simplex"
+            "powell": {"method": "Powell", "name": "fmin_powell"},
+            "cobyla": {"method": "COBYLA", "name": "fmin_cobyla"},
+            "slsqp": {"method": "SLSQP", "name":"fmin_slsqp"}}
+
+        # default method
+        opt_method = allowed_methods["simplex"]
         maxiter = 20
         tolerance = 1.e-4
         disp = False
+        shearfit = False
         optimize = {}
 
+        # get options first -> must come first because some options have a
+        # default method different than the global default of simplex
         for item in opt_block:
+            item = item.replace(",", " ").replace("=", " ").split()
+            if "option" in item[0].lower():
+                self.data["options"].append(item[1].lower())
+            continue
 
+        if "shearfit" in self.data["options"]:
+            shearfit = True
+            opt_method = allowed_methods["cobyla"]
+
+        # get method before other options
+        for item in opt_block:
+            item = item.replace(",", " ").replace("=", " ").split()
+            if "method" in item[0].lower():
+                try:
+                    opt_method = allowed_methods[item[1].lower()]
+                except KeyError:
+                    pu.logerr("invalid method {0}".format(item[1].lower()))
+                    errors += 1
+
+        if errors:
+            pu.logerr("resolve previous errors")
+            sys.exit(2)
+
+        # now get the rest
+        for item in opt_block:
             item = item.replace(",", " ").replace("=", " ").split()
 
             if "gold" in item[0].lower() and "file" in item[1].lower():
                 if not os.path.isfile(item[2]):
+                    errors += 1
                     pu.logerr("gold file {0} not found".format(item[2]))
                 else:
                     gold_f = item[2]
@@ -259,7 +303,14 @@ class Optimize(object):
                         break
                     if min_var[0] != "@":
                         min_var = "@" + min_var
+
                     if min_var not in minimize["vars"]:
+                        if (shearfit and
+                            min_var.lower() not in ("@i1", "@rootj2")):
+                            errors += 1
+                            pu.logerr("minimize variable "+ min_var[1:] +
+                                      "not allowed with shearfit method")
+
                         minimize["vars"].append(min_var)
                     continue
 
@@ -267,6 +318,13 @@ class Optimize(object):
                 # set up this parameter to optimize
                 key = item[1]
                 vals = item[2:]
+
+                if shearfit and key.lower() not in ("a1", "a2", "a3", "a4",
+                                                    "stren", "peaki1", "fslope",
+                                                    "yslope"):
+                    errors += 1
+                    pu.logerr("optimize variable "+ key +
+                              "not allowed with shearfit method")
 
                 # For now, there is no initial value. It is given in the
                 # material block of the input file, we just hold its place
@@ -294,13 +352,6 @@ class Optimize(object):
 
                 optimize[key]["bounds"] = (lbnd, ubnd)
 
-            elif "method" in item[0].lower():
-                try:
-                    opt_method = allowed_methods[item[1].lower()]
-                except KeyError:
-                    pu.logerr("invalid method {0}".format(item[1].lower()))
-                    errors += 1
-
             elif "maxiter" in item[0].lower():
                 maxiter = int(item[1])
 
@@ -324,8 +375,14 @@ class Optimize(object):
 
             continue
 
+        if shearfit:
+            # for shearfit, we optimize a1 - a4 by minimizing errror in rootj2
+            # vs. i1 using the rtxc function. Therefore, the only minimization
+            # variables needed are i1 and rootj2
+            minimize["vars"] = ["@I1", "@ROOTJ2"]
+
         if gold_f is None:
-            pu.logerr("No gold file give for optimization problem")
+            pu.logerr("No gold file given for optimization problem")
             errors += 1
         else:
             if not os.path.isfile(gold_f):
@@ -374,28 +431,35 @@ class Optimize(object):
 
         errors = 0
 
+        shearfit = "shearfit" in self.data["options"]
+
         # the input for the job
         job_inp = [x for x in self.data["baseinp"]]
 
-        # check that the optimize variables were given in the input file
+        # --- check that the optimize variables were given in the input file
         mtl, idx0, idxf = pu.has_block(job_inp, "material")
         opt_params = self.data["optimize"].keys()
         opt_params.sort()
+
+        # get input parameters
         inp_params = []
         inp_vals = {}
         for line in job_inp[idx0:idxf]:
             if "constitutive" in line:
                 continue
-            param = "_".join(line.split()[0:-1])
-            inp_params.append(param.lower())
+            param = line.replace("="," ").replace(","," ")
+            param = "_".join(param.split()[0:-1])
+            inp_params.append(param)
             inp_vals[param] = float(line.split()[-1])
             continue
-
         inp_params.sort()
-        not_in = [x for x in opt_params if x.lower() not in inp_params]
+
+        not_in = [x for x in opt_params if x not in inp_params]
         if not_in:
             pu.logerr("Optimization parameter[s] {0} not in input parameters"
                       .format(", ".join(not_in)))
+            pu.logerr("Note that case of optimization parameters must "
+                      "match that of input parameters")
             errors += 1
 
         # instantiate a Payette object
@@ -468,129 +532,13 @@ class Optimize(object):
         return extraction
 
 
-def func(opt_params, data, base_dir, job_opts, xgold):
-
-    r"""Objective function
-
-    Creates a directory to run the current job, runs the job through Payette
-    and then gets the average normalized root mean squared error between the
-    output and the gold file.
-
-    Parameters
-    ----------
-    opt_params : array_like
-        Current best guess for optimized parameters
-    data : dict
-        Optimization class data container
-    job_opts : instance
-        runPayette options
-    xgold : str
-        File path to gold file
-
-    Returns
-    -------
-    error : float
-        Average root mean squared error between the out file and gold file
-
-    """
-
-    global IOPT
-    IOPT += 1
-
-    job = data["basename"] + ".{0:03d}".format(IOPT)
-
-    job_dir = os.path.join(base_dir, job)
-    os.mkdir(job_dir)
-    os.chdir(job_dir)
-
-    # instantiate the Payette object
-    job_inp = [x for x in data["baseinp"]]
-
-    # replace the optimize variables with the updated and write params to file
-    nams = [x for x in data["optimize"]]
-    nams.sort()
-    msg = []
-    with open(os.path.join(job_dir, job + ".opt"), "w") as fobj:
-        fobj.write("Parameters for iteration {0:d}\n".format(IOPT))
-        for idx, nam in enumerate(nams):
-            opt_val = opt_params[idx]
-
-            # Some methods do not allow for bounds and we can get negative
-            # trial values. This is a problem when optimizing, say, elastic
-            # moduli that cannot be negative since if we send a negative
-            # elastic modulus to the routine it will bomb and the optimization
-            # will stop. This is a way of forcing the optimizer to see a very
-            # large error if it tries to send in numbers above or below the
-            # user specified bounds -> essentially, we are using a penalty
-            # method of sorts to force the bounds we want.
-            lbnd, ubnd = data["optimize"][nam]["bounds"]
-            if lbnd is not None and opt_val < lbnd/FAC[idx]:
-                return 1.e3
-            if ubnd is not None and opt_val > ubnd/FAC[idx]:
-                return 1.e3
-
-            line = data["optimize"][nam]["input idx"]
-            pstr = "{0} = {1:12.6E}".format(nam, opt_val*FAC[idx])
-            job_inp[line] = pstr
-            fobj.write(pstr + "\n")
-            msg.append(pstr)
-
-            continue
-
-    if data["verbosity"]:
-        pu.loginf("Iteration {0:d}, trial parameters: {1}"
-                  .format(IOPT, ", ".join(msg)))
-
-    # instantiate Payette object
-    the_model = pc.Payette(job, job_inp, job_opts)
-
-    # run the job
-    solve = pd.runProblem(the_model, restart=False)
-
-    the_model.finish()
-
-    if solve != 0:
-        sys.exit("ERROR: simulation failed")
-
-    # extract minimization variables from the simulation output
-    out_f = os.path.join(job_dir, job + ".out")
-    if not os.path.isfile(out_f):
-        sys.exit("out file {0} not created".format(out_f))
-
-    exargs = [out_f, "--silent", "--xout"]
-    if data["minimize"]["abscissa"] is not None:
-        exargs.append(data["minimize"]["abscissa"])
-    exargs.extend(data["minimize"]["vars"])
-    pe.extract(exargs)
-    xout = out_f.replace(".out", ".xout")
-
-    if data["minimize"]["abscissa"] is not None:
-        # find the rms error between the out and gold
-        errors = pu.compare_out_to_gold_rms(xgold, xout)
-    else:
-        errors = pu.compare_file_cols(xgold, xout)
-
-    if errors[0]:
-        sys.exit("Resolve previous errors")
-
-    error = math.sqrt(np.sum(errors[1] ** 2) / float(len(errors[1])))
-
-    with open(os.path.join(job_dir, job + ".opt"), "a") as fobj:
-        fobj.write("error = {0:12.6E}\n".format(error))
-
-    # go back to the base_dir
-    os.chdir(base_dir)
-
-    return error
-
-
-def minimize(func, x0, args=(), method="Nelder-Mead",
+def minimize(fcn, x0, args=(), method="Nelder-Mead",
              bounds=None, options={}):
     r"""Wrapper to the supported minimization methods
 
     Parameters
     ----------
-    func : callable
+    fcn : callable
         Objective function.
     x0 : ndarray
         Initial guess.
@@ -635,23 +583,24 @@ def minimize(func, x0, args=(), method="Nelder-Mead",
     xtol = options["xtol"]
     ftol = options["ftol"]
     disp = options["disp"]
+    shearfit = "shearfit" in args[0]["options"]
 
-    has_bounds = any([x for j in bounds for x in j])
-
-    # optimization methods work best with number around 1, here we normalize
-    # the optimization variables and save the multiplier to be used when the
-    # function gets called by the optimizer.
+    # optimization methods work best with number around 1, here we
+    # normalize the optimization variables and save the multiplier to be
+    # used when the function gets called by the optimizer.
     for val in x0:
         mag_val = eval("1.e" + "{0:12.6E}".format(val).split("E")[1])
         FAC.append(mag_val)
+        continue
     FAC = np.array(FAC)
     x0 = x0/FAC
 
+    has_bounds = [x for j in bounds for x in j if x is not None]
     if meth in ["nelder-mead", "powell"] and has_bounds:
         pu.logwrn("Method {0} cannot handle constraints nor bounds directly."
                   .format(method))
 
-    if has_bounds:
+    if has_bounds or shearfit:
         # user has specified bounds on the parameters to be optimized. Here,
         # we convert the bounds to inequality constraints
         errors = 0
@@ -659,15 +608,24 @@ def minimize(func, x0, args=(), method="Nelder-Mead",
         for ibnd, bound in enumerate(bounds):
             lbnd, ubnd = bound
             if lbnd is None:
-                lbnd = -1.e20
+                if shearfit:
+                    lbnd = 0.
+                else:
+                    lbnd = -1.e20
             if ubnd is None:
-                ubnd = 1.e20
+                if shearfit:
+                    ubnd = x0[ibnd]*FAC[ibnd] + 50 * x0[ibnd]*FAC[ibnd]
+                else:
+                    ubnd = 1.e20
             if lbnd > ubnd:
                 errors += 1
                 pu.logerr("lbnd({0:12.6E}) > ubnd({1:12.6E})"
                           .format(lbnd, ubnd))
             lcons.append(lambda x: x[ibnd] - lbnd/FAC[ibnd])
             ucons.append(lambda x: ubnd/FAC[ibnd] - x[ibnd])
+
+            bounds[ibnd] = (lbnd, ubnd)
+
             continue
 
         if errors:
@@ -677,21 +635,221 @@ def minimize(func, x0, args=(), method="Nelder-Mead",
 
     if meth == "nelder-mead":
         xopt = scipy.optimize.fmin(
-            func, x0, xtol=xtol, ftol=ftol,
+            fcn, x0, xtol=xtol, ftol=ftol,
             args=args, maxiter=maxiter, disp=disp)
 
     elif meth == "powell":
         xopt = scipy.optimize.fmin_powell(
-            func, x0, xtol=xtol, ftol=ftol,
+            fcn, x0, xtol=xtol, ftol=ftol,
             args=args, maxiter=maxiter, disp=disp)
 
     elif meth == "cobyla":
         xopt = scipy.optimize.fmin_cobyla(
-            func, x0, cons, consargs=(),
+            fcn, x0, cons, consargs=(),
             args=args, disp=False)
 
     else:
         sys.exit("ERROR: Unrecognized method {0}".format(method))
 
-    return xopt
+    return xopt*FAC
+
+
+def func(opt_params, data, base_dir, job_opts, xgold):
+
+    r"""Objective function
+
+    Creates a directory to run the current job, runs the job through Payette
+    and then gets the average normalized root mean squared error between the
+    output and the gold file.
+
+    Parameters
+    ----------
+    opt_params : array_like
+        Current best guess for optimized parameters
+    data : dict
+        Optimization class data container
+    job_opts : instance
+        runPayette options
+    xgold : str
+        File path to gold file
+
+    Returns
+    -------
+    error : float
+        Average root mean squared error between the out file and gold file
+
+    """
+
+    global IOPT
+
+    job = data["basename"] + ".{0:03d}".format(IOPT)
+
+    job_dir = os.path.join(base_dir, job)
+    os.mkdir(job_dir)
+    os.chdir(job_dir)
+
+    # instantiate the Payette object
+    job_inp = [x for x in data["baseinp"]]
+
+    # replace the optimize variables with the updated and write params to file
+    nams = [x for x in data["optimize"]]
+    nams.sort()
+    msg = []
+    with open(os.path.join(job_dir, job + ".opt"), "w") as fobj:
+        fobj.write("Parameters for iteration {0:d}\n".format(IOPT+1))
+        for idx, nam in enumerate(nams):
+            opt_val = opt_params[idx]
+
+            # Some methods do not allow for bounds and we can get negative
+            # trial values. This is a problem when optimizing, say, elastic
+            # moduli that cannot be negative since if we send a negative
+            # elastic modulus to the routine it will bomb and the optimization
+            # will stop. This is a way of forcing the optimizer to see a very
+            # large error if it tries to send in numbers above or below the
+            # user specified bounds -> essentially, we are using a penalty
+            # method of sorts to force the bounds we want.
+            lbnd, ubnd = data["optimize"][nam]["bounds"]
+            if lbnd is not None and opt_val < lbnd/FAC[idx]:
+                return 1.e3
+            if ubnd is not None and opt_val > ubnd/FAC[idx]:
+                return 1.e3
+
+            line = data["optimize"][nam]["input idx"]
+            pstr = "{0} = {1:12.6E}".format(nam, opt_val*FAC[idx])
+            job_inp[line] = pstr
+            fobj.write(pstr + "\n")
+            msg.append(pstr)
+
+            continue
+
+    if data["verbosity"]:
+        pu.loginf("Iteration {0:d}, trial parameters: {1}"
+                  .format(IOPT+1, ", ".join(msg)))
+
+    # instantiate Payette object
+    the_model = pc.Payette(job, job_inp, job_opts)
+
+    # run the job
+    solve = pd.runProblem(the_model, restart=False)
+
+    the_model.finish()
+
+    if solve != 0:
+        sys.exit("ERROR: simulation failed")
+
+    # extract minimization variables from the simulation output
+    out_f = os.path.join(job_dir, job + ".out")
+    if not os.path.isfile(out_f):
+        sys.exit("out file {0} not created".format(out_f))
+
+    exargs = [out_f, "--silent", "--xout"]
+    if data["minimize"]["abscissa"] is not None:
+        exargs.append(data["minimize"]["abscissa"])
+    exargs.extend(data["minimize"]["vars"])
+    pe.extract(exargs)
+    xout = out_f.replace(".out", ".xout")
+
+    if data["minimize"]["abscissa"] is not None:
+        # find the rms error between the out and gold
+        errors = pu.compare_out_to_gold_rms(xgold, xout)
+    else:
+        errors = pu.compare_file_cols(xgold, xout)
+
+    if errors[0]:
+        sys.exit("Resolve previous errors")
+
+    error = math.sqrt(np.sum(errors[1] ** 2) / float(len(errors[1])))
+
+    with open(os.path.join(job_dir, job + ".opt"), "a") as fobj:
+        fobj.write("error = {0:12.6E}\n".format(error))
+
+    # go back to the base_dir
+    os.chdir(base_dir)
+
+    IOPT += 1
+
+    return error
+
+
+def rtxc(aparams, data, base_dir, job_opts, xgold):
+    """The Kayenta limit function
+
+    Evaluates the Kayenta limit function
+
+              f(ione) = a1 + a3*exp(-a2*ione) + a4*ione
+
+    Parameters
+    ----------
+    ione : array_like
+        values of ione
+    a1 - a4 : float
+        Limit surface parameters
+
+    Returns
+    -------
+    rootj2 : array_like
+        values of sqrt(j2) corresponding to ione
+
+    """
+
+    global IOPT
+
+    job = data["basename"] + ".{0:03d}".format(IOPT)
+    job_dir = os.path.join(base_dir, job)
+
+    os.mkdir(job_dir)
+    os.chdir(job_dir)
+
+    # write trial params to file
+    nams = [x for x in data["optimize"]]
+    nams.sort()
+    msg = []
+    with open(os.path.join(job_dir, job + ".opt"), "w") as fobj:
+        fobj.write("Parameters for iteration {0:d}\n".format(IOPT+1))
+        for idx, nam in enumerate(nams):
+            opt_val = aparams[idx]
+
+            # Some methods do not allow for bounds and we can get negative
+            # trial values. This is a problem when optimizing, say, elastic
+            # moduli that cannot be negative since if we send a negative
+            # elastic modulus to the routine it will bomb and the optimization
+            # will stop. This is a way of forcing the optimizer to see a very
+            # large error if it tries to send in numbers above or below the
+            # user specified bounds -> essentially, we are using a penalty
+            # method of sorts to force the bounds we want.
+            lbnd, ubnd = data["optimize"][nam]["bounds"]
+            if lbnd is not None and opt_val < lbnd/FAC[idx]:
+                return 1.e3
+            if ubnd is not None and opt_val > ubnd/FAC[idx]:
+                return 1.e3
+
+            pstr = "{0} = {1:12.6E}".format(nam, opt_val*FAC[idx])
+            fobj.write(pstr + "\n")
+            msg.append(pstr)
+            continue
+
+    if data["verbosity"]:
+        pu.loginf("Iteration {0:d}, trial parameters: {1}"
+                  .format(IOPT+1, ", ".join(msg)))
+
+    # compute rootj2 and error
+    a1, a2, a3, a4 = aparams*FAC
+    dat = pu.read_data(xgold)
+    ione = dat[:, 0]
+    rootj2 = dat[:, 1]
+
+    error = rootj2 - (a1 - a3 * np.exp(a2 * ione) - a4 * ione)
+    error = math.sqrt(np.mean(error ** 2))
+    dnom = abs(np.amax(rootj2))
+    error = error / dnom if dnom >= 2.e-16 else error
+
+    with open(os.path.join(job_dir, job + ".opt"), "a") as fobj:
+        fobj.write("error = {0:12.6E}\n".format(error))
+
+    # go back to the base_dir
+    os.chdir(base_dir)
+
+    IOPT += 1
+
+    return error
 

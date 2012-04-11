@@ -258,9 +258,14 @@ def readUserInput(user_input,user_cchar=None):
         if any(opt):
             user_dict[key].append("optimize")
 
-        opt = has_block(val, "enumeration")
-        if any(opt):
+        enum = has_block(val, "enumeration")
+        if any(enum):
             user_dict[key].append("enumerate")
+
+        viz = has_block(val, "visualization")
+        if any(viz):
+            user_dict[key].append("visualize")
+
 
         continue
 

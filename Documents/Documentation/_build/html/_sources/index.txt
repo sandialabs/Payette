@@ -17,7 +17,7 @@ Payette Material Model Driver - Official Documentation
    Files/input_file_formatting
    Files/test_payette
    Files/installing_materials
-
+   Files/optimization
 
 
 Indices and tables

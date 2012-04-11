@@ -401,6 +401,7 @@ def _run_job(job):
             tim1 = time.time()
 
         solve = the_model.optimize()
+
     elif 'enumerate' in USER_INPUT_DICT[job]:
         # intantiate the Enumeration object
         USER_INPUT_DICT[job].remove("enumerate")
@@ -411,7 +412,18 @@ def _run_job(job):
             tim1 = time.time()
 
         solve = the_model.enumerate()
- 
+
+    elif 'visualize' in USER_INPUT_DICT[job]:
+        # intantiate the Optimize object
+        USER_INPUT_DICT[job].remove("visualize")
+        the_model = pv.Visualize(job, USER_INPUT_DICT[job], OPTS)
+
+        # run the enumeration problem
+        if TIMING:
+            tim1 = time.time()
+
+        solve = the_model.visualize()
+
     else:
         # instantiate Payette object
         if RESTART:
