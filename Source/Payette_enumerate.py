@@ -156,6 +156,9 @@ class Enumerate(object):
     
             # run the job
             solve = pd.runProblem(the_model, restart=False)
+            pcnt_complete = (idx+1)/float(len(self.data["input string list"])) * 100.0
+            pu.loginf("Enumeration {0: 6.2f}% complete".format(pcnt_complete))
+            
         
             the_model.finish()
 
