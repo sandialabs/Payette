@@ -210,9 +210,20 @@ class Enumerate(object):
                     pu.logerr("Invalid 'enumerate' statement.")
 
                 # Store as strings because strings might be enumerated upon. 
-                enumerations[item[1].lower()] = item[2:]
-                if len(enumerations) == 0:
-                    pu.logerr("No values given with 'enumerate' statement.")
+                enum_args = item[2:] 
+                if len(enum_args) == 0:
+                    pu.logerr("No arguments given with 'enumerate' statement.")
+                if enum_args[0].count(":") == 2:
+                    lbound, ubound, N = enum_args[0].split(":")
+                    lbound = float(lbound)
+                    ubound = float(ubound)
+                    N = int(N)
+                    enumerations[tmp_key] = [lbound + x / float(N - 1) *
+                                        (ubound - lbound) for x in range(0, N)]
+                    enumerations[tmp_key] = [ "{0:.14e}".format(x)
+                                             for x in enumerations[tmp_key]]
+                else:
+                    enumerations[tmp_key] = item[2:]
 
                 continue
             elif "type" in item[0].lower():
