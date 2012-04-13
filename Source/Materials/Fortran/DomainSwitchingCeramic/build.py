@@ -41,7 +41,7 @@ class Build(MaterialBuilder):
             raise BuildError("{0} not found, skipping {1}"
                              .format(emechd,self.libname),10)
 
-        srcs = ["domain_switching.f90"]
+        srcs = ["slsqp_optmz.f", "domain_switching.f90"]
         self.source_files.extend([os.path.join(emechd,x) for x in srcs])
 
         self.build_extension_module_with_f2py()

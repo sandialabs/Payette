@@ -322,6 +322,20 @@ def findBlock(ilist,keyword):
     AUTHORS
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     '''
+    if keyword is None:
+        # find all blocks and return names
+        inblk = False
+        blknams = []
+        for item in ilist:
+            item = item.lower().strip().split()
+            if "begin" in item[0]:
+                try:
+                    blknams.append(" ".join(item[1:]))
+                except ValueError:
+                    blknams.append(" ")
+            continue
+        return blknams, None
+
     kwd = str(keyword)
     index_beg = None
     index_end = None

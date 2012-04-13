@@ -169,6 +169,10 @@ class Payette:
                 continue
             pass
 
+        blk, blkid = findBlock(user_input, None)
+        if blk:
+            parseError("unrecognized blocks: {0}".format(" ,".join(blk)))
+
         # register boundary variables
         self.simdat.registerData("leg number","Scalar",
                                  init_val = 0 )
