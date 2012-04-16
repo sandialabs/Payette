@@ -464,7 +464,7 @@ step, strain table ::
 Optional Blocks
 ===============
 
-The following blocks are optional: ``mathplot``.
+The following blocks are optional: ``mathplot``, ``enumerate``.
 
 
 ``mathplot`` Block
@@ -485,6 +485,28 @@ plotable variables is listed in each simulation's log file. Each line in the
 ``mathplot`` block can contain an arbitrary number of space, comma, or semi-colon
 delimited variables.
 
+
+``enumeration`` Block
+---------------------
+
+The ``enumeration`` block is used to run a batch of simulations that are
+very similar to the base input given. The basic syntax is::
+
+  begin enumeration
+    enumerate PARAM1 VAL1 VAL2 VAL3 ...
+    enumerate PARAM2 VAL4 VAL5 VAL6 ...
+    ...
+  end enumeration
+
+This would take the general input and spawn simulations where the value associated
+with PARAM1 is replace by VAL1 and the value associated with PARAM2 is replaced by
+VAL4, then another simulation where PARAM1->VAL2 and PARAM2->VAL5, etc.
+
+Directories containing each individual simulation and its output are put into a
+general directory called ``SIMNAME.enum`` with the individual simulations being
+contained in subdirectories named ``job.X`` where the ``SIMNAME`` is the simulation
+name defined in the first line of the input file (``begin simulation SIMNAME``) and ``X`` is
+replaced by the index of the job being run.
 
 .. _inserting_files:
 

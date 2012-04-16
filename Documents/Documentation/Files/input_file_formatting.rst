@@ -464,7 +464,7 @@ step, strain table ::
 Optional Blocks
 ===============
 
-The following blocks are optional: ``mathplot`` ``enumerate``.
+The following blocks are optional: ``mathplot``, ``enumerate``.
 
 
 ``mathplot`` Block
@@ -487,7 +487,7 @@ delimited variables.
 
 
 ``enumeration`` Block
-------------------
+---------------------
 
 The ``enumeration`` block is used to run a batch of simulations that are
 very similar to the base input given. The basic syntax is::

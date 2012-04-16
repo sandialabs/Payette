@@ -226,7 +226,7 @@ def args2dict(args,sep):
             col = head_dict[kw.lower()]["col"]
             nam = head_dict[kw.lower()]["nam"]
         except:
-            msg = ("keyword {0} not in {1}, choose from\n: {2}"
+            msg = ("keyword {0} not in {1}, choose from:\n {2}"
                    .format(kw,argf,header))
             logerr(msg, 4)
 

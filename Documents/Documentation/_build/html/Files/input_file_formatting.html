@@ -457,7 +457,7 @@ end legs</pre>
 </div>
 <div class="section" id="optional-blocks">
 <span id="id3"></span><h2>Optional Blocks<a class="headerlink" href="#optional-blocks" title="Permalink to this headline">¶</a></h2>
-<p>The following blocks are optional: <tt class="docutils literal"><span class="pre">mathplot</span></tt>.</p>
+<p>The following blocks are optional: <tt class="docutils literal"><span class="pre">mathplot</span></tt>, <tt class="docutils literal"><span class="pre">enumerate</span></tt>.</p>
 <div class="section" id="mathplot-block">
 <h3><tt class="docutils literal"><span class="pre">mathplot</span></tt> Block<a class="headerlink" href="#mathplot-block" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">mathplot</span></tt> block is used to specify optional plotting information written
@@ -473,6 +473,25 @@ end mathplot</pre>
 plotable variables is listed in each simulation&#8217;s log file. Each line in the
 <tt class="docutils literal"><span class="pre">mathplot</span></tt> block can contain an arbitrary number of space, comma, or semi-colon
 delimited variables.</p>
+</div>
+<div class="section" id="enumeration-block">
+<h3><tt class="docutils literal"><span class="pre">enumeration</span></tt> Block<a class="headerlink" href="#enumeration-block" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">enumeration</span></tt> block is used to run a batch of simulations that are
+very similar to the base input given. The basic syntax is:</p>
+<div class="highlight-python"><pre>begin enumeration
+  enumerate PARAM1 VAL1 VAL2 VAL3 ...
+  enumerate PARAM2 VAL4 VAL5 VAL6 ...
+  ...
+end enumeration</pre>
+</div>
+<p>This would take the general input and spawn simulations where the value associated
+with PARAM1 is replace by VAL1 and the value associated with PARAM2 is replaced by
+VAL4, then another simulation where PARAM1-&gt;VAL2 and PARAM2-&gt;VAL5, etc.</p>
+<p>Directories containing each individual simulation and its output are put into a
+general directory called <tt class="docutils literal"><span class="pre">SIMNAME.enum</span></tt> with the individual simulations being
+contained in subdirectories named <tt class="docutils literal"><span class="pre">job.X</span></tt> where the <tt class="docutils literal"><span class="pre">SIMNAME</span></tt> is the simulation
+name defined in the first line of the input file (<tt class="docutils literal"><span class="pre">begin</span> <span class="pre">simulation</span> <span class="pre">SIMNAME</span></tt>) and <tt class="docutils literal"><span class="pre">X</span></tt> is
+replaced by the index of the job being run.</p>
 </div>
 </div>
 <div class="section" id="inserting-external-files">
@@ -569,6 +588,7 @@ end simulation</pre>
 </li>
 <li><a class="reference internal" href="#optional-blocks">Optional Blocks</a><ul>
 <li><a class="reference internal" href="#mathplot-block"><tt class="docutils literal"><span class="pre">mathplot</span></tt> Block</a></li>
+<li><a class="reference internal" href="#enumeration-block"><tt class="docutils literal"><span class="pre">enumeration</span></tt> Block</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#inserting-external-files">Inserting External Files</a></li>

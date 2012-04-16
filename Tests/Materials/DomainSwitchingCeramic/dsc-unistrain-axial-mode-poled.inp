@@ -4,13 +4,13 @@ begin boundary
   kappa = 0
   tstar = 1.
   ampl = -1.
-  estar = 0.1
+  estar = 0.01
   sstar = 1.e9
   screenout = 1
   stepstar = 10.
 
   begin legs
-    using time, stress
+    using time, strain
     0., 0., 0., 0., 0., 0., 0.
     1., 1., 0., 0., 0., 0., 0.,
   end legs

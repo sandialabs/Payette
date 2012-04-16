@@ -211,6 +211,12 @@ class Optimize(object):
                 opt_val = opt_params[idx]
                 fobj.write("{0} = {1:12.6E}\n".format(nam, opt_val))
                 continue
+            if shearfit:
+                fobj.write("\nEquivalent new paramters:\n")
+                fobj.write("STREN = {0:12.6E}\n".format(stren))
+                fobj.write("PEAKI1 = {0:12.6E}\n".format(peaki1))
+                fobj.write("FSLOPE = {0:12.6E}\n".format(fslope))
+                fobj.write("YSLOPE = {0:12.6E}".format(yslope))
 
         os.chdir(cwd)
         return 0
@@ -305,13 +311,8 @@ class Optimize(object):
                         min_var = "@" + min_var
 
                     if min_var not in minimize["vars"]:
-                        if (shearfit and
-                            min_var.lower() not in ("@i1", "@rootj2")):
-                            errors += 1
-                            pu.logerr("minimize variable "+ min_var[1:] +
-                                      "not allowed with shearfit method")
-
                         minimize["vars"].append(min_var)
+
                     continue
 
             elif "optimize" in item[0].lower():
@@ -324,7 +325,7 @@ class Optimize(object):
                                                     "yslope"):
                     errors += 1
                     pu.logerr("optimize variable "+ key +
-                              "not allowed with shearfit method")
+                              " not allowed with shearfit method")
 
                 # For now, there is no initial value. It is given in the
                 # material block of the input file, we just hold its place
@@ -375,15 +376,10 @@ class Optimize(object):
 
             continue
 
-        if shearfit:
-            # for shearfit, we optimize a1 - a4 by minimizing errror in rootj2
-            # vs. i1 using the rtxc function. Therefore, the only minimization
-            # variables needed are i1 and rootj2
-            minimize["vars"] = ["@I1", "@ROOTJ2"]
-
         if gold_f is None:
             pu.logerr("No gold file given for optimization problem")
             errors += 1
+
         else:
             if not os.path.isfile(gold_f):
                 pu.logerr("gold file {0} not found".format(gold_f))
@@ -391,7 +387,7 @@ class Optimize(object):
             else:
                 gold_f = os.path.realpath(gold_f)
 
-        if not minimize["vars"]:
+        if not shearfit and not minimize["vars"]:
             pu.logerr("No parameters to minimize given")
             errors += 1
 
@@ -402,6 +398,42 @@ class Optimize(object):
         if errors:
             pu.logerr("resolve previous errors")
             sys.exit(2)
+
+        if shearfit:
+            # for shearfit, we optimize a1 - a4 by minimizing errror in rootj2
+            # vs. i1 using the rtxc function. Therefore, the only minimization
+            # variables needed are i1 and rootj2
+            for item in minimize["vars"]:
+                if (item.lower() not in ("@i1", "@rootj2") and
+                    item.lower()[0:4] != "@sig"):
+                    errors += 1
+                    pu.logerr("minimize variable "+ min_var[1:] +
+                              " not allowed with shearfit method")
+                continue
+
+            if errors:
+                pu.logerr("resolve previous errors")
+                sys.exit(3)
+
+            head = list(set([x.lower() for x in sorted(pu.get_header(gold_f))]))
+            if head != ["i1", "rootj2"]:
+#                sys.exit("stopping till this is done")
+
+                sigcnt = 0
+                for item in head:
+                    if item.lower()[0:3] == "sig":
+                        sigcnt += 1
+                    continue
+                if sigcnt < 3:
+                    pu.logerr("{0} does not contain sufficient information to "
+                              "compute I1 and ROOTJ2".format(gold_f))
+                    sys.exit(3)
+
+                # user gave file with sig11, sig22, ..., it needs to be
+                # converted to i1 and rootj2
+                gold_f = get_rtj2_vs_i1(gold_f)
+
+            minimize["vars"] = ["@I1", "@ROOTJ2"]
 
         self.data["gold file"] = gold_f
         self.data["minimize"] = minimize
@@ -723,7 +755,7 @@ def func(opt_params, data, base_dir, job_opts, xgold):
             continue
 
     if data["verbosity"]:
-        pu.loginf("Iteration {0:d}, trial parameters: {1}"
+        pu.loginf("Iteration {0:03d}, trial parameters: {1}"
                   .format(IOPT+1, ", ".join(msg)))
 
     # instantiate Payette object
@@ -829,7 +861,7 @@ def rtxc(aparams, data, base_dir, job_opts, xgold):
             continue
 
     if data["verbosity"]:
-        pu.loginf("Iteration {0:d}, trial parameters: {1}"
+        pu.loginf("Iteration {0:03d}, trial parameters: {1}"
                   .format(IOPT+1, ", ".join(msg)))
 
     # compute rootj2 and error
@@ -852,4 +884,61 @@ def rtxc(aparams, data, base_dir, job_opts, xgold):
     IOPT += 1
 
     return error
+
+
+def get_rtj2_vs_i1(fpath):
+    """Convert sigij in file fpath to ione and rootj2
+
+    Parameters
+    ----------
+    fpath : str
+        path to file
+
+    Returns
+    -------
+
+    """
+
+    header = pu.get_header(fpath)
+    data = pu.read_data(fpath)
+    sig11, sig22, sig33, sig12, sig23, sig13 = [None] * 6
+    for idx, item in enumerate(header):
+        if item.lower() == "sig11":
+            sig11 = data[:, idx]
+        if item.lower() == "sig22":
+            sig22 = data[:, idx]
+        if item.lower() == "sig33":
+            sig33 = data[:, idx]
+        if item.lower() == "sig12":
+            sig12 = data[:, idx]
+        if item.lower() == "sig23":
+            sig23 = data[:, idx]
+        if item.lower() == "sig13":
+            sig13 = data[:, idx]
+        continue
+
+    if sig11 is None or sig22 is None or sig33 is None:
+        sys.exit("insufficient information in {0} to compute I1 and ROOTJ2"
+                 .format(gold_f))
+    if sig12 is None:
+        sig12 = np.zeros(len(sig11))
+    if sig23 is None:
+        sig23 = np.zeros(len(sig11))
+    if sig13 is None:
+        sig13 = np.zeros(len(sig11))
+
+    i1 = sig11 + sig22 + sig33
+    rtj2 = np.sqrt(1. / 6. * ((sig11 - sig22) ** 2 +
+                              (sig22 - sig33) ** 2 +
+                              (sig11 - sig33) ** 2) +
+                   sig12 ** 2 + sig23 ** 2 + sig13 ** 2)
+    fnam, fext = os.path.splitext(fpath)
+    fnew = fnam + "_i1_rtj2_calc" + fext
+    with open(fnew, "w") as fobj:
+        fobj.write("{0:12s}    {1:12s}\n".format("I1", "ROOTJ2"))
+        for idx in range(len(i1)):
+            fobj.write("{0:12.6E}    {1:12.6E}\n".format(i1[idx], rtj2[idx]))
+            continue
+
+    return fnew
 

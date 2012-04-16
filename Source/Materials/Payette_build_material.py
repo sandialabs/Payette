@@ -6,7 +6,7 @@ from copy import deepcopy
 from numpy.f2py import main as f2py
 
 from Payette_config import *
-from Payette_utils import BuildError, get_module_name_and_path
+from Source.Payette_utils import BuildError, get_module_name_and_path
 
 class MaterialBuilder():
 

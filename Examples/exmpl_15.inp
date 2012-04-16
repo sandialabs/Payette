@@ -1,5 +1,5 @@
-# Example 13
-# Title: exmpl_13
+# Example 15
+# Title: exmpl_15
 # Author: Scot Swan, mswan@sandia.gov; Tim Fuller, tjfulle@sandia.gov
 # Keywords: enumeration
 # Comments:
@@ -7,7 +7,7 @@
 # This example is simply Example 1 with an added 'enumeration' block.
 # Most of the inline documentation has been removed.
 
-begin simulation exmpl_13
+begin simulation exmpl_15
   begin boundary
     kappa = 0
     tstar = 1.
