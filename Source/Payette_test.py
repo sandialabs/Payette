@@ -39,25 +39,33 @@ import Payette_config as pc
 import Source.Payette_utils as pu
 import Source.Materials.Payette_installed_materials as pim
 
-speed_kws = ["fast","medium","long"]
-type_kws = ["verification","validation","prototype","regression"]
+speed_kws = ["fast", "medium", "long"]
+type_kws = ["verification", "validation", "prototype", "regression"]
+
 
 class TestLogger(object):
-    def __init__(self,name,mode="w"):
-        if name: self.file = open(name,mode)
-        else: self.file = sys.stdout
+    def __init__(self, name, mode="w"):
+        if name:
+            self.file = open(name, mode)
+        else:
+            self.file = sys.stdout
         pass
+
     def __del__(self):
-        if self.file != sys.stdout: self.file.close()
+        if self.file != sys.stdout:
+            self.file.close()
         pass
-    def write(self,message):
+
+    def write(self, message):
         self.file.write(message + "\n")
         pass
-    def warn(self,caller,message):
-        self.write("WARNING: {0} [reported by {1}]".format(message,caller))
+
+    def warn(self, caller, message):
+        self.write("WARNING: {0} [reported by {1}]".format(message, caller))
         pass
-    def error(self,caller,message):
-        self.write("ERROR: {0} [reported by {1}]".format(message,caller))
+
+    def error(self, caller, message):
+        self.write("ERROR: {0} [reported by {1}]".format(message, caller))
         pass
 
 
@@ -72,6 +80,7 @@ class PayetteTest:
         self.date = None
         self.infile = None
         self.outfile = None
+        self.rms_sets = None
         self.compare_method = self.compare_out_to_baseline_rms
         self.runcommand = None
         self.baseline = None
@@ -116,7 +125,7 @@ class PayetteTest:
             pu.logwrn("no keywords given", caller=iam)
             pass
 
-        if not isinstance(self.keywords,(list,tuple)):
+        if not isinstance(self.keywords, (list, tuple)):
             errors += 1
             pu.logwrn("keywords must be list, got {0}".format(self.keywords),
                       caller=iam)
@@ -127,8 +136,10 @@ class PayetteTest:
             lkw = 0
             tkw = 0
             for kw in self.keywords:
-                if kw in speed_kws: lkw += 1
-                if kw in type_kws: tkw += 1
+                if kw in speed_kws:
+                    lkw += 1
+                if kw in type_kws:
+                    tkw += 1
                 continue
             if not lkw:
                 msg = "keywords must specify one of {0}".format(", ".join(speed_kws))
@@ -276,6 +287,194 @@ class PayetteTest:
         cmd[0] = exenam
 
         return [ x for x in cmd ], self.passcode
+
+    def compare_out_to_baseline_rms_general(self):
+        """
+            Compute the RMS difference between 2D data sets. The difference
+            is defined by the sum of the shortest distances between each point
+            in the simulated file to any given line segment in the gold file.
+
+            OUTPUT
+                0: passed
+                1: bad input
+                2: diffed
+                3: failed
+        """
+        iam = "{0}.compare_out_to_baseline_rms_general(self)".format(self.name)
+        errors = 0
+
+        # open the log file
+        log = TestLogger(self.name + ".diff","w")
+
+        if "baselinef" not in globals():
+            baselinef = self.baseline
+            pass
+
+        if not os.path.isfile(baselinef):
+            log.error(iam,"baseline file not found {0}".format(self.name))
+            errors += 1
+            pass
+
+        if "outf" not in globals():
+            outf = self.outfile
+            pass
+
+        if not os.path.isfile(outf):
+            log.error(iam,"output file not found for {0}".format(self.name))
+            errors += 1
+            pass
+
+        if errors:
+            return self.badincode
+
+        # Determine which columns will be analyzed
+        if type(self.rms_sets) != list:
+            log.error(iam,"No proper RMS sets to analyze for this benchmark.\n"+
+            "Please set self.rms_sets in the input file. Here is an example:\n"+
+            "self.rms_sets=[ [\"VAR1\", \"VAR2\"], "+
+                            "[\"VAR3\", \"VAR4\"] ... ]\n")
+            return self.badincode
+
+        for rms_set in self.rms_sets:
+            iserror = False
+            if type(rms_set) != list:
+                iserror = True
+            elif len(rms_set) != 2:
+                iserror = True
+            elif not iserror and type(rms_set[0]) != str or type(rms_set[1]) != str:
+                iserror = True
+
+            if iserror:
+                log.error(iam,"RMS set incorrectly defined.\n"+
+                     "Expected list '[\"VAR1\",\"VAR2\"]', got '{0}'".\
+                              format(repr(rms_set)))
+                return self.badincode
+        self.rms_sets = [ [x[0].lower(), x[1].lower()] for x in self.rms_sets]
+
+        # read in header
+        outheader = [x.lower() for x in self.get_header(outf)]
+        goldheader = [x.lower() for x in self.get_header(baselinef)]
+
+        for rms_set in self.rms_sets:
+            if rms_set[0] not in outheader:
+                errors += 1
+                log.error(iam,"'{0}' not in {1}\nValid headers: {2}".\
+                          format(rms_set[0], outf,repr(outheader)))
+            if rms_set[1] not in outheader:
+                errors += 1
+                log.error(iam,"'{0}' not in {1}\nValid headers: {2}".\
+                          format(rms_set[1], outf,repr(outheader)))
+            if rms_set[0] not in goldheader:
+                errors += 1
+                log.error(iam,"'{0}' not in {1}\nValid headers: {2}".\
+                          format(rms_set[0], baselinef,repr(goldheader)))
+            if rms_set[1] not in goldheader:
+                errors += 1
+                log.error(iam,"'{0}' not in {1}\nValid headers: {2}".\
+                          format(rms_set[1], baselinef,repr(goldheader)))
+        if errors:
+            return self.badincode
+
+        # read in data
+        out = pu.read_data(outf)
+        gold = pu.read_data(baselinef)
+
+        # check that the gold file has at least two points and that the
+        # simulation file has at least one.
+        if len(out[:,0]) <= 0:
+            errors += 1
+            log.error(iam,"Not enough points in {0} (must have at least one).".\
+                      format(outf))
+            log.write("\n{0:=^72s}".format(" FAIL "))
+            pass
+
+        if len(gold[:,0]) <= 1:
+            errors += 1
+            log.error(iam,"Not enough points in {0} (must have at least one).".\
+                      format(baselinef))
+            log.write("\n{0:=^72s}".format(" FAIL "))
+            pass
+
+        if errors:
+            del log
+            return self.failcode
+
+        # compare results
+        log.write("Payette test results for: {0}\n".format(self.name))
+
+        log.write("TOLERANCES:")
+        log.write("  diff tol: {0:10e}".format(self.difftol))
+        log.write("  fail tol: {0:10e}\n".format(self.failtol))
+
+        failed, diffed = False, False
+        ftol, dtol = self.failtol, self.difftol
+        for rms_set in self.rms_sets:
+            gidx = goldheader.index(rms_set[0])
+            oidx = outheader.index(rms_set[0])
+            gjdx = goldheader.index(rms_set[1])
+            ojdx = outheader.index(rms_set[1])
+
+            rmsd, nrmsd = pu.compute_rms_closest_point_residual(
+                                         gold[:,gidx], gold[:,gjdx],
+                                         out[:,oidx], out[:,ojdx])
+
+            # For good measure, write both the RMSD and normalized RMSD
+            if nrmsd >= self.failtol:
+                failed = True
+                stat = "FAIL"
+
+            elif nrmsd >= self.difftol:
+                diffed = True
+                stat = "DIFF"
+
+            else:
+                stat = "PASS"
+
+            log.write("headers: {0}:{1} - {2}".format(rms_set[0],rms_set[1],stat))
+            log.write("  Unscaled error: {0:.10e}".format(rmsd))
+            log.write("    Scaled error: {0:.10e}".format(nrmsd))
+            continue
+
+        if failed:
+            log.write("\n{0:=^72s}".format(" FAIL "))
+            del log
+            return self.failcode
+
+        elif diffed:
+            log.write("\n{0:=^72s}".format(" DIFF "))
+            del log
+            return self.diffcode
+
+        else:
+            log.write("\n{0:=^72s}".format(" PASS "))
+            del log
+            return self.passcode
+
+        return
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def compare_out_to_baseline_rms(self, baselinef=None, outf=None):
         """

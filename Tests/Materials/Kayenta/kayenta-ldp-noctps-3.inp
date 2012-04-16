@@ -1,0 +1,40 @@
+begin simulation kayenta-ldp-noctps-3
+  $ This simulation has the following characteristics:
+  $ * The shear modulus was calculated from the bulk modulus of aluminum
+  $   and a poisson's ratio of -0.1 .
+  $ * The simulation is uniaxial extension.
+  $ * The CTPS surface is put at (nearly) infinity.
+  $ * The limit surface has been set to mimic the CTPS surface when
+  $   CTPS = 1.0e8 (these parameters are only good for uniaxial extension).
+  $
+  $ In ROOTJ2 vs I1 space, this simulation will approach the limit surface and
+  $ the return algorithm should make the stress state move away from the I1 tensile
+  $ vertex.
+  begin material
+    constitutive model kayenta
+
+    $ nu = -0.1
+    G0 = 0.1520000E+12
+    B0 = 0.7600000E+11
+
+    J3TYPE = 1.0
+    RK =  1.0
+    P0 = -1.0e99
+    CR =  0.001
+    CTPS = 1.0e99
+
+    $  Linear Drucker-Prager
+    PEAKI1I = 3.00000000000000e+08
+    STRENI  = 8.66025403784439e+07
+    FSLOPEI = 2.88675134594813e-01
+    YSLOPEI = 2.88675134594813e-01
+
+  end material
+  begin boundary
+    kappa 0
+    begin legs
+      0 0.0      0  111111  0.0     0.0  0.0  0.0  0.0  0.0
+      1 1.0e-6 100  111111  0.0  1600.0  0.0  0.0  0.0  0.0
+    end legs
+  end boundary
+end simulation

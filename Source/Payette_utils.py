@@ -915,6 +915,97 @@ def read_data(fpath):
     return np.loadtxt(fpath, skiprows=1)
 
 
+def compute_rms_closest_point_residual(set1x, set1y, set2x, set2y):
+    r"""Compute the root mean square difference between data in set1{x, y} and
+    set2{x, y} by taking each point of set2 and calculating the closest point
+    distance to any given line segment of set1.
+
+    "set2{x, y}" is compared against "set1{x, y}".
+
+    len(set1x) == len(set1y)
+    len(set2x) == len(set2y)
+
+    Parameters
+    ----------
+    set1x : array_like
+        Abscissa of set 1
+    set1y : array_like
+        Range of set 1
+    set2x : array_like
+        Abscissa of set 2
+    set2y : array_like
+        Range of set 2
+
+    Returns
+    -------
+    rmsd : float
+        root mean square difference between gold and out
+    nrmsd : float
+        normalized root mean square difference between gold and out
+
+    """
+
+    # check the lengths of the arrays passed
+    lset1x, lset1y, lset2x, lset2y = [len(x)
+                                      for x in [set1x, set1y, set2x, set2y]]
+    if lset1x != lset1y:
+        sys.exit("len(set1x) != len(set1y)")
+    if lset2x != lset2y:
+        sys.exit("len(set2x) != len(set2y)")
+
+    if lset1x < 2:
+        sys.exit("set1 must have at least two points.")
+    if lset2x < 1:
+        sys.exit("set2 must have at least one point.")
+
+    dx = max(set1x)-min(set1x)
+    dy = max(set1y)-min(set1y)
+    dd = math.sqrt(dx*dx+dy*dy)
+
+    dist_pt_to_pt = lambda x0, y0, x1, y1: math.sqrt((x1-x0)**2+(y1-y0)**2)
+    # compute the running square of the difference
+    err = 0.0
+    for idx in range(0, lset2x):
+        tmp_arr = []
+        for jdx in range(0, lset1x - 1):
+            kdx = jdx+1
+            dist_from_pt0 = dist_pt_to_pt(set1x[jdx],set1y[jdx],set2x[idx],set2y[idx])
+            dist_from_pt1 = dist_pt_to_pt(set1x[kdx],set1y[kdx],set2x[idx],set2y[idx])
+
+            # use dot(a,b)/(mag(a)*mag(b)) = cos(theta) to find the distance from the line.
+            vec_a_x = set1x[jdx]-set1x[kdx]
+            vec_a_y = set1y[jdx]-set1y[kdx]
+            vec_b_x = set2x[idx]-set1x[kdx]
+            vec_b_y = set2y[idx]-set1y[kdx]
+            mag_a = math.sqrt(vec_a_x**2 + vec_a_y**2)
+            mag_b = math.sqrt(vec_b_x**2 + vec_b_y**2)
+
+            if mag_a == 0.0 or mag_b == 0.0:
+                tmp_arr.append(min(dist_from_pt0,dist_from_pt1))
+                continue
+
+            costheta = (vec_a_x*vec_b_x+vec_a_y*vec_b_y)/mag_a/mag_b
+
+            if costheta < 0.0 or mag_b*costheta > mag_a:
+                tmp_arr.append(min(dist_from_pt0,dist_from_pt1))
+                continue
+
+            theta = math.acos( max(min(1.0,costheta),-1.0) )
+            dist_from_line = mag_b*math.sin(theta)
+
+            dist = min( dist_from_line, min(dist_from_pt0,dist_from_pt1) )
+            tmp_arr.append(dist)
+            continue
+        err += min(tmp_arr)
+        continue
+
+#    rmsd = math.sqrt(err / float(lset1x))
+#    dnom = abs(np.amax(set1y) - np.amin(set1y))
+#    nrmsd = rmsd / dnom if dnom >= 2.e-16 else rmsd
+#    return rmsd, nrmsd
+    return err, err/dd
+
+
 
 def compute_rms(set1x, set1y, set2x, set2y, step=1):
     r"""Compute the root mean square difference between data in set1{x, y} and
