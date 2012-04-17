@@ -1,4 +1,4 @@
-begin simulation kayenta-ldp-noctps-1
+begin simulation kayenta-ldp-noctps-uxe-1
   $ This simulation has the following characteristics:
   $ * The shear modulus was calculated from the bulk modulus of aluminum
   $   and a poisson's ratio of zero.
