@@ -34,3 +34,7 @@ Payette_installed_materials.py
 nocallback.signature.pyf
 host_defines.h
 TestResults.*
+
+# Example output
+Examples/exmpl_*.opt*
+Examples/exmpl_*.enum*

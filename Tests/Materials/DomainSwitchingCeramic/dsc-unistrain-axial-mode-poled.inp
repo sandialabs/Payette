@@ -35,9 +35,9 @@ begin material
   A111 = 0.145E+09
   A112 = 1.188E+09
   A123 = -4.898E+09
-  AXP = 1.E+00
+  AXP = 0.E+00
   AYP = 0.E+00
-  AZP = 0.E+00
+  AZP = 1.E+00
   DBG = 1
   XKSAT = 1.
 end material

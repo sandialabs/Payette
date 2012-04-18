@@ -54,7 +54,7 @@ AUTHORS
 
 class PayetteError(Exception):
     def __init__(self, msg):
-        if 'MIG' in msg: sys.tracebacklimit = 3
+        if 'MIG' in msg: sys.tracebacklimit = 0
         l = 79 # should be odd number
         st, stsp = '*'*l + '\n', '*' + ' '*(l-2) + '*\n'
         psf = 'Payette simulation failed'

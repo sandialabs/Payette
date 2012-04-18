@@ -58,8 +58,8 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
        The module Library/domain_switching is created by f2py.
        domain_switching.F defines the following public subroutines
 
-          dsc_check: fortran data check routine called by _check_props
-          dsc_extra: fortran field initialization  routine called by _set_field
+          dsc_check_params: fortran data check routine called by _check_props
+          dsc_req_extra: fortran field initialization  routine called by _set_field
           dsc_drvr: fortran stress update called by updateState
 
     AUTHORS
@@ -126,12 +126,12 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
 
         # check parameters
         self.ui = self._check_props()
-        sys.exit("check me")
         field = self._set_field()
         (self.ui, self.nsv, namea, keya, sv,
          rdim, iadvct, itype, iscal, bkd, permtv, polrzn) = field
         namea = parseToken(self.nsv, namea)
         keya = parseToken(self.nsv, keya)
+        sys.exit("check me")
 
         # register non standard variables
         matdat.registerData("polarization", "Vector",
@@ -194,7 +194,7 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         props = np.array(self.ui0)
         argv = [props, migError, migMessage]
         if not PC_F2PY_CALLBACK: argv = argv[:-2]
-        props = mtllib.dsc_check(*argv)
+        props = mtllib.dsc_check_params(*argv)
         return props
 
     def _set_field(self):
@@ -204,13 +204,13 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
 
         # request the extra variables
         (ui, nsv, namea, keya, sv, rdim, iadvct, itype, iscal) = (
-            mtllib.dsc_extra(*argv))
+            mtllib.dsc_req_extra(*argv))
 
         # initialize
-        lbd = 3*(4+int(ui[self.parameter_table["NBIN"]["ui pos"]]))
+        lbd = 3*(4+1) #int(ui[self.parameter_table["NBIN"]["ui pos"]]))
         bkd = np.zeros(lbd)
         ibflg = 0
-        argv = [ibflg, lbd, ui, nsv, bkd, lbd, sv, migError, migMessage]
+        argv = [ibflg, ui, nsv, bkd, lbd, sv, migError, migMessage]
         if not PC_F2PY_CALLBACK: argv = argv[:-2]
         ui, bkd, permtv, polrzn, sv = mtllib.dsc_init(*argv)
 

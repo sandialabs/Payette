@@ -18,52 +18,52 @@ end python module payette__user__routines
 
 python module domain_switching_ceramic
     interface
-        subroutine dsc_check(ui)
+        subroutine dsc_check_params(ui)
             use payette__user__routines
             double precision dimension(*),intent(in,out) :: ui
             intent(callback) migerror
             external migerror
             intent(callback) migmessage
             external migmessage
-        end subroutine dsc_check
-        ! subroutine dsc_extra(ui,gc,dc,nx,namea,keya,rinit,rdim,iadvct,itype,iscal)
-        !     use payette__user__routines
-        !     integer,parameter :: nsv=27
-        !     integer,parameter :: mxn=nsv*80
-        !     integer,parameter :: mxk=nsv*10
-        !     double precision dimension(*),intent(in,out) :: ui
-        !     integer intent(out) :: nx
-        !     character dimension(mxn),intent(c,out) :: namea
-        !     character dimension(mxk),intent(c,out) :: keya
-        !     double precision dimension(nsv), intent(out) :: rinit
-        !     double precision dimension(nsv,7),intent(out) :: rdim
-        !     integer dimension(nsv),intent(out) :: iadvct
-        !     integer dimension(nsv),intent(out) :: itype
-        !     integer dimension(nsv),intent(out) :: iscal
-        !     intent(callback) migerror
-        !     external migerror
-        !     intent(callback) migmessage
-        !     external migmessage
-        ! end subroutine dsc_extra
-        ! subroutine dsc_init(ibflg,idb,ui,gc,dc,nx,bkd,lbd,permtv,polrzn,sv )
-        !   use payette__user__routines
-        !   integer,parameter :: nsv=27
-        !   integer intent(in) :: ibflg,idb,lbd,nx
-        !   double precision dimension(*),intent(in,out) :: ui
-        !   double precision dimension(nsv),intent(in,out) :: sv
-        !   double precision intent(in,out) :: bkd(*)
-        !   double precision dimension(3),intent(out) :: polrzn(3)
-        !   double precision dimension(6),intent(out) :: permtv(6)
-        !   intent(callback) migerror
-        !   external migerror
-        !   intent(callback) migmessage
-        !   external migmessage
-        ! end subroutine dsc_init
+        end subroutine dsc_check_params
+        subroutine dsc_req_extra(ui,nx,namea,keya,xtra,rdim,iadvct,itype,iscal)
+            use payette__user__routines
+            integer,parameter :: nsv=20
+            integer,parameter :: mxn=nsv*80
+            integer,parameter :: mxk=nsv*10
+            double precision dimension(*),intent(in,out) :: ui
+            integer intent(out) :: nx
+            character dimension(mxn),intent(c,out) :: namea
+            character dimension(mxk),intent(c,out) :: keya
+            double precision dimension(nsv), intent(out) :: xtra
+            double precision dimension(nsv,7),intent(out) :: rdim
+            integer dimension(nsv),intent(out) :: iadvct
+            integer dimension(nsv),intent(out) :: itype
+            integer dimension(nsv),intent(out) :: iscal
+            intent(callback) migerror
+            external migerror
+            intent(callback) migmessage
+            external migmessage
+        end subroutine dsc_req_extra
+        subroutine dsc_init(idb,ui,nx,bkd,lbd,permtv,polrzn,xtra)
+          use payette__user__routines
+          integer,parameter :: nsv=20
+          integer intent(in) :: ibflg,idb,lbd,nx
+          double precision dimension(*),intent(in,out) :: ui
+          double precision dimension(nsv),intent(in,out) :: xtra
+          double precision intent(in,out) :: bkd(*)
+          double precision dimension(3),intent(out) :: polrzn(3)
+          double precision dimension(6),intent(out) :: permtv(6)
+          intent(callback) migerror
+          external migerror
+          intent(callback) migmessage
+          external migmessage
+        end subroutine dsc_init
         ! subroutine dsc_drvr(nc,ui,gc,dc,nx,sv,u,r,efield,permtv,polrzn,edisp,sig)
         !     use payette__user__routines
         !     integer intent(in) :: nx
         !     integer intent(in) :: nc
-        !     integer,parameter :: nsv=27
+        !     integer,parameter :: nsv=20
         !     double precision dimension(*),intent(in) :: ui
         !     double precision dimension(nx),intent(in,out) :: sv
         !     double precision dimension(6),intent(in) :: u
