@@ -19,26 +19,15 @@ end boundary
 
 begin material
   constitutive model domain_switching_ceramic
-  nalgo = 0 $ nlopt_ld_slsqp
-  nalgo = 2 $ nlopt_ln_cobyla
-  free3 = 0.
-  BKMOD = 9.0600E+10
-  SHMOD = 2.17486E+10
   C11 =  121.0E+09
-  C33 =  111.0E+09
   C12 =   75.4E+09
-  C13 =   75.2E+09
   C44 =   21.1E+09
   Q11 = 0.066E+00
-  Q12 = -0.032E+00
+  Q12 = -0.033E+00
   Q44 = 0.015E+00
-  T0 = 298.E+00
-  R0 = 7750.E+00
-  TC = 383.7E+00
-  CC = 7.608E+05
   EPSC =  8.11E-9
   EPSA =  7.35E-9
-  EC = 0.0152E+00
+  P0 = .48
   CFIELD = 1.E+03
   A001 = -2.662E+07
   A011 = -1.489E+07
@@ -46,12 +35,10 @@ begin material
   A111 = 0.145E+09
   A112 = 1.188E+09
   A123 = -4.898E+09
-  POLED = 1
   AXP = 1.E+00
   AYP = 0.E+00
   AZP = 0.E+00
-  RFN = 0.E+00
-  NBIN = 0.E+00
   DBG = 1
+  XKSAT = 1.
 end material
 end simulation

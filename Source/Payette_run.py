@@ -46,6 +46,7 @@ import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr
 import Source.Payette_optimize as po
 import Source.Payette_enumerate as pe
+import Source.Payette_visualize as pv
 
 
 # --- module level variables

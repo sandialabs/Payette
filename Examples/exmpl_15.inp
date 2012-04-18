@@ -1,51 +1,48 @@
-# Example 15
+# Example opt
 # Title: exmpl_15
-# Author: Scot Swan, mswan@sandia.gov; Tim Fuller, tjfulle@sandia.gov
-# Keywords: enumeration
-# Comments:
-#
-# This example is simply Example 1 with an added 'enumeration' block.
-# Most of the inline documentation has been removed.
+# Author: Tim Fuller, tjfulle@sandia.gov
+# Keywords: optimization
+# Comments: This input file demonstrates the parameter optimization
+#           functionality of Payette.
 
 begin simulation exmpl_15
+  nowriteprops
+  norestart
+
   begin boundary
     kappa = 0
     tstar = 1.
     ampl = 1
     begin legs
-      0,     0.,   0.,   222222, 0., 0., 0., 0., 0., 0.
-      1,     1.,   1.,   222222, .1, 0., 0., 0., 0., 0.
-      2,     2.,   1.,   222222, 0., 0., 0., 0., 0., 0.
-      3,     3.,   1.,   888, .10517091808, 0., 0.
-      4,     4.,   1.,   888, 0., 0., 0.
-      5,     5.,   1.,   555555555, 1.10517091808, 0, 0, 0, 1, 0, 0, 0, 1
-      6,     6.,   1.,   555555555, 1, 0, 0, 0, 1, 0, 0, 0, 1
-      7,     7.,   1.,   2, .03
-      8,     8.,   1.,   2, 0.0
-      9,     9.,   1.,   222, .01, .01, .01
-      10,    10.,  1.,   222, .0, .0, .0
+      using time, strain, from columns 1, 3:8
+      insert exmpls.tbl
     end legs
   end boundary
-  begin material
-    constitutive model hooke
-    RHO, 1000
-    A1 = 23e6
-    G 53.e9
-    K 135.e9
-  end material
-  begin mathplot
-    sig11, sig22, sig33,
-    qssigxx
-  end mathplot
 
-  begin enumeration
-    # This block will cause the simulation to be run with the
-    # 'hooke' model through the path specified in the 'boundary'
-    # section. For each simulation, it will change out the values
-    # of K and G that correlate to the following materials:
-    #
-    #               Al       Fe        W       Ti
-    enumerate K   76.0e9   170.0e9  310.0e9  110.0e9
-    enumerate G   26.0e9    82.0e9  161.0e9   44.0e9
-  end enumeration
+  begin material
+    constitutive model kayenta
+    B0 = 13.0e9
+    G0 = 9.86e9
+    A1 = 800.e6   # 843.02e6
+    A2 = 1.e-10   # 2.731e-10
+    A3 = 780.e6   # 821.92e6
+    A4 = 1.e-10
+    P0 = -1.e99
+    CR = 0.001
+    RK = .72
+    CTI1 = 1.e99
+    CTPS = 1.e99
+    J3TYPE = 3
+  end material
+
+  begin optimization
+    method cobyla
+    option shearfit
+    optimize A1
+    optimize A2
+    optimize A3
+    optimize A4
+    gold file shearfit_prin.gold
+  end optimization
+
 end simulation

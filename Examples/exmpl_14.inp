@@ -42,7 +42,7 @@ begin simulation exmpl_14
     optimize A2
     optimize A3
     optimize A4
-    gold file shearfit.gold
+    gold file shearfit_invar.gold
   end optimization
 
 end simulation

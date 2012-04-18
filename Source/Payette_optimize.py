@@ -40,7 +40,7 @@ import Source.Payette_extract as pe
 import Toolset.KayentaParamConv as kpc
 
 # Module level variables
-IOPT = 0
+IOPT = -1
 FAC = []
 
 
@@ -197,7 +197,7 @@ class Optimize(object):
               + "FSLOPE = {0:12.6E}, YSLOPE = {1:12.6E}".format(fslope, yslope))
 
         pu.loginf("Optimized parameters found on iteration {0:d}"
-                  .format(IOPT))
+                  .format(IOPT + 1))
         pu.loginf("Optimized parameters: {0}".format(msg))
 
         # last_job = os.path.join(base_dir,
@@ -320,9 +320,9 @@ class Optimize(object):
                 key = item[1]
                 vals = item[2:]
 
-                if shearfit and key.lower() not in ("a1", "a2", "a3", "a4",
-                                                    "stren", "peaki1", "fslope",
-                                                    "yslope"):
+                if shearfit and key.lower() not in ("a1", "a2", "a3", "a4"): #,
+#                                                    "stren", "peaki1", "fslope",
+#                                                    "yslope"):
                     errors += 1
                     pu.logerr("optimize variable "+ key +
                               " not allowed with shearfit method")
@@ -653,8 +653,9 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
                 errors += 1
                 pu.logerr("lbnd({0:12.6E}) > ubnd({1:12.6E})"
                           .format(lbnd, ubnd))
-            lcons.append(lambda x: x[ibnd] - lbnd/FAC[ibnd])
-            ucons.append(lambda x: ubnd/FAC[ibnd] - x[ibnd])
+
+            lcons.append(lambda z, idx=ibnd, bnd=lbnd: z[idx] - bnd/FAC[idx])
+            ucons.append(lambda z, idx=ibnd, bnd=ubnd: bnd/FAC[idx] - z[idx])
 
             bounds[ibnd] = (lbnd, ubnd)
 
@@ -678,7 +679,7 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
     elif meth == "cobyla":
         xopt = scipy.optimize.fmin_cobyla(
             fcn, x0, cons, consargs=(),
-            args=args, disp=False)
+            args=args, disp=disp)
 
     else:
         sys.exit("ERROR: Unrecognized method {0}".format(method))
@@ -713,6 +714,7 @@ def func(opt_params, data, base_dir, job_opts, xgold):
     """
 
     global IOPT
+    IOPT += 1
 
     job = data["basename"] + ".{0:03d}".format(IOPT)
 
@@ -728,7 +730,7 @@ def func(opt_params, data, base_dir, job_opts, xgold):
     nams.sort()
     msg = []
     with open(os.path.join(job_dir, job + ".opt"), "w") as fobj:
-        fobj.write("Parameters for iteration {0:d}\n".format(IOPT+1))
+        fobj.write("Parameters for iteration {0:d}\n".format(IOPT + 1))
         for idx, nam in enumerate(nams):
             opt_val = opt_params[idx]
 
@@ -756,7 +758,7 @@ def func(opt_params, data, base_dir, job_opts, xgold):
 
     if data["verbosity"]:
         pu.loginf("Iteration {0:03d}, trial parameters: {1}"
-                  .format(IOPT+1, ", ".join(msg)))
+                  .format(IOPT + 1, ", ".join(msg)))
 
     # instantiate Payette object
     the_model = pc.Payette(job, job_inp, job_opts)
@@ -784,6 +786,7 @@ def func(opt_params, data, base_dir, job_opts, xgold):
     if data["minimize"]["abscissa"] is not None:
         # find the rms error between the out and gold
         errors = pu.compare_out_to_gold_rms(xgold, xout)
+
     else:
         errors = pu.compare_file_cols(xgold, xout)
 
@@ -791,14 +794,13 @@ def func(opt_params, data, base_dir, job_opts, xgold):
         sys.exit("Resolve previous errors")
 
     error = math.sqrt(np.sum(errors[1] ** 2) / float(len(errors[1])))
+    error = np.amax(np.abs(errors[1]))
 
     with open(os.path.join(job_dir, job + ".opt"), "a") as fobj:
         fobj.write("error = {0:12.6E}\n".format(error))
 
     # go back to the base_dir
     os.chdir(base_dir)
-
-    IOPT += 1
 
     return error
 
@@ -825,6 +827,7 @@ def rtxc(aparams, data, base_dir, job_opts, xgold):
     """
 
     global IOPT
+    IOPT += 1
 
     job = data["basename"] + ".{0:03d}".format(IOPT)
     job_dir = os.path.join(base_dir, job)
@@ -837,7 +840,7 @@ def rtxc(aparams, data, base_dir, job_opts, xgold):
     nams.sort()
     msg = []
     with open(os.path.join(job_dir, job + ".opt"), "w") as fobj:
-        fobj.write("Parameters for iteration {0:d}\n".format(IOPT+1))
+        fobj.write("Parameters for iteration {0:d}\n".format(IOPT + 1))
         for idx, nam in enumerate(nams):
             opt_val = aparams[idx]
 
@@ -862,7 +865,7 @@ def rtxc(aparams, data, base_dir, job_opts, xgold):
 
     if data["verbosity"]:
         pu.loginf("Iteration {0:03d}, trial parameters: {1}"
-                  .format(IOPT+1, ", ".join(msg)))
+                  .format(IOPT + 1, ", ".join(msg)))
 
     # compute rootj2 and error
     a1, a2, a3, a4 = aparams*FAC
@@ -880,8 +883,6 @@ def rtxc(aparams, data, base_dir, job_opts, xgold):
 
     # go back to the base_dir
     os.chdir(base_dir)
-
-    IOPT += 1
 
     return error
 
@@ -920,18 +921,22 @@ def get_rtj2_vs_i1(fpath):
     if sig11 is None or sig22 is None or sig33 is None:
         sys.exit("insufficient information in {0} to compute I1 and ROOTJ2"
                  .format(gold_f))
+
     if sig12 is None:
         sig12 = np.zeros(len(sig11))
+
     if sig23 is None:
         sig23 = np.zeros(len(sig11))
+
     if sig13 is None:
         sig13 = np.zeros(len(sig11))
 
     i1 = sig11 + sig22 + sig33
     rtj2 = np.sqrt(1. / 6. * ((sig11 - sig22) ** 2 +
                               (sig22 - sig33) ** 2 +
-                              (sig11 - sig33) ** 2) +
+                              (sig33 - sig11) ** 2) +
                    sig12 ** 2 + sig23 ** 2 + sig13 ** 2)
+
     fnam, fext = os.path.splitext(fpath)
     fnew = fnam + "_i1_rtj2_calc" + fext
     with open(fnew, "w") as fobj:

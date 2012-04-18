@@ -1,0 +1,51 @@
+# Example 16
+# Title: exmpl_16
+# Author: Scot Swan, mswan@sandia.gov; Tim Fuller, tjfulle@sandia.gov
+# Keywords: enumeration
+# Comments:
+#
+# This example is simply Example 1 with an added 'enumeration' block.
+# Most of the inline documentation has been removed.
+
+begin simulation exmpl_16
+  begin boundary
+    kappa = 0
+    tstar = 1.
+    ampl = 1
+    begin legs
+      0,     0.,   0.,   222222, 0., 0., 0., 0., 0., 0.
+      1,     1.,   1.,   222222, .1, 0., 0., 0., 0., 0.
+      2,     2.,   1.,   222222, 0., 0., 0., 0., 0., 0.
+      3,     3.,   1.,   888, .10517091808, 0., 0.
+      4,     4.,   1.,   888, 0., 0., 0.
+      5,     5.,   1.,   555555555, 1.10517091808, 0, 0, 0, 1, 0, 0, 0, 1
+      6,     6.,   1.,   555555555, 1, 0, 0, 0, 1, 0, 0, 0, 1
+      7,     7.,   1.,   2, .03
+      8,     8.,   1.,   2, 0.0
+      9,     9.,   1.,   222, .01, .01, .01
+      10,    10.,  1.,   222, .0, .0, .0
+    end legs
+  end boundary
+  begin material
+    constitutive model hooke
+    RHO, 1000
+    A1 = 23e6
+    G 53.e9
+    K 135.e9
+  end material
+  begin mathplot
+    sig11, sig22, sig33,
+    qssigxx
+  end mathplot
+
+  begin enumeration
+    # This block will cause the simulation to be run with the
+    # 'hooke' model through the path specified in the 'boundary'
+    # section. For each simulation, it will change out the values
+    # of K and G that correlate to the following materials:
+    #
+    #               Al       Fe        W       Ti
+    enumerate K   76.0e9   170.0e9  310.0e9  110.0e9
+    enumerate G   26.0e9    82.0e9  161.0e9   44.0e9
+  end enumeration
+end simulation
