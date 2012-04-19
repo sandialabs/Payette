@@ -59,7 +59,7 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
        domain_switching.F defines the following public subroutines
 
           dsc_check_params: fortran data check routine called by _check_props
-          dsc_req_extra: fortran field initialization  routine called by _set_field
+          dsc_req_xtra: fortran field initialization  routine called by _set_field
           dsc_drvr: fortran stress update called by updateState
 
     AUTHORS
@@ -73,7 +73,7 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         self.electric_field_model = True
 
         # register parameters
-        nri, ndc, nei = 20, 5, 6
+        nri, ndc, nei = 14, 5, 6
         # elasticities
         self.registerParameter("C11", 0, aliases=[])
         self.registerParameter("C12", 1, aliases=[])
@@ -87,20 +87,13 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         self.registerParameter("EPSA", 7, aliases=["EPA"])
         # coercive field
         self.registerParameter("CF", 8, aliases=["CFIELD"])
-        # higher order coupling constants
-        self.registerParameter("A1", 9, aliases=["A001"])
-        self.registerParameter("A11", 10, aliases=["A011"])
-        self.registerParameter("A12", 11, aliases=["A012"])
-        self.registerParameter("A111", 12, aliases=["A111"])
-        self.registerParameter("A112", 13, aliases=["A112"])
-        self.registerParameter("A123", 14, aliases=["A123"])
         # polarization directons
-        self.registerParameter("AXP", 15, aliases=[])
-        self.registerParameter("AYP", 16, aliases=[])
-        self.registerParameter("AZP", 17, aliases=[])
+        self.registerParameter("AXP", 9, aliases=[])
+        self.registerParameter("AYP", 10, aliases=[])
+        self.registerParameter("AZP", 11, aliases=[])
         # magnitude of spontanious polarization
-        self.registerParameter("P0", 18, aliases=[])
-        self.registerParameter("XKSAT", 19, aliases=[])
+        self.registerParameter("P0", 12, aliases=[])
+        self.registerParameter("XKSAT", 13, aliases=[])
         # derived constants
         self.registerParameter("SHMOD", nri, aliases=[])
         self.registerParameter("BKMOD", nri + 1, aliases=[])
@@ -126,12 +119,12 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
 
         # check parameters
         self.ui = self._check_props()
-        field = self._set_field()
-        (self.ui, self.nsv, namea, keya, sv,
-         rdim, iadvct, itype, iscal, bkd, permtv, polrzn) = field
+        self.nsv, namea, keya, xtra, rdim, iadvct, itype, iscal = (
+            self._set_field())
+
+        # parse extra variable names and keys
         namea = parseToken(self.nsv, namea)
         keya = parseToken(self.nsv, keya)
-        sys.exit("check me")
 
         # register non standard variables
         matdat.registerData("polarization", "Vector",
@@ -140,30 +133,55 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         matdat.registerData("electric displacement", "Vector",
                             init_val = np.zeros(3),
                             plot_key = "edisp")
+
+        lbd = 3*(4+1) #int(ui[self.parameter_table["NBIN"]["ui pos"]]))
         matdat.registerData("block data", "Array",
-                            init_val = bkd)
+                            init_val = np.zeros(lbd))
 
         # register the extra variables with the material object
-        matdat.registerExtraVariables(self.nsv, namea, keya, sv)
+        matdat.registerExtraVariables(self.nsv, namea, keya, xtra)
 
         # initial shear and bulk moduli
         self.bulk_modulus = self.ui[self.parameter_table["BKMOD"]["ui pos"]]
         self.shear_modulus = self.ui[self.parameter_table["SHMOD"]["ui pos"]]
 
         # initial jacobian
-        self.computeInitialJacobian(simdat, matdat, isotropic=False)
-        pass
+        self.computeInitialJacobian() #simdat, matdat, isotropic=False)
+
+        return
+
+    def initializeState(self, simdat, matdat):
+
+        lbd = 3*(4+1) #int(ui[self.parameter_table["NBIN"]["ui pos"]]))
+        bkd = np.zeros(lbd)
+        ibflg = 0
+        xtra = matdat.getData("extra variables")
+
+        argv = [ibflg, bkd, self.ui, xtra, migError, migMessage]
+        if not PC_F2PY_CALLBACK:
+            argv = argv[:-2]
+
+        xtra, permtv, polrzn = mtllib.dsc_init(*argv)
+
+        simdat.advanceData("permittivity", permtv)
+        matdat.advanceData("polarization", polrzn)
+        matdat.advanceData("extra variables", xtra)
+
+        return
 
     def updateState(self, simdat, matdat):
         """
            update the material state based on current state and stretch
         """
+        iam = self.name + ".updateState(self, simdat, matdat)"
+        reportError(iam, "fortran not ready yet", 0)
+
         dt = simdat.getData("time step")
         d = simdat.getData("rate of deformation")
         Fnew = simdat.getData("deformation gradient", form="Matrix")
         efield = simdat.getData("electric field")
         sigold = matdat.getData("stress")
-        svold = matdat.getData("extra variables")
+        xold = matdat.getData("extra variables")
 
         # right stretch
         Rstretch = sqrtm( np.dot( Fnew.T, Fnew ) )
@@ -175,15 +193,15 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         rotation = toArray(rotation, symmetric=False)
         Rstretch = toArray(Rstretch, symmetric=True)
 
-        argv = [1, self.ui, svold, Rstretch, rotation, efield,
+        argv = [1, self.ui, xold, Rstretch, rotation, efield,
                 sigold, migError, migMessage]
         if not PC_F2PY_CALLBACK: argv = argv[:-2]
-        svnew, permtv, polrzn, edisp, signew = mtllib.dsc_drvr(*argv)
+        xnew, permtv, polrzn, edisp, signew = mtllib.dsc_drvr(*argv)
 
         # update data
         simdat.storeData("permittivity", permtv)
         matdat.storeData("stress", signew)
-        matdat.storeData("extra variables", svnew)
+        matdat.storeData("extra variables", xnew)
         matdat.storeData("polarization", polrzn)
         matdat.storeData("electric displacement", edisp)
 
@@ -203,17 +221,8 @@ class DomainSwitchingCeramic(ConstitutiveModelPrototype):
         if not PC_F2PY_CALLBACK: argv = argv[:-2]
 
         # request the extra variables
-        (ui, nsv, namea, keya, sv, rdim, iadvct, itype, iscal) = (
-            mtllib.dsc_req_extra(*argv))
+        nxtra, namea, keya, rinit, rdim, iadvct, itype, iscal = (
+            mtllib.dsc_req_xtra(*argv))
+        xtra = np.array(rinit[:nxtra])
 
-        # initialize
-        lbd = 3*(4+1) #int(ui[self.parameter_table["NBIN"]["ui pos"]]))
-        bkd = np.zeros(lbd)
-        ibflg = 0
-        argv = [ibflg, ui, nsv, bkd, lbd, sv, migError, migMessage]
-        if not PC_F2PY_CALLBACK: argv = argv[:-2]
-        ui, bkd, permtv, polrzn, sv = mtllib.dsc_init(*argv)
-
-        return (ui, nsv, namea, keya, sv, rdim, iadvct, itype, iscal,
-                bkd, permtv, polrzn)
-
+        return nxtra, namea, keya, xtra, rdim, iadvct, itype, iscal

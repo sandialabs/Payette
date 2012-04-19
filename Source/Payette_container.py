@@ -366,7 +366,8 @@ class Payette:
             pass
 
         # instantiate the material object
-        self.material = Material(constitutive_model,self.simdat,user_params,f_params)
+        self.material = Material(constitutive_model,
+                                 self.simdat, user_params, f_params)
 
         return
 

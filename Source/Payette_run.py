@@ -193,6 +193,13 @@ def run_payette(argv):
         default=False,
         help=("Write equivalent velocity and displacement table "
               "[default: %default]"))
+    parser.add_option(
+        "--check-setup",
+        dest="check_setup",
+        action="store_true",
+        default=False,
+        help=("Set up material and exit, printing set up information "
+              "[default: %default]"))
     (OPTS, args) = parser.parse_args(argv)
 
     payette_exts = [".log", ".math1", ".math2", ".props", ".echo", ".prf"]

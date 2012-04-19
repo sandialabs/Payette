@@ -36,7 +36,7 @@ iam = "Payette_driver.runProplem(the_model,restart)"
 np.set_printoptions(precision=2)
 
 def runProblem(the_model,**kwargs):
-    '''
+    """
     NAME
        runProblem:
 
@@ -51,81 +51,9 @@ def runProblem(the_model,**kwargs):
        outfile: the_model.getOutputFile()
 
     PASSED AND LOCAL VARIABLES
-       Variabls marked with a * are local copies of the_model data.
-
-             variable  type      size    description
-             --------  --------  ----    --------------------------------------
-             cmod*     instance  1       constitutive model object
-             d         array     (2,6)   symmetic part of velocity gradient
-                                           d[0,:] at time n
-                                           d[1,:] (to be) at time n + 1
-             dflg      list      (?)     list containing unique values of
-                                         prescribed [deformation,stress] types
-                                         on each leg.
-             dt        scalar    1       current timestep size
-             E         array     (2,6)   strain
-                                           E[0,:] at time n
-                                           E[1,:] (to be) at time n + 1
-             dEdt      array     (6)     rate of strain
-             Epres     array     (3,6)   prescribed strain
-                                           Epres[0,:] at tleg[0]
-                                           Epres[1,:] at tleg[1]
-                                           Epres[2,:] at t (interpolated)
-             F         array     (2,9)   deformation gradient
-                                           F[0,:] at time n
-                                           F[1,:] (to be) at time n + 1
-             Fpres     array     (3,9)   prescribed deformation gradient
-                                           Fpres[0,:] at tleg[0]
-                                           Fpres[1,:] at tleg[1]
-                                           Fpres[2,:] at t (interpolated)
-             EF        array     (2,3)   electric field
-                                           EF[0,:] at time n
-                                           EF[1,:] (to be) at time n + 1
-             EFpres    array     (3,3)   prescribed electric field
-                                           EFpres[0,:] at tleg[0]
-                                           EFpres[1,:] at tleg[1]
-                                           EFpres[2,:] at t (interpolated)
-             J0        array     (6,6)   Initial (full) Jacobian matrix
-             k*        scalar    1       Seth-Hill parameter
-             leg*      list      var     input deformation leg.  size varies by
-                                         prescribed [deformation,stress] type.
-             P         array     (2,6)   stress conjugate to E
-             ED        array     (2,3)   electric displacement
-             dPdt      array     (6)     rate of stress
-             Pdum      array     (2,6)   dummy holder for prescribed stress
-                                           Pdum[0,:] at tleg[0]
-                                           Pdum[1,:] at tleg[1]
-             Ppres     array     (3,?)   array containing only those components
-                                         of Pdum for which stresses were actually
-                                         prescribed
-                                           Ppres[0,:] at tleg[0]
-                                           Ppres[1,:] at tleg[1]
-                                           Ppres[2,:] at t (interpolated)
-             nsv*      scalar    var     number of state variables
-             R         array     (2,9)   rotation (=I for now)
-                                           R[0,:] at time n
-                                           R[1,:] (to be) at time n + 1
-             dRdt      array     (9)     rate of rotation
-             Rpres     array     (3,9)   prescribed rotation (not used)
-                                           Rpres[0,:] at tleg[0]
-                                           Rpres[1,:] at tleg[1]
-                                           Rpres[2,:] at t (interpolated)
-             sv*       array     (2,nsv) state variables
-                                           sv[0,:] at time n
-                                           sv[1,:] (to be) at time n + 1
-             t         scalar    1       current time
-             tleg*     array     (2)     let time
-                                           t[0]: time at beginning of leg
-                                           t[1]: time at end of leg
-             v         array     var     vector subscript array containing the
-                                         components for which stresses (or stress
-                                         rates) are prescribed
-             w         array     (2,6)   skew part of velocity gradient
-                                           w[0,:] at time n
-                                           w[1,:] (to be) at time n + 1
     AUTHORS
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
-    '''
+    """
     if debug: pdb = __import__('pdb')
 
     # -------------------- initialize and copy passed values to local variables

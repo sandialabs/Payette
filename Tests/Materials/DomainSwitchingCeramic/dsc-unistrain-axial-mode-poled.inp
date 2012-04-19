@@ -27,18 +27,12 @@ begin material
   Q44 = 0.015E+00
   EPSC =  8.11E-9
   EPSA =  7.35E-9
-  P0 = .48
   CFIELD = 1.E+03
-  A001 = -2.662E+07
-  A011 = -1.489E+07
-  A012 = 1.019E+07
-  A111 = 0.145E+09
-  A112 = 1.188E+09
-  A123 = -4.898E+09
   AXP = 0.E+00
   AYP = 0.E+00
   AZP = 1.E+00
-  DBG = 1
+  P0 = .48
   XKSAT = 1.
+  DBG = 1
 end material
 end simulation

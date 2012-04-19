@@ -56,7 +56,7 @@ class ConstitutiveModelPrototype:
         self.aliases = []
         self.parameter_table = {}
         self.parameter_table_idx_map = {}
-        self.nprop, self.ndc, self.nsv = 0, 0, 0
+        self.nprop, self.ndc, self.nxtra = 0, 0, 0
         self.J0 = None
         self.ui = np.zeros(self.nprop)
         self.dc = np.zeros(self.ndc)
@@ -244,10 +244,10 @@ class ConstitutiveModelPrototype:
             pass
         return name,val
 
-    def intializeState(self,*args,**kwargs):
+    def initializeState(self, simulation_data, material_data):
         pass
 
-    def updateState(self,material_data):
+    def updateState(self, simulation_data, material_data):
         reportError(__file__,'Consitutive model must provide updateState method')
         return 1
 
@@ -282,13 +282,15 @@ class ConstitutiveModelPrototype:
            isotropy
         '''
         if isotropic:
-            J0 = np.zeros((6,6))
-            threek,twog = 3.*self.bulk_modulus,2.*self.shear_modulus
-            pr = (threek-twog)/(2.*threek+twog)
+            J0 = np.zeros((6, 6))
+            threek, twog = 3. * self.bulk_modulus, 2. * self.shear_modulus
+            pr = (threek - twog) / (2. * threek + twog)
             c1,c2 = (1-pr)/(1+pr), pr/(1+pr)
             for i in range(3): J0[i,i] = threek*c1
-            for i in range(3,6): J0[i,i] = twog
-            J0[0,1],J0[0,2],J0[1,2],J0[1,0],J0[2,0],J0[2,1] = [threek*c2]*6
+            for i in range(3, 6): J0[i,i] = twog
+            (          J0[0, 1], J0[0, 2],
+             J0[1, 0],           J0[1, 2],
+             J0[2, 0], J0[2, 1]           ) = [threek * c2] * 6
             self.J0 = np.array(J0)
             return
 

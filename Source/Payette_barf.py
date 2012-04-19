@@ -29,7 +29,7 @@ Barf files are dumps from a material model of the form:
     barf message
     ----------------------------------------
     x = nblk   y=iblk
-    xx = ninsv
+    xx = nxtra
     xxx = nprop
     xxxxxx.E+xx = dt
     ################ property array

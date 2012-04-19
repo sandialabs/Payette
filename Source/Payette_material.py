@@ -85,9 +85,9 @@ class Material:
                                  init_val = False)
 
         # set up the constitutive model
-        self.constitutive_model.setUp(simdat,self.matdat,user_params,f_params)
+        self.constitutive_model.setUp(simdat, self.matdat, user_params, f_params)
         self.constitutive_model.checkSetUp()
-        self.constitutive_model.intializeState()
+        self.constitutive_model.initializeState(simdat, self.matdat)
 
         param_table = [None]*self.constitutive_model.nprop
         for key, dic in self.constitutive_model.parameter_table.items():

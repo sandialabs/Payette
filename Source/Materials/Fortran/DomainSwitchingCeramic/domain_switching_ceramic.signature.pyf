@@ -26,32 +26,31 @@ python module domain_switching_ceramic
             intent(callback) migmessage
             external migmessage
         end subroutine dsc_check_params
-        subroutine dsc_req_extra(ui,nx,namea,keya,xtra,rdim,iadvct,itype,iscal)
+        subroutine dsc_req_xtra(ui,nx,namea,keya,xtra,rdim,iadvct,itype,iscal)
             use payette__user__routines
-            integer,parameter :: nsv=20
-            integer,parameter :: mxn=nsv*80
-            integer,parameter :: mxk=nsv*10
-            double precision dimension(*),intent(in,out) :: ui
+            integer,parameter :: msv=50
+            integer,parameter :: mxn=msv*80
+            integer,parameter :: mxk=msv*10
+            double precision dimension(*),intent(in) :: ui
             integer intent(out) :: nx
             character dimension(mxn),intent(c,out) :: namea
             character dimension(mxk),intent(c,out) :: keya
-            double precision dimension(nsv), intent(out) :: xtra
-            double precision dimension(nsv,7),intent(out) :: rdim
-            integer dimension(nsv),intent(out) :: iadvct
-            integer dimension(nsv),intent(out) :: itype
-            integer dimension(nsv),intent(out) :: iscal
+            double precision dimension(msv), intent(out) :: xtra
+            double precision dimension(msv,7),intent(out) :: rdim
+            integer dimension(msv),intent(out) :: iadvct
+            integer dimension(msv),intent(out) :: itype
+            integer dimension(msv),intent(out) :: iscal
             intent(callback) migerror
             external migerror
             intent(callback) migmessage
             external migmessage
-        end subroutine dsc_req_extra
-        subroutine dsc_init(idb,ui,nx,bkd,lbd,permtv,polrzn,xtra)
+        end subroutine dsc_req_xtra
+        subroutine dsc_init(idb,lbd,bkd,ui,nx,xtra,permtv,polrzn)
           use payette__user__routines
-          integer,parameter :: nsv=20
           integer intent(in) :: ibflg,idb,lbd,nx
-          double precision dimension(*),intent(in,out) :: ui
-          double precision dimension(nsv),intent(in,out) :: xtra
-          double precision intent(in,out) :: bkd(*)
+          double precision dimension(*),intent(in) :: ui
+          double precision dimension(nx),intent(in,out) :: xtra
+          double precision intent(in) :: bkd(lbd)
           double precision dimension(3),intent(out) :: polrzn(3)
           double precision dimension(6),intent(out) :: permtv(6)
           intent(callback) migerror

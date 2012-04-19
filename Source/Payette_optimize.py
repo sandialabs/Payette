@@ -42,6 +42,8 @@ import Toolset.KayentaParamConv as kpc
 # Module level variables
 IOPT = -1
 FAC = []
+FNEWEXT = ".0x312.gold"
+JOBDIR = None
 
 
 class Optimize(object):
@@ -117,15 +119,17 @@ class Optimize(object):
 
         """
 
+        global JOBDIR
+
         # make the directory to run the job
-        cwd = os.getcwd()
+        JOBDIR = os.getcwd()
         dnam = self.basename + ".opt"
-        base_dir = os.path.join(os.getcwd(), dnam)
+        base_dir = os.path.join(JOBDIR, dnam)
         idir = 0
         while True:
             if os.path.isdir(base_dir):
                 base_dir = os.path.join(
-                    os.getcwd(), dnam + ".{0:03d}".format(idir))
+                    JOBDIR, dnam + ".{0:03d}".format(idir))
             elif idir > 100:
                 sys.exit("ERROR: max number of dirs")
             else:
@@ -218,13 +222,18 @@ class Optimize(object):
                 fobj.write("FSLOPE = {0:12.6E}\n".format(fslope))
                 fobj.write("YSLOPE = {0:12.6E}".format(yslope))
 
-        os.chdir(cwd)
+        os.chdir(JOBDIR)
         return 0
 
     def finish(self):
         r""" finish up the optimization job """
 
-        pass
+        # remove any temporary files
+        for item in [x for x in os.listdir(JOBDIR) if x.endswith(FNEWEXT)]:
+            os.remove(item)
+            continue
+
+        return
 
     def get_opt_info(self, opt_block):
         r"""Get the required optimization information.
@@ -897,6 +906,8 @@ def get_rtj2_vs_i1(fpath):
 
     Returns
     -------
+    fnew : str
+        path to file with the ione and rootj2 values
 
     """
 
@@ -906,16 +917,22 @@ def get_rtj2_vs_i1(fpath):
     for idx, item in enumerate(header):
         if item.lower() == "sig11":
             sig11 = data[:, idx]
+
         if item.lower() == "sig22":
             sig22 = data[:, idx]
+
         if item.lower() == "sig33":
             sig33 = data[:, idx]
+
         if item.lower() == "sig12":
             sig12 = data[:, idx]
+
         if item.lower() == "sig23":
             sig23 = data[:, idx]
+
         if item.lower() == "sig13":
             sig13 = data[:, idx]
+
         continue
 
     if sig11 is None or sig22 is None or sig33 is None:
@@ -938,7 +955,8 @@ def get_rtj2_vs_i1(fpath):
                    sig12 ** 2 + sig23 ** 2 + sig13 ** 2)
 
     fnam, fext = os.path.splitext(fpath)
-    fnew = fnam + "_i1_rtj2_calc" + fext
+    fnew = fnam + FNEWEXT
+
     with open(fnew, "w") as fobj:
         fobj.write("{0:12s}    {1:12s}\n".format("I1", "ROOTJ2"))
         for idx in range(len(i1)):

@@ -53,8 +53,11 @@ AUTHORS
 '''
 
 class PayetteError(Exception):
-    def __init__(self, msg):
-        if 'MIG' in msg: sys.tracebacklimit = 0
+    def __init__(self, msg, tracebacklimit=None):
+
+        if tracebacklimit is not None:
+            sys.tracebacklimit = tracebacklimit
+
         l = 79 # should be odd number
         st, stsp = '*'*l + '\n', '*' + ' '*(l-2) + '*\n'
         psf = 'Payette simulation failed'
@@ -64,10 +67,10 @@ class PayetteError(Exception):
         Exception.__init__(self, head+msg)
 
 
-def reportError(f, msg):
+def reportError(f, msg, tracebacklimit=None):
     f = fixFLength(f)
     msg = '{0} (reported from [{1}])'.format(msg, f)
-    raise PayetteError(msg)
+    raise PayetteError(msg, tracebacklimit)
     return
 
 
@@ -112,18 +115,18 @@ def writeToLog(msg):
 
 
 def migMessage(msg):
-    reportMessage('MIG',msg)
+    reportMessage("MIG", msg)
     return
 
 
 def migError(msg):
     msg = ' '.join([x for x in msg.split(' ') if x])
-    reportError('MIG',msg)
+    reportError("MIG", msg, tracebacklimit=0)
     return
 
 
 def migWarning(msg):
-    reportWarning('MIG',msg)
+    reportWarning("MIG", msg)
     return
 
 
