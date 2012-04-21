@@ -44,7 +44,7 @@ import pyclbr
 
 import Payette_config as pc
 import Source.Payette_utils as pu
-from Source.Payette_utils import BuildError
+from Source.Payette_utils import BuildError as BuildError
 
 # --- module level constants
 SPACE = "      "  # spacing used for logs to console

@@ -31,6 +31,7 @@ import shutil
 import numpy as np
 import math
 import multiprocessing as mp
+from copy import deepcopy
 
 import Source.Payette_utils as pu
 import Source.Payette_container as pc
@@ -56,9 +57,10 @@ class Visualize(object):
         self.job_opts.verbosity = 0
 
         # get the visualization block
-        viz, vizid = pu.findBlock(job_inp, "visualization")
+        viz = job_inp["visualization"]["content"]
 
-        # save the job_inp.  findBlock above removes the visualization block
+        # save the job_inp, minus the visualization block
+        del job_inp["visualization"]
         self.data["baseinp"] = job_inp
 
         # fill the data with the visualization information
@@ -293,12 +295,12 @@ class Visualize(object):
         job_inp = [x for x in self.data["baseinp"]]
 
         # check that the visualize variables were given in the input file
-        mtl, idx0, idxf = pu.has_block(job_inp, "material")
+        material = self.data["baseinp"]["material"]["content"]
         viz_params = self.data["visualize"].keys()
         viz_params.sort()
         inp_params = []
         inp_vals = {}
-        for line in job_inp[idx0:idxf]:
+        for line in material:
             if "constitutive" in line:
                 continue
             param = "_".join(line.split()[0:-1])
@@ -314,7 +316,7 @@ class Visualize(object):
             errors += 1
 
         # instantiate a Payette object
-        the_model = pc.Payette(self.basename, job_inp, self.job_opts)
+        the_model = pc.Payette(self.basename, self.data["baseinp"], self.job_opts)
         param_table = the_model.material.constitutive_model.parameter_table
         params = [x.lower() for x in param_table.keys()]
         try:
@@ -337,8 +339,8 @@ class Visualize(object):
             return errors
 
         # there are no errors, now we want to find the line number in the
-        # input file for the visualized params
-        for iline, line in enumerate([x for x in self.data["baseinp"]]):
+        # material block of the input file for the visualized params
+        for iline, line in enumerate(material):
             for viz_param in viz_params:
                 if viz_param in line.split():
                     self.data["visualize"][viz_param]["input idx"] = iline
@@ -393,7 +395,7 @@ def func(argv):
     os.chdir(job_dir)
 
     # instantiate the Payette object
-    job_inp = [x for x in data["baseinp"]]
+    job_inp = deepcopy(data["baseinp"])
 
     # replace the visualize variables with the updated and write params to file
     nams = [x for x in data["visualize"]]
@@ -405,7 +407,7 @@ def func(argv):
             viz_val = viz_params[idx]
             line = data["visualize"][nam]["input idx"]
             pstr = "{0} = {1:12.6E}".format(nam, viz_val)
-            job_inp[line] = pstr
+            job_inp["material"]["content"][line] = pstr
             fobj.write(pstr + "\n")
             msg.append(pstr)
 
@@ -414,8 +416,19 @@ def func(argv):
     # write out the input file, not actually used, but nice to have
     with open(os.path.join(job_dir, job + ".inp"), "w") as fobj:
         fobj.write("begin simulation {0}\n".format(job))
-        fobj.write("\n".join(job_inp))
-        fobj.write("\nend simulation")
+        # boundary block
+        fobj.write("begin boundary\n")
+        fobj.write("\n".join(job_inp["boundary"]["content"]) + "\n")
+        # legs block
+        fobj.write("begin legs\n")
+        fobj.write("\n".join(job_inp["legs"]["content"]) + "\n")
+        fobj.write("end legs\n")
+        fobj.write("end boundary\n")
+        # material block
+        fobj.write("begin material\n")
+        fobj.write("\n".join(job_inp["material"]["content"]) + "\n")
+        fobj.write("end material\n")
+        fobj.write("end simulation")
 
     if data["verbosity"]:
         pu.loginf("Iteration {0:d}, parameters: {1}"

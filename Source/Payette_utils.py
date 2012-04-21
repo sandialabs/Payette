@@ -193,229 +193,242 @@ def setupLogger(logfile,level,mode="w"):
     return
 
 
-def readUserInput(user_input,user_cchar=None):
+def parse_error(message):
+    sys.exit("ERROR: {0}".format(message))
+
+
+def read_input(user_input, user_cchar=None):
     """
        read a list of user inputs and return
     """
+    recognized_blocks = ("simulation", "boundary", "legs", "material",
+                         "optimization", "visualization", "enumeration",
+                         "mathplot", "name", "content")
+    incompatible_blocks = (("visualization", "optimization", "enumeration"),)
+
     # comment characters
     cchars = ['#','$']
-    if user_cchar: cchars.append(user_cchar)
+    if user_cchar is not None:
+        cchars.append(user_cchar)
+
+    insert_kws = ("insert", "include")
 
     # read file, sans comments, into a list
-    all_input = []
     if not user_input:
-        parse_error("no user input sent to readUserInput")
+        parse_error("no user input sent to read_input")
         pass
-    for line in user_input:
 
-        aline = line.strip()
+    all_input = []
+    iline = 0
 
-        # skip blank and comment lines
-        if not aline or aline[0] in cchars: continue
-
-        # remove inline comments
-        aline = removeComments(aline,cchars)
-
-        # check for inserts
-        inclines,inserts = checkForInserts(aline), []
-        if inclines:
-            for incline in inclines:
-                incline = removeComments(incline,cchars)
-                toomany = checkForInserts(incline)
-                if toomany: parse_error("cannot have includes in includes")
-                if incline: inserts.append(incline)
-                continue
-            all_input.extend(inserts)
-        else: all_input.append(aline)
-
-        continue
-
-    # parse the list and put individual simulations into the user_dict
-    user_dict = {}
-    i, maxit = 0, len(all_input)
+    # infinite loop for reading the input file and getting all inserted files
     while True:
 
-        simulation,simid = findBlock(all_input,'simulation')
-        if simulation and not simid:
-            parse_error('did not find simulation name.  Simulation block '
-                         'must be for form:\n'
-                         '\tbegin simulation simulation name ... end simulation')
+        # if we have gone through one time, reset user_input to be all_input
+        # and run through again until all inserted files have been read in
+        if iline == len(user_input):
+            if [x for x in all_input if x.split()[0] in insert_kws]:
+                user_input = [x for x in all_input]
+                all_input = []
+                iline = 0
+            else:
+                break
 
-        elif simulation:
-            simkey = simid.replace(' ','_')
-            user_dict[simkey] = simulation
+        # get the next line of input
+        line = user_input[iline].strip()
+
+        # skip blank and comment lines
+        if not line.split() or line[0] in cchars:
+            iline += 1
+            continue
+
+        # remove inline comments
+        for cchar in cchars:
+            line = line.split(cchar)[0]
+
+        # check for inserts
+        if line.split()[0] in insert_kws:
+            inserted_file = True
+            insert = " ".join(line.split()[1:])
+            if not os.path.isfile(insert):
+                parse_error("inserted file '{0:s}' not found".format(insert))
+
+            insert_lines = open(insert, "r").readlines()
+            for insert_line in insert_lines:
+                if not insert_line.split() or insert_line[0] in cchars:
+                    continue
+                for cchar in cchars:
+                    insert_line = insert_line.split(cchar)[0]
+                all_input.append(insert_line.strip())
 
         else:
-            break
+            all_input.append(line)
 
-        if i >= maxit:
-            break
-
-        i += 1
+        iline += 1
 
         continue
 
-    for key, val in user_dict.items():
+    # The file is now
+    input_sets = get_blocks(all_input)
 
-        opt = has_block(val, "optimization")
-        if any(opt):
-            user_dict[key].append("optimize")
+    # input_sets contains a list of all blocks in the file, parse it to make
+    # sure that a simulation is given
+    user_dict = {}
+    errors = 0
+    for input_set in input_sets:
 
-        enum = has_block(val, "enumeration")
-        if any(enum):
-            user_dict[key].append("enumerate")
+        if "simulation" not in input_set:
+            errors += 1
+            logerr("no simulation block found")
+            continue
 
-        viz = has_block(val, "visualization")
-        if any(viz):
-            user_dict[key].append("visualize")
+        simkey = input_set["simulation"]["name"]
+        if not simkey:
+            errors += 1
+            logerr('did not find simulation name.  Simulation block '
+                   'must be for form:\n'
+                   '\tbegin simulation simulation name ... end simulation')
+            continue
 
+        # check for incompatibilities
+        bad_blocks = [x for x in input_set["simulation"]
+                      if x not in recognized_blocks]
+        if bad_blocks:
+            errors += 1
+            logerr("unrecognized blocks: {0}".format(", ".join(bad_blocks)))
+
+        for item in incompatible_blocks:
+            bad_blocks = [x for x in input_set["simulation"] if x in item]
+            if len(bad_blocks) > 1:
+                errors += 1
+                logerr("{0} blocks incompatible, choose one"
+                       .format(", ".join(bad_blocks)))
+
+        user_dict[simkey] = input_set["simulation"]
 
         continue
+
+    if errors:
+        parse_error("resolve previous errors")
 
     return user_dict
 
 
-def removeComments(aline,cchars):
-    for cchar in cchars:
-        while cchar in aline:
-            i = aline.index(cchar)
-            aline = aline[0:i].strip()
+def get_blocks(user_input):
+    """ Find all input blocks in user_input.
+
+    Input blocks are blocks of instructions in
+
+        begin keyword [title]
+               .
+               .
+               .
+        end keyword
+
+    blocks.
+
+    Parameters
+    ----------
+    user_input : array_like
+        Split user_input
+
+    Returns
+    -------
+    blocks : dict
+        Dictionary containing all blocks.
+        keys:
+            simulation
+            boundary
+            legs
+            special
+            mathplot
+
+    """
+
+    block_tree = []
+    block_stack = []
+    block = {}
+
+    for iline, line in enumerate(user_input):
+
+        split_line = line.strip().lower().split()
+
+        if not split_line:
             continue
-        continue
-    return aline
 
+        if split_line[0] == "begin":
+            # Encountered a new block. Before continuing, we need to decide
+            # what to do with it. Possibilities are:
+            #
+            #    1. Start a new block dictionary if this block is not nested
+            #    2. Append this block to the previous if it is nested
 
-def checkForInserts(aline):
-    magic = ["insert","include"]
-    qmarks = ['"',"'"]
-    if not aline.strip(): pass
-    elif aline.split()[0].lower() in magic:
-        f = ' '.join(aline.split()[1:]).strip()
-        if f[0] in qmarks:
-            if f[-1] not in qmarks or f[-1] != f[0]:
-                parse_error('inconsistent quotations around include file at "{0}"'
-                            .format(aline))
-            else: f = f[1:len(f)-1]
-            pass
+            # get the block type
+            try:
+                block_typ = split_line[1]
+            except ValueError:
+                parse_error("encountered a begin directive with no block type")
 
-        f = os.path.realpath(f)
+            # get the (optional) block name
+            try:
+                block_nam = "_".join(split_line[2:])
+            except ValueError:
+                block_nam = None
 
-        try:
-            return [line.strip() for line in open(f,'r').readlines()]
-        except IOError as error:
-            if error.errno == 2:
-                parse_error('insert file {0} not found'.format(f))
-            else: raise
-        except: raise
+            new_block = {block_typ: {"name": block_nam, "content": []}}
 
-    else: pass
+            if not block_stack:
+                # First encountered block, old block is now done, store it
+                if block:
+                    block_tree.append(block)
 
-    return None
+                block = new_block
 
+            else:
+                if block_typ in block[block_stack[0]]:
+                    parse_error("duplicate block \"{0}\" encountered"
+                                .format(block_typ))
 
-def findBlock(ilist,keyword):
-    '''
-    NAME
-       findBlock
+                block[block_stack[0]][block_typ] = new_block[block_typ]
 
-    PURPOSE
-       from the user input in <ilist>, find and return the <keyword> input
-       block
-
-    AUTHORS
-       Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
-    '''
-    if keyword is None:
-        # find all blocks and return names
-        inblk = False
-        blknams = []
-        for item in ilist:
-            item = item.lower().strip().split()
-            if "begin" in item[0]:
-                try:
-                    blknams.append(" ".join(item[1:]))
-                except ValueError:
-                    blknams.append(" ")
+            # Append the block type to the block stack. The block stack is a
+            # list of blocks we are currently in.
+            block_stack.append(block_typ)
             continue
-        return blknams, None
 
-    kwd = str(keyword)
-    index_beg = None
-    index_end = None
-    bid = None
+        elif split_line[0] == "end":
 
-    for item in ilist:
-        if item[:len('begin {0}'.format(kwd))].strip() == 'begin {0}'.format(kwd):
-            index_beg = ilist.index(item)+1
-            bid = item[len('begin {0}'.format(kwd)):].strip()
-        else: pass
-        if index_beg: break
-        continue
-    for item in ilist[index_beg:]:
-        if item.strip() == 'end {0}'.format(kwd):
-            index_end = ilist.index(item)
-        elif 'end {0}'.format(kwd) in item.strip():
-            index_end = ilist.index(item)
-        else: pass
-        if index_end: break
-        continue
-    if not index_beg or not index_end:
-        return None,None
-    else:
-        block = ilist[index_beg:index_end]
-        del ilist[index_beg-1:index_end+1]
-        pass
-    return block,bid
+            # Reached the end of a block. Make sure that it is the end of the
+            # most current block.
+            try:
+                block_typ = split_line[1]
+            except ValueError:
+                parse_error("encountered a end directive with no block type")
 
+            if block_stack[-1] != block_typ:
+                parse_error('unexpected "end {0}" directive, expected "end {1}"'
+                            .format(block_typ, block_stack[-1]))
 
-def has_block(ilist, keyword):
-    '''
-    NAME
-       has_block
+            # Remove this block from the block stack
+            block_stack.pop()
+            try:
+                block_typ = block_stack[-1]
+            except IndexError:
+                block_typ = None
 
-    PURPOSE
-       check if input has the keyword block, or not
+            continue
 
-    AUTHORS
-       Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
-    '''
-    kwd = str(keyword)
-    idx_beg, idx_end = None, None
-
-    for item in ilist:
-        if item[:len('begin {0}'.format(kwd))].strip() == 'begin {0}'.format(kwd):
-            idx_beg = ilist.index(item)+1
+        # Currently in a block,
+        if block_stack[0] == block_typ:
+            block[block_typ]["content"].append(line)
 
         else:
-            pass
-
-        if idx_beg is not None:
-            break
+            block[block_stack[0]][block_typ]["content"].append(line)
 
         continue
 
-    if idx_beg is None:
-        return False, None, None
-
-    for item in ilist[idx_beg:]:
-        if item.strip() == 'end {0}'.format(kwd):
-            idx_end = ilist.index(item)
-
-        elif 'end {0}'.format(kwd) in item.strip():
-            idx_end = ilist.index(item)
-
-        else:
-            pass
-
-        if idx_end:
-            break
-
-        continue
-
-    if idx_end is None:
-        return False, None, None
-
-    return True, idx_beg, idx_end
+    block_tree.append(block)
+    return block_tree
 
 
 def textformat(var):
@@ -778,10 +791,6 @@ def writeVelAndDispTable(t0,tf,tbeg,tend,epsbeg,epsend,kappa):
     vtable.write("\n")
 
     return
-
-
-def parse_error(message):
-    sys.exit("ERROR: {0}".format(message))
 
 
 def flatten(x):

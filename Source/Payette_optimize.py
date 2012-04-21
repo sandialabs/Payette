@@ -32,6 +32,7 @@ import numpy as np
 import scipy
 import scipy.optimize
 import math
+from copy import deepcopy
 
 import Source.Payette_utils as pu
 import Source.Payette_container as pc
@@ -66,9 +67,10 @@ class Optimize(object):
         self.job_opts.verbosity = 0
 
         # get the optimization block
-        opt, optid = pu.findBlock(job_inp, "optimization")
+        opt = job_inp["optimization"]["content"]
 
-        # save the job_inp.  findBlock above removes the optimization block
+        # save the job_inp, minus the optimzation block
+        del job_inp["optimization"]
         self.data["baseinp"] = job_inp
 
         # fill the data with the optimization information
@@ -474,18 +476,15 @@ class Optimize(object):
 
         shearfit = "shearfit" in self.data["options"]
 
-        # the input for the job
-        job_inp = [x for x in self.data["baseinp"]]
-
         # --- check that the optimize variables were given in the input file
-        mtl, idx0, idxf = pu.has_block(job_inp, "material")
+        material = self.data["baseinp"]["material"]["content"]
         opt_params = self.data["optimize"].keys()
         opt_params.sort()
 
         # get input parameters
         inp_params = []
         inp_vals = {}
-        for line in job_inp[idx0:idxf]:
+        for line in material:
             if "constitutive" in line:
                 continue
             param = line.replace("="," ").replace(","," ")
@@ -504,7 +503,7 @@ class Optimize(object):
             errors += 1
 
         # instantiate a Payette object
-        the_model = pc.Payette(self.basename, job_inp, self.job_opts)
+        the_model = pc.Payette(self.basename, self.data["baseinp"], self.job_opts)
         param_table = the_model.material.constitutive_model.parameter_table
         params = [x.lower() for x in param_table.keys()]
         try:
@@ -527,8 +526,8 @@ class Optimize(object):
             return errors
 
         # there are no errors, now we want to find the line number in the
-        # input file for the optimized params
-        for iline, line in enumerate([x for x in self.data["baseinp"]]):
+        # material block for the optimized params
+        for iline, line in enumerate(material):
             for opt_param in opt_params:
                 if opt_param in line.split():
                     self.data["optimize"][opt_param]["input idx"] = iline
@@ -732,7 +731,7 @@ def func(opt_params, data, base_dir, job_opts, xgold):
     os.chdir(job_dir)
 
     # instantiate the Payette object
-    job_inp = [x for x in data["baseinp"]]
+    job_inp = deepcopy(data["baseinp"])
 
     # replace the optimize variables with the updated and write params to file
     nams = [x for x in data["optimize"]]
@@ -759,7 +758,7 @@ def func(opt_params, data, base_dir, job_opts, xgold):
 
             line = data["optimize"][nam]["input idx"]
             pstr = "{0} = {1:12.6E}".format(nam, opt_val*FAC[idx])
-            job_inp[line] = pstr
+            job_inp["material"]["content"][line] = pstr
             fobj.write(pstr + "\n")
             msg.append(pstr)
 

@@ -115,7 +115,7 @@ class PayetteBarf(object):
         self.payette_input = self._convert_to_payette()
 
         # parse the input
-        input_dict = pu.readUserInput(self.payette_input)
+        input_dict = pu.read_input(self.payette_input)
 
         # instantiate the Payette object
         for key, val in input_dict.items():

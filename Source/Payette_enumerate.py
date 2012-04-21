@@ -32,6 +32,7 @@ import numpy as np
 import scipy
 import scipy.optimize
 import math
+from copy import deepcopy
 
 import Source.Payette_utils as pu
 import Source.Payette_container as pc
@@ -66,9 +67,10 @@ class Enumerate(object):
         self.job_opts.verbosity = 0
 
         # get the 'enumeration' block and remove it from 'job_inp'
-        opt, optid = pu.findBlock(job_inp, "enumeration")
+        opt = job_inp["enumeration"]["content"]
 
-        # save the job_inp.
+        # save the job_inp, minus the enumeration block
+        del job_inp["enumeration"]
         self.data["baseinp"] = job_inp
 
         # fill the data with the optimization information
@@ -116,7 +118,7 @@ class Enumerate(object):
 
         # This computes the number of digits we need for the current set
         # of runs. No sense in having run.0000001 when there are only 3 runs.
-        digits=len(str(  len( self.data["enumeration list"] ) ))
+        digits = len(str(len(self.data["enumeration list"])))
 
         for idx, enumeration in enumerate(self.data["enumeration list"]):
             # Create the job directory
@@ -125,20 +127,30 @@ class Enumerate(object):
 
             # Create the job .inp file.
             job_f = os.path.join(job_d, self.data["basename"]+".inp")
-            tmp_baseinp = self.data["baseinp"]
-            for new_token in enumeration:
-                new_value = enumeration[new_token]
+            tmp_baseinp = deepcopy(self.data["baseinp"])
+            for new_token, new_value in enumeration.items():
                 new_line = self.data["enumeration line index"][new_token]
-                tmp_baseinp[new_line] = "{0}={1}".format(new_token, new_value)
+                tmp_baseinp["material"]["content"][new_line] = (
+                    "{0}={1}".format(new_token, new_value))
 
-            # Write the job .inp file
-            TMPF = open(job_f,"w")
-            TMPF.write("begin simulation {0}\n".format(self.data["basename"])+
-                          "\n".join(tmp_baseinp) +
-                          "\nend simulation")
-            TMPF.close()
+            # write out the input file
+            with open(job_f, "w") as fobj:
+                fobj.write("begin simulation {0}\n".format(self.data["basename"]))
+                # boundary block
+                fobj.write("begin boundary\n")
+                fobj.write("\n".join(tmp_baseinp["boundary"]["content"]) + "\n")
+                # legs block
+                fobj.write("begin legs\n")
+                fobj.write("\n".join(tmp_baseinp["legs"]["content"]) + "\n")
+                fobj.write("end legs\n")
+                fobj.write("end boundary\n")
+                # material block
+                fobj.write("begin material\n")
+                fobj.write("\n".join(tmp_baseinp["material"]["content"]) + "\n")
+                fobj.write("end material\n")
+                fobj.write("end simulation")
 
-            self.data["input string list"].append([x for x in tmp_baseinp])
+            self.data["input string list"].append(deepcopy(tmp_baseinp))
             self.data["output dir list"].append(job_d)
 
         cwd = os.getcwd()
@@ -147,19 +159,19 @@ class Enumerate(object):
             os.chdir(self.data["output dir list"][idx])
 
             # Make a copy of the .inp file (because running it clobbers it)
-            dum_inp = [x for x in input_file]
+            dum_inp = deepcopy(input_file)
 
             # instantiate Payette object
             the_model = pc.Payette(self.data["basename"],
                                    dum_inp,
                                    self.data["OPTS"])
-    
+
             # run the job
             solve = pd.runProblem(the_model, restart=False)
             pcnt_complete = (idx+1)/float(len(self.data["input string list"])) * 100.0
             pu.loginf("Enumeration {0: 6.2f}% complete".format(pcnt_complete))
-            
-        
+
+
             the_model.finish()
 
         if solve != 0:
@@ -209,8 +221,8 @@ class Enumerate(object):
                 except IndexError:
                     pu.logerr("Invalid 'enumerate' statement.")
 
-                # Store as strings because strings might be enumerated upon. 
-                enum_args = item[2:] 
+                # Store as strings because strings might be enumerated upon.
+                enum_args = item[2:]
                 if len(enum_args) == 0:
                     pu.logerr("No arguments given with 'enumerate' statement.")
                 if enum_args[0].count(":") == 2:
@@ -238,12 +250,12 @@ class Enumerate(object):
                 continue
             else:
                 pu.logerr("Invalid statement '{0}'.".format(" ".join(item)))
-            
+
             continue
 
         # Now, we process the permutations either as straight (each parameter
         # is given 'x' values and 'x' simulations are spawned) or permutation
-        # (where 'x' of one parameter is given, and 'y' of another, and 
+        # (where 'x' of one parameter is given, and 'y' of another, and
         # 'x*y' simulations are generated).
         enumerate_db = []
         if combination_type == "straight":
@@ -293,16 +305,14 @@ class Enumerate(object):
             return 1
 
         errors = 0
-        # the input for the job
-        job_inp = [x for x in self.data["baseinp"]]
 
         # check that the optimize variables were given in the input file
-        mtl, idx0, idxf = pu.has_block(job_inp, "material")
+        material = self.data["baseinp"]["material"]["content"]
         viz_params = self.data["enumeration list"][0].keys()
         viz_params.sort()
 
         # instantiate a Payette object
-        the_model = pc.Payette(self.basename, job_inp, self.job_opts)
+        the_model = pc.Payette(self.basename, self.data["baseinp"], self.job_opts)
         param_table = the_model.material.constitutive_model.parameter_table
         params = [x.lower() for x in param_table.keys()]
         try:
@@ -325,9 +335,9 @@ class Enumerate(object):
             return errors
 
         # there are no errors, now we want to find the line number in the
-        # input file for the optimized params
+        # material block of the input file for the optimized params
         self.data["enumeration line index"] = {}
-        for iline, line in enumerate([x for x in self.data["baseinp"]]):
+        for iline, line in enumerate(material):
             for viz_param in viz_params:
                 if viz_param.lower() in line.lower().split():
                     self.data["enumeration line index"][viz_param] = iline

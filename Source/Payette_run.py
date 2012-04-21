@@ -353,7 +353,7 @@ def run_payette(argv):
             continue
 
         # read the user input
-        USER_INPUT_DICT = pu.readUserInput(input_lines, OPTS.cchar)
+        USER_INPUT_DICT = pu.read_input(input_lines, OPTS.cchar)
         if not USER_INPUT_DICT:
             sys.exit("ERROR: user input not found in {0:s}"
                      .format(", ".join(foundf)))
@@ -399,9 +399,19 @@ def _run_job(job):
     if TIMING:
         tim0 = time.time()
 
-    if "optimize" in USER_INPUT_DICT[job]:
+    # instantiate Payette object
+    if RESTART:
+        the_model = USER_INPUT_DICT[job]
+        the_model.setupRestart()
+
+        # run the problem
+        if TIMING:
+            tim1 = time.time()
+
+        solve = pdrvr.runProblem(the_model, restart=RESTART)
+
+    elif "optimization" in USER_INPUT_DICT[job]:
         # intantiate the Optimize object
-        USER_INPUT_DICT[job].remove("optimize")
         the_model = po.Optimize(job, USER_INPUT_DICT[job], OPTS)
 
         # run the optimization problem
@@ -410,9 +420,8 @@ def _run_job(job):
 
         solve = the_model.optimize()
 
-    elif 'enumerate' in USER_INPUT_DICT[job]:
+    elif 'enumeration' in USER_INPUT_DICT[job]:
         # intantiate the Enumeration object
-        USER_INPUT_DICT[job].remove("enumerate")
         the_model = pe.Enumerate(job, USER_INPUT_DICT[job], OPTS)
 
         # run the enumeration problem
@@ -421,9 +430,8 @@ def _run_job(job):
 
         solve = the_model.enumerate()
 
-    elif 'visualize' in USER_INPUT_DICT[job]:
+    elif 'visualization' in USER_INPUT_DICT[job]:
         # intantiate the Optimize object
-        USER_INPUT_DICT[job].remove("visualize")
         the_model = pv.Visualize(job, USER_INPUT_DICT[job], OPTS)
 
         # run the enumeration problem
@@ -433,13 +441,8 @@ def _run_job(job):
         solve = the_model.visualize()
 
     else:
-        # instantiate Payette object
-        if RESTART:
-            the_model = USER_INPUT_DICT[job]
-            the_model.setupRestart()
 
-        else:
-            the_model = pcntnr.Payette(job, USER_INPUT_DICT[job], OPTS)
+        the_model = pcntnr.Payette(job, USER_INPUT_DICT[job], OPTS)
 
         # run the problem
         if TIMING:
