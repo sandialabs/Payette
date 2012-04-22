@@ -46,7 +46,7 @@ import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr
 import Source.Payette_optimize as po
 import Source.Payette_enumerate as pe
-import Source.Payette_visualize as pv
+import Source.Payette_permutate as pp
 
 
 # --- module level variables
@@ -430,18 +430,17 @@ def _run_job(job):
 
         solve = the_model.enumerate()
 
-    elif 'visualization' in USER_INPUT_DICT[job]:
+    elif 'permutation' in USER_INPUT_DICT[job]:
         # intantiate the Optimize object
-        the_model = pv.Visualize(job, USER_INPUT_DICT[job], OPTS)
+        the_model = pp.Permutate(job, USER_INPUT_DICT[job], OPTS)
 
         # run the enumeration problem
         if TIMING:
             tim1 = time.time()
 
-        solve = the_model.visualize()
+        solve = the_model.run_job()
 
     else:
-
         the_model = pcntnr.Payette(job, USER_INPUT_DICT[job], OPTS)
 
         # run the problem

@@ -38,3 +38,5 @@ TestResults.*
 # Example output
 Examples/exmpl_*.opt*
 Examples/exmpl_*.enum*
+Examples/exmpl_*.perm*
+Examples/exmpl_*.viz*

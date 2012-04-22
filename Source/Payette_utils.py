@@ -202,7 +202,7 @@ def read_input(user_input, user_cchar=None):
        read a list of user inputs and return
     """
     recognized_blocks = ("simulation", "boundary", "legs", "material",
-                         "optimization", "visualization", "enumeration",
+                         "optimization", "permutation", "enumeration",
                          "mathplot", "name", "content")
     incompatible_blocks = (("visualization", "optimization", "enumeration"),)
 
@@ -1292,3 +1292,50 @@ def compare_file_cols(file_1, file_2, cols=["all"]):
         continue
 
     return 0, np.array(anrmsd), np.array(armsd)
+
+
+def write_input_file(nam, inp_dict, inp_f):
+    """ from an input dictionary, write the input file
+
+    Parameters
+    ----------
+    nam : str
+        The name of the simulation
+
+    inp_dict : dict
+        The input dictionary
+
+    inp_f : str
+        Path to input file to be written
+
+    Returns
+    -------
+    None
+
+    """
+
+    req_blocks = ("content", "simulation", "boundary", "legs", "material", "name")
+    with open(inp_f, "w") as fobj:
+        fobj.write("begin simulation {0}\n".format(nam))
+        fobj.write("\n".join(inp_dict["content"]) + "\n")
+        # boundary block
+        fobj.write("begin boundary\n")
+        fobj.write("\n".join(inp_dict["boundary"]["content"]) + "\n")
+        # legs block
+        fobj.write("begin legs\n")
+        fobj.write("\n".join(inp_dict["legs"]["content"]) + "\n")
+        fobj.write("end legs\n")
+        fobj.write("end boundary\n")
+        # material block
+        fobj.write("begin material\n")
+        fobj.write("\n".join(inp_dict["material"]["content"]) + "\n")
+        fobj.write("end material\n")
+        for key, val in inp_dict.items():
+            if key in req_blocks:
+                continue
+            fobj.write("begin {0}\n".format(key))
+            fobj.write("\n".join(val["content"]) + "\n")
+            fobj.write("end {0}\n".format(key) + "\n")
+        fobj.write("end simulation")
+
+    return

@@ -25,17 +25,17 @@ begin simulation exmpl_13
     K 129.e9  # 135.e9 -> value used to create exmpls.tbl
   end material
 
-  begin visualization
+  begin permutation
 
-    # This is the main visualization block. We specify every available option
+    # This is the main permutation block. We specify every available option
     # showing its default value in brackets, along with other available
     # options in braces, if applicable.
 
-    # below we specify which parameters to visualize with optional upper and
-    # lower bounds.
-    vary K, ubound 150.e9, lbound 125.e9, realizations 10
-    vary G, ubound 57.e9, lbound 45.e9, realizations 5
+    # below we specify which parameters to permutation
+    options # combination
+    permutate K, range = (125.e9, 150.e9, 10)
+    permutate G, range = (45.e9, 57.e9, 10)
 
-  end visualization
+  end permutation
 
 end simulation
