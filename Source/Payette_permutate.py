@@ -86,8 +86,8 @@ class Permutate(object):
             sys.exit(123)
 
         if self.data["verbosity"]:
-            pu.loginf("Visualizing {0}".format(job))
-            pu.loginf("Perturbed variables: {0}"
+            pu.loginf("Permutating {0}".format(job))
+            pu.loginf("Permutated variables: {0}"
                       .format(", ".join(self.param_nams)))
         pass
 
@@ -122,14 +122,15 @@ class Permutate(object):
             idir += 1
 
         if self.data["verbosity"]:
-            pu.loginf("Visualization directory: {0}".format(base_dir))
+            pu.loginf("Permutation directory: {0}".format(base_dir))
 
         os.mkdir(base_dir)
         os.chdir(base_dir)
 
         # open up the index file
-        index_f = open(os.path.join(base_dir, "index.py"), "w")
-        index_f.write("irun = 0\nindex = {}\n")
+        index_f = os.path.join(base_dir, "index.py")
+        with open(index_f, "w") as fobj:
+            fobj.write("irun = 0\nindex = {}\n")
 
         # Save additional arguments to func in the global FARGS. This would be
         # handled better using something similar to scipy.optimize.py's
@@ -148,7 +149,6 @@ class Permutate(object):
             pool.join()
             del pool
 
-        index_f.close()
         os.chdir(cwd)
 
         return 0
@@ -181,15 +181,14 @@ class Permutate(object):
 
         for item in permutation_block:
 
-            item = item.replace(",", " ").replace("=", " ").split()
+            for char in ",=()[]":
+                item = item.replace(char, " ")
+                continue
 
+            item = item.lower().split()
             directive = item[0].lower()
-
             if directive == "options":
-                opt = ", ".join(item[1:])
-                opt = opt.replace("(","").replace(")","")
-                opt = opt.replace("[","").replace("]","")
-                opt = opt.split(",")
+                opt = item[1:]
                 bad_opt = [x for x in opt if x not in self.allowed_options]
                 if bad_opt:
                     errors += 1
@@ -197,6 +196,7 @@ class Permutate(object):
                               .format(", ".join(bad_opt)))
                 else:
                     options.extend(opt)
+
                 continue
 
             elif directive in "permutate":
@@ -213,21 +213,16 @@ class Permutate(object):
                 # specified range
                 if "range" in vals:
                     p_range = ", ".join(vals[vals.index("range") + 1:])
-                    p_range = p_range.replace("(","").replace(")","")
                     p_range = eval("{0}({1})".format("np.linspace", p_range))
 
                 # specified sequence
                 elif "sequence" in vals:
                     p_range = ", ".join(vals[vals.index("sequence") + 1:])
-                    p_range = p_range.replace("(","").replace(")","")
-                    p_range = p_range.replace("[","").replace("]","")
                     p_range = eval("{0}([{1}])".format("np.array", p_range))
 
                 # default: same as sequence above, but without the "sequence" kw
                 else:
                     p_range = ", ".join(vals)
-                    p_range = p_range.replace("(","").replace(")","")
-                    p_range = p_range.replace("[","").replace("]","")
                     p_range = eval("{0}([{1}])".format("np.array", p_range))
 
                 # check that a range was given
@@ -246,12 +241,15 @@ class Permutate(object):
 
         if "combination" in options:
             self.param_ranges = product(*param_ranges)
+
         else:
             if len(set([len(x) for x in param_ranges])) - 1:
                 pu.logerr("number of permutations must be the same for "
                           "all permutated parameters")
                 sys.exit(3)
             self.param_ranges = izip(*param_ranges)
+
+        del param_ranges
 
         return
 
@@ -288,7 +286,7 @@ class Permutate(object):
 
         not_in = [x for x in self.param_nams if x.lower() not in inp_params]
         if not_in:
-            pu.logerr("Visualization parameter[s] {0} not in input parameters"
+            pu.logerr("Permutation parameter[s] {0} not in input parameters"
                       .format(", ".join(not_in)))
             errors += 1
 
@@ -311,7 +309,7 @@ class Permutate(object):
         # check that the visualize variables are in this models parameters
         not_in = [x for x in self.param_nams if x.lower() not in params]
         if not_in:
-            pu.logerr("Visualization parameter[s] {0} not in model parameters"
+            pu.logerr("Permutation parameter[s] {0} not in model parameters"
                       .format(", ".join(not_in)))
             errors += 1
 
@@ -379,11 +377,12 @@ def func(xcall):
                   .format(job_id, ", ".join(msg)))
 
     # write to the index file
-    index_f.write('index[irun] = {' +
-                  '"name": "{0}", '.format(job) +
-                  '"directory": "{0}"'.format(job_dir) +
-                  '}\n')
-    index_f.write("irun += 1\n")
+    with open(index_f, "a") as fobj:
+        fobj.write('index[irun] = {' +
+                   '"name": "{0}", '.format(job) +
+                   '"directory": "{0}"'.format(job_dir) +
+                   '}\n')
+        fobj.write("irun += 1\n")
 
     # instantiate Payette object
     the_model = pc.Payette(job, job_inp, job_opts)
