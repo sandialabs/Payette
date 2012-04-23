@@ -37,10 +37,12 @@ import Source.Materials.Payette_installed_materials as pim
 import Source.Payette_driver as cdriver
 from Source.Payette_data_container import DataContainer
 
+
 def throw_err(msg):
     print("ERROR: {0:s}".format(msg))
     sys.exit(4)
     return
+
 
 class Payette:
     '''
@@ -366,8 +368,8 @@ class Payette:
             pass
 
         # instantiate the material object
-        self.material = Material(constitutive_model,
-                                 self.simdat, user_params, f_params)
+        self.material = Material(
+            constitutive_model, self.simdat, user_params, f_params)
 
         return
 

@@ -74,17 +74,15 @@ class Permutate(object):
         # place holders for param_ranges and param_nams
         self.param_ranges = []
         self.param_nams = []
+        self.initial_vals = []
 
         # fill the data with the permutated information
         self.get_params(permutate)
 
         # check the permutation variables
-        errors = 0
-        errors += self.check_params()
-        if errors:
-            pu.logerr("exiting due to previous errors")
-            sys.exit(123)
+        self.check_params()
 
+        # print info
         if self.data["verbosity"]:
             pu.loginf("Permutating {0}".format(job))
             pu.loginf("Permutated variables: {0}"
@@ -185,10 +183,10 @@ class Permutate(object):
                 item = item.replace(char, " ")
                 continue
 
-            item = item.lower().split()
+            item = item.split()
             directive = item[0].lower()
             if directive == "options":
-                opt = item[1:]
+                opt = [x.lower() for x in item[1:]]
                 bad_opt = [x for x in opt if x not in self.allowed_options]
                 if bad_opt:
                     errors += 1
@@ -203,7 +201,7 @@ class Permutate(object):
 
                 # set up this parameter to permutate
                 key = item[1]
-                vals = item[2:]
+                vals = [x.lower() for x in item[2:]]
 
                 # For now, there is no initial value. It is given in the
                 # material block of the input file, we just hold its place
@@ -233,6 +231,7 @@ class Permutate(object):
 
                 param_ranges.append(p_range.tolist())
                 self.param_nams.append(key)
+                self.initial_vals.append(p_range.tolist()[0])
             continue
 
         if errors:
@@ -263,62 +262,53 @@ class Permutate(object):
 
         Returns
         -------
-        errors : int
-            0 if successfull, nonzero otherwise
+        None
 
         """
 
         errors = 0
 
-        # the input for the job
-        job_inp = [x for x in self.data["baseinp"]]
-
-        # check that the permutated variables were given in the input file
-        material = self.data["baseinp"]["material"]["content"]
-        inp_params = []
-        inp_vals = {}
-        for line in material:
-            if "constitutive" in line:
+        # Remove from the material block the permutated parameters. Current
+        # values will be inserted in to the material block for each run.
+        content = []
+        for line in self.data["baseinp"]["material"]["content"]:
+            key = line.strip().lower().split()[0]
+            if key in [x.lower() for x in self.param_nams]:
                 continue
-            param = "_".join(line.split()[0:-1])
-            inp_params.append(param.lower())
+            content.append(line)
+            continue
+        self.data["baseinp"]["material"]["content"] = content
+
+        # copy the job input and instantiate a Payette object
+        job_inp = deepcopy(self.data["baseinp"])
+        for key, val in zip(self.param_nams, self.initial_vals):
+            job_inp["material"]["content"].append("{0} {1}".format(key, val))
+        the_model = pc.Payette(self.data["basename"], job_inp,
+                               self.data["payette opts"])
+        param_table = the_model.material.constitutive_model.parameter_table
+
+        # remove cruft
+        for ext in (".log", ".props", ".math1", ".math2", ".prf"):
+            try:
+                os.remove(self.data["basename"] + ext)
+            except OSError:
+                pass
             continue
 
-        not_in = [x for x in self.param_nams if x.lower() not in inp_params]
-        if not_in:
-            pu.logerr("Permutation parameter[s] {0} not in input parameters"
-                      .format(", ".join(not_in)))
-            errors += 1
-
-
-        # instantiate a Payette object
-        the_model = pc.Payette( self.data["basename"],
-                                self.data["baseinp"],
-                                self.data["payette opts"])
-        param_table = the_model.material.constitutive_model.parameter_table
-        params = [x.lower() for x in param_table.keys()]
-        try:
-            os.remove(self.data["basename"] + ".log")
-        except OSError:
-            pass
-        try:
-            os.remove(self.data["basename"] + ".props")
-        except OSError:
-            pass
-
         # check that the visualize variables are in this models parameters
-        not_in = [x for x in self.param_nams if x.lower() not in params]
+        not_in = [x for x in self.param_nams if x.lower() not in
+                  [y.lower() for y in param_table.keys()]]
+
         if not_in:
             pu.logerr("Permutation parameter[s] {0} not in model parameters"
                       .format(", ".join(not_in)))
             errors += 1
 
-        # Remove from the material block the permutated parameters. Current
-        # values will be inserted in to the material block for each run.
-        is_in = [x.lower() for x in self.param_nams if x.lower() in inp_params]
-        material = [x for x in material if x.lower().split()[0] not in is_in]
-        self.data["baseinp"]["material"]["content"] = material
-        return errors
+        if errors:
+            pu.logerr("exiting due to previous errors")
+            sys.exit(123)
+
+        return
 
 
 def func(xcall):
