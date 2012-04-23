@@ -69,12 +69,14 @@ class Permutate(object):
         self.data["payette opts"] = job_opts
 
         # allowed options
-        self.allowed_options = ("combination")
+        self.allowed_options = ("combination", "zip", )
+        self.conflicting_options = (("combination", "zip", ), )
 
         # place holders for param_ranges and param_nams
         self.param_ranges = []
         self.param_nams = []
         self.initial_vals = []
+        self.strategy = None
 
         # fill the data with the permutated information
         self.get_params(permutate)
@@ -87,6 +89,7 @@ class Permutate(object):
             pu.loginf("Permutating {0}".format(job))
             pu.loginf("Permutated variables: {0}"
                       .format(", ".join(self.param_nams)))
+            pu.loginf("Permutation strategy: {0}".format(self.strategy))
         pass
 
     def run_job(self):
@@ -197,7 +200,7 @@ class Permutate(object):
 
                 continue
 
-            elif directive in "permutate":
+            elif directive == "permutate":
 
                 # set up this parameter to permutate
                 key = item[1]
@@ -230,27 +233,51 @@ class Permutate(object):
                 # check that a range was given
                 if not len(p_range):
                     errors += 1
-                    pu.logerr("No range/sequence given for " + key)
+                    pu.logerr("no range/sequence given for " + key)
                     p_range = np.zeros(1)
 
                 param_ranges.append(p_range.tolist())
                 self.param_nams.append(key)
                 self.initial_vals.append(p_range.tolist()[0])
+
+            else:
+                errors += 1
+                pu.logerr("unrecognized keyword \"{0}\" in permutation block"
+                          .format(directive))
+
             continue
 
         if errors:
-            pu.logerr("resolve previous errors")
+            pu.logerr("quiting due to previous errors")
             sys.exit(2)
 
+        # check for conflicting options
+        if not [x for x in options if x in ("zip", "combination")]:
+            options.append("zip")
+
+        for item in self.conflicting_options:
+            conflict = [x for x in options if x in item]
+            if len(conflict) - 1:
+                pu.logerr(
+                    "conflicting options \"{0}\" ".format(", ".join(conflict)) +
+                    "given in permuation block")
+                sys.exit(2)
+
         if "combination" in options:
+            self.strategy = "combination"
             self.param_ranges = product(*param_ranges)
 
-        else:
+        if "zip" in options:
+            self.strategy = "zip"
             if len(set([len(x) for x in param_ranges])) - 1:
                 pu.logerr("number of permutations must be the same for "
                           "all permutated parameters")
                 sys.exit(3)
             self.param_ranges = izip(*param_ranges)
+
+        else:
+            # zip above is the default, so we should never get here.
+            pu.logerr("no option given")
 
         del param_ranges
 
@@ -304,7 +331,7 @@ class Permutate(object):
                   [y.lower() for y in param_table.keys()]]
 
         if not_in:
-            pu.logerr("Permutation parameter[s] {0} not in model parameters"
+            pu.logerr("permutated parameter[s] {0} not in model parameters"
                       .format(", ".join(not_in)))
             errors += 1
 
