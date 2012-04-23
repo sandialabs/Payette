@@ -211,6 +211,10 @@ class Permutate(object):
                 # specified range
                 if "range" in vals:
                     p_range = ", ".join(vals[vals.index("range") + 1:])
+                    if len(p_range) < 2:
+                        errors += 1
+                        pu.logerr("range requires at least 2 arguments")
+                        continue
                     p_range = eval("{0}({1})".format("np.linspace", p_range))
 
                 # specified sequence
