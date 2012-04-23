@@ -115,6 +115,10 @@ def new_2_old(stren,peaki1,fslope,yslope):
         a2,a3,a4 = [0.]*3
         pass
 
+    if a2 == 0.:
+        a1 = a1 - a3
+        a3 = 0.
+
     return(a1,a2,a3,a4)
 
 def dif(x,X):

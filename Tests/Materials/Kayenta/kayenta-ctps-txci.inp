@@ -94,10 +94,10 @@ kappa = 0.0
 tstar = 10
 estar = 1.0
 ratfac = 1.0
-ampl = -0.04
+ampl = -0.06
 begin legs
 0 0. 0 222222 0.0 0.0 0.0 0. 0. 0.
-1 1. 5000 222222 1.0 -0.15 -0.15 0. 0. 0.
+1 1. 1000 222222 1.0 -0.15 -0.15 0. 0. 0.
 end legs
 end boundary
 begin mathplot

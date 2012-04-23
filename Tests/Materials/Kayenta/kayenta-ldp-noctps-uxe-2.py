@@ -22,10 +22,10 @@ class Test(PayetteTest):
 
         self.compare_method = self.compare_out_to_baseline_rms_general
         self.rms_sets = [ ["I1","ROOTJ2"] ]
-        self.difftol = 1.0e-6
-        self.failtol = 1.0e-7
+        self.difftol = 1.0e-7
+        self.failtol = 1.0e-6
 
-        self.keywords = ['verification', 'kayenta', 'long', 'ldp']
+        self.keywords = ['verification', 'kayenta', 'fast', 'ldp']
         self.runcommand = ["runPayette","--no-restart",self.infile]
 
         self.owner = "Scot Swan"
