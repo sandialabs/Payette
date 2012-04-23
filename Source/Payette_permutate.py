@@ -131,7 +131,7 @@ class Permutate(object):
         # open up the index file
         index_f = os.path.join(base_dir, "index.py")
         with open(index_f, "w") as fobj:
-            fobj.write("irun = 0\nindex = {}\n")
+            fobj.write("index = {}\n")
 
         # Save additional arguments to func in the global FARGS. This would be
         # handled better using something similar to scipy.optimize.py's
@@ -265,20 +265,24 @@ class Permutate(object):
 
         if "combination" in options:
             self.strategy = "combination"
-            self.param_ranges = product(*param_ranges)
+            self.param_ranges = list(product(*param_ranges))
+            pad = range(len(self.param_ranges))
 
-        if "zip" in options:
+        elif "zip" in options:
             self.strategy = "zip"
             if len(set([len(x) for x in param_ranges])) - 1:
                 pu.logerr("number of permutations must be the same for "
                           "all permutated parameters")
                 sys.exit(3)
-            self.param_ranges = izip(*param_ranges)
+            pad = range(len(param_ranges[0]))
+            self.param_ranges = zip(*param_ranges)
 
         else:
             # zip above is the default, so we should never get here.
             pu.logerr("no option given")
 
+        digits = len(str(len(pad)))
+        self.param_ranges = izip(["{0:0{1}d}".format(x,digits) for x in pad], self.param_ranges)
         del param_ranges
 
         return
@@ -366,8 +370,8 @@ def func(xcall):
 
     """
 
-    char_set = string.ascii_lowercase + string.digits * 3
-    job_id = "".join(random.sample(char_set, 6))
+    job_id = xcall[0]
+    xcall = xcall[1] 
 
     xnams, data, base_dir, job_opts, index_f = FARGS
     job = data["basename"] + "." + job_id
@@ -382,7 +386,7 @@ def func(xcall):
     # replace the visualize variables with the updated and write params to file
     msg = []
     with open(os.path.join(job_dir, job + data["fext"]), "w") as fobj:
-        fobj.write("Parameters for job {0:s}\n".format(job_id))
+        fobj.write("Parameters for job {0}\n".format(job_id))
         for nam, val in zip(xnams, xcall):
             pstr = "{0} = {1:12.6E}".format(nam, val)
             job_inp["material"]["content"].append(pstr)
@@ -399,11 +403,10 @@ def func(xcall):
 
     # write to the index file
     with open(index_f, "a") as fobj:
-        fobj.write('index[irun] = {' +
+        fobj.write('index[{0}] = {{'.format(job_id) +
                    '"name": "{0}", '.format(job) +
                    '"directory": "{0}"'.format(job_dir) +
                    '}\n')
-        fobj.write("irun += 1\n")
 
     # instantiate Payette object
     the_model = pc.Payette(job, job_inp, job_opts)
