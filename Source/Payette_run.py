@@ -418,7 +418,7 @@ def _run_job(job):
         if TIMING:
             tim1 = time.time()
 
-        solve = the_model.optimize()
+        solve = the_model.run_job()
 
     elif 'enumeration' in USER_INPUT_DICT[job]:
         # intantiate the Enumeration object

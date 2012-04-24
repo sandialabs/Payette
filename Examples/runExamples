@@ -1,0 +1,8 @@
+#!/bin/csh -f
+
+set runPayette = ../Toolset/runPayette
+set inp_files = `ls *.inp`
+
+foreach file ($inp_files)
+  $runPayette $file
+end

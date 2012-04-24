@@ -43,9 +43,10 @@ begin simulation exmpl_7
     # a penalty method to force the bounds to be respected outside of the
     # optimizer. For elastic moduli, bounds really should be used so the the
     # optimizer does not send in invalid moduli that woudl crash the
-    # simulation.
-    optimize K, ubound 150.e9, lbound 125.e9  # parameter to optimize
-    optimize G, ubound 57.e9, lbound 45.e9  # parameter to optimize
+    # simulation. the initial value must also be specified. initial value and
+    # lower/upper bounds can be specified in any order.
+    optimize K, bounds = (125.e9, 150.e9), initial value = 129.e9
+    optimize G, bounds = (45.e9, 57.e9), initial value = 54.e9
 
     # below we specify the "gold file" that has the results against which we
     # compare the output from the simulation, along with the minimizing

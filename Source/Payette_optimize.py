@@ -44,7 +44,6 @@ import Toolset.KayentaParamConv as kpc
 IOPT = -1
 FAC = []
 FNEWEXT = ".0x312.gold"
-JOBDIR = None
 
 
 class Optimize(object):
@@ -53,41 +52,37 @@ class Optimize(object):
     def __init__(self, job, job_inp, job_opts):
         r""" Initialization """
 
-        errors = 0
+        # get the optimization block
+        optimize = job_inp["optimization"]["content"]
+        del job_inp["optimization"]
 
-        self.basename = job
-        self.job_opts = job_opts
-
+        # save Perturbate information to single "data" dictionary
         self.data = {}
         self.data["basename"] = job
         self.data["verbosity"] = job_opts.verbosity
+        self.data["fext"] = ".opt"
+        self.data["baseinp"] = job_inp
         self.data["options"] = []
 
-        # set verbosity to 0 for Payette simulation
-        self.job_opts.verbosity = 0
-
-        # get the optimization block
-        opt = job_inp["optimization"]["content"]
-
-        # save the job_inp, minus the optimzation block
-        del job_inp["optimization"]
-        self.data["baseinp"] = job_inp
+        # set verbosity to 0 for Payette simulation and save the payette
+        # options to the data dictionary
+        job_opts.verbosity = 0
+        self.data["payette opts"] = job_opts
 
         # fill the data with the optimization information
-        self.get_opt_info(opt)
+        self.parse_optimization_block(optimize)
+
+        if "shearfit" not in self.data["options"]:
+            # check user input for required blocks
+            if "material" not in job_inp:
+                pu.logerr("material block not found in input file")
+                sys.exit(123)
 
         # check the optimization variables
-        errors += self.check_opt_parameters()
-        if errors:
-            pu.logerr("exiting due to previous errors")
-            sys.exit(123)
+        self.check_params()
 
         # check minimization variables
-        errors += self.check_min_parameters()
-        if errors:
-            pu.logerr("error extracting minimization variables from {0}"
-                      .format(self.data["gold file"]))
-            sys.exit(123)
+        self.check_min_parameters()
 
         if self.data["verbosity"]:
             pu.loginf("Optimizing {0}".format(job))
@@ -105,7 +100,7 @@ class Optimize(object):
             pu.loginf("Optimization method: {0}"
                       .format(self.data["optimization method"]["method"]))
 
-    def optimize(self):
+    def run_job(self):
         r"""Run the optimization job
 
         Set up directory to run the optimization job and call the minimizer
@@ -121,31 +116,31 @@ class Optimize(object):
 
         """
 
-        global JOBDIR
-
         # make the directory to run the job
-        JOBDIR = os.getcwd()
-        dnam = self.basename + ".opt"
-        base_dir = os.path.join(JOBDIR, dnam)
+        cwd = os.getcwd()
+        dnam = self.data["basename"] + self.data["fext"]
+        base_dir = os.path.join(cwd, dnam)
         idir = 0
         while True:
             if os.path.isdir(base_dir):
-                base_dir = os.path.join(
-                    JOBDIR, dnam + ".{0:03d}".format(idir))
-            elif idir > 100:
-                sys.exit("ERROR: max number of dirs")
+                dir_id = ".{0:03d}".format(idir)
+                base_dir = os.path.join(cwd, dnam + dir_id)
             else:
                 break
+
             idir += 1
+            if idir > 100:
+                sys.exit("ERROR: max number of dirs")
+
         if self.data["verbosity"]:
-            pu.loginf("Optimization directory: {0}".format(base_dir))
+            pu.loginf("Running: {0}".format(self.data["basename"]))
 
         os.mkdir(base_dir)
         os.chdir(base_dir)
 
         # copy gold file to base_dir
-        gold_f = os.path.join(base_dir,
-                              os.path.basename(self.data["gold file"]))
+        gold_f = os.path.join(
+            base_dir, os.path.basename(self.data["gold file"]))
         shutil.copyfile(self.data["gold file"], gold_f)
 
         # extract only what we want from the gold file
@@ -163,17 +158,17 @@ class Optimize(object):
         # be in a consistent order throughout, here we arbitrarily set that
         # order to be based on an alphabetical sort of the names of the
         # parameters to be optimized.
-        nams = [x for x in self.data["optimize"]]
-        nams.sort()
-        opt_params = [0.] * len(nams)
-        opt_bounds = [None] * len(nams)
-        for idx, nam in enumerate(nams):
-            opt_params[idx] = self.data["optimize"][nam]["initial value"]
-            opt_bounds[idx] = self.data["optimize"][nam]["bounds"]
+        opt_nams, opt_params, opt_bounds = [], [], []
+        for nam in sorted(self.data["optimize"]):
+            val = self.data["optimize"][nam]
+            opt_nams.append(nam)
+            opt_params.append(val["initial value"])
+            opt_bounds.append(val["bounds"])
             continue
 
         # set up args and call optimzation routine
-        opt_args = [self.data, base_dir, self.job_opts, xgold]
+        opt_args = [opt_nams, self.data, base_dir,
+                    self.data["payette opts"], xgold]
         opt_method = self.data["optimization method"]["method"]
         opt_options = {"maxiter": self.data["maximum iterations"],
                        "xtol": self.data["tolerance"],
@@ -192,7 +187,7 @@ class Optimize(object):
             )
 
         # optimum parameters found, write out final info
-        msg = ", ".join(["{0} = {1:12.6E}".format(nams[i], x)
+        msg = ", ".join(["{0} = {1:12.6E}".format(opt_nams[i], x)
                          for i, x in enumerate(opt_params)])
 
         if shearfit:
@@ -207,16 +202,18 @@ class Optimize(object):
         pu.loginf("Optimized parameters: {0}".format(msg))
 
         # last_job = os.path.join(base_dir,
-        #                         self.basename + ".{0:03d}".format(IOPT))
+        #                         self.data["basename"] + ".{0:03d}".format(IOPT))
         # pu.loginf("Ultimate simulation directory: {0}".format(last_job))
 
         # write out the optimized parameters
-        with open(os.path.join(base_dir, self.basename) + ".opt", "w") as fobj:
+        opt_f = os.path.join(base_dir, self.data["basename"] + ".opt")
+        with open(opt_f, "w") as fobj:
             fobj.write("Optimized parameters\n")
-            for idx, nam in enumerate(nams):
+            for idx, nam in enumerate(opt_nams):
                 opt_val = opt_params[idx]
                 fobj.write("{0} = {1:12.6E}\n".format(nam, opt_val))
                 continue
+
             if shearfit:
                 fobj.write("\nEquivalent new paramters:\n")
                 fobj.write("STREN = {0:12.6E}\n".format(stren))
@@ -224,20 +221,20 @@ class Optimize(object):
                 fobj.write("FSLOPE = {0:12.6E}\n".format(fslope))
                 fobj.write("YSLOPE = {0:12.6E}".format(yslope))
 
-        os.chdir(JOBDIR)
+        os.chdir(cwd)
         return 0
 
     def finish(self):
         r""" finish up the optimization job """
 
         # remove any temporary files
-        for item in [x for x in os.listdir(JOBDIR) if x.endswith(FNEWEXT)]:
+        for item in [x for x in os.listdir(os.getcwd()) if x.endswith(FNEWEXT)]:
             os.remove(item)
             continue
 
         return
 
-    def get_opt_info(self, opt_block):
+    def parse_optimization_block(self, opt_block):
         r"""Get the required optimization information.
 
         Populates the self.data dict with information parsed from the
@@ -274,9 +271,13 @@ class Optimize(object):
         # get options first -> must come first because some options have a
         # default method different than the global default of simplex
         for item in opt_block:
-            item = item.replace(",", " ").replace("=", " ").split()
+            for pat, repl in ((",", " "), ("=", " "), ):
+                item = item.replace(pat, repl)
+            item = item.split()
+
             if "option" in item[0].lower():
                 self.data["options"].append(item[1].lower())
+
             continue
 
         if "shearfit" in self.data["options"]:
@@ -285,7 +286,9 @@ class Optimize(object):
 
         # get method before other options
         for item in opt_block:
-            item = item.replace(",", " ").replace("=", " ").split()
+            for pat, repl in ((",", " "), ("=", " "), ):
+                item = item.replace(pat, repl)
+            item = item.split()
             if "method" in item[0].lower():
                 try:
                     opt_method = allowed_methods[item[1].lower()]
@@ -294,17 +297,20 @@ class Optimize(object):
                     errors += 1
 
         if errors:
-            pu.logerr("resolve previous errors")
-            sys.exit(2)
+            pu.logerr("stopping due to previous errors")
+            sys.exit(123)
 
         # now get the rest
         for item in opt_block:
-            item = item.replace(",", " ").replace("=", " ").split()
+            for pat, repl in ((",", " "), ("=", " "), ("(", " "), (")", " "),):
+                item = item.replace(pat, repl)
+            item = item.split()
 
             if "gold" in item[0].lower() and "file" in item[1].lower():
                 if not os.path.isfile(item[2]):
                     errors += 1
                     pu.logerr("gold file {0} not found".format(item[2]))
+
                 else:
                     gold_f = item[2]
 
@@ -318,6 +324,7 @@ class Optimize(object):
                             val = "@" + val
                         minimize["abscissa"] = val
                         break
+
                     if min_var[0] != "@":
                         min_var = "@" + min_var
 
@@ -331,38 +338,44 @@ class Optimize(object):
                 key = item[1]
                 vals = item[2:]
 
-                if shearfit and key.lower() not in ("a1", "a2", "a3", "a4"): #,
-#                                                    "stren", "peaki1", "fslope",
-#                                                    "yslope"):
+                if shearfit and key.lower() not in ("a1", "a2", "a3", "a4"):
                     errors += 1
                     pu.logerr("optimize variable "+ key +
                               " not allowed with shearfit method")
 
-                # For now, there is no initial value. It is given in the
-                # material block of the input file, we just hold its place
-                # here. We will later check that this key was given in the
-                # material block.
-                optimize[key] = {"initial value": None}
-                ubnd = None
-                lbnd = None
+                bounds = (None, None)
+                init_val = None
 
                 # uppder bound
-                if "ubound" in vals:
+                if "bounds" in vals:
                     try:
-                        val = eval(vals[vals.index("ubound") + 1])
-                    except NameError:
-                        val = vals[vals.index("ubound") + 1]
-                    ubnd = val
+                        idx = vals.index("bounds") + 1
+                        bounds = [float(x) for x in vals[idx:idx+2]]
+                    except ValueError:
+                        errors += 1
+                        pu.logerr("bounds requires 2 arguments")
 
-                # lower bound
+                    if bounds[0] > bounds[1]:
+                        pu.logerr("lower bound {0} > upper bound {1} for {2}"
+                                  .format(bounds[0], bounds[1], key))
+
+                if "initial" in vals:
+                    idx = vals.index("initial")
+                    if vals[idx + 1] == "value":
+                        idx = idx + 1
+                        init_val = float(vals[idx+1])
+
                 if "lbound" in vals:
-                    try:
-                        val = eval(vals[vals.index("lbound") + 1])
-                    except NameError:
-                        val = vals[vals.index("lbound") + 1]
-                    lbnd = val
+                    errors += 1
+                    pu.logerr("depricated keyword 'lbound'")
 
-                optimize[key]["bounds"] = (lbnd, ubnd)
+                if "ubound" in vals:
+                    errors += 1
+                    pu.logerr("depricated keyword 'lbound'")
+
+                optimize[key] = {}
+                optimize[key]["bounds"] = bounds
+                optimize[key]["initial value"] = init_val
 
             elif "maxiter" in item[0].lower():
                 maxiter = int(item[1])
@@ -374,11 +387,14 @@ class Optimize(object):
                 disp = item[1].lower()
                 if disp == "true":
                     disp = True
+
                 elif disp == "false":
                     disp = False
+
                 else:
                     try:
                         disp = bool(float(item[1]))
+
                     except ValueError:
                         # the user specified disp in the input file, it is not
                         # one of false, true, and is not a number. assume that
@@ -399,15 +415,20 @@ class Optimize(object):
                 gold_f = os.path.realpath(gold_f)
 
         if not shearfit and not minimize["vars"]:
-            pu.logerr("No parameters to minimize given")
+            pu.logerr("no parameters to minimize given")
             errors += 1
 
         if not optimize:
-            pu.logerr("No parameters to optimize given")
+            pu.logerr("no parameters to optimize given")
             errors += 1
 
+        for key, val in optimize.items():
+            if val["initial value"] is None:
+                pu.logerr("no initial value given for {0}".format(key))
+                errors += 1
+
         if errors:
-            pu.logerr("resolve previous errors")
+            pu.logerr("stopping due to previous errors")
             sys.exit(2)
 
         if shearfit:
@@ -423,13 +444,11 @@ class Optimize(object):
                 continue
 
             if errors:
-                pu.logerr("resolve previous errors")
+                pu.logerr("stopping due to previous errors")
                 sys.exit(3)
 
             head = list(set([x.lower() for x in sorted(pu.get_header(gold_f))]))
             if head != ["i1", "rootj2"]:
-#                sys.exit("stopping till this is done")
-
                 sigcnt = 0
                 for item in head:
                     if item.lower()[0:3] == "sig":
@@ -456,7 +475,7 @@ class Optimize(object):
 
         return
 
-    def check_opt_parameters(self):
+    def check_params(self):
         r"""Check that the minimization parameters were specified in the input
         file and exist in the parameter table for the instantiated material.
 
@@ -466,86 +485,62 @@ class Optimize(object):
 
         Returns
         -------
-        errors : int
-            0 if successfull, nonzero otherwise
+        None
 
         """
 
-
         errors = 0
 
-        shearfit = "shearfit" in self.data["options"]
+        if "shearfit" in self.data["options"]:
+            # for shearfit, we don't actually have to call Kayenta
+            return
 
-        # --- check that the optimize variables were given in the input file
-        material = self.data["baseinp"]["material"]["content"]
-        opt_params = self.data["optimize"].keys()
-        opt_params.sort()
-
-        # get input parameters
-        inp_params = []
-        inp_vals = {}
-        for line in material:
-            if "constitutive" in line:
+        # Remove from the material block the optimized parameters. Current
+        # values will be inserted in to the material block for each run.
+        content = []
+        for line in self.data["baseinp"]["material"]["content"]:
+            key = line.strip().lower().split()[0]
+            if key in [x.lower() for x in self.data["optimize"]]:
                 continue
-            param = line.replace("="," ").replace(","," ")
-            param = "_".join(param.split()[0:-1])
-            inp_params.append(param)
-            inp_vals[param] = float(line.split()[-1])
+            content.append(line)
             continue
-        inp_params.sort()
+        self.data["baseinp"]["material"]["content"] = content
 
-        not_in = [x for x in opt_params if x not in inp_params]
-        if not_in:
-            pu.logerr("Optimization parameter[s] {0} not in input parameters"
-                      .format(", ".join(not_in)))
-            pu.logerr("Note that case of optimization parameters must "
-                      "match that of input parameters")
-            errors += 1
+        # copy the job input and instantiate a Payette object
+        job_inp = deepcopy(self.data["baseinp"])
+        for key, val in self.data["optimize"].items():
+            init_val = val["initial value"]
+            job_inp["material"]["content"].append(
+                "{0} {1}".format(key, init_val))
 
-        # instantiate a Payette object
-        the_model = pc.Payette(self.basename, self.data["baseinp"], self.job_opts)
+        the_model = pc.Payette(self.data["basename"],
+                               job_inp,
+                               self.data["payette opts"])
         param_table = the_model.material.constitutive_model.parameter_table
-        params = [x.lower() for x in param_table.keys()]
+
         try:
-            os.remove(self.basename + ".log")
+            os.remove(self.data["basename"] + ".log")
         except OSError:
             pass
+
         try:
-            os.remove(self.basename + ".props")
+            os.remove(self.data["basename"] + ".props")
         except OSError:
             pass
 
         # check that the optimize variables are in this models parameters
-        not_in = [x for x in opt_params if x.lower() not in params]
+        not_in = [x for x in self.data["optimize"] if x.lower() not in
+                  [y.lower() for y in param_table.keys()]]
         if not_in:
             pu.logerr("Optimization parameter[s] {0} not in model parameters"
                       .format(", ".join(not_in)))
             errors += 1
 
         if errors:
-            return errors
+            pu.logerr("exiting due to previous errors")
+            sys.exit(123)
 
-        # there are no errors, now we want to find the line number in the
-        # material block for the optimized params
-        for iline, line in enumerate(material):
-            for opt_param in opt_params:
-                if opt_param in line.split():
-                    self.data["optimize"][opt_param]["input idx"] = iline
-                continue
-            continue
-
-        # double check that data["optimize"] has a input idx for every
-        # optimize variable, and set the initial value
-        for key, val in self.data["optimize"].items():
-            if "input idx" not in val:
-                errors += 1
-                pu.logerr("No input idx for optimize variable {0}".format(key))
-                continue
-
-            self.data["optimize"][key]["initial value"] = inp_vals[key]
-            continue
-
-        return errors
+        return
 
     def check_min_parameters(self):
 
@@ -569,7 +564,12 @@ class Optimize(object):
         exargs.extend(self.data["minimize"]["vars"])
         extraction = pe.extract(exargs)
 
-        return extraction
+        if extraction:
+            pu.logerr("error extracting minimization variables from {0}"
+                      .format(self.data["gold file"]))
+            sys.exit(123)
+
+        return
 
 
 def minimize(fcn, x0, args=(), method="Nelder-Mead",
@@ -623,7 +623,7 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
     xtol = options["xtol"]
     ftol = options["ftol"]
     disp = options["disp"]
-    shearfit = "shearfit" in args[0]["options"]
+    shearfit = "shearfit" in args[1]["options"]
 
     # optimization methods work best with number around 1, here we
     # normalize the optimization variables and save the multiplier to be
@@ -633,7 +633,7 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
         FAC.append(mag_val)
         continue
     FAC = np.array(FAC)
-    x0 = x0/FAC
+    x0 = x0 / FAC
 
     has_bounds = [x for j in bounds for x in j if x is not None]
     if meth in ["nelder-mead", "powell"] and has_bounds:
@@ -692,10 +692,10 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
     else:
         sys.exit("ERROR: Unrecognized method {0}".format(method))
 
-    return xopt*FAC
+    return xopt * FAC
 
 
-def func(opt_params, data, base_dir, job_opts, xgold):
+def func(xcall, xnams, data, base_dir, job_opts, xgold):
 
     r"""Objective function
 
@@ -705,7 +705,7 @@ def func(opt_params, data, base_dir, job_opts, xgold):
 
     Parameters
     ----------
-    opt_params : array_like
+    xcall : array_like
         Current best guess for optimized parameters
     data : dict
         Optimization class data container
@@ -734,14 +734,11 @@ def func(opt_params, data, base_dir, job_opts, xgold):
     job_inp = deepcopy(data["baseinp"])
 
     # replace the optimize variables with the updated and write params to file
-    nams = [x for x in data["optimize"]]
-    nams.sort()
     msg = []
     with open(os.path.join(job_dir, job + ".opt"), "w") as fobj:
         fobj.write("Parameters for iteration {0:d}\n".format(IOPT + 1))
-        for idx, nam in enumerate(nams):
-            opt_val = opt_params[idx]
-
+        for idx, item in enumerate(zip(xnams, xcall)):
+            nam, opt_val = item
             # Some methods do not allow for bounds and we can get negative
             # trial values. This is a problem when optimizing, say, elastic
             # moduli that cannot be negative since if we send a negative
@@ -753,15 +750,14 @@ def func(opt_params, data, base_dir, job_opts, xgold):
             lbnd, ubnd = data["optimize"][nam]["bounds"]
             if lbnd is not None and opt_val < lbnd/FAC[idx]:
                 return 1.e3
+
             if ubnd is not None and opt_val > ubnd/FAC[idx]:
                 return 1.e3
 
-            line = data["optimize"][nam]["input idx"]
-            pstr = "{0} = {1:12.6E}".format(nam, opt_val*FAC[idx])
-            job_inp["material"]["content"][line] = pstr
+            pstr = "{0} = {1:12.6E}".format(nam, opt_val * FAC[idx])
+            job_inp["material"]["content"].append(pstr)
             fobj.write(pstr + "\n")
             msg.append(pstr)
-
             continue
 
     if data["verbosity"]:
@@ -813,7 +809,7 @@ def func(opt_params, data, base_dir, job_opts, xgold):
     return error
 
 
-def rtxc(aparams, data, base_dir, job_opts, xgold):
+def rtxc(xcall, xnams, data, base_dir, job_opts, xgold):
     """The Kayenta limit function
 
     Evaluates the Kayenta limit function
@@ -844,13 +840,11 @@ def rtxc(aparams, data, base_dir, job_opts, xgold):
     os.chdir(job_dir)
 
     # write trial params to file
-    nams = [x for x in data["optimize"]]
-    nams.sort()
     msg = []
     with open(os.path.join(job_dir, job + ".opt"), "w") as fobj:
         fobj.write("Parameters for iteration {0:d}\n".format(IOPT + 1))
-        for idx, nam in enumerate(nams):
-            opt_val = aparams[idx]
+        for idx, item in enumerate(zip(xnams, xcall)):
+            nam, opt_val = item
 
             # Some methods do not allow for bounds and we can get negative
             # trial values. This is a problem when optimizing, say, elastic
@@ -861,12 +855,13 @@ def rtxc(aparams, data, base_dir, job_opts, xgold):
             # user specified bounds -> essentially, we are using a penalty
             # method of sorts to force the bounds we want.
             lbnd, ubnd = data["optimize"][nam]["bounds"]
-            if lbnd is not None and opt_val < lbnd/FAC[idx]:
-                return 1.e3
-            if ubnd is not None and opt_val > ubnd/FAC[idx]:
+            if lbnd is not None and opt_val < lbnd / FAC[idx]:
                 return 1.e3
 
-            pstr = "{0} = {1:12.6E}".format(nam, opt_val*FAC[idx])
+            if ubnd is not None and opt_val > ubnd / FAC[idx]:
+                return 1.e3
+
+            pstr = "{0} = {1:12.6E}".format(nam, opt_val * FAC[idx])
             fobj.write(pstr + "\n")
             msg.append(pstr)
             continue
@@ -876,7 +871,12 @@ def rtxc(aparams, data, base_dir, job_opts, xgold):
                   .format(IOPT + 1, ", ".join(msg)))
 
     # compute rootj2 and error
-    a1, a2, a3, a4 = aparams*FAC
+    a1, a2, a3, a4 = xcall * FAC
+
+    # enforce constraints
+    if a1 - a3 < 0.:
+        return 1.e3
+
     dat = pu.read_data(xgold)
     ione = dat[:, 0]
     rootj2 = dat[:, 1]

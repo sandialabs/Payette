@@ -201,80 +201,29 @@ def read_input(user_input, user_cchar=None):
     """
        read a list of user inputs and return
     """
-    recognized_blocks = ("simulation", "boundary", "legs", "material",
-                         "optimization", "permutation", "enumeration",
-                         "mathplot", "name", "content")
-    incompatible_blocks = (("visualization", "optimization", "enumeration"),)
+
+    if not user_input:
+        parse_error("no user input sent to read_input")
+        pass
 
     # comment characters
     cchars = ['#','$']
     if user_cchar is not None:
         cchars.append(user_cchar)
 
-    insert_kws = ("insert", "include")
-
-    # read file, sans comments, into a list
-    if not user_input:
-        parse_error("no user input sent to read_input")
-        pass
-
-    all_input = []
-    iline = 0
-
-    # infinite loop for reading the input file and getting all inserted files
-    while True:
-
-        # if we have gone through one time, reset user_input to be all_input
-        # and run through again until all inserted files have been read in
-        if iline == len(user_input):
-            if [x for x in all_input if x.split()[0] in insert_kws]:
-                user_input = [x for x in all_input]
-                all_input = []
-                iline = 0
-            else:
-                break
-
-        # get the next line of input
-        line = user_input[iline].strip()
-
-        # skip blank and comment lines
-        if not line.split() or line[0] in cchars:
-            iline += 1
-            continue
-
-        # remove inline comments
-        for cchar in cchars:
-            line = line.split(cchar)[0]
-
-        # check for inserts
-        if line.split()[0] in insert_kws:
-            inserted_file = True
-            insert = " ".join(line.split()[1:])
-            if not os.path.isfile(insert):
-                parse_error("inserted file '{0:s}' not found".format(insert))
-
-            insert_lines = open(insert, "r").readlines()
-            for insert_line in insert_lines:
-                if not insert_line.split() or insert_line[0] in cchars:
-                    continue
-                for cchar in cchars:
-                    insert_line = insert_line.split(cchar)[0]
-                all_input.append(insert_line.strip())
-
-        else:
-            all_input.append(line)
-
-        iline += 1
-
-        continue
-
-    # The file is now
-    input_sets = get_blocks(all_input)
+    # get all of the input blocks for the file
+    input_sets = get_blocks(get_input_lines(user_input, cchars))
 
     # input_sets contains a list of all blocks in the file, parse it to make
     # sure that a simulation is given
+    recognized_blocks = ("simulation", "boundary", "legs", "material",
+                         "optimization", "permutation", "enumeration",
+                         "mathplot", "name", "content")
+    incompatible_blocks = (("visualization", "optimization", "enumeration"),)
+
     user_dict = {}
     errors = 0
+
     for input_set in input_sets:
 
         if "simulation" not in input_set:
@@ -293,6 +242,7 @@ def read_input(user_input, user_cchar=None):
         # check for incompatibilities
         bad_blocks = [x for x in input_set["simulation"]
                       if x not in recognized_blocks]
+
         if bad_blocks:
             errors += 1
             logerr("unrecognized blocks: {0}".format(", ".join(bad_blocks)))
@@ -366,12 +316,14 @@ def get_blocks(user_input):
             # get the block type
             try:
                 block_typ = split_line[1]
+
             except ValueError:
                 parse_error("encountered a begin directive with no block type")
 
             # get the (optional) block name
             try:
                 block_nam = "_".join(split_line[2:])
+
             except ValueError:
                 block_nam = None
 
@@ -413,6 +365,7 @@ def get_blocks(user_input):
             block_stack.pop()
             try:
                 block_typ = block_stack[-1]
+
             except IndexError:
                 block_typ = None
 
@@ -428,6 +381,7 @@ def get_blocks(user_input):
         continue
 
     block_tree.append(block)
+
     return block_tree
 
 
@@ -550,7 +504,8 @@ def writeMathPlot(simdat,matdat):
             continue
 
         # write out user requested plotable output
-        f.write('simdat = Delete[Import["{0:s}", "Table"],-1];\n'.format(outfile))
+        f.write('simdat = Delete[Import["{0:s}", "Table"],-1];\n'
+                .format(outfile))
         sig_idx = None
 
         for i, item in enumerate(plot_keys):
@@ -560,8 +515,9 @@ def writeMathPlot(simdat,matdat):
 
         # a few last ones...
         if sig_idx != None:
-            pres=('-(simdat[[2;;,{0:d}]]+simdat[[2;;,{1:d}]]+simdat[[2;;,{2:d}]])/3;'
-                  .format(sig_idx,sig_idx+1,sig_idx+2))
+            pres=("-(simdat[[2;;,{0:d}]]".format(sig_idx) +
+                  "+simdat[[2;;,{0:d}]]".format(sig_idx + 1) +
+                  "+simdat[[2;;,{0:d}]])/3;".format(sig_idx+2))
             f.write('PRES={0}\n'.format(pres))
             pass
         f.write("lastep=Length[{0}]\n".format(simdat.getPlotKey("time")))
@@ -573,7 +529,8 @@ def writeMathPlot(simdat,matdat):
     lowhead = [x.lower() for x in plot_keys]
     lowplotable = [x.lower() for x in plotable]
     with open( math2, "w" ) as f:
-        f.write('showcy[{0},{{"cycle","time"}}]\n'.format(simdat.getPlotKey("time")))
+        f.write('showcy[{0},{{"cycle","time"}}]\n'
+                .format(simdat.getPlotKey("time")))
 
         tmp = []
         for item in plotable:
@@ -586,8 +543,9 @@ def writeMathPlot(simdat,matdat):
             continue
 
         if tmp:
-            msg = ("requested plot variable{0:s} {1:s} not available for mathplot"
-                   .format("s" if len(tmp) > 1 else "", ", ".join(tmp)))
+            msg = (
+                "requested plot variable{0:s} {1:s} not available for mathplot"
+                .format("s" if len(tmp) > 1 else "", ", ".join(tmp)))
             reportWarning(iam,msg)
             pass
 
@@ -1339,3 +1297,76 @@ def write_input_file(nam, inp_dict, inp_f):
         fobj.write("end simulation")
 
     return
+
+
+def get_input_lines(user_input, cchars):
+    """Read the user input, inserting files if encountered
+
+    Parameters
+    ----------
+    user_input : list
+        New line separated list of the input file
+    cchars : list
+        List of comment characters
+
+    Returns
+    -------
+    all_input : list
+        All of the read input, including inserted files
+
+    """
+
+    insert_kws = ("insert", "include")
+
+    all_input = []
+    iline = 0
+
+    # infinite loop for reading the input file and getting all inserted files
+    while True:
+
+        # if we have gone through one time, reset user_input to be all_input
+        # and run through again until all inserted files have been read in
+        if iline == len(user_input):
+            if [x for x in all_input if x.split()[0] in insert_kws]:
+                user_input = [x for x in all_input]
+                all_input = []
+                iline = 0
+            else:
+                break
+
+        # get the next line of input
+        line = user_input[iline].strip()
+
+        # skip blank and comment lines
+        if not line.split() or line[0] in cchars:
+            iline += 1
+            continue
+
+        # remove inline comments
+        for cchar in cchars:
+            line = line.split(cchar)[0]
+
+        # check for inserts
+        if line.split()[0] in insert_kws:
+            inserted_file = True
+            insert = " ".join(line.split()[1:])
+            if not os.path.isfile(insert):
+                parse_error("inserted file '{0:s}' not found".format(insert))
+
+            insert_lines = open(insert, "r").readlines()
+            for insert_line in insert_lines:
+                if not insert_line.split() or insert_line[0] in cchars:
+                    continue
+                for cchar in cchars:
+                    insert_line = insert_line.split(cchar)[0]
+                all_input.append(insert_line.strip())
+
+        else:
+            all_input.append(line)
+
+        iline += 1
+
+        continue
+
+    return all_input
+

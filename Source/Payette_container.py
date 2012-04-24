@@ -38,14 +38,19 @@ import Source.Payette_driver as cdriver
 from Source.Payette_data_container import DataContainer
 
 
-def throw_err(msg):
+PARSE_ERRORS = 0
+
+
+def parser_error(msg):
+    global PARSE_ERRORS
     print("ERROR: {0:s}".format(msg))
-    sys.exit(4)
+    PARSE_ERRORS += 1
+    sys.exit(101)
     return
 
 
 class Payette:
-    '''
+    """
     CLASS NAME
        Payette
 
@@ -56,12 +61,14 @@ class Payette:
 
     AUTHORS
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
-    '''
+    """
 
     def __init__(self, simname, user_input, opts):
 
         iam = simname + "__init__(self, simname, user_input, opts)"
-        if opts.debug: opts.verbosity = 4
+
+        if opts.debug:
+            opts.verbosity = 4
         loglevel = opts.verbosity
 
         delete = not opts.keep
@@ -71,25 +78,27 @@ class Payette:
 
         # check user input for required blocks
         if "material" not in user_input:
-            throw_err('material block not found in input file')
+            parser_error("material block not found in input file")
 
         if "boundary" not in user_input:
-            throw_err('boundary block not found in input file')
+            parser_error("boundary block not found in input file")
 
         if "legs" not in user_input:
-            throw_err('legs block not found in input file')
+            parser_error("legs block not found in input file")
 
         outfile = os.path.join(basedir, simname + ".out")
         if delete and os.path.isfile(outfile):
             os.remove(outfile)
+
         elif os.path.isfile(outfile):
             i = 0
             while True:
-                outfile = os.path.join(basedir,'%s.%i.out'%(simname,i))
+                outfile = os.path.join(basedir, "%s.%i.out" % (simname, i))
                 if os.path.isfile(outfile):
                     i += 1
                     if i > 100:
-                        throw_err(r'Come on!  Really, over 100 output files???')
+                        parser_error("Come on!  Really, over 100 output files???")
+
                     else:
                         continue
                 else:
@@ -98,16 +107,16 @@ class Payette:
             pass
 
         # logfile
-        logfile = '%s.log'%os.path.splitext(outfile)[0]
+        logfile = "{0}.log".format(os.path.splitext(outfile)[0])
         try: os.remove(logfile)
         except: pass
         setupLogger(logfile,loglevel)
 
-        msg = "setting up simulation %s"%simname
+        msg = "setting up simulation {0}".format(simname)
         reportMessage(__file__,msg)
 
         # file name for the Payette restart file
-        rfile = '%s.prf'%os.path.splitext(outfile)[0]
+        rfile = "{0}.prf".format(os.path.splitext(outfile)[0])
 
         # set up the simulation data container
         self.simdat = DataContainer(simname)
@@ -174,16 +183,16 @@ class Payette:
         mathplot = user_input.get("mathplot")
         plotable = []
         if mathplot is not None:
-            for item in mathplot:
-                tmp = item.replace(","," ")
-                for repl in [",",";",":"]: item = item.replace(repl," ")
+            for item in mathplot["content"]:
+                for pat, repl in ((",", " "), (";", " "), (":", " "), ):
+                    item = item.replace(pat, repl)
+                    continue
                 plotable.extend(item.split())
                 continue
             pass
 
         # register boundary variables
-        self.simdat.registerData("leg number","Scalar",
-                                 init_val = 0 )
+        self.simdat.registerData("leg number","Scalar", init_val=0 )
 
         self.simdat.registerData("leg data","List",
                                  init_val = self.lcontrol)
@@ -191,24 +200,27 @@ class Payette:
         # check if user has specified simulation options
         for item in user_input["content"]:
             deprication_warning = False
-            split_item = item.replace("="," ").replace(","," ").lower().split()
+            for pat, repl in ((",", " "), (";", " "), (":", " "), ):
+                item = item.replace(pat, repl)
+                continue
+            item = item.split()
 
-            if split_item[0] == "title": deprication_warning = True
+            if item[0] == "title": deprication_warning = True
 
             if deprication_warning:
                 msg = ("depricated input file option [{0}] skipped"
-                       .format(split_item[0]))
-                reportWarning(iam,msg)
+                       .format(item[0]))
+                reportWarning(iam, msg)
                 continue
 
-            if len(split_item) == 1:
-                split_item.append("True")
+            if len(item) == 1:
+                item.append("True")
             try:
-                val = eval(split_item[1])
+                val = eval(item[1])
             except:
-                val = str(split_item[1])
+                val = str(item[1])
 
-            self.simdat.registerOption(split_item[0],val)
+            self.simdat.registerOption(item[0], val)
             continue
 
         # register some obligatory options
@@ -273,7 +285,7 @@ class Payette:
 
 
     def materialFactory(self, material_inp):
-        '''
+        """
         NAME
            materialFactory
 
@@ -283,7 +295,7 @@ class Payette:
 
         AUTHORS
            Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
-        '''
+        """
 
         material = material_inp["content"]
 
@@ -293,26 +305,29 @@ class Payette:
         mf_index = None
         user_params = []
         for item in material:
-            if 'constitutive model' in item:
+            if "constitutive model" in item:
                 # line defines the constitutive model, get the name of the model
                 # to be used
-                constitutive_model = item[len('constitutive model'):].strip()
+                constitutive_model = item[len("constitutive model"):].strip()
                 pass
-            elif 'material' in item:
-                throw_err("material keyword depricated")
+
+            elif "material" in item:
+                parser_error("material keyword depricated")
+
                 # below is old code for the material input file that is a python
                 # file that defines a material based on common names. I might
                 # resurrect this in the future, thus I am leaving it.
-                m = item[len('material'):].strip()
+                m = item[len("material"):].strip()
                 fdir,fname = os.path.split(m)
                 mname,fext = os.path.splitext(fname)
                 if fext:
-                    if fext != '.py':
-                        throw_err('material database file must be a python file, '
-                                 'got %s'%m)
+                    if fext != ".py":
+                        parser_error(
+                            "material database file must be a python file, "
+                            "got {0}".format(m))
                         return 1
                     else: pass
-                else: fname = '%s.py'%m
+                else: fname = m + ".py"
 
                 # material database directories
                 lpd = payetteParametersDir()
@@ -321,34 +336,34 @@ class Payette:
                 f = None
                 if os.path.isfile(os.path.join(fdir,fname)): # given directory
                     f = os.path.join(fdir,fname)
-                    pass
+
                 elif os.path.isfile(os.path.join(os.getcwd(),fname)): # cwd
                     f = os.path.join(os.getcwd(),fname)
-                    pass
+
                 elif os.path.isfile(os.path.join(lpd,fname)): #lpd
                     f = os.path.join(lpd,fname)
-                    pass
+
                 else:
-                    msg = ('%s material file %s not found in [%s, %s, %s]'
-                           %(mname,fname,fdir,os.getcwd(),lpd))
-                    throw_err(msg)
-                    return 1
-                try: f_params = imp.load_source(mname,f).parameters
+                    msg = ("{0} material file {1} not found in [{2}, {3}, {4}]"
+                           .format(mname, fname, fdir, os.getcwd(), lpd))
+                    parser_error(msg)
+
+                try:
+                    f_params = imp.load_source(mname, f).parameters
+
                 except:
-                    throw_err('unable to load material parameters from %s'%f)
-                    pass
+                    parser_error("unable to load material parameters from {0}"
+                                 .format(f))
 
             else:
                 user_params.append(item)
-                pass
 
             continue
 
         # check that the constitutive model is defined in the input file.
         if not constitutive_model:
             # constitutive model not given, exit
-            throw_err('constitutive model must be specified in material block')
-            return
+            parser_error("no constitutive model in material block")
 
         # constitutive model given, now see if it is available, here we replace
         # spaces with _ in all model names and convert to lower case
@@ -357,15 +372,15 @@ class Payette:
         for key in available_models:
             if mdlname == key or mdlname in available_models[key]["aliases"]:
                 constitutive_model = key
-                pass
+
             continue
 
         # we have done a case insensitive check, replaced spaces with _ and
         # checked aliases, if the model is still not in the available models,
         # bail
         if constitutive_model not in available_models:
-            throw_err('constitutive model %s not installed'%str(constitutive_model))
-            pass
+            parser_error("constitutive model {0} not installed"
+                         .format(constitutive_model))
 
         # instantiate the material object
         self.material = Material(
@@ -374,7 +389,7 @@ class Payette:
         return
 
     def boundaryFactory(self, boundary_inp, legs_inp):
-        '''
+        """
         NAME
            boundaryFactory
 
@@ -384,7 +399,7 @@ class Payette:
 
         AUTHORS
            Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
-        '''
+        """
         nodeBoundary_cache = {}
         elementBoundary_cache = {}
 
@@ -392,15 +407,16 @@ class Payette:
         legs = legs_inp["content"]
 
         # parse boundary
-        bcontrol = {'kappa':0.,'estar':1.,'tstar':1.,'ampl':1.,'efstar':1.,
-                    'ratfac':1.,'sstar':1.,'fstar':1.,'dstar':1.,
-                    'emit':'all','nprints':0,'stepstar':1,"screenout":False}
+        bcontrol = {"kappa":0.,"estar":1.,"tstar":1.,"ampl":1.,"efstar":1.,
+                    "ratfac":1.,"sstar":1.,"fstar":1.,"dstar":1.,
+                    "emit":"all","nprints":0,"stepstar":1,"screenout":False}
         for item in boundary:
-            item = item.replace('=',' ')
+            item = item.replace("="," ")
             try:
                 kwd, val = item.split()
             except:
-                throw_err('boundary control items must be keword = value pairs')
+                parser_error("boundary control items must be "
+                             "keword = value pairs")
 
             try:
                 kwd, val = kwd.strip(),float(eval(val))
@@ -415,20 +431,20 @@ class Payette:
 
             continue
 
-        if bcontrol['emit'] not in ['all','sparse']:
-            throw_err('emit must be one of [all,sparse]')
+        if bcontrol["emit"] not in ("all", "sparse"):
+            parser_error("emit must be one of [all,sparse]")
 
-        if bcontrol['screenout']:
-            bcontrol['screenout'] = True
+        if bcontrol["screenout"]:
+            bcontrol["screenout"] = True
 
-        if not isinstance(bcontrol['nprints'], int):
-            bcontrol['nprints'] = int(bcontrol['nprints'])
+        if not isinstance(bcontrol["nprints"], int):
+            bcontrol["nprints"] = int(bcontrol["nprints"])
 
-        if not isinstance(bcontrol['stepstar'], (float,int)):
-            bcontrol['stepstar'] = max(0.,float(bcontrol['stepstar']))
+        if not isinstance(bcontrol["stepstar"], (float,int)):
+            bcontrol["stepstar"] = max(0.,float(bcontrol["stepstar"]))
 
-        if bcontrol['stepstar'] <= 0:
-            throw_err('stepstar must be > 0.')
+        if bcontrol["stepstar"] <= 0:
+            parser_error("stepstar must be > 0.")
 
         # the following are from Brannon's MED driver
         # estar is the "unit" of strain
@@ -446,16 +462,17 @@ class Payette:
         # From these formulas, note that AMPL may be used to increase or decrease
         # the peak strain without changing the strain rate. ratfac is the
         # multiplier on strain rate and stress rate.
-        bcontrol['tfac'] = abs(bcontrol['ampl'])*bcontrol['tstar']/bcontrol['ratfac']
-        bcontrol['efac'] = bcontrol['ampl']*bcontrol['estar']
-        bcontrol['sfac'] = bcontrol['ampl']*bcontrol['sstar']
-        bcontrol['ffac'] = bcontrol['ampl']*bcontrol['fstar']
-        bcontrol['effac'] = bcontrol['ampl']*bcontrol['efstar']
-        bcontrol['dfac'] = bcontrol['ampl']*bcontrol['dstar']
+        bcontrol["tfac"] = (abs(bcontrol["ampl"]) *
+                            bcontrol["tstar"] / bcontrol["ratfac"])
+        bcontrol["efac"] = bcontrol["ampl"] * bcontrol["estar"]
+        bcontrol["sfac"] = bcontrol["ampl"] * bcontrol["sstar"]
+        bcontrol["ffac"] = bcontrol["ampl"] * bcontrol["fstar"]
+        bcontrol["effac"] = bcontrol["ampl"] * bcontrol["efstar"]
+        bcontrol["dfac"] = bcontrol["ampl"] * bcontrol["dstar"]
 
         # parse legs
         lcontrol = []
-        kappa = bcontrol['kappa']
+        kappa = bcontrol["kappa"]
         sigc = False
 
         # control should be a group of letters describing what type of
@@ -469,7 +486,7 @@ class Payette:
         #  8: displacement
         for ileg, leg in enumerate(legs):
 
-            leg = [x.strip() for x in leg.replace(',',' ').split(' ') if x]
+            leg = [x.strip() for x in leg.replace(","," ").split() if x]
 
             if ileg == 0:
                 g_inf = parse_first_leg(leg)
@@ -487,7 +504,7 @@ class Payette:
                     continue
 
                 control = g_inf["control"]
-                leg_steps = int(bcontrol['stepstar'])
+                leg_steps = int(bcontrol["stepstar"])
                 leg_no = g_leg_no
                 g_leg_no += 1
                 if g_inf["ttyp"] == "dt":
@@ -495,19 +512,20 @@ class Payette:
                 else:
                     g_time = float(leg[g_inf["col_idxs"][0]])
 
-                leg_t = bcontrol['tfac']*g_time
+                leg_t = bcontrol["tfac"] * g_time
                 c = [float(eval(leg[x])) for x in g_inf["col_idxs"][1:]]
 
             else:
                 if len(leg) < 5:
-                    throw_err('leg %s input must be of form: \n'
-                               '       leg number, time, steps, type, c[ij]'%leg[0])
+                    parser_error(
+                        "leg {0} input must be of form:".format(leg[0]) +
+                        "\n       leg number, time, steps, type, c[ij]")
                 leg_no = int(float(leg[0]))
-                leg_t = bcontrol['tfac']*float(leg[1])
-                leg_steps = int(bcontrol['stepstar']*float(leg[2]))
+                leg_t = bcontrol["tfac"] * float(leg[1])
+                leg_steps = int(bcontrol["stepstar"] * float(leg[2]))
                 if ileg != 0 and leg_steps == 0:
-                    throw_err("leg number {0} has no steps".format(leg_no))
-                    pass
+                    parser_error("leg number {0} has no steps".format(leg_no))
+
                 control = leg[3].strip()
                 c = [float(eval(y)) for y in leg[4:]]
 
@@ -520,56 +538,55 @@ class Payette:
             #  5: deformation gradient control
             #  6: electric field
             #  8: displacement
-            allwd_cntrl = '1234568'
+            allwd_cntrl = "1234568"
             if [x for x in control if x not in allwd_cntrl]:
-                throw_err('leg control parameters can only be one of '
-                           '[%s] got %s for leg number %i'
-                           %(allwd_cntrl,control,leg_no))
-                pass
+                parser_error("leg control parameters can only be one of "
+                             "[{0}] got {1} for leg number {2:d}"
+                             .format(allwd_cntrl, control, leg_no))
 
-            if not sigc: sigc = bool([x for x in control if x == '3' or x == '4'])
+            if not sigc:
+                sigc = bool([x for x in control if x == "3" or x == "4"])
 
             lcntrl = [int(x) for x in list(control)]
 
             if len(lcntrl) != len(c):
-                throw_err('length of leg control != number of control items '
-                         'in leg %i'%leg_no)
-                pass
+                parser_error("length of leg control != number of control "
+                             "items in leg {0:d}".format(leg_no))
 
             # separate out electric fields from deformations
-            ef,hold,efcntrl = [], [], []
-            for i,j in enumerate(lcntrl):
+            ef, hold, efcntrl = [], [], []
+            for i, j in enumerate(lcntrl):
                 if j == 6:
                     ef.append(c[i])
                     hold.append(i)
                     efcntrl.append(j)
-                    pass
                 continue
-#            if ef and sigc: throw_err("Stress and electric field control not "
+#            if ef and sigc: parser_error("Stress and electric field control not "
 #                                     "allowed simulataneously")
-            ef.extend([0.]*(3-len(ef)))
-            efcntrl.extend([6]*(3-len(efcntrl)))
+
+            ef.extend([0.] * (3 - len(ef)))
+            efcntrl.extend([6] * (3 - len(efcntrl)))
             c = [i for j, i in enumerate(c) if j not in hold]
-            lcntrl = [i for j,i in enumerate(lcntrl) if j not in hold]
+            lcntrl = [i for j, i in enumerate(lcntrl) if j not in hold]
 
             if len(lcntrl) != len(c):
-                throw_err('final length of leg control != number of control items '
-                           'in leg %i'%leg_no)
+                parser_error("final length of leg control != number of "
+                             "control items in leg {0:d}".format(leg_no))
                 pass
 
             reduced_lcntrl = list(set(lcntrl))
             if 5 in reduced_lcntrl:
                 # deformation gradient control check
                 if len(reduced_lcntrl) != 1:
-                    throw_err('only components of deformation gradient are allowed '
-                               'with deformation gradient control in leg %i, got %s'
-                               %(leg_no,control))
-                    pass
+                    parser_error("only components of deformation gradient "
+                                 "are allowed with deformation gradient "
+                                 "control in leg {0:d}, got {1}"
+                                 .format(leg_no, control))
 
                 elif len(c) != 9:
-                    throw_err('all 9 components of deformation gradient must '
-                               'be specified for leg %i'%leg_no)
-                    pass
+                    parser_error("all 9 components of deformation gradient "
+                                 "must be specified for leg {0:d}"
+                                 .format(leg_no))
 
                 else:
                     # check for valid deformation
@@ -578,30 +595,30 @@ class Payette:
                                   [c[6],c[7],c[8]]])
                     J = np.linalg.det(F)
                     if J <= 0:
-                        throw_err('inadmissible deformation gradient in leg %i '
-                                   'gave a Jacobian of %f'%(leg_no,J))
-                        return 1
+                        parser_error("inadmissible deformation gradient in leg "
+                                     "{0:d} gave a Jacobian of {1:f}"
+                                     .format(leg_no, J))
+
                     # convert F to strain E with associated rotation given by
                     # axis of rotation x and angle of rotation theta
                     R,V = np.linalg.qr(F)
                     U = np.dot(R.T,F)
                     if np.max(np.abs(R - np.eye(3))) > epsilon():
-                        throw_err('rotation encountered in leg %i. '
-                                   'rotations are not yet supported'%leg_no)
-                        pass
+                        parser_error(
+                            "rotation encountered in leg {0}. ".format(leg_no) +
+                            "rotations are not yet supported")
 
             elif 8 in reduced_lcntrl:
                 # displacement control check
                 if len(reduced_lcntrl) != 1:
-                    throw_err('only components of displacment are allowed '
-                               'with displacment control in leg %i, got %s'
-                               %(leg_no,control))
+                    parser_error("only components of displacment are allowed "
+                                 "with displacment control in leg {0:d}, got {1}"
+                                 .format(leg_no, control))
                     pass
 
                 elif len(c) != 3:
-                    throw_err('all 3 components of displacement must '
-                               'be specified for leg %i'%leg_no)
-                    pass
+                    parser_error("all 3 components of displacement must "
+                                 "be specified for leg {0:d}".format(leg_no))
 
                 # convert displacments to strains
                 dfac = bcontrol["dfac"]
@@ -613,60 +630,60 @@ class Payette:
                 # In the limit as kappa->0, the Seth-Hill strain becomes
                 # strain = ln(stretch).
                 for j in range(3):
-                    stretch = dfac*c[j] + 1
-                    if kappa != 0: c[j] = 1/kappa*(stretch**kappa - 1.)
+                    stretch = dfac * c[j] + 1
+                    if kappa != 0: c[j] = 1 / kappa * (stretch ** kappa - 1.)
                     else: c[j] = math.log(stretch)
                     continue
 
                 # displacements now converted to strains
-                lcntrl = [2,2,2]
+                lcntrl = [2, 2, 2]
                 pass
 
             if lcntrl == [2]:
 
                 # only one strain value given -> volumetric strain
-                ev = c[0]*bcontrol['efac']
-                if kappa*ev + 1. < 0.:
-                    throw_err('1 + kappa*ev must be positive')
-                    pass
+                ev = c[0] * bcontrol["efac"]
+                if kappa * ev + 1. < 0.:
+                    parser_error("1 + kappa*ev must be positive")
 
-                if kappa == 0.: ev = ev/3.
-                else: ev = ((kappa*ev + 1.)**(1./3.) - 1.)/kappa
+                if kappa == 0.:
+                    ev = ev / 3.
+                else:
+                    ev = ((kappa * ev + 1.) ** (1. / 3.) - 1.) / kappa
 
-                lcntrl = [2,2,2]
+                lcntrl = [2, 2, 2]
                 c = [ev, ev, ev]
-                efac_hold = bcontrol['efac']
-                bcontrol['efac'] = 1.0
-                pass
+                efac_hold = bcontrol["efac"]
+                bcontrol["efac"] = 1.0
 
-            for i,j in enumerate(lcntrl):
+            for i, j in enumerate(lcntrl):
                 if j == 1 or j == 3:
-                    c[i] = bcontrol['ratfac']*c[i]
+                    c[i] = bcontrol["ratfac"] * c[i]
 
                 elif j == 2:
-                    c[i] = bcontrol['efac']*c[i]
-                    if kappa*c[i] + 1. < 0.:
-                        throw_err('1 + kappa*c[%i] must be positive'.format(i))
-                        pass
+                    c[i] = bcontrol["efac"] * c[i]
+                    if kappa * c[i] + 1. < 0.:
+                        parser_error("1 + kappa*c[{0:d}] must be positive"
+                                     .format(i))
 
                 elif j == 4:
-                    c[i] = bcontrol['sfac']*c[i]
+                    c[i] = bcontrol["sfac"] * c[i]
 
                 elif j == 5:
-                    c[i] = bcontrol['ffac']*c[i]
+                    c[i] = bcontrol["ffac"] * c[i]
 
                 elif j == 6:
-                    c[i] = bcontrol['effac']*c[i]
+                    c[i] = bcontrol["effac"] * c[i]
                     pass
 
                 continue
 
-            try: bcontrol['efac'] = efac_hold
+            try: bcontrol["efac"] = efac_hold
             except: pass
 
             # fill in c and lcntrl so that their lengths are always 9
-            c.extend([0.]*(9-len(c)))
-            lcntrl.extend([0]*(9-len(lcntrl)))
+            c.extend([0.] * (9 - len(c)))
+            lcntrl.extend([0] * (9 - len(lcntrl)))
 
             # append leg control
             # the electric field control is added to the end of lcntrl
@@ -681,10 +698,10 @@ class Payette:
             # stress and or stress rate is used to control this leg. For
             # these cases, kappa is set to 0. globally.
             if kappa != 0.:
-                reportWarning(__file__,'WARNING: stress control boundary conditions '
-                                 'only compatible with kappa=0. kappa is being '
-                                 'reset to 0. from %f\n'%kappa)
-                bcontrol['kappa'] = 0.
+                reportWarning(__file__,"WARNING: stress control boundary conditions "
+                                 "only compatible with kappa=0. kappa is being "
+                                 "reset to 0. from %f\n"%kappa)
+                bcontrol["kappa"] = 0.
                 pass
 
         # check that time is monotonic in lcontrol
@@ -695,8 +712,8 @@ class Payette:
             if leg[1] < i:
                 print(leg[1],i)
                 print(leg)
-                throw_err('time must be monotonic in from %i to %i'
-                         %(int(leg[0]-1),int(leg[0])))
+                parser_error("time must be monotonic in from {0:d} to {1:d}"
+                             .format(int(leg[0] - 1), int(leg[0])))
                 pass
             i = leg[1]
             self.tf = leg[1]
@@ -812,7 +829,7 @@ def parse_first_leg(leg):
         errors += 1
         msg = ("requested bad time type {0} in {1}, expected one of [{2}]"
                .format(t_typ, leg, ", ".join(allowed_t)))
-        throw_err(msg)
+        parser_error(msg)
 
     col_spec =[x for x in leg[2:] if "from" in x or "column" in x]
 
@@ -820,7 +837,7 @@ def parse_first_leg(leg):
         # default value for col_idxs
         use_typ = " ".join(leg[2:])
         if use_typ not in allowed_legs:
-            throw_err("requested bad control type {0}".format(use_typ))
+            parser_error("requested bad control type {0}".format(use_typ))
 
         col_idxs = range(allowed_legs[use_typ]["len"] + 1)
 
@@ -831,15 +848,15 @@ def parse_first_leg(leg):
         # using <dt,time> <deftyp> columns ...
         msg = ("expected {0} <deftyp> from columns ..., got {1}"
                .format(t_typ, leg))
-        throw_err(msg)
+        parser_error(msg)
 
     else:
         use_typ = " ".join(leg[2:leg.index(col_spec[0])])
         if use_typ not in allowed_legs:
-            throw_err("requested bad control type {0}".format(use_typ))
+            parser_error("requested bad control type {0}".format(use_typ))
 
         # now we need to find the column indexes
-        col_idxs = " ".join(leg[leg.index(col_spec[-1])+1:])
+        col_idxs = " ".join(leg[leg.index(col_spec[-1]) + 1:])
         col_idxs = col_idxs.replace("-", ":")
 
         if ":" in col_idxs.split():
@@ -855,8 +872,8 @@ def parse_first_leg(leg):
 
             elif len(tmpl) == 4 and idx != 2:
                 # of form: from columns 1:6, 7 -> not allowed
-                throw_err("bad column range specifier in: '{0}'"
-                           .format(" ".join(leg)))
+                parser_error("bad column range specifier in: '{0}'"
+                             .format(" ".join(leg)))
 
             elif len(tmpl) == 4:
                 # of form: from columns 1, 2:7
@@ -864,13 +881,13 @@ def parse_first_leg(leg):
 
         if col_idxs.count(":") > 1:
             # only one range allowed
-            throw_err("only one column range supported".format(use_typ))
+            parser_error("only one column range supported".format(use_typ))
 
         col_idxs = col_idxs.split()
         if len(col_idxs) == 1 and not [x for x in col_idxs if ":" in x]:
             # of form: from columns 8 -> not allowed
-            throw_err("not enough columns specified in: '{0}'"
-                       .format(" ".join(leg)))
+            parser_error("not enough columns specified in: '{0}'"
+                         .format(" ".join(leg)))
 
         elif len(col_idxs) == 1 and [x for x in col_idxs if ":" in x]:
             # of form: from columns 2:8
@@ -881,8 +898,8 @@ def parse_first_leg(leg):
             # specified a single index and range
             if col_idxs.index([x for x in col_idxs if ":" in x][0]) != 1:
                 # of form: from columns 2:8, 1 -> not allowed
-                throw_err("bad column range specifier in: '{0}'"
-                           .format(" ".join(leg)))
+                parser_error("bad column range specifier in: '{0}'"
+                             .format(" ".join(leg)))
             else:
                 # of form: from columns 1, 2:8
                 tmp = col_idxs[1].split(":")
@@ -894,7 +911,7 @@ def parse_first_leg(leg):
 
         # we have now parsed the first line, assemble leg_ing
         if len(col_idxs) > allowed_legs[use_typ]["len"] + 1:
-            throw_err("too many columns specified")
+            parser_error("too many columns specified")
 
     # we have exhausted all ways of specifying columns that I can think of,
     # save the info and return

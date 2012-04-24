@@ -109,14 +109,14 @@ class Permutate(object):
         global FARGS
 
         # make the directory to run the job
-        cwd = os.getcwd()
+        cwd = os.path.realpath(os.getcwd())
         dnam = self.data["basename"] + self.data["fext"]
-        base_dir = os.path.join(os.getcwd(), dnam)
+        base_dir = os.path.join(cwd, dnam)
         idir = 0
         while True:
             if os.path.isdir(base_dir):
                 dir_id = ".{0:03d}".format(idir)
-                base_dir = os.path.join(os.getcwd(), dnam + dir_id)
+                base_dir = os.path.join(cwd, dnam + dir_id)
             else:
                 break
 
@@ -212,11 +212,6 @@ class Permutate(object):
                 # set up this parameter to permutate
                 key = item[1]
                 vals = [x.lower() for x in item[2:]]
-
-                # For now, there is no initial value. It is given in the
-                # material block of the input file, we just hold its place
-                # here. We will later check that this key was given in the
-                # material block.
 
                 # specified range
                 if "range" in vals:
