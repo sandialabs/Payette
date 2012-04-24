@@ -5,10 +5,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = True
 
@@ -24,6 +22,10 @@ class Test(PayetteTest):
         self.owner = 'Tim Fuller'
         self.date = 'February 26, 2012'
         self.description = ''' elastic_plastic material model, uniaxial strain '''
+
+
+        if check:
+            self.check_setup()
 
         pass
 

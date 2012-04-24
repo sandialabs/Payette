@@ -6,10 +6,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = True
 
@@ -32,6 +30,10 @@ Uniaxial strain compression with damage with the following steps:
     Results from the output are compared against results from an equivalent
     simulation performed in the MED driver.
  """
+
+        if check:
+            self.check_setup()
+
         pass
 
 if __name__ == "__main__":

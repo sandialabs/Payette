@@ -59,6 +59,10 @@ def performCalcs():
     with open('%s.echo'%(name),'w') as f:
         run = subprocess.Popen(runcommand,stdout=f,stderr=subprocess.STDOUT)
         run.wait()
+
+        if check:
+            self.check_setup()
+
         pass
     return run.returncode
 

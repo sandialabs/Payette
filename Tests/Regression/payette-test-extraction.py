@@ -7,10 +7,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = True
 
@@ -27,6 +25,10 @@ class Test(PayetteTest):
         self.owner = "Tim Fuller"
         self.date = "February 28, 2012"
         self.description = """ Test of extractPayette.py """
+
+
+        if check:
+            self.check_setup()
 
         pass
 

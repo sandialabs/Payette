@@ -6,10 +6,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = True
 
@@ -31,6 +29,10 @@ Rate dependence with hardening.
     The gold is from an equivalent MED simulation run a year or so ago.
 
                                   **** NOTE ****
+
+        if check:
+            self.check_setup()
+
     This test does not pass. The HK variable is off between the out and gold.
 """
         pass

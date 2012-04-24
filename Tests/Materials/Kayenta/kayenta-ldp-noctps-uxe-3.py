@@ -6,10 +6,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = True
 
@@ -43,6 +41,10 @@ In ROOTJ2 vs I1 space, this simulation will approach the limit surface and
 the return algorithm should make the stress state move away from the I1 tensile
 vertex.
  """
+
+        if check:
+            self.check_setup()
+
         pass
 
 if __name__ == "__main__":

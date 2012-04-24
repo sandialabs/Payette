@@ -508,15 +508,21 @@ def run_payette_test(py_file):
              os.path.join(benchdir, os.path.basename(py_file)))
     os.chmod(os.path.join(benchdir, os.path.basename(py_file)), 0o750)
 
+    # symlink the baseline file
     if test.baseline:
-        if isinstance(test.baseline, list):
-            for base_f in test.baseline:
-                os.symlink(base_f,
-                           os.path.join(benchdir, os.path.basename(base_f)))
-                continue
-        else:
-            os.symlink(test.baseline,
-                       os.path.join(benchdir, os.path.basename(test.baseline)))
+        for base_f in test.baseline:
+            os.symlink(
+                base_f,
+                os.path.join(benchdir, os.path.basename(base_f)))
+            continue
+
+    # symlink and auxilary files
+    if test.aux_files:
+        for aux_f in test.aux_files:
+            os.symlink(
+                aux_f,
+                os.path.join(benchdir, os.path.basename(aux_f)))
+            continue
 
     # move to the new directory and run the test
     os.chdir(benchdir)

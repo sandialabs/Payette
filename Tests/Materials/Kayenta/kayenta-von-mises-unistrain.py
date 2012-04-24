@@ -6,10 +6,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = True
 
@@ -28,6 +26,10 @@ class Test(PayetteTest):
         self.description = """
 Von Mises yield surface, uniaxial strain deformation.
 """
+
+        if check:
+            self.check_setup()
+
         pass
 
 if __name__ == "__main__":

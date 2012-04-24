@@ -6,10 +6,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = True
 
@@ -26,6 +24,10 @@ class Test(PayetteTest):
         self.owner = "Tim Fuller"
         self.date = "June 26, 2011"
         self.description = """ Sandler-Rubin problem with hardening, from MED """
+
+        if check:
+            self.check_setup()
+
         pass
 
 if __name__ == "__main__":

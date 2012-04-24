@@ -6,10 +6,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = True
 
@@ -25,6 +23,10 @@ class Test(PayetteTest):
         self.owner = "Tim Fuller"
         self.date = "June 28, 2011"
         self.description = """ Hugoniot strain """
+
+        if check:
+            self.check_setup()
+
         pass
 
 if __name__ == '__main__':

@@ -69,39 +69,42 @@ class TestLogger(object):
         pass
 
 
-class PayetteTest:
+class PayetteTest(object):
 
-    def __init__(self):
+    name = None
+    tdir = None
+    keywords = []
+    owner = None
+    date = None
+    infile = None
+    outfile = None
+    rms_sets = None
+    runcommand = None
+    baseline = []
+    aux_files = []
+    description = None
+    enabled = False
+    passcode = 0
+    badincode = 1
+    diffcode = 2
+    failcode = 3
+    failtoruncode = 4
+    compare_method = None
 
-        self.name = None
-        self.tdir = None
-        self.keywords = []
-        self.owner = None
-        self.date = None
-        self.infile = None
-        self.outfile = None
-        self.rms_sets = None
-        self.compare_method = self.compare_out_to_baseline_rms
-        self.runcommand = None
-        self.baseline = None
-        self.description = None
-        self.enabled = False
-        self.passcode = 0
-        self.badincode = 1
-        self.diffcode = 2
-        self.failcode = 3
-        self.failtoruncode = 4
+    items_to_skip = []
+    items_to_compare = []
 
-        self.items_to_skip = []
-        self.items_to_compare = []
+    # tolerances
+    difftol = 6.e-6
+    failtol = 1.e-3
 
-        # tolerances
-        self.difftol = 6.e-6
-        self.failtol = 1.e-3
-
+    def __init__(self, check=True):
         pass
 
-    def checkSetup(self):
+    def get_keywords(self):
+        return self.keywords
+
+    def check_setup(self):
 
         iam = "{0}.checkSetup(self)".format(self.name)
 
@@ -142,16 +145,19 @@ class PayetteTest:
                     tkw += 1
                 continue
             if not lkw:
+                errors += 1
                 msg = "keywords must specify one of {0}".format(", ".join(speed_kws))
-                pu.logwrn(msg, caller=iam)
+                pu.logerr(msg, caller=iam)
             elif lkw > 1:
+                errors += 1
                 msg = ("keywords must specify only one of {0}"
                        .format(", ".join(speed_kws)))
-                pu.logwrn(msg, caller=iam)
+                pu.logerr(msg, caller=iam)
                 pass
             if not tkw:
+                errors += 1
                 msg = "keywords must specify one of {0}".format(", ".join(type_kws))
-                pu.logwrn(msg, caller=iam)
+                pu.logerr(msg, caller=iam)
             elif tkw > 1:
                 msg = ("keywords must specify only one of {0}"
                        .format(", ".join(type_kws)))
@@ -159,59 +165,60 @@ class PayetteTest:
                 pass
             pass
 
-        if not self.owner:
+        if self.owner is None:
             errors += 1
             pu.logwrn("no owner specified", caller=iam)
             pass
 
-        if not self.date:
+        if self.date is None:
             errors += 1
             pu.logwrn("no date given", caller=iam)
             pass
 
-        if self.infile and not os.path.isfile(self.infile):
+        if self.infile is not None and not os.path.isfile(self.infile):
             errors += 1
             pu.logwrn("infile {0} not found".format(self.infile), caller=iam)
             pass
 
         if self.baseline:
-            if isinstance(self.baseline,list):
-                for fff in self.baseline:
-                    if not os.path.isfile(fff):
-                        errors += 1
-                        pu.logwrn("baseline {0} not found".format(fff),
-                                  caller=iam)
-                        pass
-                    continue
-            elif not os.path.isfile(self.baseline):
-                errors += 1
-                pu.logwrn("baseline {0} not found".format(self.baseline),
-                          caller=iam)
-                pass
-            pass
+            if not isinstance(self.baseline, (list, tuple)):
+                self.baseline = [self.baseline]
 
-        if not self.description:
+            for fff in self.baseline:
+                if not os.path.isfile(fff):
+                    errors += 1
+                    pu.logwrn("baseline {0} not found".format(fff),
+                              caller=iam)
+                    continue
+
+        if self.aux_files:
+            if not isinstance(self.aux_files, (list, tuple)):
+                self.aux_files = [self.aux_files]
+            for fff in self.aux_files:
+                if not os.path.isfile(fff):
+                    errors += 1
+                    pu.logwrn("auxilary file {0} not found".format(fff),
+                              caller=iam)
+                continue
+
+        if self.compare_method is None:
+            self.compare_method = self.compare_out_to_baseline_rms
+
+        if self.description is None:
             errors += 1
             pu.logwrn("no description given", caller=iam)
             pass
 
-        if not isinstance(self.items_to_skip,(list,tuple)):
-            errors += 1
-            pu.logwrn("items to skip must be list, got {0}"
-                      .format(self.items_to_skip), caller=iam)
-            pass
+        if not isinstance(self.items_to_skip, (list,tuple)):
+            self.items_to_skip = [self.items_to_skip]
 
 
-        if not isinstance(self.items_to_compare,(list,tuple)):
-            errors += 1
-            pu.logwrn("items to compare must be list, got {0}"
-                      .format(self.items_to_compare), caller=iam)
-            pass
+        if not isinstance(self.items_to_compare, (list,tuple)):
+            self.items_to_compare = [self.items_to_compare]
 
         # check for previous errors
         if errors:
-            pu.logerr("fix previous warnings", caller=iam)
-            pass
+            pu.logerr("stopping due to previous errors", caller=iam)
 
         return errors
 
@@ -245,8 +252,8 @@ class PayetteTest:
 #            sys.stdout = sys.__stdout__
 #            sys.stderr = sys.__stderr__
 #            return returncode
-        with open(echof,"w") as f:
-            run = subprocess.Popen(cmd,stdout=f,stderr=subprocess.STDOUT)
+        with open(echof,"w") as fobj:
+            run = subprocess.Popen(cmd, stdout=fobj, stderr=subprocess.STDOUT)
             run.wait()
             pass
 
@@ -286,7 +293,7 @@ class PayetteTest:
 
         cmd[0] = exenam
 
-        return [ x for x in cmd ], self.passcode
+        return [x for x in cmd], self.passcode
 
     def compare_out_to_baseline_rms_general(self):
         """
@@ -307,7 +314,7 @@ class PayetteTest:
         log = TestLogger(self.name + ".diff","w")
 
         if "baselinef" not in globals():
-            baselinef = self.baseline
+            baselinef = self.baseline[0]
             pass
 
         if not os.path.isfile(baselinef):
@@ -452,30 +459,6 @@ class PayetteTest:
 
         return
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     def compare_out_to_baseline_rms(self, baselinef=None, outf=None):
         """
             Compare results from out file to those in baseline
@@ -493,7 +476,7 @@ class PayetteTest:
         log = TestLogger(self.name + ".diff","w")
 
         if not baselinef:
-            baselinef = self.baseline
+            baselinef = self.baseline[0]
             pass
 
         if not os.path.isfile(baselinef):
@@ -807,61 +790,40 @@ class PayetteTest:
 
         return
 
-    def diff_files(self, gold, out):
+    def diff_files(self, gold=None, out=None):
 
         """ compare gold with out """
 
         iam = self.name + "diff_files(self,gold,out)"
         import difflib
 
+        if gold is None:
+            gold = self.baseline
+
+        if out is None:
+            out = self.outfile
+
         # open the log file
         log = TestLogger(self.name + ".diff","w")
 
-        one_gold, one_out = False, False
         errors = 0
-        if not isinstance(gold,list):
-            one_gold = True
-            if not os.path.isfile(gold):
-                log.error("{0} not found".format(gold))
-                errors += 1
-                pass
-            pass
-        else:
-            for goldf in gold:
-                if not os.path.isfile(goldf):
-                    log.error(iam,"{0} not found".format(goldf))
-                    errors += 1
-                    pass
-                continue
-            pass
-
-        if not isinstance(out,list):
-            one_out = True
-            if not os.path.isfile(out):
-                log.error(iam,"{0} not found".format(out))
-                errors += 1
-                pass
-            pass
-        else:
-            for outf in out:
-                if not os.path.isfile(outf):
-                    log.error(iam,"{0} not found".format(outf))
-                    errors += 1
-                    pass
-                continue
-            pass
-
-        if one_out and not one_gold:
-            errors += 1
-            log.error(iam,"multiple gold for single out")
-
-        elif one_gold and one_out:
+        if not isinstance(gold, (list, tuple)):
             gold = [gold]
+
+        for goldf in gold:
+            if not os.path.isfile(goldf):
+                log.error(iam,"{0} not found".format(goldf))
+                errors += 1
+            continue
+
+        if not isinstance(out, (list, tuple)):
             out = [out]
 
-        elif one_gold and not one_out:
-            gold = [gold]*len(out)
-            pass
+        for outf in out:
+            if not os.path.isfile(outf):
+                log.error(iam,"{0} not found".format(outf))
+                errors += 1
+            continue
 
         if len(gold) != len(out):
             errors += 1
@@ -874,11 +836,7 @@ class PayetteTest:
 
         diff = 0
 
-        for idx in range(len(gold)):
-
-            # compare the files
-            goldf = gold[idx]
-            outf = out[idx]
+        for goldf, outf in zip(gold, out):
 
             bgold = os.path.basename(goldf)
             xgold = open(goldf).readlines()
@@ -901,7 +859,7 @@ class PayetteTest:
 
         return self.passcode
 
-def findTests(reqkws,unreqkws,spectests,test_dir=None):
+def findTests(reqkws, unreqkws, spectests, test_dir=None):
     """
     NAME
        findTests
@@ -955,9 +913,12 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
 
     # reqkws are user specified keywords
     errors = 0
-    if reqkws: reqkws = [x.lower() for x in reqkws]
-    if unreqkws: unreqkws = [x.lower() for x in unreqkws]
-    if spectests: spectests = [x.lower() for x in spectests]
+    if reqkws:
+        reqkws = [x.lower() for x in reqkws]
+    if unreqkws:
+        unreqkws = [x.lower() for x in unreqkws]
+    if spectests:
+        spectests = [x.lower() for x in spectests]
 
     # do not run the kayenta tests if kayenta not installed
     if "kayenta" not in pim.PAYETTE_INSTALLED_MATERIALS:
@@ -965,8 +926,6 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
         if "kayenta" in reqkws:
             errors += 1
             warn(iam,"requested kayenta tests but kayenta model not installed")
-            pass
-        pass
 
     # do not run the piezo electric material's tests if not installed
     if "domain_switching_ceramic" not in pim.PAYETTE_CONSTITUTIVE_MODELS:
@@ -975,8 +934,6 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
             errors += 1
             warn(iam,("requested domain_switching_ceramic tests but "
                       "domain_switching_ceramic model not installed"))
-            pass
-        pass
 
     if "piezo_ceramic" not in pim.PAYETTE_INSTALLED_MATERIALS:
         unreqkws.append("piezo_ceramic")
@@ -984,8 +941,6 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
             errors += 1
             warn(iam,("requested piezo_ceramic tests but "
                       "piezo_ceramic model not installed"))
-            pass
-        pass
 
     reqkws.sort()
     unreqkws.sort()
@@ -996,7 +951,7 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
         continue
 
     py_modules = {}
-    for dirname,dirs,files in os.walk(test_dir):
+    for dirname, dirs, files in os.walk(test_dir):
 
         if ".svn" in dirname or "__test_dir__.py" not in files:
             continue
@@ -1020,12 +975,11 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
                 warn(iam,"removing duplicate python module {0} in tests"
                      .format(py_mod))
                 del py_modules[py_mod]
+
             else:
                 py_modules[py_mod] = fpath
-                pass
 
             continue
-
         continue
 
     for py_mod, py_file in py_modules.items():
@@ -1037,7 +991,7 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
         fp.close()
 
         # check if a payette test class is defined
-        class_data = pyclbr.readmodule(py_mod,path=py_path)
+        class_data = pyclbr.readmodule(py_mod, path=py_path)
 
         if not class_data:
             continue
@@ -1047,7 +1001,8 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
             class_name = data.name
             test = class_name == "Test"
             payette_test = "PayetteTest" in get_super_classes(name,data)
-            if payette_test: break
+            if payette_test:
+                break
             continue
 
         if not payette_test:
@@ -1060,17 +1015,16 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
             continue
 
         include = False
-        test = py_module.Test()
-        check = test.checkSetup()
-
-        if check != 0:
-            errors += check
-            warn(iam,"non conforming test module {0} found".format(py_mod))
-            continue
+        # instantiate the test object, but don't check it. we just want to
+        # know if the test is requested, or not.
+        test = py_module.Test(check=False)
 
         if not test.enabled:
             warn(iam,"disabled test: {0} encountered".format(py_mod))
             continue
+
+        if not isinstance(test.keywords, (list, tuple)):
+            test.keywords = [test.keywords]
 
         if spectests:
             if test.name not in spectests:
@@ -1104,17 +1058,10 @@ def findTests(reqkws,unreqkws,spectests,test_dir=None):
                     include = True
                 else:
                     continue
-                pass
-
-            pass
 
         if include:
-
             speed = [x for x in speed_kws if x in test.keywords][0]
-
             found_tests[speed][py_mod] = py_file
-
-            pass
 
         continue
 

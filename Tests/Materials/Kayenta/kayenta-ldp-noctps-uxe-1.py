@@ -6,10 +6,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = True
 
@@ -45,6 +43,10 @@ class Test(PayetteTest):
 The only comparison being made is that the ROOTJ2 vs I1 path is being
 compared with the (time independent) analytical solution.
  """
+
+        if check:
+            self.check_setup()
+
         pass
 
 if __name__ == "__main__":

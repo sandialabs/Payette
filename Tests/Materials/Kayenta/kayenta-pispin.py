@@ -6,10 +6,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = True
 
@@ -28,6 +26,10 @@ class Test(PayetteTest):
 Deformation to t = 1., then spin in the Pi plane such that the Lode angle
 increases linearly in time
  """
+
+        if check:
+            self.check_setup()
+
         pass
 
 if __name__ == "__main__":

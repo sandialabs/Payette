@@ -5,10 +5,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = False # change to True
 
@@ -24,6 +22,10 @@ class Test(PayetteTest):
         self.owner = "Your Name"
         self.date = "Month Day, Year"
         self.description = """ A good description """
+
+
+        if check:
+            self.check_setup()
 
         pass
 

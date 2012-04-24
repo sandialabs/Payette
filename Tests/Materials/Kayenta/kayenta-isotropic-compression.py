@@ -6,10 +6,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = True
 
@@ -34,6 +32,10 @@ MED simulation
       with Kayenta is resolved that is causing KAPPA to fail, the Payette
       output can be copied to the baseline file.
  """
+
+        if check:
+            self.check_setup()
+
         pass
 
 if __name__ == "__main__":

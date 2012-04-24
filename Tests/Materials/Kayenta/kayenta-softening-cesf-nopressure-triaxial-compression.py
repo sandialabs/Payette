@@ -5,10 +5,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = True
 
@@ -39,6 +37,10 @@ class Test(PayetteTest):
        Stress Triaxiality = sigma_m / sigma_eqv = I1/(3*ROOT3*ROOTJ2)
        Lode Parameter     = sin(3\lodeangle)
 """
+
+        if check:
+            self.check_setup()
+
         pass
 
 if __name__ == "__main__":

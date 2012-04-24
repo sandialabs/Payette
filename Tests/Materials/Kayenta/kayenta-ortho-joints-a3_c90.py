@@ -5,10 +5,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = True
 
@@ -27,6 +25,10 @@ class Test(PayetteTest):
 Stress driven unconfined compression of Salem Limestone using orthotropic
 kayenta model.
 """
+
+        if check:
+            self.check_setup()
+
         pass
 
 if __name__ == '__main__':

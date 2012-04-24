@@ -1,0 +1,28 @@
+begin simulation payette-test-optimization-powell
+nowriteprops
+norestart
+begin boundary
+kappa = 0
+tstar = 1.
+ampl = 1
+begin legs
+using time, strain, from columns 1, 3:8
+insert regression_tests.tbl
+end legs
+end boundary
+begin material
+constitutive model hooke
+G 54.e9
+K 129.e9
+end material
+begin optimization
+method powell
+maxiter 25
+tolerance 1.e-6
+optimize K, bounds = (125.e9, 150.e9), initial value = 129.e9
+optimize G, bounds = (45.e9, 57.e9), initial value = 54.e9
+gold file optimization_tests.tbl
+minimize sig11, sig22, sig33 versus time
+disp 0
+end optimization
+end simulation

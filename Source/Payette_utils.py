@@ -372,6 +372,9 @@ def get_blocks(user_input):
             continue
 
         # Currently in a block,
+        if not block_stack:
+            continue
+
         if block_stack[0] == block_typ:
             block[block_typ]["content"].append(line)
 

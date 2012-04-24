@@ -6,10 +6,8 @@ from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):
 
-    def __init__(self):
+    def __init__(self, check=True):
 
-        # initialize the base class
-        PayetteTest.__init__(self)
 
         self.enabled = True
 
@@ -47,6 +45,10 @@ strain deformation path in the following steps:
     Step 10 (t=9.-10.): prescribed def gradient resulting in same strain
                         path as Step 2
 """
+
+        if check:
+            self.check_setup()
+
         pass
 
 if __name__ == "__main__":
