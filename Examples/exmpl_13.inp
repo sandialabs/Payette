@@ -32,7 +32,7 @@ begin simulation exmpl_13
     # options in braces, if applicable.
 
     # below we specify which parameters to permutation
-    options zip #combination # [] {combination}
+    options combination # [] {combination}
     permutate K, range = (125.e9, 150.e9, 10) # [] {range, sequence}
     permutate G, range = (45.e9, 57.e9, 10)
 

@@ -86,7 +86,7 @@ class Permutate(object):
 
         # print info
         if self.data["verbosity"]:
-            pu.loginf("Permutating {0}".format(job))
+            pu.loginf("Permutationg job: {0}".format(self.data["basename"]))
             pu.loginf("Permutated variables: {0}"
                       .format(", ".join(self.param_nams)))
             pu.loginf("Permutation strategy: {0}".format(self.strategy))
@@ -115,15 +115,17 @@ class Permutate(object):
         idir = 0
         while True:
             if os.path.isdir(base_dir):
-                base_dir = os.path.join(os.getcwd(), dnam + str(idir))
-            elif idir > 100:
-                sys.exit("ERROR: max number of dirs")
+                dir_id = ".{0:03d}".format(idir)
+                base_dir = os.path.join(os.getcwd(), dnam + dir_id)
             else:
                 break
+
             idir += 1
+            if idir > 100:
+                sys.exit("ERROR: max number of dirs")
 
         if self.data["verbosity"]:
-            pu.loginf("Permutation directory: {0}".format(base_dir))
+            pu.loginf("Running: {0}".format(self.data["basename"]))
 
         os.mkdir(base_dir)
         os.chdir(base_dir)
@@ -151,6 +153,11 @@ class Permutate(object):
             del pool
 
         os.chdir(cwd)
+
+        if self.data["verbosity"]:
+            pu.loginf("Permutation job {0} completed"
+                      .format(self.data["basename"]), pre="\n")
+            pu.loginf("Output directory: {0}".format(base_dir))
 
         return 0
 
@@ -265,8 +272,7 @@ class Permutate(object):
 
         if "combination" in options:
             self.strategy = "combination"
-            self.param_ranges = list(product(*param_ranges))
-            pad = range(len(self.param_ranges))
+            param_ranges = list(product(*param_ranges))
 
         elif "zip" in options:
             self.strategy = "zip"
@@ -274,15 +280,17 @@ class Permutate(object):
                 pu.logerr("number of permutations must be the same for "
                           "all permutated parameters")
                 sys.exit(3)
-            pad = range(len(param_ranges[0]))
-            self.param_ranges = zip(*param_ranges)
+            param_ranges = zip(*param_ranges)
 
         else:
             # zip above is the default, so we should never get here.
             pu.logerr("no option given")
 
-        digits = len(str(len(pad)))
-        self.param_ranges = izip(["{0:0{1}d}".format(x,digits) for x in pad], self.param_ranges)
+        nruns = len(param_ranges)
+        pad = len(str(nruns))
+        self.param_ranges = izip(
+            ["{0:0{1}d}".format(x, pad) for x in range(nruns)],
+            param_ranges)
         del param_ranges
 
         return
@@ -371,7 +379,7 @@ def func(xcall):
     """
 
     job_id = xcall[0]
-    xcall = xcall[1] 
+    xcall = xcall[1]
 
     xnams, data, base_dir, job_opts, index_f = FARGS
     job = data["basename"] + "." + job_id
@@ -385,10 +393,12 @@ def func(xcall):
 
     # replace the visualize variables with the updated and write params to file
     msg = []
+    istr = []
     with open(os.path.join(job_dir, job + data["fext"]), "w") as fobj:
         fobj.write("Parameters for job {0}\n".format(job_id))
         for nam, val in zip(xnams, xcall):
             pstr = "{0} = {1:12.6E}".format(nam, val)
+            istr.append('("{0}", {1:12.6E})'.format(nam, val))
             job_inp["material"]["content"].append(pstr)
             fobj.write(pstr + "\n")
             msg.append(pstr)
@@ -403,10 +413,11 @@ def func(xcall):
 
     # write to the index file
     with open(index_f, "a") as fobj:
-        fobj.write('index[{0}] = {{'.format(job_id) +
-                   '"name": "{0}", '.format(job) +
-                   '"directory": "{0}"'.format(job_dir) +
-                   '}\n')
+        fobj.write('index[{0:d}] = {{'.format(int(job_id)))
+        fobj.write('"name": "{0}", '.format(job))
+        fobj.write('"directory": "{0}", '.format(job_dir))
+        fobj.write('"permutated variables": ({0})'.format(", ".join(istr)))
+        fobj.write("}\n")
 
     # instantiate Payette object
     the_model = pc.Payette(job, job_inp, job_opts)
