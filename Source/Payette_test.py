@@ -90,6 +90,7 @@ class PayetteTest(object):
     failcode = 3
     failtoruncode = 4
     compare_method = None
+    checked = False
 
     items_to_skip = []
     items_to_compare = []
@@ -219,6 +220,8 @@ class PayetteTest(object):
         # check for previous errors
         if errors:
             pu.logerr("stopping due to previous errors", caller=iam)
+
+        self.checkd = True
 
         return errors
 

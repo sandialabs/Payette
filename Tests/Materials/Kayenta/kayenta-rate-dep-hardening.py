@@ -35,6 +35,10 @@ Rate dependence with hardening.
 
     This test does not pass. The HK variable is off between the out and gold.
 """
+
+        if check:
+            self.check_setup()
+
         pass
 
 if __name__ == "__main__":

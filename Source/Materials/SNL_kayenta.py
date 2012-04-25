@@ -131,7 +131,7 @@ class Kayenta(ConstitutiveModelPrototype):
         self.registerParameter("FREE01",62,aliases=['FREE1'])
         self.registerParameter("FREE02",63,aliases=['FREE2'])
         self.registerParameter("FREE03",64,aliases=['FREE3'])
-        self.registerParameter("FREE04",65,aliases=['FREE4'])
+        self.registerParameter("FREE04",65,aliases=['FREE4', 'NU'])
         self.registerParameter("FREE05",66,aliases=['FREE5'])
         self.registerParameter("FREE06",67,aliases=['FREE6','CUTPSF','CTPSF'])
         self.registerParameter("YSLOPEI",68,aliases=[])

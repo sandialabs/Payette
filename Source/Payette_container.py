@@ -817,7 +817,8 @@ def parse_first_leg(leg):
         "stress": {"num": 4, "len": 6},
         "deformation gradient": {"num": 5, "len": 9},
         "electric field": {"num": 6, "len": 3},
-        "displacement": {"num": 8, "len": 3}}
+        "displacement": {"num": 8, "len": 3},
+        "vstrain": {"num": 2, "len": 1}}
     allowed_t = ["time", "dt"]
 
     if "using" not in leg[0]:

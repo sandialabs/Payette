@@ -223,6 +223,8 @@ def test_payette(argv):
                 py_module = imp.load_module(py_mod, fobj, pathname, description)
                 fobj.close()
                 test = py_module.Test()
+                if not test.checked:
+                    test.check_setup()
                 out.write(WIDTH_TERM * "=" + "\n")
                 out.write("Name:  {0}\n".format(test.name))
                 out.write("Owner: {0}\n\n".format(test.owner))
