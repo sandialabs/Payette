@@ -511,6 +511,14 @@ def run_payette_test(py_file):
     # symlink the baseline file
     if test.baseline:
         for base_f in test.baseline:
+            source = base_f
+            link_name = os.path.join(benchdir, os.path.basename(base_f))
+            if not os.path.isfile(source):
+                pu.logerr("cannot symlink to non-existant file\n"+
+                          "os.symlink({0},{1})".format(repr(source),repr(link_name)))
+            if os.path.isfile(link_name):
+                pu.logerr("cannot create symlink when link destination exists\n"+
+                          "os.symlink({0},{1})".format(repr(source),repr(link_name)))
             os.symlink(
                 base_f,
                 os.path.join(benchdir, os.path.basename(base_f)))
