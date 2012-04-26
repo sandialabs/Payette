@@ -19,13 +19,16 @@ python module lambda_mie_gruneisen ! in
     interface  ! in :lambda_mie_gruneisen
         subroutine lambda_prefix_eosmgi(ui,gc,dc,uc,mdc,ndc,vi) ! in :lambda_mie_gruneisen:MieGruneisen.F
             use payette__user__routines
-            real dimension(*) :: ui
-            real dimension(*) :: gc
-            real dimension(*) :: dc
+            integer, parameter :: nnprop=22
+            integer, parameter :: nndc=13
+            integer, parameter :: nnvi=5
+            double precision dimension(nnprop), intent(in,out) :: ui
+            double precision dimension(*), intent(in,out) :: gc
+            double precision dimension(nndc), intent(in,out) :: dc
             character dimension(*,1),intent(c) :: uc
             integer :: mdc
             integer :: ndc
-            real dimension(*) :: vi
+            double precision dimension(nnvi), intent(in,out) :: vi
             intent(callback) migerror
             external migerror
             intent(callback) migmessage
@@ -33,16 +36,21 @@ python module lambda_mie_gruneisen ! in
         end subroutine lambda_prefix_eosmgi
         subroutine lambda_prefix_eosmgk(ui,gc,dc,nx,namea,keya,rinit,rdim,iadvct,itype) ! in :lambda_mie_gruneisen:MieGruneisen.F
             use payette__user__routines
-            real dimension(*) :: ui
-            real dimension(*) :: gc
-            real dimension(*) :: dc
-            integer :: nx
-            character dimension(*,1),intent(c) :: namea
-            character dimension(*,1),intent(c) :: keya
-            real dimension(*) :: rinit
-            real dimension(7,*) :: rdim
-            integer dimension(*) :: iadvct
-            integer dimension(*) :: itype
+            integer, parameter :: nprop=22
+            integer, parameter :: ndc=13
+            integer, parameter :: nsv=2
+            integer, parameter :: mxn=nsv*80
+            integer, parameter :: mxk=nsv*10
+            double precision dimension(nprop), intent(in) :: ui
+            double precision dimension(*), intent(in) :: gc
+            double precision dimension(ndc), intent(in) :: dc
+            integer, intent(out) :: nx
+            character dimension(mxn),intent(c,out) :: namea
+            character dimension(mxk),intent(c,out) :: keya
+            real dimension(nsv), intent(out) :: rinit
+            real dimension(7,nsv), intent(out) :: rdim
+            integer dimension(nsv), intent(out) :: iadvct
+            integer dimension(nsv), intent(out) :: itype
             intent(callback) migerror
             external migerror
             intent(callback) migmessage

@@ -9,7 +9,7 @@ import numpy as np
 from Source.Payette_utils import *
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 try:
-    import Source.Materials.Library.kayenta as mtllib
+    import Source.Materials.Library.lambda_mie_gruneisen as mtllib
     imported = True
 except:
     imported = False
@@ -33,6 +33,11 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         self.aliases = attributes["aliases"]
         self.imported = imported
 
+        self.num_ui = 22
+        self.num_gc = 0
+        self.num_dc = 13
+        self.num_vi = 5
+
         self.registerParameter("R0",    0, aliases=[])
         self.registerParameter("T0",    1, aliases=[])
         self.registerParameter("CS",    2, aliases=[])
@@ -55,9 +60,14 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         self.registerParameter("XB",   19, aliases=[])
         self.registerParameter("NB",   20, aliases=[])
         self.registerParameter("PWR",  21, aliases=[])
+        self.nprop = len(self.parameter_table.keys())
 
-        self.ndc = 13
-        self.dc = np.zeros(self.ndc)
+        self.ui = np.zeros(self.num_ui)
+        self.dc = np.zeros(self.num_dc)
+        self.gc = np.zeros(self.num_gc)
+        self.vi = np.zeros(self.num_vi)
+        self.uc = " "
+        self.nsv = 0
 
         pass
 
@@ -69,15 +79,16 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         # parse parameters
         self.parseParameters(user_params,f_params)
 
-        self.ui,self.dc = self._check_props()
-        self.ui,self.nsv,namea,keya,sv,rdim,iadvct,itype = self._set_field()
+        self.ui, self.gc, self.dc, self.vi = self._check_props()
+        self.nsv, namea, keya, sv, rdim, iadvct, itype = self._set_field()
         namea = parseToken(self.nsv,namea)
         keya = parseToken(self.nsv,keya)
 
         # register the extra variables with the payette object
         matdat.registerExtraVariables(self.nsv,namea,keya,sv)
 
-        self.bulk_modulus,self.shear_modulus = self.ui[0],self.ui[5]
+        self.bulk_modulus = self.ui[0] * self.ui[2] ** 2
+        self.shear_modulus = 1.0
         pass
 
     def updateState(self,simdat,matdat):
@@ -85,6 +96,7 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
            update the material state based on current state and strain increment
         '''
         iam = self.name + ".updateState(self,simdat,matdat)"
+        print("who am i = ",iam)
         dt = simdat.getData("time step")
         d = simdat.getData("rate of deformation")
         sigold = matdat.getData("stress")
@@ -94,17 +106,6 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         if not PC_F2PY_CALLBACK: a = a[:-2]
         signew,svnew,usm = mtllib.kayenta_calc(*a)
 
-        if svnew[18] < 0.:
-            # Kayenta reached the spall cut off only using a portion of the
-            # strain increment.
-            void = svnew[47]
-            ch = svnew[37]
-            n = simdat.getData("number of steps")
-            msg = ( "Kayenta returned with CRACK < 0, requesting void of "
-                    "[{0}] on step [{1}] and coher of [{2}]".format(void,n,ch) )
-            reportMessage(iam,msg)
-            pass
-
         matdat.storeData("stress",signew)
         matdat.storeData("extra variables",svnew)
 
@@ -112,13 +113,22 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
 
     # Private methods
     def _check_props(self):
-        props = np.array(self.ui0)
-        a = [props,props,self.dc]
+        ui = np.array(self.ui0)
+        gc = np.array(self.gc)
+        dc = np.array(self.dc)
+        uc = np.array(self.uc)
+        mdc = self.num_dc
+        ndc = 0
+        vi = np.array(self.vi)
+        a = [ui, gc, dc, uc, mdc, ndc, vi, migError, migMessage]
         if not PC_F2PY_CALLBACK: a = a[:-2]
         return mtllib.lambda_prefix_eosmgi(*a)
 
     def _set_field(self):
-        a = [self.ui,self.ui,self.dc,migError,migMessage]
+        ui = np.array(self.ui)
+        gc = np.array(self.gc)
+        dc = np.array(self.dc)
+        a = [ui, gc, dc, migError, migMessage]
         if not PC_F2PY_CALLBACK: a = a[:-2]
-        return mtllib.kayenta_rxv(*a)
+        return  mtllib.lambda_prefix_eosmgk(*a)
 

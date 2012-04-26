@@ -420,12 +420,12 @@ def build_payette_mtls(nproc=1):
 
     if failed_materials:
         errors = 55
-        pu.logwrn("The following material libraries WERE NOT built: {0}\n"
-                  .format(", ".join(failed_materials)))
+        pu.logwrn("The following material libraries WERE NOT built:\n{0}\n"
+                  .format("\n".join([" " * 10 + x for x in failed_materials])))
 
     if built_materials:
-        pu.loginf("The following material libraries WERE built: {0}\n"
-                  .format(", ".join(built_materials)))
+        pu.loginf("The following material libraries WERE built:\n{0}\n"
+                  .format("\n".join([" " * 10 + x for x in built_materials])))
 
     # remove cruft
     for ftmp in [x for x in os.listdir(pc.PC_TOOLS)
