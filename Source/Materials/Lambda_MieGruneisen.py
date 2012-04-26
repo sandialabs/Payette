@@ -66,6 +66,7 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         self.dc = np.zeros(self.num_dc)
         self.gc = np.zeros(self.num_gc)
         self.vi = np.zeros(self.num_vi)
+        self.ui[1] = 2.567981e-2
         self.uc = " "
         self.nsv = 0
 
@@ -80,6 +81,7 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         self.parseParameters(user_params,f_params)
 
         self.ui, self.gc, self.dc, self.vi = self._check_props()
+#        self.dc = np.array(self.dc, dtype=np.float64)
         self.nsv, namea, keya, sv, rdim, iadvct, itype = self._set_field()
         namea = parseToken(self.nsv,namea)
         keya = parseToken(self.nsv,keya)
@@ -97,17 +99,31 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         '''
         iam = self.name + ".updateState(self,simdat,matdat)"
         print("who am i = ",iam)
-        dt = simdat.getData("time step")
-        d = simdat.getData("rate of deformation")
-        sigold = matdat.getData("stress")
-        svold = matdat.getData("extra variables")
 
-        a = [dt,self.ui,self.ui,self.dc,sigold,d,svold,migError,migMessage]
-        if not PC_F2PY_CALLBACK: a = a[:-2]
-        signew,svnew,usm = mtllib.kayenta_calc(*a)
 
-        matdat.storeData("stress",signew)
-        matdat.storeData("extra variables",svnew)
+        rho = 9.0
+        temp = 300.0
+        for rho in np.linspace(8.0,16.0,30):
+            for temp in np.linspace(200.,25000.,30):
+                a = [1,
+                     self.ui0,
+                     self.gc,
+                     self.dc,
+                     rho,
+                     temp,
+                     matdat.getData("extra variables"),
+                     migError,
+                     migMessage]
+                if not PC_F2PY_CALLBACK: a = a[:-2]
+                pres, enrg, cs, scratch = mtllib.lambda_prefix_eosmgr(*a)
+                fmt = lambda x: "{0:20.10e}".format(float(x))
+                print("{0}{1}{2}{3}".format(fmt(rho*1000),fmt(temp),fmt(pres/10.0),fmt(enrg)))
+        
+#        print("pressure: ", pres)
+#        print("energy:   ", enrg)
+#        print("soundspd: ", cs)
+#        print("scratch:  ", scratch)
+        sys.exit("halt")
 
         return
 
@@ -122,6 +138,7 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         vi = np.array(self.vi)
         a = [ui, gc, dc, uc, mdc, ndc, vi, migError, migMessage]
         if not PC_F2PY_CALLBACK: a = a[:-2]
+        print(mtllib.lambda_prefix_eosmgi.__doc__)
         return mtllib.lambda_prefix_eosmgi(*a)
 
     def _set_field(self):
@@ -130,5 +147,6 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         dc = np.array(self.dc)
         a = [ui, gc, dc, migError, migMessage]
         if not PC_F2PY_CALLBACK: a = a[:-2]
+        print(mtllib.lambda_prefix_eosmgk.__doc__)
         return  mtllib.lambda_prefix_eosmgk(*a)
 
