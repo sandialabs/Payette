@@ -33,9 +33,9 @@ import time
 
 from Source.Payette_utils import *
 from Source.Payette_material import Material
+from Source.Payette_data_container import DataContainer
 import Source.Materials.Payette_installed_materials as pim
 import Source.Payette_driver as cdriver
-from Source.Payette_data_container import DataContainer
 
 
 PARSE_ERRORS = 0
@@ -65,7 +65,7 @@ class Payette:
 
     def __init__(self, simname, user_input, opts):
 
-        iam = simname + "__init__(self, simname, user_input, opts)"
+        iam = simname + ".__init__"
 
         if opts.debug:
             opts.verbosity = 4
@@ -104,16 +104,18 @@ class Payette:
                 else:
                     break
                 continue
-            pass
 
         # logfile
         logfile = "{0}.log".format(os.path.splitext(outfile)[0])
-        try: os.remove(logfile)
-        except: pass
+        try:
+            os.remove(logfile)
+        except OSError:
+            pass
+
         setupLogger(logfile,loglevel)
 
         msg = "setting up simulation {0}".format(simname)
-        reportMessage(__file__,msg)
+        reportMessage(iam, msg)
 
         # file name for the Payette restart file
         rfile = "{0}.prf".format(os.path.splitext(outfile)[0])
@@ -189,7 +191,23 @@ class Payette:
                     continue
                 plotable.extend(item.split())
                 continue
-            pass
+
+        # get extraction
+        extraction = user_input.get("extraction")
+        extract = []
+        if extraction is not None:
+            for item in extraction["content"]:
+                for pat, repl in ((",", " "), (";", " "), (":", " "), ):
+                    item = item.replace(pat, repl)
+                    continue
+                item = item.split()
+                for x in item:
+                    if x[0] not in ("%", "@"):
+                        msg = "unrecognized extraction request {0}".format(x)
+                        reportWarning(iam, msg)
+                        continue
+                    extract.append(x)
+                continue
 
         # register boundary variables
         self.simdat.registerData("leg number","Scalar", init_val=0 )
@@ -215,8 +233,10 @@ class Payette:
 
             if len(item) == 1:
                 item.append("True")
+
             try:
                 val = eval(item[1])
+
             except:
                 val = str(item[1])
 
@@ -245,6 +265,7 @@ class Payette:
         self.simdat.registerOption("material",self.material)
         self.simdat.registerOption("efield sim",self.material.electricFieldModel())
         self.simdat.registerOption("mathplot vars",[x.upper() for x in plotable])
+        self.simdat.registerOption("extraction",[x.upper() for x in extract])
         self.simdat.registerOption("math1",
                                    os.path.join(basedir, simname + ".math1"))
         self.simdat.registerOption("math2",
@@ -400,6 +421,9 @@ class Payette:
         AUTHORS
            Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
         """
+
+        iam = self.name + "boundaryFactory"
+
         nodeBoundary_cache = {}
         elementBoundary_cache = {}
 
@@ -513,7 +537,10 @@ class Payette:
                     g_time = float(leg[g_inf["col_idxs"][0]])
 
                 leg_t = bcontrol["tfac"] * g_time
-                c = [float(eval(leg[x])) for x in g_inf["col_idxs"][1:]]
+                try:
+                    cij = [float(eval(leg[x])) for x in g_inf["col_idxs"][1:]]
+                except:
+                    parser_error("syntax error in leg {0}".format(leg[0]))
 
             else:
                 if len(leg) < 5:
@@ -527,7 +554,10 @@ class Payette:
                     parser_error("leg number {0} has no steps".format(leg_no))
 
                 control = leg[3].strip()
-                c = [float(eval(y)) for y in leg[4:]]
+                try:
+                    cij = [float(eval(y)) for y in leg[4:]]
+                except:
+                    parser_error("syntax error in leg {0}".format(leg[0]))
 
             # control should be a group of letters describing what type of
             # control type the leg is. valid options are:
@@ -549,7 +579,7 @@ class Payette:
 
             lcntrl = [int(x) for x in list(control)]
 
-            if len(lcntrl) != len(c):
+            if len(lcntrl) != len(cij):
                 parser_error("length of leg control != number of control "
                              "items in leg {0:d}".format(leg_no))
 
@@ -557,7 +587,7 @@ class Payette:
             ef, hold, efcntrl = [], [], []
             for i, j in enumerate(lcntrl):
                 if j == 6:
-                    ef.append(c[i])
+                    ef.append(cij[i])
                     hold.append(i)
                     efcntrl.append(j)
                 continue
@@ -566,13 +596,12 @@ class Payette:
 
             ef.extend([0.] * (3 - len(ef)))
             efcntrl.extend([6] * (3 - len(efcntrl)))
-            c = [i for j, i in enumerate(c) if j not in hold]
+            cij = [i for j, i in enumerate(cij) if j not in hold]
             lcntrl = [i for j, i in enumerate(lcntrl) if j not in hold]
 
-            if len(lcntrl) != len(c):
+            if len(lcntrl) != len(cij):
                 parser_error("final length of leg control != number of "
                              "control items in leg {0:d}".format(leg_no))
-                pass
 
             reduced_lcntrl = list(set(lcntrl))
             if 5 in reduced_lcntrl:
@@ -583,16 +612,16 @@ class Payette:
                                  "control in leg {0:d}, got {1}"
                                  .format(leg_no, control))
 
-                elif len(c) != 9:
+                elif len(cij) != 9:
                     parser_error("all 9 components of deformation gradient "
                                  "must be specified for leg {0:d}"
                                  .format(leg_no))
 
                 else:
                     # check for valid deformation
-                    F = np.array([[c[0],c[1],c[2]],
-                                  [c[3],c[4],c[5]],
-                                  [c[6],c[7],c[8]]])
+                    F = np.array([[cij[0], cij[1], cij[2]],
+                                  [cij[3], cij[4], cij[5]],
+                                  [cij[6], cij[7], cij[8]]])
                     J = np.linalg.det(F)
                     if J <= 0:
                         parser_error("inadmissible deformation gradient in leg "
@@ -616,7 +645,7 @@ class Payette:
                                  .format(leg_no, control))
                     pass
 
-                elif len(c) != 3:
+                elif len(cij) != 3:
                     parser_error("all 3 components of displacement must "
                                  "be specified for leg {0:d}".format(leg_no))
 
@@ -630,9 +659,11 @@ class Payette:
                 # In the limit as kappa->0, the Seth-Hill strain becomes
                 # strain = ln(stretch).
                 for j in range(3):
-                    stretch = dfac * c[j] + 1
-                    if kappa != 0: c[j] = 1 / kappa * (stretch ** kappa - 1.)
-                    else: c[j] = math.log(stretch)
+                    stretch = dfac * cij[j] + 1
+                    if kappa != 0:
+                        cij[j] = 1 / kappa * (stretch ** kappa - 1.)
+                    else:
+                        cij[j] = math.log(stretch)
                     continue
 
                 # displacements now converted to strains
@@ -642,7 +673,7 @@ class Payette:
             if lcntrl == [2]:
 
                 # only one strain value given -> volumetric strain
-                ev = c[0] * bcontrol["efac"]
+                ev = cij[0] * bcontrol["efac"]
                 if kappa * ev + 1. < 0.:
                     parser_error("1 + kappa*ev must be positive")
 
@@ -652,37 +683,39 @@ class Payette:
                     ev = ((kappa * ev + 1.) ** (1. / 3.) - 1.) / kappa
 
                 lcntrl = [2, 2, 2]
-                c = [ev, ev, ev]
+                cij = [ev, ev, ev]
                 efac_hold = bcontrol["efac"]
                 bcontrol["efac"] = 1.0
 
             for i, j in enumerate(lcntrl):
                 if j == 1 or j == 3:
-                    c[i] = bcontrol["ratfac"] * c[i]
+                    cij[i] = bcontrol["ratfac"] * cij[i]
 
                 elif j == 2:
-                    c[i] = bcontrol["efac"] * c[i]
-                    if kappa * c[i] + 1. < 0.:
+                    cij[i] = bcontrol["efac"] * cij[i]
+                    if kappa * cij[i] + 1. < 0.:
                         parser_error("1 + kappa*c[{0:d}] must be positive"
                                      .format(i))
 
                 elif j == 4:
-                    c[i] = bcontrol["sfac"] * c[i]
+                    cij[i] = bcontrol["sfac"] * cij[i]
 
                 elif j == 5:
-                    c[i] = bcontrol["ffac"] * c[i]
+                    cij[i] = bcontrol["ffac"] * cij[i]
 
                 elif j == 6:
-                    c[i] = bcontrol["effac"] * c[i]
+                    cij[i] = bcontrol["effac"] * cij[i]
                     pass
 
                 continue
 
-            try: bcontrol["efac"] = efac_hold
-            except: pass
+            try:
+                bcontrol["efac"] = efac_hold
+            except:
+                pass
 
-            # fill in c and lcntrl so that their lengths are always 9
-            c.extend([0.] * (9 - len(c)))
+            # fill in cij and lcntrl so that their lengths are always 9
+            cij.extend([0.] * (9 - len(cij)))
             lcntrl.extend([0] * (9 - len(lcntrl)))
 
             # append leg control
@@ -691,16 +724,18 @@ class Payette:
                              leg_t,
                              leg_steps,
                              lcntrl + efcntrl,
-                             np.array(c + ef)])
+                             np.array(cij + ef)])
             continue
 
         if sigc:
             # stress and or stress rate is used to control this leg. For
             # these cases, kappa is set to 0. globally.
             if kappa != 0.:
-                reportWarning(__file__,"WARNING: stress control boundary conditions "
-                                 "only compatible with kappa=0. kappa is being "
-                                 "reset to 0. from %f\n"%kappa)
+                reportWarning(
+                    iam,
+                    "WARNING: stress control boundary conditions "
+                    "only compatible with kappa=0. kappa is being "
+                    "reset to 0. from %f\n"%kappa)
                 bcontrol["kappa"] = 0.
                 pass
 
@@ -723,8 +758,21 @@ class Payette:
         return
 
     def finish(self):
+
+        # close the log and output files
         closeFiles()
+
+        matdat = self.material.materialData()
+        # write the mathematica files
+        if self.simdat.MATHPLOT_VARS:
+            writeMathPlot(self.simdat, matdat)
+
+        # extract requested variables
+        if self.simdat.EXTRACTION:
+            write_extraction(self.simdat, matdat)
+
         del self.simdat
+
         return
 
     def simulationData(self):
@@ -742,9 +790,10 @@ class Payette:
         return
 
     def setupRestart(self):
+        iam = self.name + "setupRestart"
         setupLogger(self.simdat.LOGFILE,self.simdat.LOGLEVEL,mode="a")
         msg = "setting up simulation %s"%self.simdat.SIMNAME
-        reportMessage(__file__,msg)
+        reportMessage(iam, msg)
 
 def parse_first_leg(leg):
     """Parse the first leg of the legs block.

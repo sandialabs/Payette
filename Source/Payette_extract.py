@@ -19,7 +19,7 @@ OUTPUT
 """
 
 SILENT = False
-exe = os.path.basename(__file__)
+exe = "extractPayette"  # os.path.basename(__file__)
 manpage=\
 """
 NAME
@@ -126,9 +126,11 @@ def extract(argv):
 
         # open the file and extract only the data that the user asked for
         data = []
-        for line in open(outf,"r").readlines()[1:]:
+        fobj = open(outf, "r")
+        for iline, line in enumerate(fobj):
 
-            if not line.split(): continue
+            if iline == 0 or not line.split():
+                continue
 
             linedat = [ float(x) for x in line.split() ]
 
@@ -209,16 +211,24 @@ def args2dict(args,sep):
 
     def check_file():
         length = 0
-        for iline,line in enumerate(open(argf,"r").readlines()[1:]):
-            if not line.split(): continue
+        fobj = open(argf, "r")
+        for iline, line in enumerate(fobj):
+
+            if iline == 0 or not line.split():
+                continue
+
             linedat = [ float(x) for x in line.split() ]
-            if iline == 0: length = len(linedat)
+            if iline == 1:
+                length = len(linedat)
+
             else:
                 if len(linedat) != length:
+                    print(linedat, length)
                     msg = ("Number of columns in line {0} of {1} not consistent"
                            .format(iline+1,argf))
                     logerr(msg, 6)
             continue
+        fobj.close()
         return
 
     def kw2col(kw):

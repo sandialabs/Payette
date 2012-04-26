@@ -55,6 +55,7 @@ def runProblem(the_model,**kwargs):
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     """
     if debug: pdb = __import__('pdb')
+    cons_msg = "leg {0:{1}d}, step {2:{3}d}, time {4:.4E}, dt {5:.4E}"
 
     # -------------------- initialize and copy passed values to local variables
 
@@ -72,6 +73,7 @@ def runProblem(the_model,**kwargs):
     # --- data
     ileg = int(simdat.getData("leg number"))
     legs = simdat.getData("leg data")[ileg:]
+    lnl = len(str(len(legs)))
     simsteps = simdat.getData("number of steps")
     t_beg = simdat.getData("time")
     dt = simdat.getData("time step")
@@ -86,11 +88,8 @@ def runProblem(the_model,**kwargs):
     # -------------------------------------------------------- initialize model
     # --- start output file and Mathematica files
     msg = "starting calculations for simulation %s"%simdat.SIMNAME
-    reportMessage(iam,msg)
+    reportMessage(iam, msg)
     setupOutputFile(simdat, matdat, restart)
-
-    # write the mathematica files
-    if simdat.MATHPLOT_VARS: writeMathPlot(simdat,matdat)
 
     # --- call the material model with zero state
     if ileg == 0:
@@ -120,7 +119,8 @@ def runProblem(the_model,**kwargs):
             pass
 
         # read inputs and initialize for this leg
-        lnum,t_end,nsteps,ltype,prdef = leg
+        lnum, t_end, nsteps, ltype, prdef = leg
+        lns = len(str(nsteps))
         delt = t_end - t_beg
         if delt == 0.: continue
         nv, dflg = 0, list(set(ltype))
@@ -147,8 +147,7 @@ def runProblem(the_model,**kwargs):
             pass
 
         if verbose:
-            msg = 'leg %i, step %i, time %f, dt %f'%(lnum,1,t_beg,dt)
-            reportMessage(iam,msg)
+            reportMessage(iam, cons_msg.format(lnum, lnl, 1, lns, t_beg, dt))
             pass
 
         # --- loop through components of prdef and compute the values at the end
@@ -331,8 +330,7 @@ def runProblem(the_model,**kwargs):
                 pass
 
             if simdat.SCREENOUT or ( verbose and (2*n - nsteps) == 0 ):
-                msg = 'leg %i, step %i, time %f, dt %f'%(lnum,n,t,dt)
-                reportMessage(iam,msg)
+                reportMessage(iam, cons_msg.format(lnum, lnl, n, lns, t, dt))
                 pass
 
             if matdat.getData("failed"):
@@ -381,7 +379,7 @@ def runProblem(the_model,**kwargs):
 
         if simdat.WRITE_VANDD_TABLE:
             writeVelAndDispTable(simdat.INITIAL_TIME, simdat.TERMINATION_TIME,
-                                 t_beg,t_end,eps_beg,eps_end,simdat.KAPPA)
+                                 t_beg, t_end, eps_beg, eps_end, simdat.KAPPA)
             pass
 
         # advances time must come after writing the v & d tables above
@@ -393,8 +391,7 @@ def runProblem(the_model,**kwargs):
 
         # --- print message to screen
         if verbose and nsteps > 1:
-            msg = 'leg %i, step %i, time %f, dt %f'%(lnum,n+1,t,dt)
-            reportMessage(iam,msg)
+            reportMessage(iam, cons_msg.format(lnum, lnl, n + 1, lns, t, dt))
             pass
 
 
@@ -429,4 +426,5 @@ def runProblem(the_model,**kwargs):
 
     reportMessage(iam, "{0} Payette simulation ran to completion"
                   .format(the_model.name))
+
     return 0
