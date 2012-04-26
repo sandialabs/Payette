@@ -134,8 +134,8 @@ begin simulation exmpl_0
     # and modify the Mathematica notebooks for your model.
 
 
-    sig11, sig22, sig33,  # Values can be space or comma delimited
-    qssigxx # and can span several lines.
+    sig11, sig22,  # Values can be space or comma delimited
+    sig33 # and can span several lines.
 
   end mathplot
 
