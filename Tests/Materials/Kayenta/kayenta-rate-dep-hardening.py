@@ -30,9 +30,6 @@ Rate dependence with hardening.
 
                                   **** NOTE ****
 
-        if check:
-            self.check_setup()
-
     This test does not pass. The HK variable is off between the out and gold.
 """
 

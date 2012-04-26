@@ -30,6 +30,7 @@ import linecache
 import numpy as np
 
 import Payette_config as pc
+import Source.Payette_extract as pe
 
 if not os.path.isfile(os.path.join(
         os.path.dirname(os.path.realpath(__file__)),"../Payette_config.py")):
@@ -218,7 +219,7 @@ def read_input(user_input, user_cchar=None):
     # sure that a simulation is given
     recognized_blocks = ("simulation", "boundary", "legs", "material",
                          "optimization", "permutation", "enumeration",
-                         "mathplot", "name", "content")
+                         "mathplot", "name", "content", "extraction")
     incompatible_blocks = (("visualization", "optimization", "enumeration"),)
 
     user_dict = {}
@@ -253,6 +254,7 @@ def read_input(user_input, user_cchar=None):
                 errors += 1
                 logerr("{0} blocks incompatible, choose one"
                        .format(", ".join(bad_blocks)))
+            continue
 
         user_dict[simkey] = input_set["simulation"]
 
@@ -549,7 +551,7 @@ def writeMathPlot(simdat,matdat):
             msg = (
                 "requested plot variable{0:s} {1:s} not available for mathplot"
                 .format("s" if len(tmp) > 1 else "", ", ".join(tmp)))
-            reportWarning(iam,msg)
+            logwrn(msg, caller=iam)
             pass
 
         pass
@@ -1372,4 +1374,29 @@ def get_input_lines(user_input, cchars):
         continue
 
     return all_input
+
+
+
+def write_extraction(simdat, matdat):
+    """ write out the requested extraction """
+
+    iam = "write_extraction"
+
+    # make sure that any extraction arguments are in the output file
+    lowhead = [x.lower() for x in simdat.plotKeys() + matdat.plotKeys()]
+    lowextract = [x.lower() for x in simdat.EXTRACTION]
+
+    exargs = [simdat.OUTFILE, "--silent", "--xout"]
+    for idx, item in enumerate(lowextract):
+        if not item[1:].isdigit() and item[1:] not in lowhead:
+            if not [x for x in item if x in "+/*-"]:
+                logwrn("ignoring bad extraction request " + item, caller=iam)
+                continue
+        exargs.append(item)
+        continue
+
+    error = pe.extract(exargs)
+
+    return
+
 
