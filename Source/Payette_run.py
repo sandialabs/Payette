@@ -45,7 +45,6 @@ import Source.Payette_utils as pu
 import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr
 import Source.Payette_optimize as po
-import Source.Payette_enumerate as pe
 import Source.Payette_permutate as pp
 
 
@@ -420,21 +419,11 @@ def _run_job(job):
 
         solve = the_model.run_job()
 
-    elif 'enumeration' in USER_INPUT_DICT[job]:
-        # intantiate the Enumeration object
-        the_model = pe.Enumerate(job, USER_INPUT_DICT[job], OPTS)
-
-        # run the enumeration problem
-        if TIMING:
-            tim1 = time.time()
-
-        solve = the_model.enumerate()
-
     elif 'permutation' in USER_INPUT_DICT[job]:
         # intantiate the Optimize object
         the_model = pp.Permutate(job, USER_INPUT_DICT[job], OPTS)
 
-        # run the enumeration problem
+        # run the permutation problem
         if TIMING:
             tim1 = time.time()
 

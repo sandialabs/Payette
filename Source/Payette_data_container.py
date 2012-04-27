@@ -286,8 +286,11 @@ class DataContainer:
 
     def unregisterData(self,name):
         """ unregister data with the data container """
-        try: del self.data_container[name]
-        except: reportWarning(iam,"attempting to unregistered non-registered data")
+        try:
+            del self.data_container[name]
+        except KeyError:
+            reportWarning(iam,
+                "attempting to unregister non-registered data {0}".format(name))
 
     def registerExtraVariables(self,nextra,names,keys,values):
         """ register extra data with the data container """
@@ -342,18 +345,13 @@ class DataContainer:
 
         iam = "{0}.registerOption(self,name,val)".format(self.name)
 
-        try:
-            return self.option_container[name]
-
-        except KeyError:
+        option = self.option_container.get(name)
+        if option is None:
             msg = ("{0} not in {1}.option_container. registered options are:\n{2}."
                    .format(name,self.name,", ".join(self.option_container.keys())))
             reportError(iam,msg)
 
-        except:
-            raise
-
-        pass
+        return option
 
     def getData(self,name,stash=False,cur=False,form="Array"):
 
@@ -377,13 +375,11 @@ class DataContainer:
                 continue
             return np.array(ex)
 
-        try: data = self.data_container[name]
-        except KeyError:
+        data = self.data_container.get(name)
+        if data is None:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
                    .format(name,self.name,", ".join(self.data_container.keys())))
             reportError(iam,msg)
-        except:
-            raise
 
         typ = data["type"]
 
@@ -451,13 +447,11 @@ class DataContainer:
                 continue
             return
 
-        try: data = self.data_container[name]
-        except KeyError:
+        data = self.data_container.get(name)
+        if data is None:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
                    .format(name,self.name,", ".join(self.data_container.keys())))
             reportError(iam,msg)
-        except:
-            raise
 
         typ = data["type"]
 
@@ -603,32 +597,26 @@ class DataContainer:
         return
 
     def getExName(self,idx):
-        try: return self.extra_vars_map[idx]
-        except KeyError:
+        name = self.extra_vars_map.get(idx)
+        if name is None:
             msg = "{0:d} not in {1}.extra_vars_map.".format(idx,self.name)
             reportError(iam,msg)
-        except:
-            raise
-        pass
+        return name
 
     def getPlotKey(self,name):
-        try: data = self.data_container[name]
-        except KeyError:
+        data = self.data_container.get(name)
+        if data is None:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
                    .format(name,self.name,", ".join(self.data_container.keys())))
             reportError(iam,msg)
-        except:
-            raise
         return data["plot key"]
 
     def getPlotName(self,name):
-        try: data = self.data_container[name]
-        except KeyError:
+        data = self.data_container.get(name)
+        if data is None:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
                    .format(name,self.name,", ".join(self.data_container.keys())))
             reportError(iam,msg)
-        except:
-            raise
         return data["plot name"]
 
     def plotKeys(self):
@@ -698,15 +686,13 @@ class DataContainer:
                 continue
             return ex_vars
 
-        try: return self.data_container[name]
-        except KeyError:
+        data = self.data_container.get(name)
+        if data is None:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
                    .format(name,self.name,", ".join(self.data_container.keys())))
             reportError(iam,msg)
-        except:
-            raise
 
-        return
+        return data
 
 
     def dataContainer(self):

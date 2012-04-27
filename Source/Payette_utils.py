@@ -1400,3 +1400,13 @@ def write_extraction(simdat, matdat):
     return
 
 
+def check_if_test_dir(dir_path):
+    """ check if dir_path has __test_dir__.py """
+    has__test_dir__ = False
+    for dirnam, dirs, files in os.walk(dir_path):
+        if "__test_dir__.py" in files:
+            has__test_dir__ = True
+            break
+        continue
+
+    return has__test_dir__

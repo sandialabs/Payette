@@ -127,6 +127,19 @@ def build_payette(argv):
         type=int,
         default=1,
         help="number of simultaneous jobs [default: %default]")
+    parser.add_option(
+        "-a",
+        dest="BUILDALL",
+        action="store_true",
+        default=False,
+        help="build all materials (including non default) [default: %default")
+    parser.add_option(
+        "-d",
+        dest="MTLDIRS",
+        action="append",
+        default=[],
+        help=("Additional directories to scan for materials, accumulated "
+              "[default: %default]."))
     (opts, args) = parser.parse_args(argv)
 
     if len(args) > 0:
@@ -138,13 +151,17 @@ def build_payette(argv):
         sys.exit(0)
 
     pu.logmes(pc.PC_INTRO)
+
     # determine if we build all materials, or just a selection
     if opts.DSC:
         opts.mtllib.append("domain_switching_ceramic")
+
     if opts.KMM:
         opts.mtllib.append("kayenta")
+
     if opts.LPC:
         opts.mtllib.append("piezo_ceramic")
+
     buildselect = any(opts.mtllib)
     libstobuild = ["all"] if not buildselect else opts.mtllib
 
@@ -165,6 +182,9 @@ def build_payette(argv):
             options.append(option)
         continue
 
+    if opts.BUILDALL:
+        options.append("buildall")
+
     # intro message
     pu.loginf("Building Payette\n")
 
@@ -181,11 +201,26 @@ def build_payette(argv):
     COMPILER_INFO = {"f2py": {"compiler": pc.PC_F2PY,
                               "options": f2pyopts}}
 
+    # check material directories
+    errors = 0
+    mtl_dirs = pc.PC_MTLS
+    for dirnam in opts.MTLDIRS:
+        dirnam = os.path.expanduser(dirnam)
+        if not os.path.isdir(dirnam):
+            errors += 1
+            pu.logerr("material directory {0} not found".format(dirnam))
+        else:
+            mtl_dirs.append(dirnam)
+        continue
+    if errors:
+        sys.exit("ERROR: stopping due to previous errors")
+
     if not opts.nobuildlibs:
 
         # get names of materials from Source/Materials
-        pu.loginf("finding Payette materials")
-        MATERIALS = get_payette_mtls(libstobuild, options)
+        pu.loginf("finding Payette materials from {0}"
+                  .format(", ".join(mtl_dirs)))
+        MATERIALS = get_payette_mtls(mtl_dirs, libstobuild, options)
         pu.loginf("Payette materials found\n")
 
         # build the requested material libraries
@@ -500,7 +535,7 @@ def _build_lib(material):
     return [material,MATERIALS[material]] # end of _build_lib
 
 
-def get_payette_mtls(requested_libs=None, options=None):
+def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):
 
     """Read python files in Source/Materials and determine which are interface
     files for material models. If they are, add them to the payette_materials
@@ -533,8 +568,10 @@ def get_payette_mtls(requested_libs=None, options=None):
         return super_class_names
 
     payette_materials = {}
-    py_files = [os.path.join(pc.PC_MTLS, x)
-                for x in os.listdir(pc.PC_MTLS) if x.endswith(".py")]
+    py_files = []
+    for dirnam in mtl_dirs:
+        py_files.extend([os.path.join(dirnam, x)
+                         for x in os.listdir(dirnam) if x.endswith(".py")])
 
     # go through list of python files in
     for py_file in py_files:
@@ -547,23 +584,21 @@ def get_payette_mtls(requested_libs=None, options=None):
         fobj.close()
 
         attributes = getattr(py_module, "attributes", None)
-        if not attributes:
+        if attributes is None or not isinstance(attributes, dict):
             continue
 
         # check if this is a payette material
-        try:
-            payette_material = attributes["payette material"]
-        except KeyError:
-            continue
-        if not payette_material:
+        payette_material = attributes.get("payette material")
+        if payette_material is None or not payette_material:
             continue
 
         # check if a constitutive model class is defined
         class_data = pyclbr.readmodule(py_mod, path=py_path)
 
-        try:
-            proto = class_data["Parent"].name
-        except KeyError:
+        parent = class_data.get("Parent")
+        if parent is not None:
+            proto = parent.name
+        else:
             proto = "ConstitutiveModelPrototype"
 
         for name, data in class_data.items():
@@ -578,47 +613,39 @@ def get_payette_mtls(requested_libs=None, options=None):
             continue
 
         # file is an interface file check attributes, define defaults
-        try:
-            name = attributes["name"]
-        except KeyError:
-            pu.logerr("No name attribute given in {0}".format(py_file))
-        name = name.replace(" ", "_").lower()
+        name = attributes.get("name")
+        if name is None:
+            pu.logerr("No name attribute given in {0}, skipping"
+                      .format(py_file))
+            continue
 
-        try:
-            libname = attributes["libname"]
-        except KeyError:
-            libname = name + pc.PC_EXT_MOD_FEXT
+        name = name.replace(" ", "_").lower()
+        libname = attributes.get("libname", name + pc.PC_EXT_MOD_FEXT)
 
         # material type
-        try:
-            material_type = attributes["material type"]
-        except KeyError:
-            pu.logerr("No material type attribute given in {0}".format(py_file))
+        material_type = attributes.get("material type")
+        if material_type is None:
+            pu.logerr("No material type attribute given in {0}, skipping"
+                      .format(py_file))
+            continue
+
         electromtl = bool([x for x in material_type if "electro" in x])
         specialmtl = bool([x for x in material_type if "special" in x])
 
+        # default material?
+        default = attributes.get("default material")
+
         # get aliases, they need to be a list of aliases
-        try:
-            aliases = attributes["aliases"]
-        except KeyError:
-            aliases = []
-        if isinstance(aliases, str):
+
+        aliases = attributes.get("aliases", [])
+        if not isinstance(aliases, (list, tuple)):
             aliases = [aliases]
         aliases = [x.replace(" ", "_").lower() for x in aliases]
 
         # fortran model set up
-        try:
-            fortran_source = attributes["fortran source"]
-        except KeyError:
-            fortran_source = False
-        try:
-            build_script = attributes["build script"]
-        except KeyError:
-            build_script = None
-        try:
-            depends = attributes["depends"]
-        except KeyError:
-            depends = None
+        fortran_source = attributes.get("fortran source", False)
+        build_script = attributes.get("build script")
+        depends = attributes.get("depends")
 
         # all fortran models must give a build script
         if fortran_source and not build_script:
@@ -651,12 +678,18 @@ def get_payette_mtls(requested_libs=None, options=None):
             "parse error": parse_err,
             "build requested": False,  # by default, do not build the material
             "build succeeded": False,
-            "build failed": False
+            "build failed": False,
             }
 
         payette_materials[name] = mtl_dict
         # payette_materials[py_mod] = mtl_dict
         del py_module
+
+        if default is None and "buildall" not in options:
+            # not a default material, do not build it unless specifically
+            # requested
+            if name not in requested_libs:
+                continue
 
         # if building select libraries, check if this is it
         if buildselect and name not in requested_libs:
@@ -745,7 +778,7 @@ def write_summary_to_screen():
     all_dirs, all_files = [], []
     code_exts = [".py", ".pyf", "", ".F", ".C", ".f"]
     all_exts = code_exts + [".inp", ".tex", ".pdf"]
-    for dirnam, dirs, files in os.walk(PC_ROOT):
+    for dirnam, dirs, files in os.walk(pc.PC_ROOT):
         if ".git" in dirnam:
             continue
         all_dirs.extend([os.path.join(dirnam, d) for d in dirs])

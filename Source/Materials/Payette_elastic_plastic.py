@@ -43,7 +43,8 @@ attributes = {
     "fortran source":True,
     "build script":os.path.join(PC_MTLS_FORTRAN,"ElasticPlastic/build.py"),
     "aliases":["inuced anisotropy"],
-    "material type":["mechanical"]
+    "material type":["mechanical"],
+    "default material": True,
     }
 
 class ElasticPlastic(ConstitutiveModelPrototype):

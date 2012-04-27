@@ -290,9 +290,8 @@ class Optimize(object):
                 item = item.replace(pat, repl)
             item = item.split()
             if "method" in item[0].lower():
-                try:
-                    opt_method = allowed_methods[item[1].lower()]
-                except KeyError:
+                opt_method = allowed_methods.get(item[1].lower())
+                if opt_method is None:
                     pu.logerr("invalid method {0}".format(item[1].lower()))
                     errors += 1
 

@@ -34,7 +34,8 @@ attributes = {
     "payette material":True,
     "name":"py elastic",
     "aliases":["python elastic","py hooke","python hook"],
-    "material type":["mechanical"]
+    "material type":["mechanical"],
+    "default material": True,
     }
 class PyElastic(ConstitutiveModelPrototype):
     """

@@ -66,14 +66,16 @@ def check_exists(itemnam, item):
 
     """ check if item exists on file system """
 
-    if not item:
-        logerr("{0} not found".format(itemnam))
-        return 1
-    elif not os.path.isdir(item) and not os.path.isfile(item):
-        logerr("{0} not found".format(item))
-        return 1
+    if not isinstance(item, (list, tuple)):
+        item = [item]
 
-    return 0
+    errors = 0
+    for tmp in item:
+        if not os.path.isdir(tmp) and not os.path.isfile(tmp):
+            errors += 1
+            logerr("{0} not found [name: {1}]".format(item, itemnam))
+
+    return errors
 
 
 def begmes(msg, pre="", end="  "):
@@ -217,11 +219,13 @@ PC_ROOT = os.path.dirname(THIS_FILE)
 PC_AUX = os.path.join(PC_ROOT, "Aux")
 PC_DOCS = os.path.join(PC_ROOT, "Documents")
 PC_SOURCE = os.path.join(PC_ROOT, "Source")
-PC_TESTS = os.path.join(PC_ROOT, "Tests")
+PC_TESTS = [os.path.join(PC_ROOT, "Benchmarks")]
 PC_TOOLS = os.path.join(PC_ROOT, "Toolset")
+
 # modify sys.path
 if PC_ROOT not in sys.path:
     sys.path.insert(0, PC_ROOT)
+
 ERRORS += check_exists("PC_ROOT", PC_ROOT)
 ERRORS += check_exists("PC_AUX", PC_AUX)
 check_exists("PC_DOCS", PC_DOCS)
@@ -270,22 +274,19 @@ PC_INPUTS = os.path.join(PC_ROOT, "Aux/Inputs")
 ERRORS += check_exists("PC_INPUTS", PC_INPUTS)
 
 # --- subdirectories of PC_SOURCE
-PC_MTLS = os.path.join(PC_SOURCE, "Materials")
+PC_MTLS = [os.path.join(PC_SOURCE, "Materials")]
 PC_MIG_UTILS = os.path.join(PC_SOURCE, "Fortran/migutils.F")
 ERRORS += check_exists("PC_MTLS", PC_MTLS)
 ERRORS += check_exists("PC_MIG_UTILS", PC_MIG_UTILS)
 
 # --- Subdirectories of PC_MTLS
-PC_MTLS_LIBRARY = os.path.join(PC_MTLS, "Library")
-PC_MTLS_FORTRAN = os.path.join(PC_MTLS, "Fortran")
-PC_MTLS_FORTRAN_INCLUDES = os.path.join(PC_MTLS,
-                                                  "Fortran/Includes")
-PC_MTLS_FILE = os.path.join(PC_MTLS,
-                                      "Payette_installed_materials.py")
+PC_MTLS_LIBRARY = os.path.join(PC_MTLS[0], "Library")
+PC_MTLS_FORTRAN = os.path.join(PC_MTLS[0], "Fortran")
+PC_MTLS_FORTRAN_INCLUDES = os.path.join(PC_MTLS[0], "Fortran/Includes")
+PC_MTLS_FILE = os.path.join(PC_MTLS[0], "Payette_installed_materials.py")
 ERRORS += check_exists("PC_MTLS_LIBRARY", PC_MTLS_LIBRARY)
 ERRORS += check_exists("PC_MTLS_FORTRAN", PC_MTLS_FORTRAN)
-ERRORS += check_exists("PC_MTLS_FORTRAN_INCLUDES",
-                       PC_MTLS_FORTRAN_INCLUDES)
+ERRORS += check_exists("PC_MTLS_FORTRAN_INCLUDES", PC_MTLS_FORTRAN_INCLUDES)
 
 # --- extension module file extension
 PC_EXT_MOD_FEXT = sysconfig.get_config_var("SO")
@@ -406,6 +407,18 @@ def configure_payette(argv):
         action="store_true",
         default=False,
         help="Compile with f2py callbacks functions [default: %default]")
+    parser.add_option(
+        "--benchdirs",
+        dest="BENCHDIRS",
+        action="append",
+        default=[],
+        help="Additional directories to scan for benchmarks [default: %default]")
+    parser.add_option(
+        "--mtldirs",
+        dest="MTLDIRS",
+        action="append",
+        default=[],
+        help="Additional directories to scan for materials [default: %default]")
 
     opts = parser.parse_args(argv)[0]
 
@@ -413,10 +426,13 @@ def configure_payette(argv):
         os.remove(PC_CONFIG_FILE)
     except OSError:
         pass
+
     try:
         os.remove(PC_CONFIG_FILE + "c")
     except OSError:
         pass
+
+    errors = 0
 
     # clean up first
     clean_payette()
@@ -440,14 +456,45 @@ def configure_payette(argv):
         PAYETTE_CONFIG["PC_F90EXEC"] = get_exe_path(opts.F90EXEC)
     PAYETTE_CONFIG["PC_F2PYDBG"] = opts.F2PYDBG
 
+    # add to benchmark dir
+    for dirnam in opts.BENCHDIRS:
+        dirnam = os.path.expanduser(dirnam)
+        if os.path.isdir(dirnam):
+            is_test_dir = False
+            for item in os.walk(dirnam):
+                if "__test_dir__.py" in item[-1]:
+                    is_test_dir = True
+                    PC_TESTS.append(dirnam)
+                    break
+                continue
+            if not is_test_dir:
+                errors += 1
+                logerr("__test_dir__.py not found in {0}".format(dirnam))
+        else:
+            errors += 1
+            logerr("benchmark directory {0} not found".format(dirnam))
+        continue
+
+    # add to materials dir
+    for dirnam in opts.MTLDIRS:
+        if os.path.isdir(dirnam):
+            PC_MTLS.append(dirnam)
+        else:
+            errors += 1
+            logerr("material directory {0} not found".format(dirnam))
+        continue
+
+    if errors:
+        sys.exit("ERROR: stopping due to previous errors")
+
+    # get current environment
     for item in ENVS:
         if item in os.environ:
             ENV[item] = os.environ[item]
         continue
 
     # make sure PC_ROOT is first on PYTHONPATH
-    pypath = os.pathsep.join([PC_ROOT, PC_TOOLS,
-                              PC_MTLS])
+    pypath = os.pathsep.join([PC_ROOT, PC_TOOLS] + PC_MTLS)
     if "PYTHONPATH" in ENV:
         pypath += (os.pathsep +
                    os.pathsep.join([x for x in ENV["PYTHONPATH"].split(os.pathsep)

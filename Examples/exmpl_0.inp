@@ -120,23 +120,4 @@ begin simulation exmpl_0
 
   end material
 
-  begin mathplot
-
-    # the mathplot section tells Payette to write two files:
-    #   simnam.{math1, math2}
-    # which can be read in to Mathematic for postprocessing. On their own,
-    # these files are useless, they are used to give directives to a
-    # Mathematica notebooks written by Prof. Rebecca Brannon at the Dept. of
-    # Mech. Eng. at the University of Utah. The only Mathematic notebook that
-    # currently uses the .math? files is in
-    # PAYETTE_ROOT/Tests/Materils/Kayenta/nb/{kayenta,kayenta_init}.nb To
-    # implement this feature for other models, copy the entire nb/ directory
-    # and modify the Mathematica notebooks for your model.
-
-
-    sig11, sig22,  # Values can be space or comma delimited
-    sig33 # and can span several lines.
-
-  end mathplot
-
 end simulation

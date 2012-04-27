@@ -80,6 +80,7 @@ class PayetteTest(object):
     outfile = None
     rms_sets = None
     runcommand = None
+    material = None
     baseline = []
     aux_files = []
     description = None
@@ -862,32 +863,27 @@ class PayetteTest(object):
 
         return self.passcode
 
-def findTests(reqkws, unreqkws, spectests, test_dir=None):
-    """
-    NAME
-       findTests
+def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
+    """ find the Payette tests
 
-    PURPOSE
-       determine if any python files in names are Payette tests
+    Parameters
+    ----------
+    reqkws : list
+       list of requested keywords
+    unreqkws : list
+       list of unrequested keywords
+    spectests : list
+       list of specific tests to find
 
-    INPUT
-       dirname: directory name where the files in names reside
-       names: list of files in dirname
-       reqkws - list of requested kw
-       unreqkws - list of negated kw
-       spectests - list of specific tests to run
+    Returns
+    -------
+       found_tests : dict
 
-    OUTPUT
-       found_tests: dictionary of found tests
-
-    AUTHORS
-       Tim Fuller, Sandia, National Laboratories, tjfulle@sandia.gov
-       M. Scot Swan, Sandia National Laboratories, mswan@sandia.gov
     """
 
     import pyclbr
 
-    iam = "findTests"
+    iam = "find_tests"
 
     def get_module_name(py_file):
         return os.path.splitext(os.path.basename(py_file))[0]
@@ -905,14 +901,17 @@ def findTests(reqkws, unreqkws, spectests, test_dir=None):
             continue
         return super_class_names
 
-    if test_dir:
-        if not os.path.isdir(test_dir):
-            sys.exit("test directory {0} not found".format(test_dir))
-            pass
-        pass
+    if test_dirs is not None:
+        errors = 0
+        for test_dir in test_dirs:
+            if not os.path.isdir(test_dir):
+                errors += 1
+                pu.logerr("test directory {0} not found".format(test_dir))
+            continue
+        if errors:
+            sys.exit("ERROR: stopping due to previous errors")
     else:
-        test_dir = pc.PC_TESTS
-        pass
+        test_dirs = [pc.PC_TESTS]
 
     # reqkws are user specified keywords
     errors = 0
@@ -923,28 +922,6 @@ def findTests(reqkws, unreqkws, spectests, test_dir=None):
     if spectests:
         spectests = [x.lower() for x in spectests]
 
-    # do not run the kayenta tests if kayenta not installed
-    if "kayenta" not in pim.PAYETTE_INSTALLED_MATERIALS:
-        unreqkws.append("kayenta")
-        if "kayenta" in reqkws:
-            errors += 1
-            warn(iam,"requested kayenta tests but kayenta model not installed")
-
-    # do not run the piezo electric material's tests if not installed
-    if "domain_switching_ceramic" not in pim.PAYETTE_CONSTITUTIVE_MODELS:
-        unreqkws.append("domain_switching_ceramic")
-        if "domain_switching_ceramic" in reqkws:
-            errors += 1
-            warn(iam,("requested domain_switching_ceramic tests but "
-                      "domain_switching_ceramic model not installed"))
-
-    if "piezo_ceramic" not in pim.PAYETTE_INSTALLED_MATERIALS:
-        unreqkws.append("piezo_ceramic")
-        if "piezo_ceramic" in reqkws:
-            errors += 1
-            warn(iam,("requested piezo_ceramic tests but "
-                      "piezo_ceramic model not installed"))
-
     reqkws.sort()
     unreqkws.sort()
 
@@ -954,35 +931,38 @@ def findTests(reqkws, unreqkws, spectests, test_dir=None):
         continue
 
     py_modules = {}
-    for dirname, dirs, files in os.walk(test_dir):
+    for test_dir in test_dirs:
+        for dirname, dirs, files in os.walk(test_dir):
 
-        if ".svn" in dirname or "__test_dir__.py" not in files:
-            continue
-
-        for fname in files:
-            fpath = os.path.join(dirname,fname)
-            fbase,fext = os.path.splitext(fname)
-
-            # filter out all files we know cannot be test files
-            if ( fext != ".py" or
-                 fbase[0] == "." or
-                 fbase == "__init__" or
-                 fbase == "__test_dir__" or
-                 fbase == "Payette_config" or
-                 fbase == "template" ):
+            if ".svn" in dirname or "__test_dir__.py" not in files:
                 continue
 
-            py_mod = get_module_name(fpath)
-            if py_mod in py_modules:
-                errors += 1
-                warn(iam,"removing duplicate python module {0} in tests"
-                     .format(py_mod))
-                del py_modules[py_mod]
+            for fname in files:
+                fpath = os.path.join(dirname,fname)
+                fbase,fext = os.path.splitext(fname)
 
-            else:
-                py_modules[py_mod] = fpath
+                # filter out all files we know cannot be test files
+                if ( fext != ".py" or
+                     fbase[0] == "." or
+                     fbase == "__init__" or
+                     fbase == "__test_dir__" or
+                     fbase == "Payette_config" or
+                     fbase == "template" ):
+                    continue
 
+                py_mod = get_module_name(fpath)
+                if py_mod in py_modules:
+                    errors += 1
+                    warn(iam,"removing duplicate python module {0} in tests"
+                         .format(py_mod))
+                    del py_modules[py_mod]
+
+                else:
+                    py_modules[py_mod] = fpath
+
+                continue
             continue
+
         continue
 
     for py_mod, py_file in py_modules.items():
@@ -1018,6 +998,7 @@ def findTests(reqkws, unreqkws, spectests, test_dir=None):
             continue
 
         include = False
+
         # instantiate the test object, but don't check it. we just want to
         # know if the test is requested, or not.
         test = py_module.Test(check=False)
@@ -1062,16 +1043,26 @@ def findTests(reqkws, unreqkws, spectests, test_dir=None):
                 else:
                     continue
 
-        if include:
-            speed = [x for x in speed_kws if x in test.keywords][0]
-            found_tests[speed][py_mod] = py_file
+        if not include:
+            continue
+
+        # we've gotten this far, so the test was requested, now check if the
+        # material model used in the test is installed
+        if test.material is not None:
+            if test.material not in pim.PAYETTE_INSTALLED_MATERIALS:
+                warn(iam, ("material model {0} required by {0} not installed"
+                           .format(test.material, test.name)))
+                continue
+
+        speed = [x for x in speed_kws if x in test.keywords][0]
+        found_tests[speed][py_mod] = py_file
 
         continue
 
     return errors, found_tests
 
 if __name__ == "__main__":
-    errors, found_tests = findTests(["elastic","fast"],[],[])
+    errors, found_tests = find_tests(["elastic","fast"],[],[])
 
     fast_tests = [ val for key,val in found_tests["fast"].items() ]
     medium_tests = [ val for key,val in found_tests["medium"].items() ]

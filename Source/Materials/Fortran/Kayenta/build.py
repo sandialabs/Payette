@@ -14,10 +14,10 @@ class Build(MaterialBuilder):
         # check if Kayenta source directory is found
         if not PC_KAYENTA:
             raise BuildError("{0} environment variable not found, {1} not built"
-                             .format("PC_KAYENTA",libname),5)
+                             .format("PC_KAYENTA", libname), 5)
         elif not os.path.isdir(PC_KAYENTA):
             raise BuildError("{0} not found, {1} not built"
-                             .format(PC_KAYENTA,libname),10)
+                             .format(PC_KAYENTA, libname), 10)
 
         # initialize base class
         MaterialBuilder.__init__(self,name,libname,fdir,compiler_info)
