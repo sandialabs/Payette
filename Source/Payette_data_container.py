@@ -308,7 +308,7 @@ class DataContainer:
             key = keys[i]
             value = values[i]
             self.registerData(name,"Scalar",
-                              init_val = value,
+                              init_val = np.float64(value),
                               plot_key = key)
             self.extra_vars_map[i] = name
 
