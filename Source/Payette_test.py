@@ -1067,8 +1067,8 @@ if __name__ == "__main__":
     fast_tests = [ val for key,val in found_tests["fast"].items() ]
     medium_tests = [ val for key,val in found_tests["medium"].items() ]
     long_tests = [ val for key,val in found_tests["long"].items() ]
-    print fast_tests
-    print medium_tests
-    print long_tests
+    print(fast_tests)
+    print(medium_tests)
+    print(long_tests)
     sys.exit("here at end")
 

@@ -89,7 +89,7 @@ def extract(argv):
                             .format(", ".join(opchoices))))
     (opts, passed_args) = parser.parse_args(argv)
     if opts.MAN:
-        print manpage
+        sys.stderr.write(manpage)
         parser.print_help()
         return 0
 
@@ -223,7 +223,7 @@ def args2dict(args,sep):
 
             else:
                 if len(linedat) != length:
-                    print(linedat, length)
+                    sys.stderr.write(linedat, length)
                     msg = ("Number of columns in line {0} of {1} not consistent"
                            .format(iline+1,argf))
                     logerr(msg, 6)

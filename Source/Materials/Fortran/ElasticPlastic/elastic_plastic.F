@@ -680,13 +680,6 @@ C     Compute bulk modulus
          ELSE
             CS= SQRT(B0/RHO0)
          ENDIF
-
-#ifdef KERLEY_EOS_RTNS
-      ELSEIF(IDK.EQ.1)THEN
-C     Kerley EOS to compute sound speed
-         CALL EOSUI(UI,UIMG)
-         CALL EOSMGV(1,1,UIMG,UI,UI(IPDC1),RHO,U,0,0,P,T,CS,S)
-#endif
       ENDIF
       BM= RHO0*CS**2
 
@@ -979,94 +972,6 @@ C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       RETURN
       END
 
-#ifdef KERLEY_EOS_RTNS
-C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
-      SUBROUTINE EOSUI(UIOLD,UI)
-C***********************************************************************
-C     PURPOSE: Create new UI array with properties ordered as required
-C     by the Kerley EOS
-C
-C input
-C -----
-C    UIOLD: Original property array
-C
-C output
-C -----
-C    UI: Newly re-ordered property array
-C
-C  MODIFICATION HISTORY
-C  yymmdd|usrname|what was done
-C  ------ --- -------------
-C  100422|tjfulle|created routine
-C
-      IMPLICIT NONE
-C............................................................parameters
-#include "elastic_plastic_pnt.Blk"
-C.................................................................common
-C.................................................................passed
-      DOUBLE PRECISION UIOLD,UI
-      DIMENSION UIOLD(*),UI(*)
-C..................................................................local
-CccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccEOSUI
-      UI(1)= UIOLD(IPRHO0)   ! - initial density (required)
-      UI(2)= UIOLD(IPT0)     ! - initial temperature
-      UI(3)= UIOLD(IPC0)     ! - sound speed (required)
-      UI(4)= UIOLD(IPS1)     ! - coefficient of linear term US-UP fit
-      UI(5)= UIOLD(IPGP)     ! - Gruneisen parameter
-      UI(6)= UIOLD(IPCV)     ! - heat capacity (required)
-      UI(7)= UI(6)*UI(2)     ! - shift in energy zero (see below)
-      UI(8)= 0.D0            ! - initial porous density
-      UI(9)= 0.D0            ! - crushup pressure
-      UI(10)= 0.D0           ! - pressure at elastic limit
-      UI(11)= 3670.D0        ! - sound speed in foam
-      UI(12)= 1.D0           ! - number of subcycles in time step
-      UI(13)= 0.D0           ! - coefficient of quad. term in US-UP fit
-      UI(14)= 1.D0           ! - used for 2-state and MP models
-      UI(15)= UIOLD(IPRHO0)  ! - alias for R0
-      UI(16)= UIOLD(IPT0)    ! - alias for T0
-      UI(17)= UIOLD(IPS1)    ! - alias for S1
-      UI(18)= UIOLD(IPGP)    ! - alias for G0
-      UI(19)= 0.D0           ! - coefficient of low-pressure term
-      UI(20)= 1.D0           ! - constant in low-pressure term
-      UI(21)= 1.D0           ! - power of compression in low-pressure term
-      UI(22)= 2.D0           ! - power for alpha integration
-      RETURN
-      END
-C
-C
-C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
-      FUNCTION EXPS(ARG)
-C***********************************************************************
-C     PURPOSE: Specialized version of exponential to prevent underflow
-C              replacement of EXP(ARG) by zero when ARG is an
-C              extraordinarily large negative number.  For all practical
-C              purposes, EXPS may be regarded as equivalent to EXP.
-C
-C input
-C -----
-C    ARG: Argument for exponential
-C
-C output
-C -----
-C    EXPS: Exponential of ARG
-C
-C
-      IMPLICIT NONE
-C.............................................................parameters
-      DOUBLE PRECISION EUNDERFLOW,EOVERFLOW,PONE
-      PARAMETER (PONE=1.D0)
-      PARAMETER (EUNDERFLOW=-34.53877639491*PONE)
-      PARAMETER (EOVERFLOW=92.1034037*PONE)
-C.................................................................common
-C.................................................................passed
-      DOUBLE PRECISION ARG,EXPS
-C
-Cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-C     EXPS(ARG)       = EXP(ARG)
-      EXPS= EXP(MIN(MAX(ARG,EUNDERFLOW),EOVERFLOW))
-      RETURN
-      END ! FUNCTION EXPS
-#endif
 C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       SUBROUTINE DMMCHK(UI)
 C
@@ -1176,31 +1081,8 @@ c     UI(IPA1)=PTWO/ROOT3*UI(IPSC)*UI(IPA1)/(UI(IPSC)+UI(IPA1))
       IF(UI(IPXP).LE.PZERO)UI(IPXP)=PONE
       IF(UI(IPTQC).LE.PZERO)UI(IPTQC)=PONE
 
-#ifdef KERLEY_EOS_RTNS
-      IF(NINT(UI(IPIDK)).EQ.1)THEN
-         CALL LOGMES('Using Kerley EOS')
-         CS= UI(IPC0)
-         S1= UI(IPS1)
-         GP= UI(IPGP)
-         CALL EOSMGJ(CS,S1,0.D0,GP,0.D0,1.D0,1.D0,A(1),A(6))
-         UI(IPDC1) = A(1)
-         UI(IPDC2) = A(2)
-         UI(IPDC3) = A(3)
-         UI(IPDC4) = A(4)
-         UI(IPDC5) = A(5)
-         UI(IPDC6)= 1.D0
-         UI(IPDC7)= 0.D0
-         UI(IPDC8)= 0.D0
-         UI(IPDC9)= 0.D0
-         UI(IPDC10)= 0.D0
-         UI(IPDC11)= 1.D0
-         UI(IPDC12)= 0.D0
-         UI(IPDC13)= UI(IPRHO0)/(1.D0-1.D0/MAX(1.000001D0,S1))
-      ENDIF
-#else
       UI(IPIDK) = PZERO
       UI(IPIDG) = PZERO
-#endif
 
       IF(.NOT.DEJAVU)THEN
          IF(UI(IPA4PF).EQ.UI(IPA4))THEN
