@@ -176,7 +176,8 @@ def test_payette(argv):
         continue
     if errors:
         sys.exit("ERROR: stopping due to previous errors")
-    pu.loginf("Gathering Payette tests from {0}".format(", ".join(test_dirs)))
+    pu.loginf("Gathering Payette tests from\n{0}"
+              .format("\n".join([" " * 6 + x for x in test_dirs])))
     errors, found_tests = find_tests(opts.KEYWORDS, opts.NOKEYWORDS,
                                      opts.SPECTESTS, test_dirs)
 

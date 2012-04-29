@@ -27,7 +27,7 @@ import logging
 
 from Source.Payette_utils import *
 
-import Source.Materials.Payette_installed_materials as pim
+import Source.Payette_installed_materials as pim
 from Source.Payette_data_container import DataContainer
 
 class Material:

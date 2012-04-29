@@ -263,8 +263,6 @@ for exe_nam, exe_path in PC_BUILT_EXES.items():
 
 # --- auxilary Payette environment variables
 PC_KAYENTA = os.getenv("PAYETTE_KAYENTA")
-PC_ALEGRANEVADA = os.getenv("PAYETTE_ALEGRANEVADA")
-PC_NLOPT = os.getenv("NLOPTLOC")
 PC_LAMBDA_MGRUN = os.getenv("LAMBDA_MGRUN")
 
 # --- configuration files
@@ -283,11 +281,11 @@ ERRORS += check_exists("PC_MIG_UTILS", PC_MIG_UTILS)
 # --- Subdirectories of PC_MTLS
 PC_MTLS_LIBRARY = os.path.join(PC_MTLS[0], "Library")
 PC_MTLS_FORTRAN = os.path.join(PC_MTLS[0], "Fortran")
-PC_MTLS_FORTRAN_INCLUDES = os.path.join(PC_MTLS[0], "Fortran/Includes")
-PC_MTLS_FILE = os.path.join(PC_MTLS[0], "Payette_installed_materials.py")
+PC_MTLS_INCLUDES = os.path.join(PC_MTLS[0], "Includes")
+PC_MTLS_FILE = os.path.join(PC_SOURCE, "Payette_installed_materials.py")
 ERRORS += check_exists("PC_MTLS_LIBRARY", PC_MTLS_LIBRARY)
 ERRORS += check_exists("PC_MTLS_FORTRAN", PC_MTLS_FORTRAN)
-ERRORS += check_exists("PC_MTLS_FORTRAN_INCLUDES", PC_MTLS_FORTRAN_INCLUDES)
+ERRORS += check_exists("PC_MTLS_INCLUDES", PC_MTLS_INCLUDES)
 
 # --- extension module file extension
 PC_EXT_MOD_FEXT = sysconfig.get_config_var("SO")
@@ -316,12 +314,10 @@ PAYETTE_CONFIG["PC_MTLS"] = PC_MTLS
 PAYETTE_CONFIG["PC_MIG_UTILS"] = PC_MIG_UTILS
 PAYETTE_CONFIG["PC_MTLS_LIBRARY"] = PC_MTLS_LIBRARY
 PAYETTE_CONFIG["PC_MTLS_FORTRAN"] = PC_MTLS_FORTRAN
-PAYETTE_CONFIG["PC_MTLS_FORTRAN_INCLUDES"] = (
-    PC_MTLS_FORTRAN_INCLUDES)
+PAYETTE_CONFIG["PC_MTLS_INCLUDES"] = PC_MTLS_INCLUDES
 PAYETTE_CONFIG["PC_MTLS_FILE"] = PC_MTLS_FILE
 PAYETTE_CONFIG["PC_INPUTS"] = PC_INPUTS
-PAYETTE_CONFIG["PC_EXT_MOD_FEXT"] = (
-    PC_EXT_MOD_FEXT)
+PAYETTE_CONFIG["PC_EXT_MOD_FEXT"] = PC_EXT_MOD_FEXT
 PAYETTE_CONFIG["PC_OSTYPE"] = PC_OSTYPE
 PAYETTE_CONFIG["PC_RUNTEST"] = PC_RUNTEST
 PAYETTE_CONFIG["PC_RUN"] = PC_RUN
@@ -331,8 +327,6 @@ PAYETTE_CONFIG["PC_EXES"] = PC_EXES
 PAYETTE_CONFIG["PC_CONFIG_FILE"] = PC_CONFIG_FILE
 PAYETTE_CONFIG["PC_KAYENTA"] = PC_KAYENTA
 PAYETTE_CONFIG["PC_LAMBDA_MGRUN"] = PC_LAMBDA_MGRUN
-PAYETTE_CONFIG["PC_ALEGRANEVADA"] = PC_ALEGRANEVADA
-PAYETTE_CONFIG["PC_NLOPT"] = PC_NLOPT
 PAYETTE_CONFIG["PC_F2PY"] = PC_F2PY
 PAYETTE_CONFIG["PC_RUNPAYETTE"] = PC_RUNPAYETTE
 PAYETTE_CONFIG["PC_TESTPAYETTE"] = PC_TESTPAYETTE
@@ -479,12 +473,14 @@ def configure_payette(argv):
 
     # add to materials dir
     for dirnam in opts.MTLDIRS:
+        dirnam = os.path.expanduser(dirnam)
         if os.path.isdir(dirnam):
             PC_MTLS.append(dirnam)
         else:
             errors += 1
             logerr("material directory {0} not found".format(dirnam))
         continue
+    sys.path.extend(PC_MTLS)
 
     if errors:
         sys.exit("ERROR: stopping due to previous errors")
@@ -513,6 +509,7 @@ def configure_payette(argv):
             continue
         fnew.write("if PC_ROOT not in sys.path: "
                    "sys.path.insert(0, PC_ROOT)\n")
+        fnew.write("sys.path.extend(PC_MTLS)\n")
         for key, val in ENV.items():
             fnew.write('os.environ["{0}"] = "{1}"\n'.format(key, val))
             continue
@@ -595,13 +592,22 @@ fi
         endmes("{0} script written".format(nam))
         continue
 
+    path = os.path.join(PC_TOOLS, "pconfigure")
+    begmes("writing pcnfigure", pre=SPACE)
+    with open(path, "w") as fnew:
+        fnew.write("#!/bin/sh -f\n")
+        fnew.write("cd {0}\n".format(PC_ROOT))
+        fnew.write("{0} {1}\n".format(PC_PYINT, " ".join(sys.argv)))
+    os.chmod(path, 0o750)
+    endmes("pconfigure written")
+
     loginf("executable scripts written\n")
 
     return ERRORS
 
 
-PREAMBLE = """
-# *************************************************************************** #
+PREAMBLE = \
+"""# *************************************************************************** #
 #                                                                             #
 # This file was generated automatically by the Payette. It contains important #
 # global Payette parameters that are configured at build time.                #

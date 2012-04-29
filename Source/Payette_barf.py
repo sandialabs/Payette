@@ -57,21 +57,19 @@ import Source.Payette_utils as pu
 import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr
 try:
-    import Source.Materials.Payette_installed_materials as pim
+    import Source.Payette_installed_materials as pim
 except ImportError:
     sys.exit("buildPayette must be run to create "
              "Source/Materials/Payette_installed_materials.py")
 
 
 def error(caller, message):
-
     """ Give error message and exit. """
 
     sys.exit("ERROR: {0} [reported by: {1}]".format(message, caller))
 
 
 def inform(message):
-
     """ Write info to user. """
 
     sys.stdout.write("INFO: {0}\n".format(message))
@@ -79,7 +77,6 @@ def inform(message):
 
 
 class PayetteBarf(object):
-
     """ General Payette barf class. Converts barf file to Payette class object
     and runs the driver.
 
@@ -137,7 +134,6 @@ class PayetteBarf(object):
         pass
 
     def get_barf_info(self):
-
         """Read the first line of the barf file and get info. """
 
         iam = "PayetteBarf.get_barf_info(self)"
@@ -164,7 +160,6 @@ class PayetteBarf(object):
         return
 
     def read_barf_file(self):
-
         """ Read the barf file. """
 
         iam = "PayetteBarf.read_barf_file(self)"
@@ -215,7 +210,6 @@ class PayetteBarf(object):
         return
 
     def _convert_to_payette(self):
-
         """ Convert a barf file to Payette input. """
 
         name = self.barf["name"]
@@ -243,7 +237,6 @@ end simulation
         return input_file.split("\n")
 
     def get_block(self, name, block_delim="#####", place=None):
-
         """ Find the strain rate in the barf file """
 
         in_block = False
@@ -285,7 +278,6 @@ end simulation
         return block
 
     def parse_parameters(self, params):
-
         """ parse the parameters """
 
         cmod = self.barf["constitutive model instance"]

@@ -33,6 +33,7 @@ from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 attributes = {
     "payette material":True,
     "name":"py elastic",
+    "libname":"py_elastic",
     "aliases":["python elastic","py hooke","python hook"],
     "material type":["mechanical"],
     "default material": True,

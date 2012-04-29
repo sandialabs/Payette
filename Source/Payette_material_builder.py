@@ -19,11 +19,10 @@ class MaterialBuilder():
         self.pre_directives = []
 
         # signature file and migutils
-        if not sigf:
+        if sigf is None:
             self.signature_file = os.path.join(srcd, self.name + ".signature.pyf")
         else:
             self.signature_file = sigf
-            pass
 
         self.nocallback_file = os.path.join(self.source_directory,
                                             "nocallback.signature.pyf")
@@ -39,7 +38,7 @@ class MaterialBuilder():
             raise BuildError("{0} signature file not found".format(self.name),40)
 
         self.incdirs = [ ".", "{0}".format(self.source_directory),
-                         "{0}".format(PC_MTLS_FORTRAN_INCLUDES) ]
+                         "{0}".format(PC_MTLS_INCLUDES) ]
         self.libdirs = []
         self.libs = []
 

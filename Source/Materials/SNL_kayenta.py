@@ -179,6 +179,11 @@ class Kayenta(ConstitutiveModelPrototype):
         self.ndc = 13
         self.dc = np.zeros(self.ndc)
 
+        # place holder if I decide to work on qsfail
+        self.qsfail = False
+        if self.qsfail:
+            self.multi_level_fail = True
+
         pass
 
     # Public methods
@@ -202,6 +207,19 @@ class Kayenta(ConstitutiveModelPrototype):
         matdat.registerExtraVariables(self.nsv,namea,keya,sv)
 
         self.bulk_modulus,self.shear_modulus = self.ui[0],self.ui[5]
+
+        if self.qsfail:
+            # request extra data to be stored
+            matdat.registerData("crack flag","Array",
+                                init_val = np.zeros(1),
+                                plot_key = "CFLG")
+            matdat.registerData("failure ratio","Array",
+                                init_val = np.zeros(1),
+                                plot_key = "FRATIO")
+            matdat.registerData("decay","Array",
+                                init_val = np.zeros(1),
+                                plot_key = "DECAY")
+
         pass
 
     def updateState(self,simdat,matdat):
@@ -231,6 +249,26 @@ class Kayenta(ConstitutiveModelPrototype):
 
         matdat.storeData("stress",signew)
         matdat.storeData("extra variables",svnew)
+
+        if self.qsfail:
+            sigold = matdat.getData("stress")
+            svold = matdat.getData("extra variables")
+            crkflg = np.array([matdat.getData("crack flag")])
+
+            signew = matdat.getData("stress")
+            svnew = matdat.getData("extra variables")
+
+            a = [dt,self.ui,self.dc,d,sigold,svold,crkflg,migError,migMessage]
+            if not PC_F2PY_CALLBACK: a = a[:-2]
+            updated_state = mtllib.kayenta_update_state(*a)
+
+            signew,svnew,crkflg,decay,fratio,usm = updated_state
+
+            matdat.storeData("stress",signew)
+            matdat.storeData("extra variables",svnew)
+            matdat.storeData("failure ratio",fratio)
+            matdat.storeData("crack flag",crkflg)
+            matdat.storeData("decay",decay)
 
         return
 

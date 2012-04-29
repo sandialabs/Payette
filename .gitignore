@@ -5,6 +5,7 @@ extractPayette
 f2py
 runPayette
 testPayette
+pconfigure
 
 # Backups
 *~

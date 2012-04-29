@@ -3,7 +3,7 @@ import os,sys,imp
 
 from Payette_config import *
 from Source.Payette_utils import BuildError
-from Source.Materials.Payette_build_material import MaterialBuilder
+from Source.Payette_material_builder import MaterialBuilder
 
 class Build(MaterialBuilder):
 

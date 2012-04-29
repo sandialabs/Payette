@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
 import Payette_config as pc
 import Source.Payette_utils as pu
-import Source.Materials.Payette_installed_materials as pim
+import Source.Payette_installed_materials as pim
 
 speed_kws = ["fast", "medium", "long"]
 type_kws = ["verification", "validation", "prototype", "regression"]

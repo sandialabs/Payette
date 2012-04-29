@@ -74,7 +74,7 @@ def build_payette(argv):
         dest="mtllib",
         action="append",
         default=[],
-        help="material libraries to build: [default: %default]")
+        help="specify material libraries to build: [default: ['all']]")
     parser.add_option(
         "-t", "--test",
         dest="TEST",
@@ -162,9 +162,6 @@ def build_payette(argv):
     if opts.LPC:
         opts.mtllib.append("piezo_ceramic")
 
-    buildselect = any(opts.mtllib)
-    libstobuild = ["all"] if not buildselect else opts.mtllib
-
     if opts.FORCEREBUILD:
         try:
             os.remove(pc.PC_MTLS_FILE)
@@ -212,20 +209,26 @@ def build_payette(argv):
         else:
             mtl_dirs.append(dirnam)
         continue
+
     if errors:
         sys.exit("ERROR: stopping due to previous errors")
 
     if not opts.nobuildlibs:
 
         # get names of materials from Source/Materials
-        pu.loginf("finding Payette materials from {0}"
-                  .format(", ".join(mtl_dirs)))
-        MATERIALS = get_payette_mtls(mtl_dirs, libstobuild, options)
+        errors = 0
+        pu.loginf("finding Payette materials from\n{0}"
+                  .format("\n".join([SPACE + x for x in mtl_dirs])))
+        MATERIALS = get_payette_mtls(mtl_dirs, opts.mtllib, options)
         pu.loginf("Payette materials found\n")
+        non_existent = MATERIALS.get("non existent", False)
+        if non_existent:
+            errors += 1
+            del MATERIALS["non existent"]
 
         # build the requested material libraries
         nproc = min(mp.cpu_count(), opts.NPROC)
-        errors = build_payette_mtls(nproc)
+        errors += build_payette_mtls(nproc)
         # material libraries built, now write the
         # Source/Materials/Payette_installed_materials.py file containing all
         # materials
@@ -246,6 +249,7 @@ def build_payette(argv):
         # build errors, meaning that some libraries did not build, but
         # Payette still built.
         errors = 55
+
     elif not errors and test_error != 0:
         # test_run_payette completed with error, but everything built fine,
         # something is wrong...
@@ -396,8 +400,7 @@ def write_payette_materials(payette_materials):
             name = payette_material["name"]
             aliases = payette_material["aliases"]
             class_name = payette_material["class name"]
-            py_path = "Source.Materials." + py_module
-            ftmp.write("from {0} import {1}\n".format(py_path, class_name))
+            ftmp.write("from {0} import {1}\n".format(py_module, class_name))
             ftmp.write('PAYETTE_CONSTITUTIVE_MODELS["{0}"]='
                        '{{"class name":{1},'
                        '"aliases":{2}}}\n'.format(name, class_name, aliases))
@@ -436,6 +439,7 @@ def build_payette_mtls(nproc=1):
         build_results = pool.map(_build_lib, requested_builds)
         pool.close()
         pool.join()
+
     else:
         build_results = [_build_lib(material) for material in requested_builds]
 
@@ -444,6 +448,7 @@ def build_payette_mtls(nproc=1):
         MATERIALS[item[0]] = item[1]
 
     pu.loginf("Payette material libraries built\n")
+
     failed_materials = [MATERIALS[x]["libname"]
                         for x in MATERIALS
                         if MATERIALS[x]["build requested"]
@@ -455,11 +460,11 @@ def build_payette_mtls(nproc=1):
 
     if failed_materials:
         errors = 55
-        pu.logwrn("The following material libraries WERE NOT built:\n{0}\n"
+        pu.logwrn("The following materials WERE NOT built:\n{0}\n"
                   .format("\n".join([" " * 10 + x for x in failed_materials])))
 
     if built_materials:
-        pu.loginf("The following material libraries WERE built:\n{0}\n"
+        pu.loginf("The following materials WERE built:\n{0}\n"
                   .format("\n".join([" " * 10 + x for x in built_materials])))
 
     # remove cruft
@@ -544,12 +549,14 @@ def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):
     """
 
     if requested_libs is None:
-        requested_libs = ["all"]
+        requested_libs = []
 
     if options is None:
         options = []
 
-    buildselect = False if requested_libs[0] == "all" else True
+    # determine if we want to build only select libraries
+    build_select = bool(requested_libs)
+    buildall = "buildall" in options
 
     def get_super_classes(data):
 
@@ -632,11 +639,18 @@ def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):
         electromtl = bool([x for x in material_type if "electro" in x])
         specialmtl = bool([x for x in material_type if "special" in x])
 
+        if electromtl and "electromechanical" in options:
+            requested_libs.append(name)
+
+        if specialmtl and "special" in options:
+            requested_libs.append(name)
+
         # default material?
-        default = attributes.get("default material")
+        default = attributes.get("default material", False)
+        if default and not build_select:
+            requested_libs.append(name)
 
         # get aliases, they need to be a list of aliases
-
         aliases = attributes.get("aliases", [])
         if not isinstance(aliases, (list, tuple)):
             aliases = [aliases]
@@ -685,22 +699,12 @@ def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):
         # payette_materials[py_mod] = mtl_dict
         del py_module
 
-        if default is None and "buildall" not in options:
-            # not a default material, do not build it unless specifically
-            # requested
-            if name not in requested_libs:
-                continue
+        if buildall and name not in requested_libs:
+            requested_libs.append(name)
 
-        # if building select libraries, check if this is it
-        if buildselect and name not in requested_libs:
+        # decide if it should be built or not
+        if name not in requested_libs:
             continue
-
-        elif not buildselect:
-            # only build electromechanical models if requested
-            if electromtl and "electromechanical" not in options:
-                continue
-            elif specialmtl and "special" not in options:
-                continue
 
         # by this point, we have filtered out the materials we do not want to
         # build, so request that it be built
@@ -726,18 +730,19 @@ def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):
 
             continue
 
-    if buildselect:
-        # the user may have requested to build a material that does not exist,
-        # let them know
-        all_names = [payette_materials[x]["name"] for x in payette_materials]
-        non_existent = []
-        for name in requested_libs:
-            if name not in all_names:
-                non_existent.append(name)
-            continue
-        if non_existent:
-            pu.logwrn("requested material[s] {0} not found"
-                      .format(", ".join(non_existent)), pre=SPACE)
+    # the user may have requested to build a material that does not exist, let
+    # them know
+    all_names = [payette_materials[x]["name"] for x in payette_materials]
+    non_existent = []
+    for name in requested_libs:
+        if name not in all_names:
+            non_existent.append(name)
+            payette_materials["non existent"] = True
+        continue
+
+    if non_existent:
+        pu.logwrn("requested material[s] {0} not found"
+                  .format(", ".join(non_existent)), pre=SPACE)
 
     return payette_materials
 
@@ -830,8 +835,10 @@ if __name__ == "__main__":
 
     if not ERROR and not WARN:
         pu.logmes("Enjoy Payette!")
+
     elif WARN:
         pu.logmes("You've been warned, tread lightly!")
+
     else:
         pu.logmes("Better luck next time!")
 

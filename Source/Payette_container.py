@@ -34,7 +34,7 @@ import time
 from Source.Payette_utils import *
 from Source.Payette_material import Material
 from Source.Payette_data_container import DataContainer
-import Source.Materials.Payette_installed_materials as pim
+import Source.Payette_installed_materials as pim
 import Source.Payette_driver as cdriver
 
 
