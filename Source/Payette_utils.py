@@ -629,13 +629,14 @@ def writeAvailableDataToLog(simdat,matdat):
         continue
 
     # extra variables
-    ex = matdat.getData("extra variables")
-    for i, val in enumerate(ex):
-        idx = idx+1
-        name = matdat.getExName(i)
-        key = matdat.getPlotKey(name)
-        write_plotable(idx,key,key.lower() in lowplotable,name,val)
-        continue
+    if matdat.num_extra:
+        ex = matdat.getData("extra variables")
+        for i, val in enumerate(ex):
+            idx = idx+1
+            name = matdat.getExName(i)
+            key = matdat.getPlotKey(name)
+            write_plotable(idx,key,key.lower() in lowplotable,name,val)
+            continue
 
     if simdat.EFIELD_SIM:
         # electric field
@@ -670,10 +671,16 @@ def writeAvailableDataToLog(simdat,matdat):
 
 
 def closeFiles():
-    ofile.write("\n")
-    ofile.flush()
-    ofile.close()
-    simlog.close()
+    try:
+        ofile.write("\n")
+        ofile.flush()
+        ofile.close()
+    except:
+        pass
+    try:
+        simlog.close()
+    except:
+        pass
 
 
 def writeVelAndDispTable(t0,tf,tbeg,tend,epsbeg,epsend,kappa):

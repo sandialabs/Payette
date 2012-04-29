@@ -31,14 +31,14 @@ from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 
 attributes = {
-    "payette material":True,
-    "name":"py elastic",
-    "libname":"py_elastic",
-    "aliases":["python elastic","py hooke","python hook"],
-    "material type":["mechanical"],
+    "payette material": True,
+    "name": "finite_elastic",
+    "libname": "finite_elastic",
+    "aliases": [],
+    "material type": ["mechanical"],
     "default material": True,
     }
-class PyElastic(ConstitutiveModelPrototype):
+class FiniteElastic(ConstitutiveModelPrototype):
     """
     CLASS NAME
        PyElastic
@@ -61,19 +61,20 @@ class PyElastic(ConstitutiveModelPrototype):
     """
 
     def __init__(self):
-        super(PyElastic, self).__init__()
-
+        super(FiniteElastic, self).__init__()
         self.name = attributes["name"]
         self.aliases = attributes["aliases"]
         self.imported = True
 
         # register parameters
-        self.registerParameter("K",0,aliases=['BKMOD'])
-        self.registerParameter("G",1,aliases=['SHMOD'])
+        self.registerParameter("MU", 0, aliases=["SHMOD", "G", "G0"])
+        self.registerParameter("NU", 1, aliases=["POISSONS_RATIO"])
+        self.registerParameter("K", 2, aliases=["BKMOD", "B0"])
+        self.registerParameter("C11", 3, aliases=[], parseable=False)
+        self.registerParameter("C12", 4, aliases=[], parseable=False)
+        self.registerParameter("C44", 5, aliases=[], parseable=False)
         self.nprop = len(self.parameter_table.keys())
 
-        self.ndc = 0
-        self.dc = np.zeros(self.ndc)
         pass
 
     # public methods
@@ -81,13 +82,34 @@ class PyElastic(ConstitutiveModelPrototype):
         iam = self.name + ".setUp(self,material,props)"
 
         # parse parameters
-        self.parseParameters(user_params,f_params)
+        self.parseParameters(user_params, f_params)
 
-        self.ui = self._check_props()
-        self.nsv,namea,keya,sv,rdim,iadvct,itype = self._set_field()
+        mu, nu = self.ui0[0:2]
 
-        # register the extra variables with the payette object
-        matdat.registerExtraVariables(self.nsv,namea,keya,sv)
+        if nu < 0.:
+            reportWarning(iam, "neg Poisson")
+
+        if mu <= 0.:
+            reportError(iam, "Shear modulus G must be positive")
+
+        # compute bulk modulus, c11, c12, and c44
+        k = 2.0 * mu * (1 + nu) / (3. * (1. - 2. * nu))
+        c11 = k + 4. / 3. * mu
+        c12 = k - 2. / 3. * mu
+        c44 = mu
+
+        self.bulk_modulus, self.shear_modulus = k, mu
+
+        self.ui = np.array([mu, nu, k, c11, c12, c44])
+
+        # register the green lagrange strain and second Piola-Kirchhoff stress
+        matdat.registerData("green strain","SymTensor",
+                            init_val = np.zeros(6),
+                            plot_key = "GREEN_STRAIN")
+        matdat.registerData("pk2 stress","SymTensor",
+                            init_val = np.zeros(6),
+                            plot_key = "PK2")
+
 
         return
 
@@ -99,38 +121,30 @@ class PyElastic(ConstitutiveModelPrototype):
         """
            update the material state based on current state and strain increment
         """
-        dt = simdat.getData("time step")
-        d = simdat.getData("rate of deformation")
-        sigold = matdat.getData("stress")
-        de, delta = d*dt, np.array([1.,1.,1.,0.,0.,0.])
-        dev = (de[0] + de[1] + de[2])
-        twog, lam = 2.*self.ui[0], self.ui[1]
-        signew = sigold + twog*de + lam*dev*delta
+        # deformation gradient and its determinant
+        F = simdat.getData("deformation gradient", form="Matrix")
+        jac = np.linalg.det(F)
 
-        matdat.storeData("stress",signew)
+        # green lagrange strain
+        E = 1. / 2. * (np.dot(F.T, F) - np.eye(3))
+
+        # PK2 stress
+        c11, c12, c44 = self.ui[3:]
+        stress = np.zeros((3,3))
+        stress[0, 0] = c11 * E[0, 0] + c12 * E[1, 1] + c12 * E[2, 2]
+        stress[1, 1] = c12 * E[0, 0] + c11 * E[1, 1] + c12 * E[2, 2]
+        stress[2, 2] = c12 * E[0, 0] + c12 * E[1, 1] + c11 * E[2, 2]
+        stress[0, 1] = c44 * E[0, 1]
+        stress[1, 2] = c44 * E[1, 2]
+        stress[0, 2] = c44 * E[0, 2]
+        stress[1, 0] = stress[0, 1]
+        stress[2, 1] = stress[1, 2]
+        stress[2, 0] = stress[0, 2]
+
+        cauchy_stress = (1. / jac) * np.dot(F, np.dot(stress, F.T))
+
+        matdat.storeData("stress", cauchy_stress)
+        matdat.storeData("pk2 stress", stress)
+        matdat.storeData("green strain", E)
+
         return
-
-    # private methods
-    def _check_props(self):
-        K,G = self.ui0
-
-        msg = ""
-        if K <= 0.0: msg += "Bulk modulus K must be positive.  "
-        if G <= 0.0: msg += "Shear modulus G must be positive"
-        if msg: reportError(__file__,msg)
-
-        if 3.*K < 2.*G: msg += "neg Poisson (to avoid warning, set 3*B0>2*G0)"
-        if msg: reportWarning(__file__,msg)
-        self.bulk_modulus,self.shear_modulus = K,G
-
-        # internally, work with lame parameters
-        lam = K - 0.66666666666666666667*G
-        return np.array([G,lam])
-
-    def _set_field(self,*args,**kwargs):
-        nsv = 2
-        sv = np.array([0.,1.])
-        namea,keya = ["Free 01","Free 02"], ["F01","F02"]
-        rdim,iadvct,itype = [None]*3
-        return nsv,namea,keya,sv,rdim,iadvct,itype
-

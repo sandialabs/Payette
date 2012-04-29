@@ -28,7 +28,7 @@ attributes = {
 
 class LambdaMieGruneisen(ConstitutiveModelPrototype):
     def __init__(self):
-        ConstitutiveModelPrototype.__init__(self)
+        super(LambdaMieGruneisen, self).__init__()
         self.name = attributes["name"]
         self.aliases = attributes["aliases"]
         self.imported = imported
@@ -118,7 +118,7 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
                 pres, enrg, cs, scratch = mtllib.lambda_prefix_eosmgr(*a)
                 fmt = lambda x: "{0:20.10e}".format(float(x))
                 print("{0}{1}{2}{3}".format(fmt(rho*1000),fmt(temp),fmt(pres/10.0),fmt(enrg)))
-        
+
 #        print("pressure: ", pres)
 #        print("energy:   ", enrg)
 #        print("soundspd: ", cs)

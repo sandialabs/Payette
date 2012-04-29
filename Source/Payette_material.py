@@ -117,9 +117,9 @@ class Material:
     def electricFieldModel(self):
         return self.constitutive_model.electric_field_model
 
-    def updateState(self,simdat,matdat):
-        return self.constitutive_model.updateState(simdat,matdat)
+    def updateState(self,simdat, matdat):
+        return self.constitutive_model.updateState(simdat, matdat)
 
-    def jacobian(self,simdat,matdat):
+    def jacobian(self,simdat, matdat):
         return self.constitutive_model.jacobian(simdat,matdat)
 

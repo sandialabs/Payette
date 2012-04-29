@@ -53,6 +53,13 @@ MATERIALS = {}
 VERBOSE = True
 BUILD_ERRORS = 0
 
+# python 3 compatibility
+try:
+    unicode
+except NameError:
+    basestring = unicode = str
+
+
 def build_payette(argv):
 
     """ create/build: material library files """

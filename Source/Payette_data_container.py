@@ -54,6 +54,7 @@ class DataContainer:
         self.option_container = {}
         self.extra_vars_map = {}
         self.extra_vars_registered = False
+        self.num_extra = 0
         self.I3 = np.array([1.,1.,1.])
         self.I6 = np.array([1.,1.,1.,0.,0.,0.])
         self.I9 = np.array([1.,0.,0.,0.,1.,0.,0.,0.,1.])
@@ -292,18 +293,19 @@ class DataContainer:
             reportWarning(iam,
                 "attempting to unregister non-registered data {0}".format(name))
 
-    def registerExtraVariables(self,nextra,names,keys,values):
+    def registerExtraVariables(self,nxtra,names,keys,values):
         """ register extra data with the data container """
 
-        iam = ("{0}.registerExtraVariables(self,nextra,names,keys,values)"
+        iam = ("{0}.registerExtraVariables(self,nxtra,names,keys,values)"
                .format(self.name))
+
         if self.extra_vars_registered:
             reporteError(iam,"extra variables can only be registered once")
 
         self.extra_vars_registered = True
-        self.num_extra = nextra
+        self.num_extra = nxtra
 
-        for i in range(nextra):
+        for i in range(nxtra):
             name = names[i]
             key = keys[i]
             value = values[i]

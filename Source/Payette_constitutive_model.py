@@ -27,7 +27,7 @@ from Source.Payette_tensor import *
 
 material_idx = 0
 
-class ConstitutiveModelPrototype:
+class ConstitutiveModelPrototype(object):
     '''
     CLASS NAME
        ConstitutiveModelPrototype
@@ -56,15 +56,19 @@ class ConstitutiveModelPrototype:
         self.aliases = []
         self.parameter_table = {}
         self.parameter_table_idx_map = {}
-        self.nprop, self.ndc, self.nxtra = 0, 0, 0
+        self.nprop = 0
+        self.ndc = 0
+        self.nxtra = 0
         self.J0 = None
         self.ui = np.zeros(self.nprop)
         self.dc = np.zeros(self.ndc)
-        self.bulk_modulus, self.shear_modulus = 0., 0.
+        self.bulk_modulus = 0.
+        self.shear_modulus = 0.
         self.electric_field_model = False
         self.multi_level_fail = False
         self.multi_level_fail_model = False
-        self.cflg_idx, self.fratio_idx = None, None
+        self.cflg_idx = None
+        self.fratio_idx = None
         self.errors = 0
         pass
 
@@ -72,7 +76,7 @@ class ConstitutiveModelPrototype:
         """
            set up model
         """
-        reportError(__file__,'Consitutive model must provide setUp method')
+        reportError(__file__,'Constitutive model must provide setUp method')
         return 1
 
     def checkSetUp(self):
@@ -84,43 +88,38 @@ class ConstitutiveModelPrototype:
         iam = name + ".checkSetup"
 
         if self.errors:
-            reportError(iam,"previously encountered parsing errors")
-            pass
+            reportError(iam, "previously encountered parsing errors")
 
         if not any( self.ui ):
-            reportError(iam,"empty ui array")
-            pass
+            reportError(iam, "empty ui array")
 
         if not self.bulk_modulus:
-            reportError(iam,"bulk modulus not defined")
-            pass
+            reportError(iam, "bulk modulus not defined")
 
         if not self.shear_modulus:
-            reportError(iam,"shear modulus not defined")
-            pass
+            reportError(iam, "shear modulus not defined")
 
         if self.J0 is None:
             self.computeInitialJacobian()
-            pass
 
-        if not any( x for y in self.J0 for x in y ):
-            reportError(iam,"iniatial Jacobian is empty")
-            pass
+        if not any(x for y in self.J0 for x in y):
+            reportError(iam, "iniatial Jacobian is empty")
 
         pass
 
 
-    def registerParameter(self,param_name,param_idx,aliases=[],parseable=True):
+    def registerParameter(self, param_name, param_idx,
+                          aliases=[], parseable=True):
 
         iam = self.name + ".registerParameter"
         if not isinstance(param_name,str):
             reportError(iam,"parameter name must be a string, got {0}"
                         .format(param_name))
-            pass
+
         if not isinstance(param_idx,int):
             reportError(iam,"parameter index must be an int, got {0}"
                         .format(param_idx))
-            pass
+
         if not isinstance(aliases,list):
             reportError(iam,"aliases must be a list, got {0}".format(aliases))
             pass
@@ -133,6 +132,7 @@ class ConstitutiveModelPrototype:
 
         dupl_name = [x for x in param_names
                      if x in self.registered_params_and_aliases]
+
         if dupl_name:
             reportWarning(iam,"duplicate parameter names: {0}"
                           .format(", ".join(param_names)))
@@ -143,7 +143,7 @@ class ConstitutiveModelPrototype:
             reportWarning(iam,"duplicate ui location [{0}] in parameter table"
                           .format(", ".join(param_names)))
             self.errors += 1
-            pass
+
         self.registered_params.extend(full_name)
         self.registered_params_and_aliases.extend(param_names)
         self.registered_param_idxs.append(param_idx)
@@ -248,7 +248,7 @@ class ConstitutiveModelPrototype:
         pass
 
     def updateState(self, simulation_data, material_data):
-        reportError(__file__,'Consitutive model must provide updateState method')
+        reportError(__file__,'Constitutive model must provide updateState method')
         return 1
 
     def initialParameters(self):

@@ -953,8 +953,9 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
                 py_mod = get_module_name(fpath)
                 if py_mod in py_modules:
                     errors += 1
-                    warn(iam,"removing duplicate python module {0} in tests"
-                         .format(py_mod))
+                    msg = ("removing duplicate python module {0} in tests"
+                           .format(py_mod))
+                    pu.logwrn(msg, caller=iam)
                     del py_modules[py_mod]
 
                 else:
@@ -993,8 +994,9 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
 
         if payette_test and not test:
             errors += 1
-            warn(iam,"{0} test class name must be 'Test', got {1}"
-                 .format(class_name,py_mod))
+            msg = ("{0} test class name must be 'Test', got {1}"
+                   .format(class_name,py_mod))
+            pu.logerr(msg, caller=iam)
             continue
 
         include = False
@@ -1004,7 +1006,8 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
         test = py_module.Test(check=False)
 
         if not test.enabled:
-            warn(iam,"disabled test: {0} encountered".format(py_mod))
+            pu.logwrn("disabled test: {0} encountered".format(py_mod),
+                      caller=iam)
             continue
 
         if not isinstance(test.keywords, (list, tuple)):
@@ -1050,8 +1053,9 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
         # material model used in the test is installed
         if test.material is not None:
             if test.material not in pim.PAYETTE_INSTALLED_MATERIALS:
-                warn(iam, ("material model {0} required by {0} not installed"
-                           .format(test.material, test.name)))
+                errors += 1
+                pu.logerr(("material model {0} required by {0} not installed"
+                           .format(test.material, test.name)), caller=iam)
                 continue
 
         speed = [x for x in speed_kws if x in test.keywords][0]
@@ -1067,8 +1071,8 @@ if __name__ == "__main__":
     fast_tests = [ val for key,val in found_tests["fast"].items() ]
     medium_tests = [ val for key,val in found_tests["medium"].items() ]
     long_tests = [ val for key,val in found_tests["long"].items() ]
-    print fast_tests
-    print medium_tests
-    print long_tests
+    print(fast_tests)
+    print(medium_tests)
+    print(long_tests)
     sys.exit("here at end")
 

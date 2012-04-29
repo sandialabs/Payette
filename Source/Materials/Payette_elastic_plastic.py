@@ -50,7 +50,9 @@ attributes = {
 class ElasticPlastic(ConstitutiveModelPrototype):
 
     def __init__(self):
-        ConstitutiveModelPrototype.__init__(self)
+
+        super(ElasticPlastic, self).__init__()
+
         self.name = attributes["name"]
         self.aliases = attributes["aliases"]
         self.imported = imported

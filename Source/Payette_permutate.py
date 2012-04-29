@@ -86,7 +86,7 @@ class Permutate(object):
 
         # print info
         if self.data["verbosity"]:
-            pu.loginf("Permutationg job: {0}".format(self.data["basename"]))
+            pu.loginf("Permutating job: {0}".format(self.data["basename"]))
             pu.loginf("Permutated variables: {0}"
                       .format(", ".join(self.param_nams)))
             pu.loginf("Permutation strategy: {0}".format(self.strategy))
@@ -345,6 +345,8 @@ class Permutate(object):
         if errors:
             pu.logerr("exiting due to previous errors")
             sys.exit(123)
+
+        the_model.finish()
 
         return
 

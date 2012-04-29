@@ -771,8 +771,6 @@ class Payette:
         if self.simdat.EXTRACTION:
             write_extraction(self.simdat, matdat)
 
-        del self.simdat
-
         return
 
     def simulationData(self):
