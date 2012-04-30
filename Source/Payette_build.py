@@ -224,10 +224,11 @@ def build_payette(argv):
 
         # get names of materials from Source/Materials
         errors = 0
-        pu.loginf("finding Payette materials from\n{0}"
+        pu.loginf("finding Payette materials from:\n{0}"
                   .format("\n".join([SPACE + x for x in mtl_dirs])))
         MATERIALS = get_payette_mtls(mtl_dirs, opts.mtllib, options)
-        pu.loginf("Payette materials found\n")
+        pu.loginf("Payette materials found:\n{0}"
+                  .format("\n".join([SPACE + x for x in MATERIALS.keys()])))
         non_existent = MATERIALS.get("non existent", False)
         if non_existent:
             errors += 1
@@ -468,11 +469,11 @@ def build_payette_mtls(nproc=1):
     if failed_materials:
         errors = 55
         pu.logwrn("The following materials WERE NOT built:\n{0}\n"
-                  .format("\n".join([" " * 10 + x for x in failed_materials])))
+                  .format("\n".join([SPACE + x for x in failed_materials])))
 
     if built_materials:
         pu.loginf("The following materials WERE built:\n{0}\n"
-                  .format("\n".join([" " * 10 + x for x in built_materials])))
+                  .format("\n".join([SPACE + x for x in built_materials])))
 
     # remove cruft
     for ftmp in [x for x in os.listdir(pc.PC_TOOLS)

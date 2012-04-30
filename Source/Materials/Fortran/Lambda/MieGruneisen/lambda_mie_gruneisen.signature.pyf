@@ -81,19 +81,22 @@ python module lambda_mie_gruneisen ! in
         end subroutine lambda_prefix_eosmgr
         subroutine lambda_prefix_eosmgv(mc,nc,ui,gc,dc,rho,enrg,alph,nx,pres,temp,cs,s) ! in :lambda_mie_gruneisen:MieGruneisen.F
             use payette__user__routines
+            integer, parameter :: nprop=22
+            integer, parameter :: ndc=13
+            integer, parameter :: nsv=2
             integer, optional,check(len(rho)>=mc),depend(rho) :: mc=len(rho)
-            integer :: nc
-            real dimension(*) :: ui
-            real dimension(*) :: gc
-            real dimension(*) :: dc
-            real dimension(mc) :: rho
-            real dimension(mc),depend(mc) :: enrg
-            real dimension(mc,nx),depend(mc) :: alph
+            integer, intent(in) :: nc
+            real dimension(nprop), intent(in) :: ui
+            real dimension(*), intent(in) :: gc
+            real dimension(ndc), intent(in) :: dc
+            real dimension(mc), intent(in) :: rho
+            real dimension(mc),depend(mc), intent(in) :: enrg
+            real dimension(mc,nx),depend(mc), intent(in) :: alph
             integer, optional,check(shape(alph,1)==nx),depend(alph) :: nx=shape(alph,1)
-            real dimension(mc),depend(mc) :: pres
-            real dimension(mc),depend(mc) :: temp
-            real dimension(mc),depend(mc) :: cs
-            real dimension(mc,8),depend(mc) :: s
+            real dimension(mc),depend(mc),intent(out) :: pres
+            real dimension(mc),depend(mc),intent(out) :: temp
+            real dimension(mc),depend(mc),intent(out) :: cs
+            real dimension(mc,8),depend(mc),intent(out) :: s
             intent(callback) migerror
             external migerror
             intent(callback) migmessage

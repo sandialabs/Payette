@@ -78,10 +78,50 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         iam = self.name + ".setUp(self,material,props)"
 
         # parse parameters
+        self.surface_increments = 10
+        for idx, tok in enumerate(user_params):
+            if tok.startswith("surface_increments"):
+                self.surface_increments = int("".join(tok.split()[1:]))
+                user_params.pop(idx)
+                break
+
+        self.path_increments = 10
+        for idx, tok in enumerate(user_params):
+            if tok.startswith("path_increments"):
+                self.path_increments = int("".join(tok.split()[1:]))
+                user_params.pop(idx)
+                break
+
+        self.density_range = [0.0, 0.0, 0.0]
+        for idx, tok in enumerate(user_params):
+            if tok.startswith("density_range"):
+                self.density_range = [float(x) for x in tok.split()[1:]]
+                user_params.pop(idx)
+                break
+
+        self.temperature_range = [0.0, 0.0, 0.0]
+        for idx, tok in enumerate(user_params):
+            if tok.startswith("temperature_range"):
+                self.temperature_range = [float(x) for x in tok.split()[1:]]
+                user_params.pop(idx)
+                break
+
+        self.isotherm = None
+        for idx, tok in enumerate(user_params):
+            if tok.startswith("path isotherm"):
+                self.isotherm = [float(x) for x in tok.split()[2:]]
+                if len(self.isotherm) != 2:
+                    sys.exit("Invalid isotherm given")
+                if not self.density_range[1] <= self.isotherm[0] <= self.density_range[2]:
+                    sys.exit("Initial density for isotherm not on surface")
+                if not self.temperature_range[1] <= self.isotherm[1] <= self.temperature_range[2]:
+                    sys.exit("Initial temperature for isotherm not on surface")
+                user_params.pop(idx)
+                break
+
         self.parseParameters(user_params,f_params)
 
         self.ui, self.gc, self.dc, self.vi = self._check_props()
-#        self.dc = np.array(self.dc, dtype=np.float64)
         self.nsv, namea, keya, sv, rdim, iadvct, itype = self._set_field()
         namea = parseToken(self.nsv,namea)
         keya = parseToken(self.nsv,keya)
@@ -93,38 +133,103 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         self.shear_modulus = 1.0
         pass
 
+    def run_eosmgr(self,simdat,matdat,rho,temp):
+        '''
+           runs eosmgr and returns the pressure, energy, soundspeed, and scratch
+
+           input units:
+               rho is  g/cm^3 ( 1 g/cm^3 = 1000 kg/m^3 )
+               temp is eV     (     1 eV = 11604.505 K )
+
+           output units:
+               pres is in barye (  1 barye = 1/10 Pa      )
+               enrg is in erg   (    1 erg = 1.0e-7 Joule )
+               cs is in cm/s    ( 1 cm/sec = 0.01 m/sec   )
+        '''
+        a = [1, self.ui, self.gc, self.dc, rho, temp,
+             matdat.getData("extra variables"), migError, migMessage]
+        if not PC_F2PY_CALLBACK: a = a[:-2]
+        return mtllib.lambda_prefix_eosmgr(*a) # pressure, energy, soundspeed, scratch
+ 
+    def run_eosmgv(self,simdat,matdat,rho,enrg):
+        '''
+           runs eosmgv and returns the pressure, temperature, soundspeed, and scratch
+
+           input units:
+               rho is g/cm^3 ( 1 g/cm^3 = 1000 kg/m^3  )
+               enrg is erg   (    1 erg = 1.0e-7 Joule )
+
+           output units:
+               pres is in barye (  1 barye = 1/10 Pa     )
+               temp is in eV    (     1 eV = 11604.505 K )
+               cs is in cm/s    ( 1 cm/sec = 0.01 m/sec  )
+
+        '''
+        a = [1, self.ui, self.gc, self.dc, rho, enrg,
+             matdat.getData("extra variables"), migError, migMessage]
+        if not PC_F2PY_CALLBACK: a = a[:-2]
+        return mtllib.lambda_prefix_eosmgr(*a) # return pres, temp, cs, scratch
+
     def updateState(self,simdat,matdat):
         '''
            update the material state based on current state and strain increment
         '''
         iam = self.name + ".updateState(self,simdat,matdat)"
-        print("who am i = ",iam)
+
+        evfac = 8.617343e-5
+        out_f = simdat.getOption("outfile")
+        OUT_F = open(out_f,"w")
+        fmt = lambda x: "{0:20.10e}".format(float(x))
+        fmtxt = lambda x: "{0:>20s}".format(str(x))
+        msg = "{0}\n".format("".join([fmtxt("DENSITY"),
+                                      fmtxt("PRESSURE"),
+                                      fmtxt("SOUNDSPEED"),
+                                      fmtxt("TEMPERATURE"),
+                                      fmtxt("ENERGY")]))
+        OUT_F.write(msg)
+        
+        for rho in np.linspace(self.density_range[1],self.density_range[2],self.surface_increments):
+            for temp in np.linspace(self.temperature_range[1],self.temperature_range[2],self.surface_increments):
+                tmprho = rho/1000.0
+                tmptemp = temp*evfac
+                r_pres, r_enrg, r_cs, scratch = self.run_eosmgr(simdat,matdat,tmprho,tmptemp)
+                v_pres, v_temp, v_cs, scratch = self.run_eosmgv(simdat,matdat,tmprho,r_enrg)
+                msg = "{0}\n".format("".join([fmt(rho),
+                                              fmt(r_pres/10.0),
+                                              fmt(r_cs/100.0),
+                                              fmt(temp),
+                                              fmt(r_enrg)]))
+                OUT_F.write(msg)
+        OUT_F.close()
+        print("Surface file: {0}".format(out_f))
 
 
-        rho = 9.0
-        temp = 300.0
-        for rho in np.linspace(8.0,16.0,30):
-            for temp in np.linspace(200.,25000.,30):
-                a = [1,
-                     self.ui0,
-                     self.gc,
-                     self.dc,
-                     rho,
-                     temp,
-                     matdat.getData("extra variables"),
-                     migError,
-                     migMessage]
-                if not PC_F2PY_CALLBACK: a = a[:-2]
-                pres, enrg, cs, scratch = mtllib.lambda_prefix_eosmgr(*a)
-                fmt = lambda x: "{0:20.10e}".format(float(x))
-                print("{0}{1}{2}{3}".format(fmt(rho*1000),fmt(temp),fmt(pres/10.0),fmt(enrg)))
+        isotherm_f = os.path.splitext(out_f)[0]+".isotherm"
+        OUT_F = open(isotherm_f,"w")
+        msg = "{0}\n".format("".join([fmtxt("DENSITY"),
+                                      fmtxt("PRESSURE"),
+                                      fmtxt("SOUNDSPEED"),
+                                      fmtxt("TEMPERATURE"),
+                                      fmtxt("ENERGY")]))
+        OUT_F.write(msg)
+        if self.isotherm != None:
+            rho0 = self.isotherm[0]
+            temp0 = self.isotherm[1]
+            for temp in np.linspace(temp0, self.temperature_range[2], self.path_increments):
+                tmprho = rho0/1000.0
+                tmptemp = temp*evfac
+                r_pres, r_enrg, r_cs, scratch = self.run_eosmgr(simdat,matdat,tmprho,tmptemp)
+                v_pres, v_temp, v_cs, scratch = self.run_eosmgv(simdat,matdat,tmprho,r_enrg)
+                msg = "{0}\n".format("".join([fmt(rho0),
+                                              fmt(r_pres/10.0),
+                                              fmt(r_cs/100.0),
+                                              fmt(temp),
+                                              fmt(r_enrg)]))
+                OUT_F.write(msg)
+            OUT_F.close()
+            print("Isotherm file: {0}".format(isotherm_f))
 
-#        print("pressure: ", pres)
-#        print("energy:   ", enrg)
-#        print("soundspd: ", cs)
-#        print("scratch:  ", scratch)
-        sys.exit("halt")
-
+        sys.exit() 
         return
 
     # Private methods
@@ -138,7 +243,6 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         vi = np.array(self.vi)
         a = [ui, gc, dc, uc, mdc, ndc, vi, migError, migMessage]
         if not PC_F2PY_CALLBACK: a = a[:-2]
-        print(mtllib.lambda_prefix_eosmgi.__doc__)
         return mtllib.lambda_prefix_eosmgi(*a)
 
     def _set_field(self):
@@ -147,6 +251,5 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         dc = np.array(self.dc)
         a = [ui, gc, dc, migError, migMessage]
         if not PC_F2PY_CALLBACK: a = a[:-2]
-        print(mtllib.lambda_prefix_eosmgk.__doc__)
         return  mtllib.lambda_prefix_eosmgk(*a)
 
