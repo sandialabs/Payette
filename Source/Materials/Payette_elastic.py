@@ -37,11 +37,12 @@ except ImportError:
 
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 attributes = {
     "payette material": True,
     "name": "elastic",
     "fortran source": True,
-    "build script": os.path.join(PC_MTLS_FORTRAN,"Elastic/build.py"),
+    "build script": os.path.join(THIS_DIR, "Build_elastic.py"),
     "aliases": ["hooke", "elasticity", "linear elastic"],
     "material type": ["mechanical"],
     "default material": True,

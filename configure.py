@@ -73,7 +73,7 @@ def check_exists(itemnam, item):
     for tmp in item:
         if not os.path.isdir(tmp) and not os.path.isfile(tmp):
             errors += 1
-            logerr("{0} not found [name: {1}]".format(item, itemnam))
+            logerr("{0} not found [name: {1}]".format(tmp, itemnam))
 
     return errors
 
@@ -220,6 +220,8 @@ PC_AUX = os.path.join(PC_ROOT, "Aux")
 PC_DOCS = os.path.join(PC_ROOT, "Documents")
 PC_SOURCE = os.path.join(PC_ROOT, "Source")
 PC_TESTS = [os.path.join(PC_ROOT, "Benchmarks")]
+USER_TESTS = os.getenv("PAYETTE_BENCHDIR", "")
+PC_TESTS.extend([x for x in USER_TESTS.split(os.pathsep) if x])
 PC_TOOLS = os.path.join(PC_ROOT, "Toolset")
 
 # modify sys.path
@@ -273,6 +275,8 @@ ERRORS += check_exists("PC_INPUTS", PC_INPUTS)
 
 # --- subdirectories of PC_SOURCE
 PC_MTLS = [os.path.join(PC_SOURCE, "Materials")]
+USER_MTLS = os.getenv("PAYETTE_MTLDIR", "")
+PC_MTLS.extend([x for x in USER_MTLS.split(os.pathsep) if x])
 PC_MIG_UTILS = os.path.join(PC_SOURCE, "Fortran/migutils.F")
 ERRORS += check_exists("PC_MTLS", PC_MTLS)
 ERRORS += check_exists("PC_MIG_UTILS", PC_MIG_UTILS)
@@ -289,13 +293,8 @@ ERRORS += check_exists("PC_MTLS_INCLUDES", PC_MTLS_INCLUDES)
 # --- extension module file extension
 PC_EXT_MOD_FEXT = sysconfig.get_config_var("SO")
 
-# --- if OSTYPE is not defined, just set it to linux
-if not os.getenv("OSTYPE"):
-    logwrn("environment variable OSTYPE not set, "
-           "setting PC_OSTYPE to linux")
-    PC_OSTYPE = "linux"
-else:
-    PC_OSTYPE = os.getenv("OSTYPE").lower()
+# --- get platform
+PC_OSTYPE = sys.platform
 
 # Store all of the above information for writing to the PC_CONFIG_FILE. We
 # waited to write it til now so that we would only write it if everything was

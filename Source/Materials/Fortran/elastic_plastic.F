@@ -33,7 +33,7 @@ C***********************************************************************
       IMPLICIT NONE
 C
 C.............................................................parameters
-#include "elastic_plastic_pnt.Blk"
+#include "elastic_plastic.pnt"
       DOUBLE PRECISION PTHIRD,PHALF,P3HALF,P2THIRD
       DOUBLE PRECISION PZERO,PONE,PTWO,PTHREE,ROOT2
       DOUBLE PRECISION TOL1M10,YLDTOL
@@ -44,7 +44,7 @@ C.............................................................parameters
       PARAMETER (PZERO=0.D0,PONE=1.D0,PTWO=2.D0,PTHREE=3.D0)
       PARAMETER (TOL1M10= 1.0D-10,YLDTOL=1.0D-3)
 C.................................................................common
-#include "elastic_plastic_prop.h"
+#include "elastic_plastic.com"
 C.................................................................passed
       INTEGER NBLK,NINSV
       DOUBLE PRECISION SV,SIG,USM,UI,D,DT
@@ -522,9 +522,9 @@ C.............................................................parameters
       PARAMETER (  ROOT3=0.173205080756887729352744634150587236694281D1)
       PARAMETER (  TOOR3=0.577350269189625764509148780501957455647602D0)
       PARAMETER ( ROOT23=0.816496580927726032732428024901963797321982D0)
-#include "elastic_plastic_pnt.Blk"
+#include "elastic_plastic.pnt"
 C.................................................................common
-#include "elastic_plastic_prop.h"
+#include "elastic_plastic.com"
 C.................................................................passed
       DOUBLE PRECISION UI
       DIMENSION UI(*)
@@ -644,13 +644,13 @@ C  100223|tjfulle|created routine
 C
       IMPLICIT NONE
 C............................................................parameters
-#include "elastic_plastic_pnt.Blk"
+#include "elastic_plastic.pnt"
       DOUBLE PRECISION PZERO,PHALF,PONE,PTWO,PTHREE,PTEN,PTHIRD
       PARAMETER (PZERO=0.D0,PONE=1.D0,PTWO=2.D0,PTHREE=3.D0,PTEN=10.D0)
       PARAMETER (PHALF=0.5D0)
       PARAMETER (PTHIRD=0.333333333333333333333333333333333333333333D0)
 C.................................................................common
-#include "elastic_plastic_prop.h"
+#include "elastic_plastic.com"
 C.................................................................passed
       DOUBLE PRECISION UI,U,RHO,T,EV,BM,SM,TAU
       DIMENSION UI(*),TAU(6)
@@ -733,7 +733,7 @@ C
       IMPLICIT NONE
 C
 C.............................................................parameters
-#include "elastic_plastic_pnt.Blk"
+#include "elastic_plastic.pnt"
       DOUBLE PRECISION PTHIRD,PHALF,PZERO,PONE,PSIX,TOL1M20,EUNDERFLOW
       PARAMETER (PTHIRD=0.3333333333333333333333333333333333333333333D0)
       PARAMETER (PHALF=0.5D0)
@@ -741,7 +741,7 @@ C.............................................................parameters
       PARAMETER (TOL1M20=1.D-20)
       PARAMETER (EUNDERFLOW=-34.53877639491D0*PONE)
 C.................................................................common
-#include "elastic_plastic_prop.h"
+#include "elastic_plastic.com"
 C.................................................................passed
       DOUBLE PRECISION DT,EQDOT,SIGOLD,QSSIGOLD,QSSIG,DSIGT,SIG,SV
       DIMENSION SIGOLD(6),QSSIGOLD(6),QSSIG(6),DSIGT(6),SIG(6),SV(*)
@@ -880,7 +880,7 @@ C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMTS(T)
 C     Purpose: Johnson-Cook homologous temperature
       IMPLICIT NONE
-#include "elastic_plastic_prop.h"
+#include "elastic_plastic.com"
       DOUBLE PRECISION PZERO, PONE, TARG, DMMTS, T, DMMTMULT
       PARAMETER(PZERO=0.D0,PONE=1.D0)
       TARG= MAX(T-T0,PZERO)
@@ -892,7 +892,7 @@ C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMYLD(TAU,EQPS,T)
 C     Purpose: Value of yield function
       IMPLICIT NONE
-#include "elastic_plastic_prop.h"
+#include "elastic_plastic.com"
       DOUBLE PRECISION EQPS,T, DMMTR, DMMTS
       DOUBLE PRECISION ROOT23,TAU,RI1,FF,DMMYLD,DMMRJ2
       PARAMETER(ROOT23=0.816496580927726032732428024901963797321982D0)
@@ -907,7 +907,7 @@ C---.----1----.----2----.----3----.----4----.----5----.----6----.----7--
       FUNCTION DMMDYLDFNCDT(D1,D2,D3)
 C     Purpose: Derivative of yield function wrt T
       IMPLICIT NONE
-#include "elastic_plastic_prop.h"
+#include "elastic_plastic.com"
       DOUBLE PRECISION PZERO, D1, D2, D3, TARG, DMMDYLDFNCDT
       PARAMETER(PZERO=0.D0)
       TARG= MAX(D3-T0,PZERO)
@@ -1002,7 +1002,7 @@ C  ---------------------------------------------------------------------
 C  090713:tim fuller:Created original data check
 C
       IMPLICIT NONE
-#include "elastic_plastic_pnt.Blk"
+#include "elastic_plastic.pnt"
 C
       DOUBLE PRECISION UI,PZERO,PONE,PTWO,PTHREE,HUGE,ROOT3,TOOR3
       DIMENSION UI(*)
@@ -1200,7 +1200,7 @@ C  rmbrann  030809  Created original extra variable routine
 C
 
       IMPLICIT NONE
-#include "elastic_plastic_pnt.Blk"
+#include "elastic_plastic.pnt"
 C
       DOUBLE PRECISION PZERO,PONE,PTWO,PTHREE
       PARAMETER (PZERO=0.D0,PONE=1.D0,PTWO=2.D0,PTHREE=3.D0)

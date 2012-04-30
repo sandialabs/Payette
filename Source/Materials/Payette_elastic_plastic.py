@@ -37,13 +37,14 @@ except:
 
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 attributes = {
-    "payette material":True,
-    "name":"elastic_plastic",
-    "fortran source":True,
-    "build script":os.path.join(PC_MTLS_FORTRAN,"ElasticPlastic/build.py"),
-    "aliases":["inuced anisotropy"],
-    "material type":["mechanical"],
+    "payette material": True,
+    "name": "elastic_plastic",
+    "fortran source": True,
+    "build script": os.path.join(THIS_DIR, "Build_elastic_plastic.py"),
+    "aliases": ["inuced anisotropy"],
+    "material type": ["mechanical"],
     "default material": True,
     }
 
