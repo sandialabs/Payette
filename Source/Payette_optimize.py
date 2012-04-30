@@ -84,6 +84,9 @@ class Optimize(object):
         # check minimization variables
         self.check_min_parameters()
 
+        if "shearfit" in self.data["options"]:
+            self.init_shearfit()
+
         if self.data["verbosity"]:
             pu.loginf("Optimizing {0}".format(job))
             pu.loginf("Optimization variables: {0}"
@@ -187,15 +190,23 @@ class Optimize(object):
             )
 
         # optimum parameters found, write out final info
-        msg = ", ".join(["{0} = {1:12.6E}".format(opt_nams[i], x)
-                         for i, x in enumerate(opt_params)])
-
         if shearfit:
-            stren, peaki1, fslope, yslope = kpc.old_2_new(*opt_params)
-            msg += (
-                "\n" + " "*28
-              + "STREN = {0:12.6E}, PEAKI1 = {1:12.6E}, ".format(stren, peaki1)
-              + "FSLOPE = {0:12.6E}, YSLOPE = {1:12.6E}".format(fslope, yslope))
+            a_params = self.data["a_params"]
+            a_params[self.data["index array"]] = opt_params
+            stren, peaki1, fslope, yslope = kpc.old_2_new(*a_params)
+            msg = ("A1 = {0:12.6E}, ".format(a_params[0]) +
+                   "A2 = {0:12.6E}, ".format(a_params[1]) +
+                   "A3 = {0:12.6E}, ".format(a_params[2]) +
+                   "A4 = {0:12.6E}".format(a_params[3]) +
+                   "\n {0}".format(" " * 27) +
+                   "STREN = {0:12.6E}, ".format(stren) +
+                   "PEAKI1 = {0:12.6E}, ".format(peaki1) +
+                   "FSLOPE = {0:12.6E}, ".format(fslope) +
+                   "YSLOPE = {0:12.6E}".format(yslope))
+
+        else:
+            msg = ", ".join(["{0} = {1:12.6E}".format(opt_nams[i], x)
+                             for i, x in enumerate(opt_params)])
 
         pu.loginf("Optimized parameters found on iteration {0:d}"
                   .format(IOPT + 1))
@@ -267,6 +278,7 @@ class Optimize(object):
         disp = False
         shearfit = False
         optimize = {}
+        fix = {}
 
         # get options first -> must come first because some options have a
         # default method different than the global default of simplex
@@ -376,6 +388,26 @@ class Optimize(object):
                 optimize[key]["bounds"] = bounds
                 optimize[key]["initial value"] = init_val
 
+            elif "fix" in item[0].lower():
+                # set up this parameter to fix
+                key = item[1]
+                vals = item[2:]
+
+                if shearfit and key.lower() not in ("a1", "a2", "a3", "a4"):
+                    errors += 1
+                    pu.logerr("fixed variable "+ key +
+                              " not allowed with shearfit method")
+
+                init_val = None
+                if "initial" in vals:
+                    idx = vals.index("initial")
+                    if vals[idx + 1] == "value":
+                        idx = idx + 1
+                        init_val = float(vals[idx+1])
+
+                fix[key] = {}
+                fix[key]["initial value"] = init_val
+
             elif "maxiter" in item[0].lower():
                 maxiter = int(item[1])
 
@@ -408,23 +440,31 @@ class Optimize(object):
 
         else:
             if not os.path.isfile(gold_f):
-                pu.logerr("gold file {0} not found".format(gold_f))
                 errors += 1
+                pu.logerr("gold file {0} not found".format(gold_f))
             else:
                 gold_f = os.path.realpath(gold_f)
 
         if not shearfit and not minimize["vars"]:
-            pu.logerr("no parameters to minimize given")
             errors += 1
+            pu.logerr("no parameters to minimize given")
 
         if not optimize:
-            pu.logerr("no parameters to optimize given")
             errors += 1
+            pu.logerr("no parameters to optimize given")
 
         for key, val in optimize.items():
             if val["initial value"] is None:
                 pu.logerr("no initial value given for {0}".format(key))
                 errors += 1
+
+        for key, val in fix.items():
+            if val["initial value"] is None:
+                errors += 1
+                pu.logerr("no initial value given for {0}".format(key))
+            if key.lower() in [x.lower() for x in optimize]:
+                errors += 1
+                pu.logerr("cannot fix and optimize {0}".format(key))
 
         if errors:
             pu.logerr("stopping due to previous errors")
@@ -471,6 +511,7 @@ class Optimize(object):
         self.data["tolerance"] = tolerance
         self.data["optimization method"] = opt_method
         self.data["disp"] = disp
+        self.data["fix"] = fix
 
         return
 
@@ -567,6 +608,41 @@ class Optimize(object):
             pu.logerr("error extracting minimization variables from {0}"
                       .format(self.data["gold file"]))
             sys.exit(123)
+
+        return
+
+    def init_shearfit(self):
+        """ Initialize data needed by shearfit
+
+        To run shearfit, we need values for A1 - A4, in that order. The user
+        may only want to optimize some, not all, of the A parameters. Here we
+        initialize all A parameters to zero, and then populate the initial
+        array with input from the user.
+
+        """
+
+        # initial setup
+        a_params = np.zeros(4, dtype=float)
+        index_array = [None] * 4
+
+        # mapping to a_params array
+        idx_map = {"a1": 0, "a2": 1, "a3":2, "a4":3}
+
+        for key, val in self.data["optimize"].items():
+            idx = idx_map[key.lower()]
+            a_params[idx] = val["initial value"]
+            index_array[idx] = idx
+            continue
+
+        for key, val in self.data["fix"].items():
+            idx = idx_map[key.lower()]
+            a_params[idx] = val["initial value"]
+
+        # store the initial A params, and "index array": the array of indices
+        # of the A parameters to be optimized.
+        self.data["a_params"] = np.array(a_params)
+        self.data["index array"] = np.array(
+            [x for x in index_array if x is not None], dtype=int)
 
         return
 
@@ -870,7 +946,10 @@ def rtxc(xcall, xnams, data, base_dir, job_opts, xgold):
                   .format(IOPT + 1, ", ".join(msg)))
 
     # compute rootj2 and error
-    a1, a2, a3, a4 = xcall * FAC
+    v = data["index array"]
+    a = data["a_params"]
+    a[v] = xcall * FAC
+    a1, a2, a3, a4 = a
 
     # enforce constraints
     if a1 - a3 < 0.:
