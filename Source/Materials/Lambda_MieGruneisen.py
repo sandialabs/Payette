@@ -215,15 +215,15 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         if self.isotherm != None:
             rho0 = self.isotherm[0]
             temp0 = self.isotherm[1]
-            for temp in np.linspace(temp0, self.temperature_range[2], self.path_increments):
-                tmprho = rho0/1000.0
-                tmptemp = temp*evfac
+            for rho in np.linspace(rho0, self.density_range[2], self.path_increments):
+                tmprho = rho/1000.0
+                tmptemp = temp0*evfac
                 r_pres, r_enrg, r_cs, scratch = self.run_eosmgr(simdat,matdat,tmprho,tmptemp)
                 v_pres, v_temp, v_cs, scratch = self.run_eosmgv(simdat,matdat,tmprho,r_enrg)
-                msg = "{0}\n".format("".join([fmt(rho0),
+                msg = "{0}\n".format("".join([fmt(rho),
                                               fmt(r_pres/10.0),
                                               fmt(r_cs/100.0),
-                                              fmt(temp),
+                                              fmt(temp0),
                                               fmt(r_enrg)]))
                 OUT_F.write(msg)
             OUT_F.close()
