@@ -156,8 +156,8 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
            runs eosmgv and returns the pressure, temperature, soundspeed, and scratch
 
            input units:
-               rho is g/cm^3 ( 1 g/cm^3 = 1000 kg/m^3  )
-               enrg is erg   (    1 erg = 1.0e-7 Joule )
+               rho is g/cm^3 (   1 g/cm^3 = 1000 kg/m^3           )
+               enrg is erg   ( 1 erg/gram = 1.0e-4 Joule/kilogram )
 
            output units:
                pres is in barye (  1 barye = 1/10 Pa     )
@@ -168,15 +168,22 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
         a = [1, self.ui, self.gc, self.dc, rho, enrg,
              matdat.getData("extra variables"), migError, migMessage]
         if not PC_F2PY_CALLBACK: a = a[:-2]
-        return mtllib.lambda_prefix_eosmgr(*a) # return pres, temp, cs, scratch
+        return mtllib.lambda_prefix_eosmgv(*a) # return pres, temp, cs, scratch
 
     def updateState(self,simdat,matdat):
         '''
            update the material state based on current state and strain increment
         '''
+        def compare(x,y,name):
+            scale = max(abs(x),abs(y))
+            diff = abs(x-y)
+            if diff/scale > 100.0*np.finfo(np.float).eps:
+                print("{0} values diff. Relative difference: {1:10.3e}".format(name,float(diff/scale)))
+                
         iam = self.name + ".updateState(self,simdat,matdat)"
 
-        evfac = 8.617343e-5
+        K2eV = 8.617343e-5
+        erg2joule = 1.0e-4
         out_f = simdat.getOption("outfile")
         OUT_F = open(out_f,"w")
         fmt = lambda x: "{0:20.10e}".format(float(x))
@@ -185,20 +192,31 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
                                       fmtxt("PRESSURE"),
                                       fmtxt("SOUNDSPEED"),
                                       fmtxt("TEMPERATURE"),
+                                      fmtxt("TEMPERATURE_V"),
                                       fmtxt("ENERGY")]))
         OUT_F.write(msg)
-        
+
         for rho in np.linspace(self.density_range[1],self.density_range[2],self.surface_increments):
             for temp in np.linspace(self.temperature_range[1],self.temperature_range[2],self.surface_increments):
                 tmprho = rho/1000.0
-                tmptemp = temp*evfac
+                tmptemp = K2eV*temp
                 r_pres, r_enrg, r_cs, scratch = self.run_eosmgr(simdat,matdat,tmprho,tmptemp)
+                r_dpdr, r_dpdt, r_dedt, r_dedr = scratch[0][:4]
                 v_pres, v_temp, v_cs, scratch = self.run_eosmgv(simdat,matdat,tmprho,r_enrg)
-                msg = "{0}\n".format("".join([fmt(rho),
-                                              fmt(r_pres/10.0),
-                                              fmt(r_cs/100.0),
-                                              fmt(temp),
-                                              fmt(r_enrg)]))
+                v_dpdr, v_dpdt, v_dedt, v_dedr = scratch[0][:4]
+                compare(r_pres,v_pres,"pressure")
+                compare(r_cs,v_cs,"cs")
+                compare(r_dpdr,v_dpdr,"dpdr")
+                compare(r_dpdt,v_dpdt,"dpdt")
+                compare(r_dedt,v_dedt,"dedt")
+                compare(r_dedr,v_dedr,"dedr")
+                array2print = [rho,
+                              r_pres/10.0,
+                              r_cs/100.0,
+                              temp,
+                              v_temp/K2eV,
+                              erg2joule*r_enrg]
+                msg = "{0}\n".format("".join([fmt(x) for x in array2print]))
                 OUT_F.write(msg)
         OUT_F.close()
         print("Surface file: {0}".format(out_f))
@@ -217,14 +235,14 @@ class LambdaMieGruneisen(ConstitutiveModelPrototype):
             temp0 = self.isotherm[1]
             for rho in np.linspace(rho0, self.density_range[2], self.path_increments):
                 tmprho = rho/1000.0
-                tmptemp = temp0*evfac
+                tmptemp = K2eV*temp0
                 r_pres, r_enrg, r_cs, scratch = self.run_eosmgr(simdat,matdat,tmprho,tmptemp)
                 v_pres, v_temp, v_cs, scratch = self.run_eosmgv(simdat,matdat,tmprho,r_enrg)
                 msg = "{0}\n".format("".join([fmt(rho),
                                               fmt(r_pres/10.0),
                                               fmt(r_cs/100.0),
                                               fmt(temp0),
-                                              fmt(r_enrg)]))
+                                              fmt(erg2joule*r_enrg)]))
                 OUT_F.write(msg)
             OUT_F.close()
             print("Isotherm file: {0}".format(isotherm_f))

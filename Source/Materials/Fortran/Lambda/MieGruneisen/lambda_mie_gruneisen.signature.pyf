@@ -86,17 +86,17 @@ python module lambda_mie_gruneisen ! in
             integer, parameter :: nsv=2
             integer, optional,check(len(rho)>=mc),depend(rho) :: mc=len(rho)
             integer, intent(in) :: nc
-            real dimension(nprop), intent(in) :: ui
-            real dimension(*), intent(in) :: gc
-            real dimension(ndc), intent(in) :: dc
-            real dimension(mc), intent(in) :: rho
-            real dimension(mc),depend(mc), intent(in) :: enrg
-            real dimension(mc,nx),depend(mc), intent(in) :: alph
+            double precision dimension(nprop), intent(in) :: ui
+            double precision dimension(*), intent(in) :: gc
+            double precision dimension(ndc), intent(in) :: dc
+            double precision dimension(mc), intent(in) :: rho
+            double precision dimension(mc),depend(mc), intent(in) :: enrg
+            double precision dimension(mc,nx),depend(mc), intent(in) :: alph
             integer, optional,check(shape(alph,1)==nx),depend(alph) :: nx=shape(alph,1)
-            real dimension(mc),depend(mc),intent(out) :: pres
-            real dimension(mc),depend(mc),intent(out) :: temp
-            real dimension(mc),depend(mc),intent(out) :: cs
-            real dimension(mc,8),depend(mc),intent(out) :: s
+            double precision dimension(mc),depend(mc),intent(out) :: pres
+            double precision dimension(mc),depend(mc),intent(out) :: temp
+            double precision dimension(mc),depend(mc),intent(out) :: cs
+            double precision dimension(mc,8),depend(mc),intent(out) :: s
             intent(callback) migerror
             external migerror
             intent(callback) migmessage
