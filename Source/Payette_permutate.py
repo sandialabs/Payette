@@ -209,16 +209,30 @@ class Permutate(object):
                 continue
 
             if directive == "options":
-                opt = [x.lower() for x in item[1:]]
-                bad_opt = [x for x in opt if x not in self.allowed_options]
-                if bad_opt:
-                    errors += 1
-                    pu.logerr("options '{0:s}' not recognized"
-                              .format(", ".join(bad_opt)))
-                else:
-                    options.extend(opt)
 
-                continue
+                try:
+                    opt = [x.lower() for x in item[1:]]
+                except IndexError:
+                    errors += 1
+                    pu.logerr("no options given following 'option' directive")
+                    continue
+
+                if opt[0] in pu.flatten(self.allowed_methods):
+                    pu.logwrn("using deprecated 'options' keyword to specify "
+                              "the {0} 'method'".format(opt[0]))
+                    directive = "method"
+
+                else:
+                    bad_opt = [x for x in opt if x not in self.allowed_options]
+                    if bad_opt:
+                        errors += 1
+                        pu.logerr("options '{0:s}' not recognized"
+                                  .format(", ".join(bad_opt)))
+
+                    else:
+                        options.extend(opt)
+
+                    continue
 
             if directive == "method":
 
