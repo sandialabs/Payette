@@ -263,9 +263,6 @@ for exe_nam, exe_path in PC_BUILT_EXES.items():
     PC_EXES[exe_nam] = exe_path
     continue
 
-# --- auxilary Payette environment variables
-PC_LAMBDA_MGRUN = os.getenv("LAMBDA_MGRUN")
-
 # --- configuration files
 PC_CONFIG_FILE = os.path.join(PC_ROOT, "Payette_config.py")
 
@@ -323,7 +320,6 @@ PAYETTE_CONFIG["PC_BUILD"] = PC_BUILD
 PAYETTE_CONFIG["PC_EXTRACT"] = PC_EXTRACT
 PAYETTE_CONFIG["PC_EXES"] = PC_EXES
 PAYETTE_CONFIG["PC_CONFIG_FILE"] = PC_CONFIG_FILE
-PAYETTE_CONFIG["PC_LAMBDA_MGRUN"] = PC_LAMBDA_MGRUN
 PAYETTE_CONFIG["PC_F2PY"] = PC_F2PY
 PAYETTE_CONFIG["PC_RUNPAYETTE"] = PC_RUNPAYETTE
 PAYETTE_CONFIG["PC_TESTPAYETTE"] = PC_TESTPAYETTE
