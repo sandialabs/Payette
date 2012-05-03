@@ -238,10 +238,17 @@ class Optimize(object):
     def finish(self):
         r""" finish up the optimization job """
 
+        global IOPT, FAC, FNEWEXT
+
         # remove any temporary files
         for item in [x for x in os.listdir(os.getcwd()) if x.endswith(FNEWEXT)]:
             os.remove(item)
             continue
+
+        # restore global params
+        IOPT = -1
+        FAC = []
+        FNEWEXT = ".0x312.gold"
 
         return
 
