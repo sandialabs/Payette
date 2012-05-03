@@ -1,4 +1,6 @@
 #ifndef NOPYCALLBACK
+C     The following implementations of LOGMES, BOMBED, and FATERR use
+C     callback functions to call python functions
 C*************************************************************************
       SUBROUTINE LOGMES(MSG)
       CHARACTER*(*) MSG

@@ -125,7 +125,7 @@ class MaterialBuilder():
             fp, pathname, description = imp.find_module(py_mod,py_path)
             build = imp.load_module(py_mod,fp,pathname,description)
             fp.close()
-        except ImportError(e):
+        except ImportError, e:
             raise BuildError("{0}".format(str(e)),35)
 
 

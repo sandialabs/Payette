@@ -82,8 +82,8 @@ the minimizing variables in the gold file and the simulation output file.</p>
   tolerance 1.e-4  # tolerance between out and gold file [1.e-4]
   disp 0 # set to not zero to get detailed output from optimizer [0]
 
-  optimize K, ubound 150.e9, lbound 125.e9  # parameter to optimize
-  optimize G, ubound 57.e9, lbound 45.e9  # parameter to optimize
+  optimize K, bounds = (125.e9, 150.e9) # parameter to optimize
+  optimize G, bounds = (45.e9, 57.e9)  # parameter to optimize
 
   gold file exmpls.gold
   minimize sig11, sig22, sig33 versus time
@@ -95,9 +95,9 @@ end optimization</pre>
 <div class="section" id="options">
 <h3>Options<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h3>
 <dl class="docutils">
-<dt><strong>optimize</strong> &lt;param&gt;, [ubound], [lbound] (<em>required</em>)</dt>
-<dd>Parameter[s] to be minimized. Optional ubound and lbound are the upper and
-lower bounds on <tt class="docutils literal"><span class="pre">param</span></tt>.</dd>
+<dt><strong>optimize</strong> &lt;param&gt;, [bounds] (<em>required</em>)</dt>
+<dd>Parameter[s] to be minimized. Optional bounds are the lower and bounds on
+<tt class="docutils literal"><span class="pre">param</span></tt>.</dd>
 <dt><strong>minimize</strong> &lt;param_1[, param_2[,...param_n]]&gt; [versus param] (<em>required</em>)</dt>
 <dd>Variables[s] to be minimized.  The optional <em>versus</em> flag does something.</dd>
 <dt><strong>gold file</strong> &lt;file name&gt; (<em>required</em>)</dt>

@@ -38,26 +38,14 @@ attributes = {
     "material type": ["mechanical"],
     "default material": True,
     }
+
+
 class FiniteElastic(ConstitutiveModelPrototype):
-    """
-    CLASS NAME
-       PyElastic
+    """ Finite elasticity model.
 
-    PURPOSE
+    Computes the PK2 stress based on the Green-Lagrange strain and returns the
+    Cauchy stress
 
-       Constitutive model for an elastic material in python. When instantiated,
-       the Elastic material initializes itself by first checking the user input
-       (_check_props) and then initializing any internal state variables
-       (_set_field). Then, at each timestep, the driver update the Material state
-       by calling updateState.
-
-    METHODS
-       _check_props
-       _set_field
-       updateState
-
-    AUTHORS
-       Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     """
 
     def __init__(self):

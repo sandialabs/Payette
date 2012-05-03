@@ -18,6 +18,7 @@ Payette Material Model Driver - Official Documentation
    Files/test_payette
    Files/installing_materials
    Files/optimization
+   Files/permutation
 
 
 Indices and tables

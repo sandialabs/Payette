@@ -68,15 +68,21 @@ class Permutate(object):
         job_opts.verbosity = 0
         self.data["payette opts"] = job_opts
 
+        # allowed directives
+        self.allowed_directives = ("method", "options", "permutate", )
+
         # allowed options
-        self.allowed_options = ("combination", "zip", )
-        self.conflicting_options = (("combination", "zip", ), )
+        self.allowed_options = ( )
+        self.conflicting_options = (( ))
+
+        # methods
+        self.method = None
+        self.allowed_methods = (("combination", "combine"), "zip")
 
         # place holders for param_ranges and param_nams
         self.param_ranges = []
         self.param_nams = []
         self.initial_vals = []
-        self.strategy = None
 
         # fill the data with the permutated information
         self.get_params(permutate)
@@ -89,7 +95,7 @@ class Permutate(object):
             pu.loginf("Permutating job: {0}".format(self.data["basename"]))
             pu.loginf("Permutated variables: {0}"
                       .format(", ".join(self.param_nams)))
-            pu.loginf("Permutation strategy: {0}".format(self.strategy))
+            pu.loginf("Permutation method: {0}".format(self.method))
         pass
 
     def run_job(self):
@@ -195,6 +201,13 @@ class Permutate(object):
 
             item = item.split()
             directive = item[0].lower()
+
+            if directive not in self.allowed_directives:
+                errors += 1
+                pu.logerr("unrecognized keyword \"{0}\" in permutation block"
+                          .format(directive))
+                continue
+
             if directive == "options":
                 opt = [x.lower() for x in item[1:]]
                 bad_opt = [x for x in opt if x not in self.allowed_options]
@@ -207,19 +220,66 @@ class Permutate(object):
 
                 continue
 
-            elif directive == "permutate":
+            if directive == "method":
+
+                # method must be one of the allowed_methods, and must only be
+                # specified once
+                try:
+                    meth = item[1]
+                except IndexError:
+                    errors += 1
+                    pu.logerr("no method given following 'method' directive")
+                    continue
+
+                if self.method is None:
+                    self.method = meth
+
+                else:
+                    errors += 1
+                    pu.logerr("requested method '{0}' but method '{1}'"
+                              .format(meth, self.method) +
+                              " already requested")
+                    continue
+
+                bad_meth = self.method not in pu.flatten(self.allowed_methods)
+                if bad_meth:
+                    errors += 1
+                    pu.logerr(
+                        "method '{0:s}' not recognized, allowed methods are {1}"
+                        .format(self.method, ", ".join(self.allowed_methods)))
+                continue
+
+            if directive == "permutate":
 
                 # set up this parameter to permutate
-                key = item[1]
-                vals = [x.lower() for x in item[2:]]
+                try:
+                    key = item[1]
+                except IndexError:
+                    errors += 1
+                    pu.logerr("No item given for permutate keyword")
+                    continue
+
+                try:
+                    vals = [x.lower() for x in item[2:]]
+                except IndexError:
+                    errors += 1
+                    pu.logerr("No values given for permutate keyword {0}"
+                              .format(key))
+                    continue
 
                 # specified range
+                p_range = None
                 if "range" in vals:
                     p_range = ", ".join(vals[vals.index("range") + 1:])
-                    if len(p_range) < 2:
+                    if len(p_range.split(",")) < 2:
                         errors += 1
                         pu.logerr("range requires at least 2 arguments")
                         continue
+
+                    elif len(p_range.split(",")) == 2:
+                        # default to 10 steps
+                        p_range += ", 10"
+
                     p_range = eval("{0}({1})".format("np.linspace", p_range))
 
                 # specified sequence
@@ -233,19 +293,17 @@ class Permutate(object):
                     p_range = eval("{0}([{1}])".format("np.array", p_range))
 
                 # check that a range was given
-                if not len(p_range):
+                if p_range is None or not len(p_range):
                     errors += 1
                     pu.logerr("no range/sequence given for " + key)
                     p_range = np.zeros(1)
 
-                param_ranges.append(p_range.tolist())
+                p_range = p_range.tolist()
+                param_ranges.append(p_range)
                 self.param_nams.append(key)
-                self.initial_vals.append(p_range.tolist()[0])
+                self.initial_vals.append(p_range[0])
 
-            else:
-                errors += 1
-                pu.logerr("unrecognized keyword \"{0}\" in permutation block"
-                          .format(directive))
+                continue
 
             continue
 
@@ -254,9 +312,6 @@ class Permutate(object):
             sys.exit(2)
 
         # check for conflicting options
-        if not [x for x in options if x in ("zip", "combination")]:
-            options.append("zip")
-
         for item in self.conflicting_options:
             conflict = [x for x in options if x in item]
             if len(conflict) - 1:
@@ -265,27 +320,23 @@ class Permutate(object):
                     "given in permuation block")
                 sys.exit(2)
 
-        if "combination" in options:
-            self.strategy = "combination"
+        if self.method is None:
+            self.method = "zip"
+
+        if "combin" in self.method:
             param_ranges = list(product(*param_ranges))
 
-        elif "zip" in options:
-            self.strategy = "zip"
+        else:
             if len(set([len(x) for x in param_ranges])) - 1:
                 pu.logerr("number of permutations must be the same for "
-                          "all permutated parameters")
+                          "all permutated parameters when using method: [zip]")
                 sys.exit(3)
             param_ranges = zip(*param_ranges)
-
-        else:
-            # zip above is the default, so we should never get here.
-            pu.logerr("no option given")
 
         nruns = len(param_ranges)
         pad = len(str(nruns))
         self.param_ranges = izip(
-            ["{0:0{1}d}".format(x, pad) for x in range(nruns)],
-            param_ranges)
+            ["{0:0{1}d}".format(x, pad) for x in range(nruns)], param_ranges)
         del param_ranges
 
         return

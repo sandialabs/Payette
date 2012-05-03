@@ -37,13 +37,15 @@ except ImportError:
 
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 attributes = {
     "payette material": True,
     "name": "elastic",
     "fortran source": True,
-    "build script": os.path.join(PC_MTLS_FORTRAN,"Elastic/build.py"),
+    "build script": os.path.join(THIS_DIR, "Build_elastic.py"),
     "aliases": ["hooke", "elasticity", "linear elastic"],
-    "material type": ["mechanical"]
+    "material type": ["mechanical"],
+    "default material": True,
     }
 
 class Elastic(ConstitutiveModelPrototype):
@@ -78,27 +80,26 @@ class Elastic(ConstitutiveModelPrototype):
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     """
     def __init__(self):
-        ConstitutiveModelPrototype.__init__(self)
+        super(Elastic, self).__init__()
 
         self.name = attributes["name"]
         self.aliases = attributes["aliases"]
         self.imported = imported
 
         # register parameters
-        self.registerParameter("LAM",0,aliases=[])
-        self.registerParameter("G",1,aliases=['SHMOD'])
-        self.registerParameter("E",2,aliases=['YMOD'])
-        self.registerParameter("NU",3,aliases=['POISSONS'])
-        self.registerParameter("K",4,aliases=['BKMOD'])
-        self.registerParameter("H",5,aliases=[])
-        self.registerParameter("KO",6,aliases=[])
-        self.registerParameter("CL",7,aliases=[])
-        self.registerParameter("CT",8,aliases=[])
-        self.registerParameter("CO",9,aliases=[])
-        self.registerParameter("CR",10,aliases=[])
-        self.registerParameter("RHO",11,aliases=[])
+        self.registerParameter("LAM", 0, aliases=[])
+        self.registerParameter("G", 1, aliases=['SHMOD'])
+        self.registerParameter("E", 2, aliases=['YMOD'])
+        self.registerParameter("NU", 3, aliases=['POISSONS'])
+        self.registerParameter("K", 4, aliases=['BKMOD'])
+        self.registerParameter("H", 5, aliases=[])
+        self.registerParameter("KO", 6, aliases=[])
+        self.registerParameter("CL", 7, aliases=[])
+        self.registerParameter("CT", 8, aliases=[])
+        self.registerParameter("CO", 9, aliases=[])
+        self.registerParameter("CR", 10, aliases=[])
+        self.registerParameter("RHO", 11, aliases=[])
         self.nprop = len(self.parameter_table.keys())
-        self.ndc = 0
 
         pass
 
@@ -112,7 +113,6 @@ class Elastic(ConstitutiveModelPrototype):
         self.parseParameters(user_params,f_params)
 
         # check parameters
-        self.dc = np.zeros(self.ndc)
         self.ui = self._check_props()
         self.nsv,namea,keya,sv,rdim,iadvct,itype = self._set_field()
         namea = parseToken(self.nsv,namea)

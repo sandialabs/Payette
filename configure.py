@@ -341,6 +341,9 @@ ENVS = ["MPLCONFIGDIR", "PYTHONPATH", "ECLDIR", "GPDOCDIR", "RHOME",
         "LIBRARY_PATH", "DYLD_LIBRARY_PATH", "PATH", "SINGULAR_EXECUTABLE",
         "SINGULARPATH"]
 
+# Fortran compiler for extension libraries
+FORT = "gfortran"
+
 # --- if running with sage, configure the sage environment
 if SAGE:
     # get the sage environment to save
@@ -348,6 +351,11 @@ if SAGE:
         if "sage" in sval.lower() or "sage" in skey.lower():
             ENVS.append(skey)
             continue
+        sage_local = os.environ.get("SAGE_LOCAL")
+        if sage_local is not None:
+            FORT = (os.path.join(sage_local, "gfortran") if
+                    os.path.isfile(os.path.join(sage_local, "gfortran")) else
+                    FORT)
 
 if ERRORS:
     sys.exit("configure.py: ERROR: fix previously trapped errors")
@@ -380,7 +388,7 @@ def configure_payette(argv):
         "--f77exec",
         dest="F77EXEC",
         action="store",
-        default="gfortran",
+        default=FORT,
         help="Specify the path F77 to compiler [default: %default]")
     parser.add_option(
         "--f2py-debug",
@@ -392,7 +400,7 @@ def configure_payette(argv):
         "--f90exec",
         dest="F90EXEC",
         action="store",
-        default="gfortran",
+        default=FORT,
         help="Specify the path F90 to compiler [default: %default]")
     parser.add_option(
         "--no-callback",

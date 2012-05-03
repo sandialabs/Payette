@@ -43,8 +43,8 @@ Example Optimization Block
     tolerance 1.e-4  # tolerance between out and gold file [1.e-4]
     disp 0 # set to not zero to get detailed output from optimizer [0]
 
-    optimize K, ubound 150.e9, lbound 125.e9  # parameter to optimize
-    optimize G, ubound 57.e9, lbound 45.e9  # parameter to optimize
+    optimize K, bounds = (125.e9, 150.e9) # parameter to optimize
+    optimize G, bounds = (45.e9, 57.e9)  # parameter to optimize
 
     gold file exmpls.gold
     minimize sig11, sig22, sig33 versus time
@@ -57,9 +57,9 @@ The full example can be found in :download:`exmpl_7.inp
 Options
 -------
 
-**optimize** <param>, [ubound], [lbound] (*required*)
-  Parameter[s] to be minimized. Optional ubound and lbound are the upper and
-  lower bounds on ``param``.
+**optimize** <param>, [bounds] (*required*)
+  Parameter[s] to be minimized. Optional bounds are the lower and bounds on
+  ``param``.
 
 **minimize** <param_1[, param_2[,...param_n]]> [versus param] (*required*)
   Variables[s] to be minimized.  The optional *versus* flag does something.

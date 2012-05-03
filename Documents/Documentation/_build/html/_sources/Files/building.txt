@@ -69,6 +69,7 @@ The required software may be obtained in one of several ways:
      functions from Fortran subroutines to Python functions.
 
 
+.. _installation:
 
 Installation
 ============
@@ -97,7 +98,7 @@ Installation
            runPayette
            testPayette
 
-5) execute::
+#) execute::
 
 	% buildPayette
 
