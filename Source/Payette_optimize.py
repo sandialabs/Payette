@@ -449,7 +449,7 @@ class Optimize(object):
             errors += 1
             pu.logerr("no parameters to minimize given")
 
-        if not optimize:
+        if not shearfit and not optimize:
             errors += 1
             pu.logerr("no parameters to optimize given")
 
@@ -628,15 +628,53 @@ class Optimize(object):
         # mapping to a_params array
         idx_map = {"a1": 0, "a2": 1, "a3":2, "a4":3}
 
-        for key, val in self.data["optimize"].items():
-            idx = idx_map[key.lower()]
-            a_params[idx] = val["initial value"]
-            index_array[idx] = idx
-            continue
+        if not self.data["optimize"]:
+            # user did not specify an parameters, get the first guess in a two
+            # step process:
+            # 1) get A1 and A4 through a linear fit, if it is good, keep the
+            # result
+            # 2) if needed, do a full curve fit, using A1 from above
 
+            dat = pu.read_data(self.data["gold file"])
+            ione = dat[:, 0]
+            rootj2 = dat[:, 1]
+
+            # linear fit
+            fit = np.polyfit(ione, rootj2, 1, full=True)
+            if fit[1] < 1.e-16:
+                # data was very linear -> drucker prager -> fix all values
+                a_params[3], a_params[0] = np.abs(fit[0])
+                index_array = [None] * 4
+
+            else:
+                # least squares fit
+                def rtj2(i1, a1, a2, a3, a4):
+                    return a1 - a3 * np.exp(a2 * i1) - a4 * i1
+                p0 = np.zeros(4)
+                p0[0] = fit[0][1]
+                curve_fit = scipy.optimize.curve_fit(rtj2, ione, rootj2, p0=p0)
+                a_params = np.abs(curve_fit[0])
+
+            for key in idx_map:
+                if key in [x.lower() for x in self.data["fix"]]:
+                    continue
+                self.data["optimize"][key] = {}
+                self.data["optimize"][key]["bounds"] = (None, None)
+                self.data["optimize"][key]["initial value"] = (
+                    a_params[idx_map[key]])
+
+        else:
+            for key, val in self.data["optimize"].items():
+                idx = idx_map[key.lower()]
+                a_params[idx] = val["initial value"]
+                index_array[idx] = idx
+                continue
+
+        # replace the values the user wanted fixed
         for key, val in self.data["fix"].items():
             idx = idx_map[key.lower()]
             a_params[idx] = val["initial value"]
+            continue
 
         # store the initial A params, and "index array": the array of indices
         # of the A parameters to be optimized.
@@ -732,6 +770,7 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
                     ubnd = x0[ibnd]*FAC[ibnd] + 50 * x0[ibnd]*FAC[ibnd]
                 else:
                     ubnd = 1.e20
+
             if lbnd > ubnd:
                 errors += 1
                 pu.logerr("lbnd({0:12.6E}) > ubnd({1:12.6E})"
@@ -952,7 +991,7 @@ def rtxc(xcall, xnams, data, base_dir, job_opts, xgold):
     a1, a2, a3, a4 = a
 
     # enforce constraints
-    if a1 - a3 < 0.:
+    if a1 < 0. or a2 < 0. or a3 < 0. or a4 < 0. or a1 - a3 < 0.:
         return 1.e3
 
     dat = pu.read_data(xgold)
@@ -1041,4 +1080,5 @@ def get_rtj2_vs_i1(fpath):
             continue
 
     return fnew
+
 

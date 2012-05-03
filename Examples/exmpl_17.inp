@@ -1,0 +1,24 @@
+# Example opt
+# Title: exmpl_17
+# Author: Tim Fuller, tjfulle@sandia.gov
+# Keywords: optimization
+# Comments: This input file demonstrates the shear fit functionality of Payette.
+
+begin simulation exmpl_17
+
+  # for shearfit, we don't actually have to run a simulation, so we don't have
+  # to define anything but the optimization block
+
+  # in this example, the gold file is a table of i1 and rootj2 values at yield
+
+  begin optimization
+    method cobyla
+    option shearfit
+    # specify no initial value, actual value is 843.02e6
+    # specify no initial value, actual value is 2.731e-10
+    # specify no initial value, actual value is 821.92e6
+    fix A4, initial value = 1.e-10
+    gold file shearfit_invar.gold
+  end optimization
+
+end simulation
