@@ -425,6 +425,7 @@ def setupOutputFile(simdat, matdat, restart):
 
         for head in plot_keys: ofile.write(textformat(head))
         ofile.write('\n')
+        ofile.flush()
         pass
 
     if simdat.WRITE_VANDD_TABLE:
