@@ -42,27 +42,18 @@ import multiprocessing as mp
 
 import Payette_config as pc
 import Source.Payette_utils as pu
-import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr
 import Source.Payette_optimize as po
 import Source.Payette_permutate as pp
 
 
-# --- module level variables
-USER_INPUT_DICT = {}
-OPTS = {}
-TIMING = False
-RESTART = False
-
-def run_payette(argv):
+def run_payette(argv, disp=0):
 
     """Main function for running a Payette job.
     Read the user inputs from argv, parse options, read user input, and run
     the jobs.
 
     """
-
-    global USER_INPUT_DICT, TIMING, OPTS, RESTART
 
     # ************************************************************************
     # -- command line option parsing
@@ -199,16 +190,24 @@ def run_payette(argv):
         default=False,
         help=("Set up material and exit, printing set up information "
               "[default: %default]"))
-    (OPTS, args) = parser.parse_args(argv)
+    parser.add_option(
+        "--disp",
+        dest="disp",
+        action="store",
+        type=int,
+        default=disp,
+        help=("Return extra diagnostic information from run_job if disp > 0 "
+              "[default: %default]"))
+    (opts, args) = parser.parse_args(argv)
 
     payette_exts = [".log", ".math1", ".math2", ".props", ".echo", ".prf"]
-    if OPTS.cleanall:
+    if opts.cleanall:
         payette_exts.extend([".out"])
-        OPTS.clean = True
+        opts.clean = True
 
-    OPTS.verbosity = int(OPTS.verbosity)
+    opts.verbosity = int(opts.verbosity)
 
-    if OPTS.clean:
+    if opts.clean:
         cleaned = False
         # clean all the payette output and exit
         for arg in args:
@@ -233,9 +232,9 @@ def run_payette(argv):
 
     # ----------------------------------------------- start: get the user input
     input_lines = []
-    if OPTS.inputstr:
+    if opts.inputstr:
         # user gave input directly
-        input_lines.extend(OPTS.inputstr.split("\n"))
+        input_lines.extend(opts.inputstr.split("\n"))
 
     # make sure input file is given and exists
     if len(args) < 1 and not input_lines:
@@ -243,7 +242,7 @@ def run_payette(argv):
         parser.error("No input given")
 
     # pass options to global module variables
-    TIMING = OPTS.timing
+    timing = opts.timing
 
     # first check for barf files
     barf_files = [x for x in args if "barf" in os.path.splitext(x)[1]
@@ -259,34 +258,36 @@ def run_payette(argv):
             if not os.path.isfile(barf_file):
                 parser.error("barf file {0} not found".format(barf_file))
 
-            if OPTS.verbosity:
+            if opts.verbosity:
                 pu.logmes(pc.PC_INTRO)
 
-            PayetteBarf(barf_file, OPTS)
+            PayetteBarf(barf_file, opts)
 
         return 0
 
     # check restart files
     rfiles = [x for x in args if os.path.splitext(x)[1] == ".prf"]
-    if len(rfiles) > 1:
-        parser.error(str(len(rfiles)) + " restart files given, but only one "
-                     "restart file can be processed at a time")
+    restart = any(rfiles)
+    if rfiles:
+        nrfiles = len(rfiles)
+        if nrfiles > 1:
+            parser.error(
+                str(len(rfiles)) + " restart files given, "
+                "but only 1 restart file can be processed at a time")
 
-    elif len(rfiles) and len(rfiles) != len(args):
-        # choose to run a single restart file or input files, but don't mix
-        parser.error(
-            "Cannot process both restart and input files at same time")
+        if nrfiles != len(args):
+            # choose to run a single restart file or input files, but don't mix
+            parser.error(
+                "Cannot process both restart and input files at same time")
 
-    elif len(rfiles):
         # check to see if the input file exists and get it info
         rfile = rfiles[0]
         if not os.path.isfile(rfile):
             parser.error("Restart file {0} not found".format(rfile))
 
-        RESTART = True
         with open(rfile, "rb") as ftmp:
             the_model = pickle.load(ftmp)
-        USER_INPUT_DICT = {"restart": the_model}
+        user_input_dict = {"restart": the_model}
 
     else:
         # get a list of all input files, order of where to look for file f:
@@ -301,23 +302,29 @@ def run_payette(argv):
             fbase, fext = os.path.splitext(arg)
             if not arg:
                 continue
+
             if fext == ".prf":
                 # one last check for restart files
                 parser.error("Cannot process both restart and input "
                              "files at same time")
+
             elif os.path.isfile(arg):
                 ftmp = arg
+
             elif os.path.isfile(os.path.realpath(arg)):
                 ftmp = os.path.realpath(arg)
+
             elif os.path.isfile(os.path.join(pc.PC_INPUTS, arg)):
                 ftmp = os.path.join(pc.PC_INPUTS, arg)
                 pu.writeMessage(__file__, "Using " + ftmp + " as input")
+
             elif not fext or fext == ".":
                 # add .inp extension to arg
                 arginp = fbase + ".inp"
                 if os.path.isfile(arginp):
                     ftmp = arginp
                     pu.writeMessage(__file__, "Using " + ftmp + " as input")
+
                 elif os.path.isfile(os.path.join(pc.PC_INPUTS, arginp)):
                     ftmp = os.path.join(pc.PC_INPUTS, arginp)
                     pu.writeMessage(__file__, "Using " + ftmp + " as input")
@@ -352,15 +359,19 @@ def run_payette(argv):
             continue
 
         # read the user input
-        USER_INPUT_DICT = pu.read_input(input_lines, OPTS.cchar)
-        if not USER_INPUT_DICT:
+        user_input_dict = pu.read_input(input_lines, opts.cchar)
+        if not user_input_dict:
             sys.exit("ERROR: user input not found in {0:s}"
                      .format(", ".join(foundf)))
     # ----------------------------------------------------- end: get user input
 
+    # we have a list of user input.  now create a generator to send to _run_job
+    job_inp = ((key, user_input_dict[key], opts, restart, timing)
+                 for key in user_input_dict)
+
     # number of processors
-    nproc = min(min(mp.cpu_count(), OPTS.nproc), len(USER_INPUT_DICT))
-    OPTS.verbosity = OPTS.verbosity if nproc == 1 else 0
+    nproc = min(min(mp.cpu_count(), opts.nproc), len(user_input_dict))
+    opts.verbosity = opts.verbosity if nproc == 1 else 0
 
     if nproc > 1:
         pu.writeWarning(__file__, """
@@ -369,79 +380,71 @@ def run_payette(argv):
              console will not shut down Payette.  Instead, put the job
              in the background with [ctrl-z] and then kill it""")
 
-    if OPTS.verbosity:
+    if opts.verbosity:
         pu.logmes(pc.PC_INTRO)
 
     # loop through simulations and run them
-    if TIMING:
+    if timing:
         tim0 = time.time()
-    if nproc > 1 and len(USER_INPUT_DICT.keys()) > 1:
+
+    if nproc > 1 and len(user_input_dict.keys()) > 1:
         pool = mp.Pool(processes=nproc)
-        pool.map(_run_job, USER_INPUT_DICT.keys())
+        pool.map(_run_job, job_inp)
         pool.close()
         pool.join()
+
     else:
-        for key in USER_INPUT_DICT:
-            _run_job(key)
+        for job in job_inp:
+            _run_job(job)
             continue
 
-    if TIMING:
+    if timing:
         print_final_timing_info(tim0)
 
     return 0
 
 
-def _run_job(job):
+def _run_job(args):
 
     """ run each individual job """
 
-    if TIMING:
+    # pass passed args to local arguments
+    job_id, user_input, opts, restart, timing = args
+
+    if timing:
         tim0 = time.time()
 
     # instantiate Payette object
-    if RESTART:
-        the_model = USER_INPUT_DICT[job]
-        the_model.setupRestart()
+    if restart:
+        the_model = user_input
+        the_model.setup_restart()
 
-        # run the problem
-        if TIMING:
-            tim1 = time.time()
-
-        solve = pdrvr.runProblem(the_model, restart=RESTART)
-
-    elif "optimization" in USER_INPUT_DICT[job]:
+    elif "optimization" in user_input:
         # intantiate the Optimize object
-        the_model = po.Optimize(job, USER_INPUT_DICT[job], OPTS)
+        the_model = po.Optimize(job_id, user_input, opts)
 
-        # run the optimization problem
-        if TIMING:
-            tim1 = time.time()
-
-        solve = the_model.run_job()
-
-    elif 'permutation' in USER_INPUT_DICT[job]:
+    elif 'permutation' in user_input:
         # intantiate the Optimize object
-        the_model = pp.Permutate(job, USER_INPUT_DICT[job], OPTS)
-
-        # run the permutation problem
-        if TIMING:
-            tim1 = time.time()
-
-        solve = the_model.run_job()
+        the_model = pp.Permutate(job_id, user_input, opts)
 
     else:
-        the_model = pcntnr.Payette(job, USER_INPUT_DICT[job], OPTS)
+        the_model = pcntnr.Payette(job_id, user_input, opts)
 
-        # run the problem
-        if TIMING:
-            tim1 = time.time()
+    # run the job
+    if timing:
+        tim1 = time.time()
 
-        solve = pdrvr.runProblem(the_model, restart=RESTART)
+    solve = the_model.run_job()
 
-    if solve != 0:
+    if opts.disp:
+        retcode = solve["retcode"]
+    else:
+        retcode = solve
+
+    if retcode != 0:
         sys.exit("ERROR: simulation failed")
 
-    if TIMING:
+    if timing:
         tim2 = time.time()
 
     # finish up
@@ -449,7 +452,7 @@ def _run_job(job):
     del the_model
 
     # print timing info
-    if TIMING:
+    if timing:
         print_timing_info(tim0, tim1, tim2, the_model.name)
 
     return 0

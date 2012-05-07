@@ -48,7 +48,7 @@ class FiniteElastic(ConstitutiveModelPrototype):
 
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super(FiniteElastic, self).__init__()
         self.name = attributes["name"]
         self.aliases = attributes["aliases"]
@@ -66,11 +66,11 @@ class FiniteElastic(ConstitutiveModelPrototype):
         pass
 
     # public methods
-    def setUp(self,simdat,matdat,user_params,f_params):
+    def setUp(self, matdat, user_params):
         iam = self.name + ".setUp(self,material,props)"
 
         # parse parameters
-        self.parseParameters(user_params, f_params)
+        self.parseParameters(user_params)
 
         mu, nu = self.ui0[0:2]
 
@@ -101,16 +101,16 @@ class FiniteElastic(ConstitutiveModelPrototype):
 
         return
 
-    def jacobian(self,simdat,matdat):
-        v = simdat.getData("prescribed stress components")
+    def jacobian(self, simdat, matdat):
+        v = matdat.getData("prescribed stress components")
         return self.J0[[[x] for x in v],v]
 
-    def updateState(self,simdat,matdat):
+    def updateState(self, simdat, matdat):
         """
            update the material state based on current state and strain increment
         """
         # deformation gradient and its determinant
-        F = simdat.getData("deformation gradient", form="Matrix")
+        F = matdat.getData("deformation gradient", form="Matrix")
         jac = np.linalg.det(F)
 
         # green lagrange strain

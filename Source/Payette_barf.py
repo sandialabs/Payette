@@ -121,15 +121,15 @@ class PayetteBarf(object):
 
         # the model has been set up, now advance the stress and state variables
         # to where they need to be based on barf file
-        simdat = the_model.simulationData()
+        simdat = the_model.simulation_data()
         material = the_model.material
-        matdat = material.materialData()
+        matdat = material.material_data()
         material.constitutive_model.dc = self.barf["derived constsants"]
         matdat.advanceData("stress", self.barf["stress"])
         simdat.advanceData("rate of deformation", self.barf["strain rate"])
         matdat.advanceData("extra variables", self.barf["extra variables"])
 
-        pdrvr.runProblem(the_model)
+        pdrvr.solid_driver(the_model)
 
         pass
 

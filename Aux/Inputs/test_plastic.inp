@@ -22,7 +22,6 @@ begin material
   A = 0
   C = 0
   M = 0
-  MFLG = 0
 end material
 
 end simulation
@@ -45,13 +44,13 @@ end boundary
 
 begin material
   constitutive model plastic
+  options fortran
   K = 137.e9
   G = 53.e9
   YIELD STRENGTH = 90.e6
   A = 0
   C = 0
   M = 0
-  MFLG = 1
 end material
 
 end simulation

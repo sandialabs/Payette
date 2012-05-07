@@ -11,6 +11,7 @@ pconfigure
 *~
 
 # Payette files
+*.cols
 *.out
 *.xout
 *.log
@@ -29,6 +30,9 @@ pconfigure
 *.so
 *.o
 *.a
+
+# junk
+foo
 
 # Payette configuration files
 Payette_config.py

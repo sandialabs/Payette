@@ -50,7 +50,7 @@ attributes = {
 
 class ElasticPlastic(ConstitutiveModelPrototype):
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
 
         super(ElasticPlastic, self).__init__()
 
@@ -110,15 +110,14 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         pass
 
     # Public method
-    def setUp(self,simdat,matdat,user_params,f_params):
+    def setUp(self, matdat, user_params):
         iam = self.name + ".setUp(self,material,props)"
 
         # parse parameters
-        self.parseParameters(user_params,f_params)
+        self.parseParameters(user_params)
 
         self.ui = self._check_props()
-        (self.nsv,namea,keya,sv,
-         rdim,iadvct,itype) = self._set_field()
+        (self.nsv,namea,keya,sv,rdim,iadvct,itype) = self._set_field()
         namea = parseToken(self.nsv,namea)
         keya = parseToken(self.nsv,keya)
 
@@ -129,12 +128,12 @@ class ElasticPlastic(ConstitutiveModelPrototype):
 
         pass
 
-    def updateState(self,simdat,matdat):
+    def updateState(self, simdat, matdat):
         '''
            update the material state based on current state and strain increment
         '''
         dt = simdat.getData("time step")
-        d = simdat.getData("rate of deformation")
+        d = matdat.getData("rate of deformation")
         sigold = matdat.getData("stress")
         svold = matdat.getData("extra variables")
         a = [1,dt,self.ui,sigold,d,svold,migError,migMessage]

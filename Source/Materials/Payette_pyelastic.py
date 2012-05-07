@@ -60,7 +60,7 @@ class PyElastic(ConstitutiveModelPrototype):
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super(PyElastic, self).__init__()
 
         self.name = attributes["name"]
@@ -77,11 +77,11 @@ class PyElastic(ConstitutiveModelPrototype):
         pass
 
     # public methods
-    def setUp(self,simdat,matdat,user_params,f_params):
+    def setUp(self, matdat, user_params):
         iam = self.name + ".setUp(self,material,props)"
 
         # parse parameters
-        self.parseParameters(user_params,f_params)
+        self.parseParameters(user_params)
 
         self.ui = self._check_props()
         self.nsv,namea,keya,sv,rdim,iadvct,itype = self._set_field()
@@ -91,16 +91,16 @@ class PyElastic(ConstitutiveModelPrototype):
 
         return
 
-    def jacobian(self,simdat,matdat):
-        v = simdat.getData("prescribed stress components")
+    def jacobian(self, simdat, matdat):
+        v = matdat.getData("prescribed stress components")
         return self.J0[[[x] for x in v],v]
 
-    def updateState(self,simdat,matdat):
+    def updateState(self, simdat, matdat):
         """
            update the material state based on current state and strain increment
         """
         dt = simdat.getData("time step")
-        d = simdat.getData("rate of deformation")
+        d = matdat.getData("rate of deformation")
         sigold = matdat.getData("stress")
         de, delta = d*dt, np.array([1.,1.,1.,0.,0.,0.])
         dev = (de[0] + de[1] + de[2])

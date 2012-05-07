@@ -82,11 +82,9 @@ class DataContainer:
 
         if name in self.data_container:
             reportError(iam,"variable {0} already registered".format(name))
-            pass
 
         if typ not in self.data_types:
             reportError(iam,"unrecognized data type: {0}".format(typ))
-            pass
 
         shape = None
         if typ in self.tensor_vars:
@@ -96,7 +94,6 @@ class DataContainer:
                 msg = ("{0} data {1} must be a list "
                        "or numpy.ndarray, got {2}".format(typ,name,init_val))
                 reportError(iam,msg)
-                pass
 
             if typ == "SymTensor":
                 if init_val is None:
@@ -106,8 +103,6 @@ class DataContainer:
                 elif len(init_val) != 6:
                     msg = "length of SymTensor data {0} != 6".format(name)
                     reportError(iam,msg)
-                    pass
-                pass
 
             elif typ == "Tensor":
                 if init_val is None:
@@ -117,8 +112,6 @@ class DataContainer:
                 elif len(init_val) != 9:
                     msg = "length of Tensor data {0} != 9".format(name)
                     reportError(iam,msg)
-                    pass
-                pass
 
             elif typ == "Vector":
                 if init_val is None:
@@ -128,38 +121,32 @@ class DataContainer:
                 elif len(init_val) != 3:
                     msg = "length of Vector data {0} != 3".format(name)
                     reportError(iam,msg)
-                    pass
-                pass
 
             elif typ == "Matrix":
                 if init_val is None:
                     if dim is None:
                         msg="no dim specified for {0}".format(name)
                         reportError(iam,msg)
-                        pass
+
                     else:
                         if not isinstance(dim,(int,tuple)):
                             msg="bad dim {0} for {1}".format(dim,name)
                             reportError(iam,msg)
                         else:
                             init_val = np.zeros(dim)
-                            pass
+
                 else:
                     if init_val == "Identity":
                         if not isinstance(dim,int):
                             msg="bad dim {0} for {1}".format(dim,name)
                             reportError(iam,msg)
-                            pass
+
                         init_val = np.eye(dim)
-                        pass
-                    pass
-                pass
 
             value = np.array(init_val)
             old_value = np.array(init_val)
             stashed_value = np.array(init_val)
             shape = value.shape
-            pass
 
         elif typ == "List":
 
@@ -168,7 +155,7 @@ class DataContainer:
             if not isinstance(init_val,(list,tuple)):
                 msg = "List data {0} must be a list".format(name)
                 reportError(iam,msg)
-                pass
+
             value = [x for x in init_val]
             old_value = [x for x in init_val]
             stashed_value = [x for x in init_val]
@@ -181,7 +168,7 @@ class DataContainer:
             if not isinstance(init_val,(np.ndarray,list,tuple)):
                 msg = "Integer Array data {0} must not be a np.ndarray".format(name)
                 reportError(iam,msg)
-                pass
+
             value = np.array([x for x in init_val],dtype=int)
             old_value = np.array([x for x in init_val],dtype=int)
             stashed_value = np.array([x for x in init_val],dtype=int)
@@ -194,7 +181,7 @@ class DataContainer:
             if not isinstance(init_val,(np.ndarray,list,tuple)):
                 msg = "Array data {0} must be a np.ndarray".format(name)
                 reportError(iam,msg)
-                pass
+
             value = np.array(init_val)
             old_value = np.array(init_val)
             stashed_value = np.array(init_val)
@@ -207,7 +194,7 @@ class DataContainer:
             if isinstance(init_val,(list,tuple,np.ndarray)):
                 msg = "Scalar data {0} must ba scalar".format(name)
                 reportError(iam,msg)
-                pass
+
             value = init_val
             old_value = init_val
             stashed_value = init_val
@@ -221,12 +208,10 @@ class DataContainer:
                 msg = ("Boolean data {0} must be boolean, got {1}"
                        .format(name,init_val))
                 reportError(iam,msg)
-                pass
 
             value = init_val
             old_value = init_val
             stashed_value = init_val
-            pass
 
         plotable = plot_key is not None
         if not plotable: plot_name = None
@@ -235,7 +220,6 @@ class DataContainer:
                 msg = ("plot_key for {0} must be a string, got {1}"
                        .format(name,plot_key))
                 reportError(iam,msg)
-                pass
 
             # format the plot key
             plot_key = plot_key.replace(" ","_").upper()
@@ -253,7 +237,6 @@ class DataContainer:
             elif typ == "Tensor":
                 plot_key = ["{0}{1}".format(plot_key,self.mapping(i,sym=False))
                             for i in range(self.ntens)]
-                pass
 
             # format the plot name
             tmp = " component "
@@ -283,10 +266,11 @@ class DataContainer:
                                       "plotable": plotable }
         self.data_container_idx += 1
         setattr(self,name.replace(" ","_").upper(),old_value)
-        pass
+        return
 
     def unregisterData(self,name):
         """ unregister data with the data container """
+        iam = "unregisterData"
         try:
             del self.data_container[name]
         except KeyError:
@@ -316,7 +300,7 @@ class DataContainer:
 
             continue
 
-        pass
+        return
 
     def registerOption(self,name,val):
 
@@ -332,11 +316,10 @@ class DataContainer:
 
         if name in self.option_container:
             reportError(iam,"option {0} already registered".format(name))
-            pass
 
         self.option_container[name] = val
         setattr(self,name.replace(" ","_").upper(),val)
-        pass
+        return
 
     def getAllOptions(self):
         return self.option_container
@@ -363,7 +346,6 @@ class DataContainer:
 
         if stash and cur:
             reportError(iam,"cannot get stash and cur simultaneously")
-            pass
 
         if stash: valtyp = "stashed value"
         elif cur: valtyp = "value"
@@ -396,13 +378,11 @@ class DataContainer:
             elif form == "Matrix":
                 if typ == "Vector":
                     reportError(iam,"cannont return vector matrix")
-                    pass
 
                 return toMatrix(data[valtyp])
 
             else:
                 reportError(iam,"unrecognized form {0}".format(form))
-                pass
 
         elif typ == "List":
             return [x for x in data[valtyp]]
@@ -422,9 +402,9 @@ class DataContainer:
         self.storeData(name,newval)
         self.storeData(name,newval,old=True)
         self.storeData(name,newval,stash=True)
-        pass
+        return
 
-    def storeData(self,name,newval,stash=False,old=False):
+    def storeData(self, name, newval, stash=False, old=False):
 
         """ store the simulation data """
 
@@ -433,15 +413,17 @@ class DataContainer:
         if old and stash:
             reportError(iam,"can only store old or stash not both")
 
-        if stash: valtyp = "stashed value"
-        elif old: valtyp = "old value"
-        else: valtyp = "value"
+        if stash:
+            valtyp = "stashed value"
+        elif old:
+            valtyp = "old value"
+        else:
+            valtyp = "value"
 
         # handle extra variables
         if name == "extra variables":
             if len(newval) != self.num_extra:
                 reportError(iam,"wrong size for extra variable array")
-                pass
 
             for ixv,xv in enumerate(newval):
                 name = self.getExName(ixv)
@@ -469,8 +451,6 @@ class DataContainer:
                     newval = toArray(newval)
                 else:
                     reportError(iam,"vector cannot be converted from matrix")
-                    pass
-                pass
 
             # check lengths
             if typ == "Vector" and len(newval) != 3:
@@ -479,7 +459,6 @@ class DataContainer:
                 reportError(iam,"len SymTensor data {0} != 6".format(name))
             elif typ == "Tensor" and len(newval) != 9:
                 reportError(iam,"len Tensor data {0} != 9".format(name))
-            else: pass
 
             # store the newval
             data[valtyp] = np.array(newval)
@@ -496,7 +475,6 @@ class DataContainer:
         else:
             # store the scalar variable
             data[valtyp] = newval
-            pass
 
         return
 
@@ -543,7 +521,6 @@ class DataContainer:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
                    .format(name,self.name,", ".join(self.data_container.keys())))
             reportError(iam,msg)
-            pass
 
         value = self.getStashedData(name)
         self.storeData(name,value,old=True)
@@ -559,7 +536,7 @@ class DataContainer:
             continue
         return
 
-    def advanceData(self,name,value=None):
+    def advanceData(self, name, value=None):
 
         """ advance "value" to "old value" """
 
@@ -569,20 +546,19 @@ class DataContainer:
             if value is not None:
                 if len(value) != self.num_extra:
                     reportError(iam,"len(value [{0:d}]) != num_extra [{1:d}]"
-                                .format(len(value),self.num_extra))
-                    pass
+                                .format(len(value), self.num_extra))
+
                 for idx, exval in enumerate(value):
                     name = self.extra_vars_map[idx]
-                    self.storeData(name,exval,old=True)
+                    self.storeData(name, exval, old=True)
                     continue
-                pass
-            else:
 
+            else:
                 for idx, name in self.extra_vars_map.items():
-                    value = self.getData(name,cur=True)
-                    self.storeData(name,value,old=True)
+                    value = self.getData(name, cur=True)
+                    self.storeData(name, value, old=True)
                     continue
-                pass
+
             setattr(self,name.replace(" ","_").upper(),value)
             return
 
@@ -590,11 +566,13 @@ class DataContainer:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
                    .format(name,self.name,", ".join(self.data_container.keys())))
             reportError(iam,msg)
-            pass
 
-        if value is None: value = self.getData(name,cur=True)
-        self.storeData(name,value,old=True)
-        setattr(self,name.replace(" ","_").upper(),value)
+        if value is None:
+            value = self.getData(name, cur=True)
+
+        self.storeData(name, value)
+        self.storeData(name, value, old=True)
+        setattr(self, name.replace(" ","_").upper(),value)
 
         return
 
@@ -720,9 +698,9 @@ class DataContainer:
             elif ii == 6: comp = "31"
             elif ii == 7: comp = "32"
             elif ii == 8: comp = "33"
-            pass
 
-        if comp: return comp
-        else: reportError(__file__,"bad mapping")
-        pass
+        if comp:
+            return comp
+        else:
+            reportError(__file__,"bad mapping")
 

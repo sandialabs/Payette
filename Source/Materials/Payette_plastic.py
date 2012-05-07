@@ -58,11 +58,13 @@ class Plastic(ConstitutiveModelPrototype):
 
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super(Plastic, self).__init__()
         self.name = attributes["name"]
         self.aliases = attributes["aliases"]
-        self.imported = True
+
+        self.code = kwargs["code"]
+        self.imported = True if self.code == "python" else imported
 
         # register parameters
         self.registerParameter("K", 0, aliases=["B0", "BKMOD"])
@@ -71,29 +73,20 @@ class Plastic(ConstitutiveModelPrototype):
         self.registerParameter("A", 3, aliases=[])
         self.registerParameter("C", 4, aliases=[])
         self.registerParameter("M", 5, aliases=[])
-        self.registerParameter("MFLG", 6, aliases=[])
         self.nprop = len(self.parameter_table.keys())
         pass
 
     # public methods
-    def setUp(self, simdat, matdat, user_params, f_params):
+    def setUp(self, matdat, user_params):
         iam = self.name + ".setUp"
 
         # parse parameters
-        self.parseParameters(user_params, f_params)
-
-        flg = self.ui0[-1]
-        self.code = "python" if flg == 0. else "fortran"
+        self.parseParameters(user_params)
 
         if self.code == "python":
-            ui, nxtra, xtra, names, keys = self._py_set_up()
+            self.ui, nxtra, xtra, names, keys = self._py_set_up()
         else:
-            ui, nxtra, xtra, names, keys = self._fort_set_up()
-
-        # models do not know about MFLG, so we need to explicitly add it
-        self.ui = np.zeros(self.nprop)
-        self.ui[0:len(ui)] = ui
-        self.ui[-1] = flg
+            self.ui, nxtra, xtra, names, keys = self._fort_set_up()
 
         self.nsv = nxtra
         self.bulk_modulus, self.shear_modulus = self.ui[0], self.ui[1]
@@ -107,16 +100,15 @@ class Plastic(ConstitutiveModelPrototype):
         """
         # get passed arguments
         dt = simdat.getData("time step")
-        d = simdat.getData("rate of deformation")
+        d = matdat.getData("rate of deformation")
         sigold = matdat.getData("stress")
         xtra = matdat.getData("extra variables")
 
-        ui = np.array(self.ui[:-1])
         if self.code == "python":
-            sig, xtra = _py_update_state(ui, dt, d, sigold, xtra)
+            sig, xtra = _py_update_state(self.ui, dt, d, sigold, xtra)
 
         else:
-            a = [1, self.nsv, dt, ui, sigold, d, xtra, migError, migMessage]
+            a = [1, self.nsv, dt, self.ui, sigold, d, xtra, migError, migMessage]
             if not PC_F2PY_CALLBACK:
                 a = a[:-2]
             sig, xtra = mtllib.plast_calc(*a)
@@ -127,7 +119,7 @@ class Plastic(ConstitutiveModelPrototype):
 
     def _py_set_up(self):
 
-        k, mu, y, a, c, m, flg = self.ui0
+        k, mu, y, a, c, m = self.ui0
 
         if k <= 0.:
             reportError(iam, "Bulk modulus K must be positive")
@@ -161,7 +153,7 @@ class Plastic(ConstitutiveModelPrototype):
         if nu < 0.:
             reportWarning(iam, "negative Poisson's ratio")
 
-        ui = np.array([k, mu, y, a, c, m, flg])
+        ui = np.array([k, mu, y, a, c, m])
 
         # register state variables
         names, keys = [], []
@@ -188,7 +180,7 @@ class Plastic(ConstitutiveModelPrototype):
         return ui, nxtra, xtra, names, keys
 
     def _check_props(self):
-        props = np.array(self.ui0)[0:-1]
+        props = np.array(self.ui0)
         a = [props, migError, migMessage]
         if not PC_F2PY_CALLBACK:
             a = a[:-2]

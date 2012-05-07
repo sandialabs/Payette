@@ -38,7 +38,6 @@ import string
 
 import Source.Payette_utils as pu
 import Source.Payette_container as pc
-import Source.Payette_driver as pd
 
 
 FARGS = []
@@ -59,6 +58,7 @@ class Permutate(object):
         self.data = {}
         self.data["basename"] = job
         self.data["nproc"] = job_opts.nproc
+        self.data["return level"] = job_opts.disp
         self.data["verbosity"] = job_opts.verbosity
         self.data["fext"] = ".perm"
         self.data["baseinp"] = job_inp
@@ -98,7 +98,7 @@ class Permutate(object):
             pu.loginf("Permutation method: {0}".format(self.method))
         pass
 
-    def run_job(self):
+    def run_job(self, *args, **kwargs):
         r"""Run the permutation job
 
         Set up directory to run the permutation job and call the minimizer
@@ -165,7 +165,13 @@ class Permutate(object):
                       .format(self.data["basename"]), pre="\n")
             pu.loginf("Output directory: {0}".format(base_dir))
 
-        return 0
+        retcode = 0
+
+        if not self.data["return level"]:
+            return retcode
+        else:
+            return {"retcode": retcode}
+
 
     def finish(self):
         r""" finish up the permutation job """
@@ -485,11 +491,16 @@ def func(xcall):
     the_model = pc.Payette(job, job_inp, job_opts)
 
     # run the job
-    solve = pd.runProblem(the_model, restart=False)
+    solve = the_model.run_job()
 
     the_model.finish()
 
-    if solve != 0:
+    if job_opts.disp:
+        retcode = solve["retcode"]
+    else:
+        retcode = solve
+
+    if retcode != 0:
         sys.exit("ERROR: simulation failed")
 
     # go back to the base_dir

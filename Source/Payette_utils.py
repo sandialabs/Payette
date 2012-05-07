@@ -603,27 +603,27 @@ def writeAvailableDataToLog(simdat,matdat):
         continue
 
     # strain
-    eps = simdat.getData("strain")
-    keys = simdat.getPlotKey("strain")
-    names = simdat.getPlotName("strain")
+    eps = matdat.getData("strain")
+    keys = matdat.getPlotKey("strain")
+    names = matdat.getPlotName("strain")
     for i, val in enumerate(eps):
         idx = idx+1
         write_plotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
         continue
 
     # sym(velocity gradient)
-    d = simdat.getData("rate of deformation")
-    keys = simdat.getPlotKey("rate of deformation")
-    names = simdat.getPlotName("rate of deformation")
+    d = matdat.getData("rate of deformation")
+    keys = matdat.getPlotKey("rate of deformation")
+    names = matdat.getPlotName("rate of deformation")
     for i, val in enumerate(d):
         idx = idx+1
         write_plotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
         continue
 
     # deformation gradient
-    defgrad = simdat.getData("deformation gradient")
-    keys = simdat.getPlotKey("deformation gradient")
-    names = simdat.getPlotName("deformation gradient")
+    defgrad = matdat.getData("deformation gradient")
+    keys = matdat.getPlotKey("deformation gradient")
+    names = matdat.getPlotName("deformation gradient")
     for i, val in enumerate(defgrad):
         idx = idx+1
         write_plotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
@@ -639,11 +639,11 @@ def writeAvailableDataToLog(simdat,matdat):
             write_plotable(idx,key,key.lower() in lowplotable,name,val)
             continue
 
-    if simdat.EFIELD_SIM:
+    if matdat.EFIELD_SIM:
         # electric field
-        efield = simdat.getData("electric field")
-        keys = simdat.getPlotKey("electric field")
-        names = simdat.getPlotName("electric field")
+        efield = matdat.getData("electric field")
+        keys = matdat.getPlotKey("electric field")
+        names = matdat.getPlotName("electric field")
         for i, val in enumerate(efield):
             idx = idx+1
             write_plotable(idx,keys[i],keys[i].lower() in lowplotable,names[i],val)
@@ -1418,3 +1418,28 @@ def check_if_test_dir(dir_path):
         continue
 
     return has__test_dir__
+
+
+class CountCalls(object):
+   "Decorator that keeps track of the number of times a function is called."
+
+   __instances = {}
+
+   def __init__(self, f):
+      self.__f = f
+      self.__numcalls = 0
+      CountCalls.__instances[f] = self
+
+   def __call__(self, *args, **kwargs):
+      self.__numcalls += 1
+      return self.__f(*args, **kwargs)
+
+   def count(self):
+      "Return the number of times the function f was called."
+      return CountCalls.__instances[self.__f].__numcalls
+
+   @staticmethod
+   def counts():
+      "Return a dict of {function: # of calls} for all registered functions."
+      return dict([(f.__name__, CountCalls.__instances[f].__numcalls)
+                   for f in CountCalls.__instances])

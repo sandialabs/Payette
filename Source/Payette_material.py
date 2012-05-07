@@ -46,14 +46,13 @@ class Material:
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     '''
 
-    def __init__(self, constitutive_model_name, simdat, user_params, f_params ):
+    def __init__(self, model_nam, user_params, *args, **kwargs ):
 
-        iam = "Material.__init__(self, constitutive_model_name)"
-        cmod = pim.PAYETTE_CONSTITUTIVE_MODELS[
-            constitutive_model_name]["class name"]
+        iam = "Material.__init__"
+        cmod = pim.PAYETTE_CONSTITUTIVE_MODELS[model_nam]["class name"]
 
         # instantiate the constiutive model
-        self.constitutive_model = cmod()
+        self.constitutive_model = cmod(*args, **kwargs)
 
         # check if the model was successfully imported
         if not self.constitutive_model.imported:
@@ -68,28 +67,25 @@ class Material:
                    "please contact the Payette\ndevelopers."
                    .format(self.constitutive_model.name,PC_MTLS_LIBRARY))
             reportError(iam,msg)
-            pass
 
-        # register common parameters
-        self.extra_vars_registered = False
+        self.eos_model = self.constitutive_model.eos_model
+
+        # initialize material data container
         self.matdat = DataContainer(self.constitutive_model.name)
+        self.extra_vars_registered = False
 
-        # register obligatory variables
-        self.matdat.registerData("stress","SymTensor",
-                                 init_val = np.zeros(6),
-                                 plot_key = "sig")
-        self.matdat.registerData("stress rate", "SymTensor",
-                                 init_val = np.zeros(6),
-                                 plot_key = "dsigdt")
-        self.matdat.registerData("failed","Boolean",
-                                 init_val = False)
+        # register default data
+        register_default_data = self.register_default_data
+        if self.eos_model:
+            register_default_data = self.register_default_eos_data
+        register_default_data()
 
         # set up the constitutive model
-        self.constitutive_model.setUp(simdat, self.matdat, user_params, f_params)
-        self.constitutive_model.checkSetUp()
-        self.constitutive_model.initializeState(simdat, self.matdat)
+        self.constitutive_model.setUp(self.matdat, user_params)
+        self.constitutive_model.finish_setup(self.matdat)
+        self.constitutive_model.initialize_state(self.matdat)
 
-        param_table = [None]*self.constitutive_model.nprop
+        param_table = [None] * self.constitutive_model.nprop
         for key, dic in self.constitutive_model.parameter_table.items():
             idx = dic['ui pos']
             val1 = self.constitutive_model.ui0[idx]
@@ -99,27 +95,78 @@ class Material:
                                 "adjusted value":val2}
             continue
 
-        self.matdat.registerData("jacobian","Matrix",
-                                 init_val = self.constitutive_model.J0)
-        self.matdat.registerOption("parameter table",param_table)
-        self.matdat.registerOption("electric field model",
-                                   self.constitutive_model.electric_field_model)
-        self.matdat.registerOption("multi level fail",
-                                   self.constitutive_model.multi_level_fail_model)
+        # register param table
+        self.matdat.registerOption("parameter table", param_table)
+
         pass
 
-    def materialData(self):
+    def register_default_data(self):
+        """Register the default data for the material """
+
+        # register obligatory data
+
+        # plotable data
+        self.matdat.registerData("stress", "SymTensor",
+                                 init_val=np.zeros(6),
+                                 plot_key="sig")
+        self.matdat.registerData("stress rate", "SymTensor",
+                                 init_val=np.zeros(6),
+                                 plot_key="dsigdt")
+        self.matdat.registerData("strain","SymTensor",
+                                 init_val=np.zeros(6),
+                                 plot_key="strain")
+        self.matdat.registerData("deformation gradient","Tensor",
+                                 init_val="Identity",
+                                 plot_key="F")
+        self.matdat.registerData("rate of deformation","SymTensor",
+                                 init_val=np.zeros(6),
+                                 plot_key="d")
+        self.matdat.registerData("vorticity","Tensor",
+                                 init_val=np.zeros(9),
+                                 plot_key="w")
+        self.matdat.registerData("equivalent strain","Scalar",
+                                 init_val=0.,
+                                 plot_key="eqveps")
+        self.matdat.registerData("permittivity","SymTensor",
+                                 init_val=np.zeros(6),
+                                 plot_key="permtv")
+        self.matdat.registerData("electric field","Vector",
+                                 init_val=np.zeros(3),
+                                 plot_key="efield")
+
+        # non-plotable data
+        self.matdat.registerData("prescribed stress", "Array",
+                                 init_val=np.zeros(6))
+        self.matdat.registerData("prescribed stress components",
+                                 "Integer Array",
+                                 init_val=np.zeros(6,dtype=int))
+        self.matdat.registerData("prescribed strain","SymTensor",
+                                 init_val=np.zeros(6))
+        self.matdat.registerData("strain rate","SymTensor",
+                                 init_val=np.zeros(6))
+        self.matdat.registerData("prescribed deformation gradient","Tensor",
+                                 init_val=np.zeros(9))
+        self.matdat.registerData("deformation gradient rate","Tensor",
+                                 init_val=np.zeros(9))
+        self.matdat.registerData("rotation","Tensor",
+                                 init_val="Identity")
+        self.matdat.registerData("rotation rate","Tensor",
+                                 init_val=np.zeros(9))
+        return
+
+    def register_default_eos_data(self):
+        # @msw: finish this!
+        pass
+
+    def material_data(self):
         return self.matdat
 
     def constitutiveModel(self):
         return self.constitutive_model
 
-    def electricFieldModel(self):
-        return self.constitutive_model.electric_field_model
-
-    def updateState(self,simdat, matdat):
+    def updateState(self, simdat, matdat):
         return self.constitutive_model.updateState(simdat, matdat)
 
-    def jacobian(self,simdat, matdat):
-        return self.constitutive_model.jacobian(simdat,matdat)
+    def jacobian(self, simdat, matdat):
+        return self.constitutive_model.jacobian(simdat, matdat)
 

@@ -28,7 +28,7 @@ import sys
 from Source.Payette_utils import *
 from Source.Payette_tensor import *
 
-def newton(material,simdat,matdat):
+def newton(material, simdat, matdat):
     '''
     NAME
        newton
@@ -97,11 +97,11 @@ def newton(material,simdat,matdat):
 
     # --- Local variables
     dt = simdat.getData("time step")
-    depsdt = simdat.getData("strain rate")
-    Fold = simdat.getData("deformation gradient",form="Matrix")
-    dold = simdat.getData("rate of deformation")
-    prsig = simdat.getData("prescribed stress")
-    v = simdat.getData("prescribed stress components")
+    depsdt = matdat.getData("strain rate")
+    Fold = matdat.getData("deformation gradient",form="Matrix")
+    dold = matdat.getData("rate of deformation")
+    prsig = matdat.getData("prescribed stress")
+    v = matdat.getData("prescribed stress components")
     sig = matdat.getData("stress")
     sv = matdat.getData("extra variables")
 
@@ -118,21 +118,28 @@ def newton(material,simdat,matdat):
     Fnew = Fold + np.dot(toMatrix(depsdt),Fold)*dt
 
     # replace deformation rate and gradient with current best guesses
-    simdat.storeData("deformation gradient",Fnew,old=True)
-    simdat.storeData("rate of deformation",depsdt,old=True)
+    matdat.storeData("deformation gradient",Fnew,old=True)
+    matdat.storeData("rate of deformation",depsdt,old=True)
 
     # update the material state
-    material.updateState(simdat,matdat)
+    material.updateState(simdat, matdat)
 
-    sig = matdat.getData("stress",cur=True)
+    sig = matdat.getData("stress", cur=True)
     sig_dif = sig[v] - prsig
 
     # --- Perform Newton iteration
     for i in range(maxit2):
-        Js = material.jacobian(simdat,matdat)
+        Js = material.jacobian(simdat, matdat)
         try:
             depsdt[v] -= np.linalg.solve(Js,sig_dif)/dt
+
         except:
+            print Js
+            print sig_dif
+            print dt
+            print v
+            print prsig
+            sys.exit("here")
             depsdt[v] -= np.linalg.lstsq(Js,sig_dif)[0]/dt
             msg = 'Using least squares approximation to matrix inverse'
             reportWarning(__file__,msg,limit=True)
@@ -140,14 +147,14 @@ def newton(material,simdat,matdat):
 
         if (depsmag(depsdt,dt) > depsmax):
             # increment too large, restore changed data and exit
-            simdat.restoreData("rate of deformation",dold)
-            simdat.restoreData("deformation gradient",Fold)
+            matdat.restoreData("rate of deformation",dold)
+            matdat.restoreData("deformation gradient",Fold)
             return converged
 
         Fnew = Fold + np.dot(toMatrix(depsdt),Fold)*dt
-        simdat.storeData("rate of deformation",depsdt,old=True)
-        simdat.storeData("deformation gradient",Fnew,old=True)
-        material.updateState(simdat,matdat)
+        matdat.storeData("rate of deformation",depsdt,old=True)
+        matdat.storeData("deformation gradient",Fnew,old=True)
+        material.updateState(simdat, matdat)
         sig = matdat.getData("stress",cur=True)
         sig_dif = sig[v] - prsig
         dnom = np.amax(np.abs(prsig)) if np.amax(np.abs(prsig)) > 2.e-16 else 1.
@@ -156,9 +163,9 @@ def newton(material,simdat,matdat):
         if i <= maxit1:
             if relerr < tol1:
                 converged = 1
-                simdat.restoreData("rate of deformation",dold)
-                simdat.restoreData("deformation gradient",Fold)
-                simdat.storeData("strain rate",depsdt)
+                matdat.restoreData("rate of deformation",dold)
+                matdat.restoreData("deformation gradient",Fold)
+                matdat.storeData("strain rate",depsdt)
                 return converged
             pass
 
@@ -166,16 +173,16 @@ def newton(material,simdat,matdat):
             if relerr < tol2:
                 converged = 2
                 # restore changed data and store the newly found strain rate
-                simdat.restoreData("rate of deformation",dold)
-                simdat.restoreData("deformation gradient",Fold)
-                simdat.storeData("strain rate",depsdt)
+                matdat.restoreData("rate of deformation",dold)
+                matdat.restoreData("deformation gradient",Fold)
+                matdat.storeData("strain rate",depsdt)
                 return converged
 
         continue
 
     # didn't converge, restore restore data and exit
-    simdat.restoreData("rate of deformation",dold)
-    simdat.restoreData("deformation gradient",Fold)
+    matdat.restoreData("rate of deformation",dold)
+    matdat.restoreData("deformation gradient",Fold)
     return converged
 
 def depsmag(d,dt):
@@ -211,8 +218,8 @@ def simplex(material,simdat,matdat):
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
        M Scot Swan, Sandia National Laboratories, mswan@sandia.gov
     '''
-    v = simdat.getData("prescribed stress components")
-    depsdt = simdat.getData("strain rate")
+    v = matdat.getData("prescribed stress components")
+    depsdt = matdat.getData("strain rate")
 
     nv = len(v)
 
@@ -220,7 +227,7 @@ def simplex(material,simdat,matdat):
     args = (material,simdat,matdat)
     depsdt[v] = scipy.optimize.fmin(func,depsdt[v],args=args,maxiter=20,disp=False)
 
-    simdat.storeData("strain rate",depsdt)
+    matdat.storeData("strain rate",depsdt)
 
     return
 
@@ -239,17 +246,17 @@ def func(depsdt_opt,material,simdat,matdat):
 
     # initialize
     dt = simdat.getData("time step")
-    v = simdat.getData("prescribed stress components")
-    prsig = simdat.getData("prescribed stress")
-    depsdt = simdat.getData("strain rate")
+    v = matdat.getData("prescribed stress components")
+    prsig = matdat.getData("prescribed stress")
+    depsdt = matdat.getData("strain rate")
     depsdt[v] = depsdt_opt
-    Fold = simdat.getData("deformation gradient",form="Matrix")
-    dold = simdat.getData("rate of deformation")
+    Fold = matdat.getData("deformation gradient",form="Matrix")
+    dold = matdat.getData("rate of deformation")
     Fnew = Fold + np.dot(toMatrix(depsdt),Fold)*dt
 
     # store the best guesses
-    simdat.storeData("rate of deformation",depsdt,old=True)
-    simdat.storeData("deformation gradient",Fnew,old=True)
+    matdat.storeData("rate of deformation",depsdt,old=True)
+    matdat.storeData("deformation gradient",Fnew,old=True)
     material.updateState(simdat,matdat)
 
     sig = matdat.getData("stress",cur=True)
@@ -282,8 +289,8 @@ def func(depsdt_opt,material,simdat,matdat):
         pass
 
     # restore data
-    simdat.restoreData("rate of deformation",dold)
-    simdat.restoreData("deformation gradient",Fold)
+    matdat.restoreData("rate of deformation",dold)
+    matdat.restoreData("deformation gradient",Fold)
 
     return error
 

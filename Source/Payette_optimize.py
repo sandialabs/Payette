@@ -36,7 +36,6 @@ from copy import deepcopy
 
 import Source.Payette_utils as pu
 import Source.Payette_container as pc
-import Source.Payette_driver as pd
 import Source.Payette_extract as pe
 import Toolset.KayentaParamConv as kpc
 
@@ -60,6 +59,7 @@ class Optimize(object):
         self.data = {}
         self.data["basename"] = job
         self.data["verbosity"] = job_opts.verbosity
+        self.data["return level"] = job_opts.disp
         self.data["fext"] = ".opt"
         self.data["baseinp"] = job_inp
         self.data["options"] = []
@@ -103,7 +103,7 @@ class Optimize(object):
             pu.loginf("Optimization method: {0}"
                       .format(self.data["optimization method"]["method"]))
 
-    def run_job(self):
+    def run_job(self, *args, **kwargs):
         r"""Run the optimization job
 
         Set up directory to run the optimization job and call the minimizer
@@ -233,7 +233,12 @@ class Optimize(object):
                 fobj.write("YSLOPE = {0:12.6E}".format(yslope))
 
         os.chdir(cwd)
-        return 0
+        retcode = 0
+
+        if not self.data["return level"]:
+            return retcode
+        else:
+            return {"retcode": retcode}
 
     def finish(self):
         r""" finish up the optimization job """
@@ -364,7 +369,7 @@ class Optimize(object):
                 bounds = (None, None)
                 init_val = None
 
-                # uppder bound
+                # upper bound
                 if "bounds" in vals:
                     try:
                         idx = vals.index("bounds") + 1
@@ -889,11 +894,16 @@ def func(xcall, xnams, data, base_dir, job_opts, xgold):
     the_model = pc.Payette(job, job_inp, job_opts)
 
     # run the job
-    solve = pd.runProblem(the_model, restart=False)
+    solve = the_model.run_job()
 
     the_model.finish()
 
-    if solve != 0:
+    if job_opts.disp:
+        retcode = solve["retcode"]
+    else:
+        retcode = solve
+
+    if retcode != 0:
         sys.exit("ERROR: simulation failed")
 
     # extract minimization variables from the simulation output

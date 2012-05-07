@@ -79,7 +79,7 @@ class Elastic(ConstitutiveModelPrototype):
     AUTHORS
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     """
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super(Elastic, self).__init__()
 
         self.name = attributes["name"]
@@ -104,13 +104,13 @@ class Elastic(ConstitutiveModelPrototype):
         pass
 
     # Public methods
-    def setUp(self,simdat,matdat,user_params,f_params):
+    def setUp(self, matdat, user_params):
         iam = self.name + ".setUp(self,material,props)"
 
         if not imported: return
 
         # parse parameters
-        self.parseParameters(user_params,f_params)
+        self.parseParameters(user_params)
 
         # check parameters
         self.ui = self._check_props()
@@ -126,18 +126,18 @@ class Elastic(ConstitutiveModelPrototype):
         pass
 
     # redefine Jacobian to return initial jacobian
-    def jacobian(self,simdat,matdat):
+    def jacobian(self, simdat, matdat):
         if not imported: return
-        v = simdat.getData("prescribed stress components")
+        v = matdat.getData("prescribed stress components")
         return self.J0[[[x] for x in v],v]
 
-    def updateState(self,simdat,matdat):
+    def updateState(self, simdat, matdat):
         """
            update the material state based on current state and strain increment
         """
         if not imported: return
         dt = simdat.getData("time step")
-        d = simdat.getData("rate of deformation")
+        d = matdat.getData("rate of deformation")
         sigold = matdat.getData("stress")
         svold = matdat.getData("extra variables")
 
