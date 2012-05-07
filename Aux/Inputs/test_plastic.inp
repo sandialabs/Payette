@@ -1,0 +1,57 @@
+begin simulation py_plastic
+
+begin boundary
+  kappa = 0
+  tstar = 1.
+  ampl = 1
+  estar = .002
+  stepstar = 500
+  begin legs
+    using time, strain
+    0 0 0 0 0 0 0
+    1 1 0 0 0 0 0
+  end legs
+
+end boundary
+
+begin material
+  constitutive model plastic
+  K = 137.e9
+  G = 53.e9
+  YIELD STRENGTH = 90.e6
+  A = 0
+  C = 0
+  M = 0
+  MFLG = 0
+end material
+
+end simulation
+
+begin simulation fort_plastic
+
+begin boundary
+  kappa = 0
+  tstar = 1.
+  ampl = 1
+  estar = .002
+  stepstar = 500
+  begin legs
+    using time, strain
+    0 0 0 0 0 0 0
+    1 1 0 0 0 0 0
+  end legs
+
+end boundary
+
+begin material
+  constitutive model plastic
+  K = 137.e9
+  G = 53.e9
+  YIELD STRENGTH = 90.e6
+  A = 0
+  C = 0
+  M = 0
+  MFLG = 1
+end material
+
+end simulation
