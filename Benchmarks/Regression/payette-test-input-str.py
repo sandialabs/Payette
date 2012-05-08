@@ -19,7 +19,7 @@ class Test(PayetteTest):
         self.input_string = self.get_input_string()
         self.runcommand = ["--no-restart","--no-writeprops","-v","0",
                            "--input-str={0}".format(self.input_string)]
-        self.material = "py_elastic"
+        self.material = "elastic"
         self.keywords = ["payette","input_str","regression","fast"]
 
         self.owner = "Tim Fuller"

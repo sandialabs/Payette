@@ -11,7 +11,7 @@ begin legs
 end legs
 end boundary
 begin material
-constitutive model py elastic
+constitutive model elastic
 G 53.e9
 K 135.e9
 end material

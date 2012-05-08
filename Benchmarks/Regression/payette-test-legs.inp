@@ -1,6 +1,6 @@
 begin simulation payette-test-legs
   begin material
-    constitutive model py elastic
+    constitutive model elastic
     shmod 53.e9
     bkmod 135.e9
   end material

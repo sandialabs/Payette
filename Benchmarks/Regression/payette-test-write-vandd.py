@@ -21,7 +21,7 @@ class Test(PayetteTest):
         self.keywords = ["payette","regression","fast","vtable","dtable"]
         self.runcommand = ["runPayette","--no-writeprops","--no-restart",
                            "-w",self.infile]
-        self.material = "py_elastic"
+        self.material = "elastic"
 
         self.owner = "Tim Fuller"
         self.date = "February 26, 2012"

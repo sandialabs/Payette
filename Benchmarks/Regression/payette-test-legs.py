@@ -17,9 +17,9 @@ class Test(PayetteTest):
         self.outfile = "{0}.out".format(self.name)
         self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
         self.keywords = ["fast", "regression", "elastic" ,"uniaxial strain",
-                         "py elastic", "python model"]
+                         "elastic", "python model"]
         self.runcommand = ["runPayette","--no-writeprops","--no-restart",self.infile]
-        self.material = "py_elastic"
+        self.material = "elastic"
 
         self.owner = 'Tim Fuller'
         self.date = 'June 1, 2011'
