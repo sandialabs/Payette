@@ -35,6 +35,39 @@ iam = "Payette_driver.solid_driver(the_model,restart)"
 
 np.set_printoptions(precision=2)
 
+def eos_driver(the_model, **kwargs):
+    """
+    NAME
+       eos_driver:
+
+    PURPOSE
+       Run the single element simulation for an instance of the main Payette class
+       the_model
+
+    INPUT
+       the_model: Payette container class instance
+
+    OUTPUT
+       outfile: the_model.getOutputFile()
+
+    PASSED AND LOCAL VARIABLES
+    AUTHORS
+       Scot Swan, Sandia National Laboratories, mswan@sandia.gov
+    """
+    if debug: pdb = __import__('pdb')
+    cons_msg = "leg {0:{1}d}, step {2:{3}d}, time {4:.4E}, dt {5:.4E}"
+    simdat = the_model.simulation_data()
+
+
+    rho_t_pairs = simdat.data_container["leg data"]["stashed value"]
+
+    print("EOSDRIVER")
+    print(rho_t_pairs)
+    print(dir(the_model.simdat))
+    print(dir(the_model.matdat))
+    sys.exit()
+
+ 
 def solid_driver(the_model, **kwargs):
     """
     NAME
