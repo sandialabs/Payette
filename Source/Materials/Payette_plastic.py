@@ -29,7 +29,7 @@ from math import sqrt
 from Source.Payette_utils import *
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
-from Payette_tensor import I6, sym_map
+from Source.Payette_tensor import I6, sym_map
 
 try:
     import Source.Materials.Library.plastic as mtllib
