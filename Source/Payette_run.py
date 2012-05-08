@@ -442,7 +442,7 @@ def _run_job(args):
         retcode = solve
 
     if retcode != 0:
-        sys.exit("ERROR: simulation failed")
+        sys.stderr.write("ERROR: simulation failed")
 
     if timing:
         tim2 = time.time()
@@ -455,7 +455,7 @@ def _run_job(args):
     if timing:
         print_timing_info(tim0, tim1, tim2, the_model.name)
 
-    return 0
+    return retcode
 
 
 def print_timing_info(tim0, tim1, tim2, name=None):

@@ -1,6 +1,7 @@
 begin simulation elastic-mtl-unistrain-cycle
   begin material
     constitutive model elastic
+    options fortran
     shmod 53.e9
     bkmod 135.e9
   end material
