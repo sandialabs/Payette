@@ -115,6 +115,10 @@ class Elastic(ConstitutiveModelPrototype):
 
         return
 
+    def jacobian(self, simdat, matdat):
+        v = matdat.getData("prescribed stress components")
+        return self.J0[[[x] for x in v],v]
+
     def updateState(self, simdat, matdat):
         """
            update the material state based on current state and strain increment
