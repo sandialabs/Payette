@@ -183,9 +183,6 @@ class Payette:
         self.simdat.registerOption("verbosity", opts.verbosity)
         self.simdat.registerOption("sqa", opts.sqa)
         self.simdat.registerOption("debug", opts.debug)
-        self.simdat.registerOption("emit", bcontrol["emit"])
-        self.simdat.registerOption("screenout", bcontrol["screenout"])
-        self.simdat.registerOption("nprints", bcontrol["nprints"])
         self.simdat.registerOption("material", self.material)
 
         if "strict" not in self.simdat.getAllOptions():
@@ -207,6 +204,9 @@ class Payette:
 
         if not self.material.eos_model:
             # register data not needed by the eos models
+            self.simdat.registerOption("emit", bcontrol["emit"])
+            self.simdat.registerOption("screenout", bcontrol["screenout"])
+            self.simdat.registerOption("nprints", bcontrol["nprints"])
             self.simdat.registerOption("kappa", bcontrol["kappa"])
             self.simdat.registerOption("legs", lcontrol)
             self.simdat.registerOption("write vandd table",
@@ -233,6 +233,7 @@ class Payette:
             retcode = pd.solid_driver(self, restart=self.is_restart)
 
         else:
+            retcode = pd.eos_driver(self)
             sys.exit("eos driver not yet implemented")
 
         if not self.disp:
@@ -890,8 +891,107 @@ def parse_boundary_block(*args, **kwargs):
 def parse_eos_boundary_block(*args, **kwargs):
     # @msw: I have put None for all of the entries, but that might break
     # something down stream?
+    boundary_inp, legs_inp = args[:2]
+
+    # Initialize bcontrol
+    bcontrol = {}
+    lcontrol = []
+
+
+    # parse parameters. If multiple declarations, use the last.
+
+
+    #
+    #                     LEGS
+    #
+    if legs_inp:
+        for tok in legs_inp["content"]:
+            vals = [float(x) for x in tok.split()]
+            if len(vals) != 2:
+                parse_error("unacceptable entry in legs:\n" + tok)
+            lcontrol.append(vals)
+                       
+    #
+    #                     BOUNDARY
+    #
+    bcontrol["input units"] = None
+    recognized_unit_systems = ["MKSK","CGSEV"]
+    for tok in boundary_inp["content"]:
+        if tok.startswith("input units"):
+            input_units = tok.split()[2]
+            if input_units.upper() not in recognized_unit_systems:
+                parser_error("Unrecognized unit system.")
+            bcontrol["input units"] = input_units
+    if bcontrol["input units"] == None:
+        parser_error("Missing 'input units XYZ' keyword in boundary block.\n"
+                     "Please include that line with one of the following\n"
+                     "unit systems:\n" + "\n".join(recognized_unit_systems))
+
+    bcontrol["density range"] = [0.0, 0.0]
+    for tok in boundary_inp["content"]:
+        if tok.startswith("density range"):
+            bounds = [float(x) for x in tok.split()[2:4]]
+            if len(bounds) != 2 or bounds[0] == bounds[1]:
+                parser_error("Unacceptable density range in boundary block.")
+            bcontrol["density range"] = sorted(bounds)
+
+    bcontrol["temperature range"] = [0.0, 0.0]
+    for tok in boundary_inp["content"]:
+        if tok.startswith("temperature range"):
+            bounds = [float(x) for x in tok.split()[2:4]]
+            if len(bounds) != 2 or bounds[0] == bounds[1]:
+                parser_error("Unacceptable temperature range in boundary block.")
+            bcontrol["temperature range"] = sorted(bounds)
+
+    bcontrol["surface increments"] = 10
+    for tok in boundary_inp["content"]:
+        if tok.startswith("surface increments"):
+            n_incr = int("".join(tok.split()[2:3]))
+            if n_incr <= 0:
+                parser_error("Number of surface increments must be positive non-zero.")
+            bcontrol["surface increments"] = int("".join(tok.split()[2:]))
+
+    bcontrol["path increments"] = 100
+    for tok in boundary_inp["content"]:
+        if tok.startswith("path increments"):
+            bcontrol["path increments"] = int("".join(tok.split()[2]))
+
+    bcontrol["path isotherm"] = None
+    for tok in boundary_inp["content"]:
+        if tok.startswith("path isotherm"):
+            # isotherm expects [density, temperature]
+            isotherm = [float(x) for x in tok.split()[2:4]]
+            bad_rho = not (bcontrol["density range"][0] <=
+                           isotherm[0] <=
+                           bcontrol["density range"][1])
+            bad_temp = not (bcontrol["temperature range"][0] <=
+                                isotherm[1] <=
+                                bcontrol["temperature range"][1])
+            if len(bounds) != 2 or bad_rho or bad_temp:
+                parser_error("Bad initial state for isotherm.")
+            bcontrol["path isotherm"] = isotherm
+
+    bcontrol["path hugoniot"] = None
+    for tok in boundary_inp["content"]:
+        if tok.startswith("path hugoniot"):
+            # isotherm expects [density, temperature]
+            hugoniot = [float(x) for x in tok.split()[2:4]]
+            bad_rho = not (bcontrol["density range"][0] <=
+                           hugoniot[0] <=
+                           bcontrol["density range"][1])
+            bad_temp = not (bcontrol["temperature range"][0] <=
+                                hugoniot[1] <=
+                                bcontrol["temperature range"][1])
+            if len(bounds) != 2 or bad_rho or bad_temp:
+                parser_error("Bad initial state for hugoniot.")
+            bcontrol["path hugoniot"] = hugoniot
+
+
+
+    print("bcontrol: ", bcontrol)
+    print("lcontrol: ", lcontrol)
     return {"initial time": None, "termination time": None,
-            "bcontrol": None, "lcontrol": None}
+            "bcontrol": bcontrol, "lcontrol": lcontrol}
 
 def parse_mathplot_block(mathplot):
     plotable = []
