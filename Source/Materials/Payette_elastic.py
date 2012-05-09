@@ -106,12 +106,12 @@ class Elastic(ConstitutiveModelPrototype):
         self.ui = self.ui0
         mui = np.array([k, mu])
 
+        self.bulk_modulus, self.shear_modulus = k, mu
+
         if self.code == "python":
             self.mui = self._py_set_up(mui)
         else:
             self.mui = self._fort_set_up(mui)
-
-        self.bulk_modulus, self.shear_modulus = self.mui[0], self.mui[1]
 
         return
 

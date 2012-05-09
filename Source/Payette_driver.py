@@ -67,7 +67,7 @@ def eos_driver(the_model, **kwargs):
     print(dir(the_model.matdat))
     sys.exit()
 
- 
+
 def solid_driver(the_model, **kwargs):
     """
     NAME
@@ -94,7 +94,7 @@ def solid_driver(the_model, **kwargs):
 
     try:
         restart = kwargs["restart"]
-    except:
+    except KeyError:
         restart = False
 
     # --- simulation data
@@ -140,23 +140,23 @@ def solid_driver(the_model, **kwargs):
 
         # test restart capability
         if simdat.TEST_RESTART and not restart:
-            if ileg == int(len(legs)/2):
-                print('\n\nStopping to test Payette restart capabilities.\n'
-                      'Restart the simulation by executing\n\n'
-                      '\t\trunPayette %s.prf\n\n'
-                      %os.path.splitext(os.path.basename(
-                            simdat.OUTFILE))[0])
+            if ileg == int(len(legs) / 2):
+                print("\n\nStopping to test Payette restart capabilities.\n"
+                      "Restart the simulation by executing\n\n"
+                      "\t\trunPayette {0}\n\n".format(simdat.RESTART_FILE))
                 sys.exit(76)
 
         # read inputs and initialize for this leg
         lnum, t_end, nsteps, ltype, prdef = leg
         lns = len(str(nsteps))
         delt = t_end - t_beg
-        if delt == 0.: continue
+        if delt == 0.:
+            continue
         nv, dflg = 0, list(set(ltype))
         nprints = simdat.NPRINTS if simdat.NPRINTS else nsteps
-        if simdat.EMIT == "sparse": nprints = min(10,nsteps)
-        print_interval = max(1,int(nsteps/nprints))
+        if simdat.EMIT == "sparse":
+            nprints = min(10,nsteps)
+        print_interval = max(1, int(nsteps / nprints))
 
         # pass values from the end of the last leg to beginning of this leg
         eps_beg = matdat.getData("strain")
@@ -191,14 +191,12 @@ def solid_driver(the_model, **kwargs):
 
         # if stress is prescribed, we don't compute sig_end just yet, but sig_hld
         # which holds just those values of stress that are actually prescribed.
-
-
         for i in range(len(prdef)):
 
-            if ltype[i] not in [0, 1, 2, 3, 4, 5, 6 ]:
-                msg = ('\nERROR: Invalid load type (ltype) parameter\n'
-                       'prescribed for leg %i\n'%lnum)
-                reportError(iam,msg)
+            if ltype[i] not in range(7):
+                msg = ("Invalid load type (ltype) parameter "
+                       "{0} prescribed for leg {1}".format(ltype[i], lnum))
+                reportError(iam, msg)
                 return 1
 
             if ltype[i] == 0:
@@ -206,7 +204,7 @@ def solid_driver(the_model, **kwargs):
 
             # -- strain rate
             elif i < 6 and ltype[i] == 1:
-                eps_end[i] = eps_beg[i] + prdef[i]*delt
+                eps_end[i] = eps_beg[i] + prdef[i] * delt
 
             # -- strain
             elif i < 6 and ltype[i] == 2:
@@ -214,7 +212,7 @@ def solid_driver(the_model, **kwargs):
 
             # stress rate
             elif i < 6 and ltype[i] == 3:
-                sig_hld[i] = sig_beg[i] + prdef[i]*delt
+                sig_hld[i] = sig_beg[i] + prdef[i] * delt
                 vdum[nv] = i
                 nv += 1
 
@@ -229,8 +227,8 @@ def solid_driver(the_model, **kwargs):
                 F_end[i] = prdef[i]
 
             # electric field
-            elif matdat.EFIELD_SIM and ( i >= 9 and ltype[i] == 6 ):
-                efld_end[i-9] = prdef[i]
+            elif matdat.EFIELD_SIM and (i >= 9 and ltype[i] == 6):
+                efld_end[i - 9] = prdef[i]
 
             continue
 
@@ -241,54 +239,54 @@ def solid_driver(the_model, **kwargs):
             Js = J0[[[x] for x in v], v]
 
         t = t_beg
-        dt = delt/nsteps
+        dt = delt / nsteps
 
         # ---------------------------------------------- begin{processing step}
         for n in range(nsteps):
 
             t += dt
             simsteps += 1
-            simdat.advanceData("number of steps",simsteps)
+            simdat.advanceData("number of steps", simsteps)
 
             # interpolate values of E, F, EF, and P for the current step
-            a1 = float(nsteps - (n + 1))/nsteps
-            a2 = float(n + 1)/nsteps
+            a1 = float(nsteps - (n + 1)) / nsteps
+            a2 = float(n + 1) / nsteps
 
-            eps_int = a1*eps_beg + a2*eps_end
+            eps_int = a1 * eps_beg + a2 * eps_end
 
-            F_int = a1*F_beg + a2*F_end
+            F_int = a1 * F_beg + a2 * F_end
 
             if matdat.EFIELD_SIM:
-                efld_int = a1*efld_beg + a2*efld_end
+                efld_int = a1 * efld_beg + a2 * efld_end
 
-            # --- initial guess for depsdt[v]
             if len(v):
+                # prescribed stress components given, get initial guess for
+                # depsdt[v]
                 prsig_int = a1 * prsig_beg + a2 * prsig_end
                 prsig_dif = prsig_int - matdat.getData("stress")[v]
-
-                depsdt = (eps_int - matdat.getData("strain"))/dt
+                depsdt = (eps_int - matdat.getData("strain")) / dt
                 try:
-                    depsdt[v] = np.linalg.solve(Js,prsig_dif)/dt
+                    depsdt[v] = np.linalg.solve(Js, prsig_dif) / dt
                 except:
-                    depsdt[v] -= np.linalg.lstsq(Js,prsig_dif)[0]/dt
+                    depsdt[v] -= np.linalg.lstsq(Js, prsig_dif)[0] / dt
 
             # advance known values to end of step
-            simdat.advanceData("time",t)
-            simdat.advanceData("time step",dt)
+            simdat.advanceData("time", t)
+            simdat.advanceData("time step", dt)
             if matdat.EFIELD_SIM:
-                matdat.advanceData("electric field",efld_int)
+                matdat.advanceData("electric field", efld_int)
 
             # --- find d (symmetric part of velocity gradient)
             if not len(v):
 
                 if dflg[0] == 5:
                     # --- deformation gradient prescribed
-                    matdat.advanceData("prescribed deformation gradient",F_int)
+                    matdat.advanceData("prescribed deformation gradient", F_int)
                     pkin.velGradCompFromF(simdat, matdat)
 
                 else:
                     # --- strain or strain rate prescribed
-                    matdat.advanceData("prescribed strain",eps_int)
+                    matdat.advanceData("prescribed strain", eps_int)
                     pkin.velGradCompFromE(simdat, matdat)
 
             else:
@@ -314,24 +312,25 @@ def solid_driver(the_model, **kwargs):
 
             if simdat.USE_TABLE:
                 # use the actual table values, not the values computed above
-                if dflg == [1] or dflg == [2] or dflg == [1,2]:
-                    matdat.advanceData("strain",eps_int)
+                if dflg == [1] or dflg == [2] or dflg == [1, 2]:
+                    matdat.advanceData("strain", eps_int)
                 elif dflg[0] == 5:
-                    matdat.advanceData("deformation gradient",F_int)
+                    matdat.advanceData("deformation gradient", F_int)
 
             # update material state
             material.updateState(simdat, matdat)
 
             # advance all data after updating state
-            matdat.storeData("stress rate", (matdat.getData("stress",cur=True) -
-                                             matdat.getData("stress"))/dt)
+            matdat.storeData("stress rate",
+                             (matdat.getData("stress", cur=True) -
+                              matdat.getData("stress")) / dt)
             matdat.advanceAllData()
 
             # --- write state to file
             if (nsteps-n)%print_interval == 0:
                 writeState(simdat, matdat)
 
-            if simdat.SCREENOUT or ( verbose and (2*n - nsteps) == 0 ):
+            if simdat.SCREENOUT or ( verbose and (2 * n - nsteps) == 0 ):
                 reportMessage(iam, cons_msg.format(lnum, lnl, n, lns, t, dt))
 
             # ------------------------------------------ begin{end of step SQA}
@@ -339,25 +338,25 @@ def solid_driver(the_model, **kwargs):
                 if dflg == [1] or dflg == [2] or dflg == [1,2]:
                     eps_tmp = matdat.getData("strain")
                     max_diff = np.max(np.abs(eps_tmp - eps_int))
-                    dnom = max(np.max(np.abs(eps_int)),0.)
+                    dnom = max(np.max(np.abs(eps_int)), 0.)
                     dnom = dnom if dnom != 0. else 1.
-                    rel_diff = max_diff/dnom
+                    rel_diff = max_diff / dnom
                     if rel_diff > accuracyLim() and max_diff > epsilon():
-                        msg = ('E differs from prdef excessively at end of step '
-                               '%i of leg %i with a percent difference of %f'
-                               %(n,lnum,rel_diff*100.))
-                        reportWarning(iam,msg)
+                        msg = ("E differs from prdef excessively at end of step "
+                               "{0} of leg {1} with a percent difference of {2:f}"
+                               .format(n, lnum, rel_diff * 100.))
+                        reportWarning(iam, msg)
 
                 elif dflg == [5]:
                     F_tmp = matdat.getData("deformation gradient")
-                    max_diff = (np.max(F_tmp - F_int))/np.max(np.abs(F_int))
-                    dnom = max(np.max(np.abs(F_int)),0.)
+                    max_diff = (np.max(F_tmp - F_int)) / np.max(np.abs(F_int))
+                    dnom = max(np.max(np.abs(F_int)), 0.)
                     dnom = dnom if dnom != 0. else 1.
-                    rel_diff = max_diff/dnom
+                    rel_diff = max_diff / dnom
                     if rel_diff > accuracyLim() and max_diff > epsilon():
-                        msg = ('F differs from prdef excessively at end of step '
-                               ' with max_diff %f' %max_diff)
-                        reportWarning(iam,msg)
+                        msg = ("F differs from prdef excessively at end of step "
+                               " with max_diff {0:f}".format(max_diff))
+                        reportWarning(iam, msg)
 
             # -------------------------------------------- end{end of step SQA}
 
@@ -365,7 +364,7 @@ def solid_driver(the_model, **kwargs):
         # ------------------------------------------------ end{processing step}
 
         # --- pass quantities from end of leg to beginning of new leg
-        simdat.advanceData("leg number",ileg+1)
+        simdat.advanceData("leg number", ileg + 1)
         ileg += 1
 
         if simdat.WRITE_VANDD_TABLE:
@@ -376,7 +375,8 @@ def solid_driver(the_model, **kwargs):
         t_beg = t_end
 
         if simdat.WRITE_RESTART:
-            with open(simdat.RESTART_FILE,'wb') as f: pickle.dump(the_model,f,2)
+            with open(simdat.RESTART_FILE, 'wb') as fobj:
+                pickle.dump(the_model, fobj, 2)
 
         # --- print message to screen
         if verbose and nsteps > 1:
@@ -388,21 +388,22 @@ def solid_driver(the_model, **kwargs):
                 eps_tmp = matdat.getData("strain")
                 max_diff = np.max(np.abs(eps_tmp - eps_end))
                 dnom = np.max(eps_end) if np.max(eps_end) >= epsilon() else 1.
-                rel_diff = max_diff/dnom
+                rel_diff = max_diff / dnom
                 if rel_diff > accuracyLim() and max_diff > epsilon():
-                    msg = ('E differs from prdef excessively at end of '
-                           'leg %i with relative diff %f'%(lnum,rel_diff))
-                    reportWarning(iam,msg)
+                    msg = ("E differs from prdef excessively at end of "
+                           "leg {0} with relative diff {1:f}"
+                           .format(lnum, rel_diff))
+                    reportWarning(iam, msg)
 
             elif dflg == [5]:
                 F_tmp = matdat.getData("deformation gradient")
-                max_diff = np.max(np.abs(F_tmp - F_end))/np.max(np.abs(F_end))
+                max_diff = np.max(np.abs(F_tmp - F_end)) / np.max(np.abs(F_end))
                 dnom = np.max(F_end) if np.max(F_end) >= epsilon() else 1.
-                rel_diff = max_diff/dnom
+                rel_diff = max_diff / dnom
                 if rel_diff > accuracyLim() and max_diff > epsilon():
-                    msg = ('F differs from prdef excessively at end of leg '
-                           ' with max_diff %f' %max_diff)
-                    reportWarning(iam,msg)
+                    msg = ("F differs from prdef excessively at end of leg "
+                           " with max_diff {0:f}".format(max_diff))
+                    reportWarning(iam, msg)
 
         # ------------------------------------------------- end{end of leg SQA}
 
