@@ -64,10 +64,10 @@ def eos_driver(the_model, **kwargs):
     material = simdat.MATERIAL
     matdat = material.material_data()
 
-    eos_model = material.constitutiveModel()
+    eos_model = material.constitutive_model
 
-    nprints = simdat.getOption("nprints")
-    rho_temp_pairs = simdat.getData("leg data")
+    nprints = simdat.get_option("nprints")
+    rho_temp_pairs = simdat.get_data("leg data")
     base_name = os.path.splitext(simdat.OUTFILE)[0]
 
     txtfmt = lambda x: "{0:>25s}".format(str(x))
@@ -105,13 +105,13 @@ def eos_driver(the_model, **kwargs):
 ################################################################################
 ###############                     SURFACE                      ###############
 ################################################################################
-    if (simdat.getOption("surface increments") != None and
-        simdat.getOption("density range") != None and
-        simdat.getOption("temperature range") != None):
+    if (simdat.get_option("surface increments") != None and
+        simdat.get_option("density range") != None and
+        simdat.get_option("temperature range") != None):
 
-        t_range = simdat.getOption("temperature range")
-        rho_range = simdat.getOption("density range")
-        surf_incr = simdat.getOption("surface increments")
+        t_range = simdat.get_option("temperature range")
+        rho_range = simdat.get_option("density range")
+        surf_incr = simdat.get_option("surface increments")
 
         simdat.OUTFILE = base_name + ".surface"
         OUTFILE = open(simdat.OUTFILE, "w")
@@ -161,14 +161,14 @@ def eos_driver(the_model, **kwargs):
 ###############                     ISOTHERM                     ###############
 ################################################################################
     
-    if (simdat.getOption("path increments") != None and
-        simdat.getOption("path isotherm") != None and
-        simdat.getOption("density range") != None):
+    if (simdat.get_option("path increments") != None and
+        simdat.get_option("path isotherm") != None and
+        simdat.get_option("density range") != None):
 
         # isotherm = [density, temperature]
-        isotherm = simdat.getOption("path isotherm")
-        rho_range = simdat.getOption("density range")
-        path_incr = simdat.getOption("path increments")
+        isotherm = simdat.get_option("path isotherm")
+        rho_range = simdat.get_option("density range")
+        path_incr = simdat.get_option("path increments")
 
         if not rho_range[0] <= isotherm[0] <= rho_range[1]:
             sys.exit("initial isotherm density not within range")
@@ -220,16 +220,16 @@ def eos_driver(the_model, **kwargs):
 ###############                     HUGONIOT                     ###############
 ################################################################################
 
-    if (simdat.getOption("path increments") != None and
-        simdat.getOption("path hugoniot") != None and
-        simdat.getOption("temperature range") != None and
-        simdat.getOption("density range") != None):
+    if (simdat.get_option("path increments") != None and
+        simdat.get_option("path hugoniot") != None and
+        simdat.get_option("temperature range") != None and
+        simdat.get_option("density range") != None):
 
         # hugoniot = [density, temperature]
-        hugoniot = simdat.getOption("path hugoniot")
-        rho_range = simdat.getOption("density range")
-        t_range = simdat.getOption("temperature range")
-        path_incr = simdat.getOption("path increments")
+        hugoniot = simdat.get_option("path hugoniot")
+        rho_range = simdat.get_option("density range")
+        t_range = simdat.get_option("temperature range")
+        path_incr = simdat.get_option("path increments")
 
 
         if not rho_range[0] <= hugoniot[0] <= rho_range[1]:

@@ -224,7 +224,7 @@ class Payette:
         else:
             # register data that is needed by the EOS models
             for dict_key in bcontrol:
-                self.simdat.registerOption(dict_key, bcontrol[dict_key])
+                self.simdat.register_option(dict_key, bcontrol[dict_key])
 
         if parser_error.count():
             sys.exit("Stopping due to {0} previous parsing errors"
