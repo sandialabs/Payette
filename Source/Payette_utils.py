@@ -463,8 +463,8 @@ def setupOutputFile(simdat, matdat, restart):
 def writeState(simdat,matdat):
 
     """ write the simulation and material data to the output file """
-    plot_data = simdat.plotData()
-    plot_data.extend(matdat.plotData())
+    plot_data = simdat.plot_data()
+    plot_data.extend(matdat.plot_data())
 
     for x in plot_data:
         ofile.write(textformat(x))
@@ -578,14 +578,14 @@ def writeAvailableDataToLog(simdat,matdat):
     writeToLog("Summary of available output")
 
     # time
-    time = simdat.getData("time")
+    time = simdat.get_data("time")
     key = simdat.getPlotKey("time")
     name = simdat.getPlotName("time")
     idx, val = 1, time
     write_plotable(idx,key,key.lower() in lowplotable,name,val)
 
     # stress
-    sig = matdat.getData("stress")
+    sig = matdat.get_data("stress")
     keys = matdat.getPlotKey("stress")
     names = matdat.getPlotName("stress")
     for i, val in enumerate(sig):
@@ -594,7 +594,7 @@ def writeAvailableDataToLog(simdat,matdat):
         continue
 
     # dstress/dt
-    dsigdt = matdat.getData("stress rate")
+    dsigdt = matdat.get_data("stress rate")
     keys = matdat.getPlotKey("stress rate")
     names = matdat.getPlotName("stress rate")
     for i, val in enumerate(dsigdt):
@@ -603,7 +603,7 @@ def writeAvailableDataToLog(simdat,matdat):
         continue
 
     # strain
-    eps = matdat.getData("strain")
+    eps = matdat.get_data("strain")
     keys = matdat.getPlotKey("strain")
     names = matdat.getPlotName("strain")
     for i, val in enumerate(eps):
@@ -612,7 +612,7 @@ def writeAvailableDataToLog(simdat,matdat):
         continue
 
     # sym(velocity gradient)
-    d = matdat.getData("rate of deformation")
+    d = matdat.get_data("rate of deformation")
     keys = matdat.getPlotKey("rate of deformation")
     names = matdat.getPlotName("rate of deformation")
     for i, val in enumerate(d):
@@ -621,7 +621,7 @@ def writeAvailableDataToLog(simdat,matdat):
         continue
 
     # deformation gradient
-    defgrad = matdat.getData("deformation gradient")
+    defgrad = matdat.get_data("deformation gradient")
     keys = matdat.getPlotKey("deformation gradient")
     names = matdat.getPlotName("deformation gradient")
     for i, val in enumerate(defgrad):
@@ -631,7 +631,7 @@ def writeAvailableDataToLog(simdat,matdat):
 
     # extra variables
     if matdat.num_extra:
-        ex = matdat.getData("extra variables")
+        ex = matdat.get_data("extra variables")
         for i, val in enumerate(ex):
             idx = idx+1
             name = matdat.getExName(i)
@@ -641,7 +641,7 @@ def writeAvailableDataToLog(simdat,matdat):
 
     if matdat.EFIELD_SIM:
         # electric field
-        efield = matdat.getData("electric field")
+        efield = matdat.get_data("electric field")
         keys = matdat.getPlotKey("electric field")
         names = matdat.getPlotName("electric field")
         for i, val in enumerate(efield):
@@ -650,7 +650,7 @@ def writeAvailableDataToLog(simdat,matdat):
             continue
 
         # polarization
-        polrzn = matdat.getData("polarization")
+        polrzn = matdat.get_data("polarization")
         keys = matdat.getPlotKey("polarization")
         names = matdat.getPlotName("polarization")
         for i, val in enumerate(polrzn):
@@ -659,7 +659,7 @@ def writeAvailableDataToLog(simdat,matdat):
             continue
 
         # electric displacement
-        edisp = matdat.getData("electric displacement")
+        edisp = matdat.get_data("electric displacement")
         keys = matdat.getPlotKey("electric displacement")
         names = matdat.getPlotName("electric displacement")
         for i, val in enumerate(edisp):

@@ -68,29 +68,29 @@ class FiniteElastic(ConstitutiveModelPrototype):
         self.imported = True if self.code == "python" else imported
 
         # register parameters
-        self.registerParameter("LAM", 0, aliases=[])
-        self.registerParameter("G", 1, aliases=["MU", "G0", "SHMOD"])
-        self.registerParameter("E", 2, aliases=["YOUNGS"])
-        self.registerParameter("NU", 3, aliases=["POISSONS", "POISSONS RATIO"])
-        self.registerParameter("K", 4, aliases=["B0", "BKMOD"])
-        self.registerParameter("H", 5, aliases=["CONSTRAINED"])
-        self.registerParameter("KO", 6, aliases=[])
-        self.registerParameter("CL", 7, aliases=[])
-        self.registerParameter("CT", 8, aliases=[])
-        self.registerParameter("CO", 9, aliases=[])
-        self.registerParameter("CR", 10, aliases=[])
-        self.registerParameter("RHO", 11, aliases=["DENSITY"])
+        self.register_parameter("LAM", 0, aliases=[])
+        self.register_parameter("G", 1, aliases=["MU", "G0", "SHMOD"])
+        self.register_parameter("E", 2, aliases=["YOUNGS"])
+        self.register_parameter("NU", 3, aliases=["POISSONS", "POISSONS RATIO"])
+        self.register_parameter("K", 4, aliases=["B0", "BKMOD"])
+        self.register_parameter("H", 5, aliases=["CONSTRAINED"])
+        self.register_parameter("KO", 6, aliases=[])
+        self.register_parameter("CL", 7, aliases=[])
+        self.register_parameter("CT", 8, aliases=[])
+        self.register_parameter("CO", 9, aliases=[])
+        self.register_parameter("CR", 10, aliases=[])
+        self.register_parameter("RHO", 11, aliases=["DENSITY"])
 
         self.nprop = len(self.parameter_table.keys())
 
         pass
 
     # public methods
-    def setUp(self, matdat, user_params):
-        iam = self.name + ".setUp"
+    def set_up(self, matdat, user_params):
+        iam = self.name + ".set_up"
 
         # parse parameters
-        self.parseParameters(user_params)
+        self.parse_parameters(user_params)
 
         # the elastic model only needs the bulk and shear modulus, but the
         # user could have specified any one of the many elastic moduli.
@@ -115,25 +115,25 @@ class FiniteElastic(ConstitutiveModelPrototype):
             self.mui = self._fort_set_up(mui)
 
         # register the green lagrange strain and second Piola-Kirchhoff stress
-        matdat.registerData("green strain","SymTensor",
+        matdat.register_data("green strain","SymTensor",
                             init_val = np.zeros(6),
                             plot_key = "GREEN_STRAIN")
-        matdat.registerData("pk2 stress","SymTensor",
+        matdat.register_data("pk2 stress","SymTensor",
                             init_val = np.zeros(6),
                             plot_key = "PK2")
 
         return
 
     def jacobian(self, simdat, matdat):
-        v = matdat.getData("prescribed stress components")
+        v = matdat.get_data("prescribed stress components")
         return self.J0[[[x] for x in v],v]
 
-    def updateState(self, simdat, matdat):
+    def update_state(self, simdat, matdat):
         """
            update the material state based on current state and strain increment
         """
         # deformation gradient and its determinant
-        F = matdat.getData("deformation gradient")
+        F = matdat.get_data("deformation gradient")
 
         if self.code == "python":
             E, pk2, sig = _py_update_state(self.mui, F)
@@ -144,9 +144,9 @@ class FiniteElastic(ConstitutiveModelPrototype):
                 a = a[:-2]
             E, pk2, sig = mtllib.finite_elast_calc(*a)
 
-        matdat.storeData("stress", sig)
-        matdat.storeData("pk2 stress", pk2)
-        matdat.storeData("green strain", E)
+        matdat.store_data("stress", sig)
+        matdat.store_data("pk2 stress", pk2)
+        matdat.store_data("green strain", E)
 
         return
 

@@ -63,8 +63,8 @@ class DataContainer:
         self.ntens = 9
         pass
 
-    def registerData(self, name, typ, init_val=None, plot_key=None,
-                     dim=None, constant=False):
+    def register_data(self, name, typ, init_val=None, plot_key=None,
+                      dim=None, constant=False):
 
         """
             register data to the data container
@@ -78,7 +78,7 @@ class DataContainer:
                         plotable
         """
 
-        iam = "{0}.registerData(self,name,**kwargs)".format(self.name)
+        iam = "{0}.register_data(self,name,**kwargs)".format(self.name)
 
         if name in self.data_container:
             reportError(iam,"variable {0} already registered".format(name))
@@ -268,19 +268,19 @@ class DataContainer:
         setattr(self,name.replace(" ","_").upper(),old_value)
         return
 
-    def unregisterData(self,name):
+    def unregister_data(self,name):
         """ unregister data with the data container """
-        iam = "unregisterData"
+        iam = "unregister_data"
         try:
             del self.data_container[name]
         except KeyError:
             reportWarning(iam,
                 "attempting to unregister non-registered data {0}".format(name))
 
-    def registerExtraVariables(self,nxtra,names,keys,values):
+    def register_xtra_vars(self,nxtra,names,keys,values):
         """ register extra data with the data container """
 
-        iam = ("{0}.registerExtraVariables(self,nxtra,names,keys,values)"
+        iam = ("{0}.register_xtra_vars(self,nxtra,names,keys,values)"
                .format(self.name))
 
         if self.extra_vars_registered:
@@ -293,16 +293,16 @@ class DataContainer:
             name = names[i]
             key = keys[i]
             value = values[i]
-            self.registerData(name,"Scalar",
-                              init_val = np.float64(value),
-                              plot_key = key)
+            self.register_data(name,"Scalar",
+                               init_val = np.float64(value),
+                               plot_key = key)
             self.extra_vars_map[i] = name
 
             continue
 
         return
 
-    def registerOption(self,name,val):
+    def register_option(self,name,val):
 
         """
             register data to the option container
@@ -312,7 +312,7 @@ class DataContainer:
               val: option value
         """
 
-        iam = "{0}.registerOption(self,name,val)".format(self.name)
+        iam = "{0}.register_option(self,name,val)".format(self.name)
 
         if name in self.option_container:
             reportError(iam,"option {0} already registered".format(name))
@@ -321,14 +321,14 @@ class DataContainer:
         setattr(self,name.replace(" ","_").upper(),val)
         return
 
-    def getAllOptions(self):
+    def get_all_options(self):
         return self.option_container
 
-    def getOption(self,name):
+    def get_option(self,name):
 
         """ return option[name] """
 
-        iam = "{0}.registerOption(self,name,val)".format(self.name)
+        iam = "{0}.get_option(self,name,val)".format(self.name)
 
         option = self.option_container.get(name)
         if option is None:
@@ -338,11 +338,11 @@ class DataContainer:
 
         return option
 
-    def getData(self,name,stash=False,cur=False,form="Array"):
+    def get_data(self,name,stash=False,cur=False,form="Array"):
 
         """ return simulation_data[name][valtyp] """
 
-        iam = "{0}.getData(self,name)".format(self.name)
+        iam = "{0}.get_data(self,name)".format(self.name)
 
         if stash and cur:
             reportError(iam,"cannot get stash and cur simultaneously")
@@ -398,17 +398,17 @@ class DataContainer:
 
         return
 
-    def restoreData(self,name,newval):
-        self.storeData(name,newval)
-        self.storeData(name,newval,old=True)
-        self.storeData(name,newval,stash=True)
+    def restore_data(self,name,newval):
+        self.store_data(name,newval)
+        self.store_data(name,newval,old=True)
+        self.store_data(name,newval,stash=True)
         return
 
-    def storeData(self, name, newval, stash=False, old=False):
+    def store_data(self, name, newval, stash=False, old=False):
 
         """ store the simulation data """
 
-        iam = "{0}.storeData(self,name,newval)".format(self.name)
+        iam = "{0}.store_data(self,name,newval)".format(self.name)
 
         if old and stash:
             reportError(iam,"can only store old or stash not both")
@@ -478,42 +478,42 @@ class DataContainer:
 
         return
 
-    def stashData(self,name,cur=False):
+    def stash_data(self,name,cur=False):
 
         """ stash "old value" in "stashed value" """
 
-        iam = "{0}.stashData(self,name,newval)".format(self.name)
+        iam = "{0}.stash_data(self,name,newval)".format(self.name)
 
         # handle extra variables
         if name == "extra variables":
             for idx,name in self.extra_vars_map:
-                value = self.getData(name,cur=cur)
+                value = self.get_data(name,cur=cur)
                 # stash the value
-                self.storeData(name,value,stash=True)
+                self.store_data(name,value,stash=True)
                 continue
             return
 
-        value = self.getData(name,cur=cur)
+        value = self.get_data(name,cur=cur)
         # stash the value
-        self.storeData(name,value,stash=True)
+        self.store_data(name,value,stash=True)
 
         return
 
-    def getStashedData(self,name):
-        return self.getData(name,stash=True)
+    def get_stashed_data(self,name):
+        return self.get_data(name,stash=True)
 
-    def unstashData(self,name):
+    def unstash_data(self,name):
 
         """ unstash "value" from "stashed value" """
 
-        iam = "{0}.unstashData(self,name,newval)".format(self.name)
+        iam = "{0}.unstash_data(self,name,newval)".format(self.name)
 
         # handle extra variables
         if name == "extra variables":
 
             for idx, name in self.extra_vars_map.items():
-                value = self.getStashedData(name)
-                self.storeData(name,value,old=True)
+                value = self.get_stashed_data(name)
+                self.store_data(name,value,old=True)
                 continue
             return
 
@@ -522,25 +522,25 @@ class DataContainer:
                    .format(name,self.name,", ".join(self.data_container.keys())))
             reportError(iam,msg)
 
-        value = self.getStashedData(name)
-        self.storeData(name,value,old=True)
+        value = self.get_stashed_data(name)
+        self.store_data(name,value,old=True)
 
         return
 
-    def advanceAllData(self):
+    def advance_all_data(self):
 
         """ advance "value" to "old value" """
 
         for name in self.data_container:
-            self.advanceData(name)
+            self.advance_data(name)
             continue
         return
 
-    def advanceData(self, name, value=None):
+    def advance_data(self, name, value=None):
 
         """ advance "value" to "old value" """
 
-        iam = "{0}.advanceData(self,name)".format(self.name)
+        iam = "{0}.advance_data(self,name)".format(self.name)
 
         if name == "extra variables":
             if value is not None:
@@ -550,13 +550,13 @@ class DataContainer:
 
                 for idx, exval in enumerate(value):
                     name = self.extra_vars_map[idx]
-                    self.storeData(name, exval, old=True)
+                    self.store_data(name, exval, old=True)
                     continue
 
             else:
                 for idx, name in self.extra_vars_map.items():
-                    value = self.getData(name, cur=True)
-                    self.storeData(name, value, old=True)
+                    value = self.get_data(name, cur=True)
+                    self.store_data(name, value, old=True)
                     continue
 
             setattr(self,name.replace(" ","_").upper(),value)
@@ -568,10 +568,10 @@ class DataContainer:
             reportError(iam,msg)
 
         if value is None:
-            value = self.getData(name, cur=True)
+            value = self.get_data(name, cur=True)
 
-        self.storeData(name, value)
-        self.storeData(name, value, old=True)
+        self.store_data(name, value)
+        self.store_data(name, value, old=True)
         setattr(self, name.replace(" ","_").upper(),value)
 
         return
@@ -621,13 +621,13 @@ class DataContainer:
         # return flattened plot keys
         return flatten(plot_keys)
 
-    def plotData(self):
+    def plot_data(self):
 
         """
             return list of current values of all plotable data in order registered
         """
 
-        iam = "{0}.plotableData(self)".format(self.name)
+        iam = "{0}.plotable_data(self)".format(self.name)
 
         plot_data = [None]*len(self.data_container)
 
@@ -638,7 +638,7 @@ class DataContainer:
                 continue
 
             idx = dic["idx"]
-            value = self.getData(name)
+            value = self.get_data(name)
             plot_data[idx] = value
 
             continue
@@ -651,13 +651,13 @@ class DataContainer:
     def plotable(self,name):
         return self.data_container[name]["plotable"]
 
-    def dumpData(self,name):
+    def dump_data(self,name):
 
         """
             return self.data_container[name]
         """
 
-        iam = "{0}.dumpData(self)".format(self.name)
+        iam = "{0}.dump_data(self)".format(self.name)
 
         if "extra variables" in name:
             ex_vars = {}

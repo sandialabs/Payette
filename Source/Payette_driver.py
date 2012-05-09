@@ -104,19 +104,19 @@ def solid_driver(the_model, **kwargs):
     verbose = simdat.VERBOSITY > 0
 
     # --- data
-    ileg = int(simdat.getData("leg number"))
-    legs = simdat.getData("leg data")[ileg:]
+    ileg = int(simdat.get_data("leg number"))
+    legs = simdat.get_data("leg data")[ileg:]
     lnl = len(str(len(legs)))
-    simsteps = simdat.getData("number of steps")
-    t_beg = simdat.getData("time")
-    dt = simdat.getData("time step")
+    simsteps = simdat.get_data("number of steps")
+    t_beg = simdat.get_data("time")
+    dt = simdat.get_data("time step")
     vdum = np.zeros(6, dtype=int)
     sig_hld = np.zeros(6)
 
     # --- material data
     material = simdat.MATERIAL
     matdat = material.material_data()
-    J0 = matdat.getData("jacobian")
+    J0 = matdat.get_data("jacobian")
 
     # -------------------------------------------------------- initialize model
     # --- start output file and Mathematica files
@@ -126,11 +126,11 @@ def solid_driver(the_model, **kwargs):
 
     # --- call the material model with zero state
     if ileg == 0:
-        material.updateState(simdat, matdat)
+        material.update_state(simdat, matdat)
 
         # advance and write data
-        simdat.advanceAllData()
-        matdat.advanceAllData()
+        simdat.advance_all_data()
+        matdat.advance_all_data()
         writeState(simdat, matdat)
 
     # ----------------------------------------------------------------------- #
@@ -159,15 +159,15 @@ def solid_driver(the_model, **kwargs):
         print_interval = max(1, int(nsteps / nprints))
 
         # pass values from the end of the last leg to beginning of this leg
-        eps_beg = matdat.getData("strain")
-        sig_beg = matdat.getData("stress")
-        F_beg = matdat.getData("deformation gradient")
-        v = matdat.getData("prescribed stress components")
+        eps_beg = matdat.get_data("strain")
+        sig_beg = matdat.get_data("stress")
+        F_beg = matdat.get_data("deformation gradient")
+        v = matdat.get_data("prescribed stress components")
         if matdat.EFIELD_SIM:
-            efld_beg = matdat.getData("electric field")
+            efld_beg = matdat.get_data("electric field")
 
         if len(v):
-            prsig_beg = matdat.getData("prescribed stress")
+            prsig_beg = matdat.get_data("prescribed stress")
             j = 0
             for i in v:
                 sig_beg[i] = prsig_beg[j]
@@ -233,7 +233,7 @@ def solid_driver(the_model, **kwargs):
             continue
 
         v = vdum[0:nv]
-        matdat.advanceData("prescribed stress components", v)
+        matdat.advance_data("prescribed stress components", v)
         if len(v):
             prsig_beg, prsig_end = sig_beg[v], sig_hld[v]
             Js = J0[[[x] for x in v], v]
@@ -246,7 +246,7 @@ def solid_driver(the_model, **kwargs):
 
             t += dt
             simsteps += 1
-            simdat.advanceData("number of steps", simsteps)
+            simdat.advance_data("number of steps", simsteps)
 
             # interpolate values of E, F, EF, and P for the current step
             a1 = float(nsteps - (n + 1)) / nsteps
@@ -263,68 +263,68 @@ def solid_driver(the_model, **kwargs):
                 # prescribed stress components given, get initial guess for
                 # depsdt[v]
                 prsig_int = a1 * prsig_beg + a2 * prsig_end
-                prsig_dif = prsig_int - matdat.getData("stress")[v]
-                depsdt = (eps_int - matdat.getData("strain")) / dt
+                prsig_dif = prsig_int - matdat.get_data("stress")[v]
+                depsdt = (eps_int - matdat.get_data("strain")) / dt
                 try:
                     depsdt[v] = np.linalg.solve(Js, prsig_dif) / dt
                 except:
                     depsdt[v] -= np.linalg.lstsq(Js, prsig_dif)[0] / dt
 
             # advance known values to end of step
-            simdat.advanceData("time", t)
-            simdat.advanceData("time step", dt)
+            simdat.advance_data("time", t)
+            simdat.advance_data("time step", dt)
             if matdat.EFIELD_SIM:
-                matdat.advanceData("electric field", efld_int)
+                matdat.advance_data("electric field", efld_int)
 
             # --- find d (symmetric part of velocity gradient)
             if not len(v):
 
                 if dflg[0] == 5:
                     # --- deformation gradient prescribed
-                    matdat.advanceData("prescribed deformation gradient", F_int)
+                    matdat.advance_data("prescribed deformation gradient", F_int)
                     pkin.velGradCompFromF(simdat, matdat)
 
                 else:
                     # --- strain or strain rate prescribed
-                    matdat.advanceData("prescribed strain", eps_int)
+                    matdat.advance_data("prescribed strain", eps_int)
                     pkin.velGradCompFromE(simdat, matdat)
 
             else:
                 # --- One or more stresses prescribed
-                matdat.advanceData("strain rate", depsdt)
-                matdat.advanceData("prescribed stress", prsig_int)
+                matdat.advance_data("strain rate", depsdt)
+                matdat.advance_data("prescribed stress", prsig_int)
                 pkin.velGradCompFromP(simdat, matdat)
-                matdat.advanceData("strain rate")
-                depsdt = matdat.getData("strain rate")
-                matdat.storeData("rate of deformation", depsdt)
+                matdat.advance_data("strain rate")
+                depsdt = matdat.get_data("strain rate")
+                matdat.store_data("rate of deformation", depsdt)
 
             # --- update the deformation to the end of the step at this point,
             #     the rate of deformation and vorticity to the end of the step
             #     are known, advance them.
-            matdat.advanceData("rate of deformation")
-            matdat.advanceData("vorticity")
+            matdat.advance_data("rate of deformation")
+            matdat.advance_data("vorticity")
 
             # find the current {deformation gradient,strain} and advance them
             pkin.updateDeformation(simdat, matdat)
-            matdat.advanceData("deformation gradient")
-            matdat.advanceData("strain")
-            matdat.advanceData("equivalent strain")
+            matdat.advance_data("deformation gradient")
+            matdat.advance_data("strain")
+            matdat.advance_data("equivalent strain")
 
             if simdat.USE_TABLE:
                 # use the actual table values, not the values computed above
                 if dflg == [1] or dflg == [2] or dflg == [1, 2]:
-                    matdat.advanceData("strain", eps_int)
+                    matdat.advance_data("strain", eps_int)
                 elif dflg[0] == 5:
-                    matdat.advanceData("deformation gradient", F_int)
+                    matdat.advance_data("deformation gradient", F_int)
 
             # update material state
-            material.updateState(simdat, matdat)
+            material.update_state(simdat, matdat)
 
             # advance all data after updating state
-            matdat.storeData("stress rate",
-                             (matdat.getData("stress", cur=True) -
-                              matdat.getData("stress")) / dt)
-            matdat.advanceAllData()
+            matdat.store_data("stress rate",
+                             (matdat.get_data("stress", cur=True) -
+                              matdat.get_data("stress")) / dt)
+            matdat.advance_all_data()
 
             # --- write state to file
             if (nsteps-n)%print_interval == 0:
@@ -336,7 +336,7 @@ def solid_driver(the_model, **kwargs):
             # ------------------------------------------ begin{end of step SQA}
             if simdat.SQA:
                 if dflg == [1] or dflg == [2] or dflg == [1,2]:
-                    eps_tmp = matdat.getData("strain")
+                    eps_tmp = matdat.get_data("strain")
                     max_diff = np.max(np.abs(eps_tmp - eps_int))
                     dnom = max(np.max(np.abs(eps_int)), 0.)
                     dnom = dnom if dnom != 0. else 1.
@@ -348,7 +348,7 @@ def solid_driver(the_model, **kwargs):
                         reportWarning(iam, msg)
 
                 elif dflg == [5]:
-                    F_tmp = matdat.getData("deformation gradient")
+                    F_tmp = matdat.get_data("deformation gradient")
                     max_diff = (np.max(F_tmp - F_int)) / np.max(np.abs(F_int))
                     dnom = max(np.max(np.abs(F_int)), 0.)
                     dnom = dnom if dnom != 0. else 1.
@@ -364,7 +364,7 @@ def solid_driver(the_model, **kwargs):
         # ------------------------------------------------ end{processing step}
 
         # --- pass quantities from end of leg to beginning of new leg
-        simdat.advanceData("leg number", ileg + 1)
+        simdat.advance_data("leg number", ileg + 1)
         ileg += 1
 
         if simdat.WRITE_VANDD_TABLE:
@@ -385,7 +385,7 @@ def solid_driver(the_model, **kwargs):
         # ----------------------------------------------- begin{end of leg SQA}
         if simdat.SQA:
             if dflg == [1] or dflg == [2] or dflg == [1,2]:
-                eps_tmp = matdat.getData("strain")
+                eps_tmp = matdat.get_data("strain")
                 max_diff = np.max(np.abs(eps_tmp - eps_end))
                 dnom = np.max(eps_end) if np.max(eps_end) >= epsilon() else 1.
                 rel_diff = max_diff / dnom
@@ -396,7 +396,7 @@ def solid_driver(the_model, **kwargs):
                     reportWarning(iam, msg)
 
             elif dflg == [5]:
-                F_tmp = matdat.getData("deformation gradient")
+                F_tmp = matdat.get_data("deformation gradient")
                 max_diff = np.max(np.abs(F_tmp - F_end)) / np.max(np.abs(F_end))
                 dnom = np.max(F_end) if np.max(F_end) >= epsilon() else 1.
                 rel_diff = max_diff / dnom

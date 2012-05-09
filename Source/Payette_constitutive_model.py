@@ -38,7 +38,7 @@ class ConstitutiveModelPrototype(object):
     METHODS
        setField
        checkProperties
-       updateState
+       update_state
        modelParameters
        internalStateVariables
        derivedConstants
@@ -69,10 +69,15 @@ class ConstitutiveModelPrototype(object):
         self.eos_model = False
         pass
 
-    def setUp(self, *args, **kwargs):
+    def set_up(self, *args):
         """ set up model """
-        reportError(__file__,'Constitutive model must provide setUp method')
-        return 1
+        reportError(__file__,'Constitutive model must provide set_up method')
+        return
+
+    def update_state(self, *args):
+        """ update state """
+        reportError(__file__,'Constitutive model must provide update_state method')
+        return
 
     def finish_setup(self, matdat):
         """ check that model is properly set up """
@@ -97,19 +102,18 @@ class ConstitutiveModelPrototype(object):
             reportError(iam, "shear modulus not defined")
 
         if self.J0 is None:
-            self.computeInitialJacobian()
+            self.compute_init_jacobian()
 
         if not any(x for y in self.J0 for x in y):
             reportError(iam, "iniatial Jacobian is empty")
 
-        matdat.registerData("jacobian", "Matrix", init_val=self.J0)
-        matdat.registerOption("efield sim", self.electric_field_model)
+        matdat.register_data("jacobian", "Matrix", init_val=self.J0)
+        matdat.register_option("efield sim", self.electric_field_model)
 
         return
 
-
-    def registerParameter(self, param_name, param_idx,
-                          aliases=[], parseable=True):
+    def register_parameter(self, param_name, param_idx,
+                           aliases=[], parseable=True):
 
         iam = self.name + ".registerParameter"
         if not isinstance(param_name,str):
@@ -154,13 +158,13 @@ class ConstitutiveModelPrototype(object):
                                             "ui pos":param_idx,
                                             "parseable":parseable}
         self.parameter_table_idx_map[param_idx] = full_name
-        pass
+        return
 
-    def parseParameters(self, user_params):
+    def parse_parameters(self, user_params):
         """
            parse user input and populate the params array
         """
-        iam = self.name + ".parseParameters"
+        iam = self.name + ".parse_parameters"
         self.ui0 = np.zeros(self.nprop)
 
         if not user_params:
@@ -229,10 +233,6 @@ class ConstitutiveModelPrototype(object):
     def initialize_state(self, material_data):
         pass
 
-    def updateState(self, simulation_data, material_data):
-        reportError(__file__,'Constitutive model must provide updateState method')
-        return 1
-
     def initialParameters(self):
         return self.ui0
 
@@ -254,10 +254,10 @@ class ConstitutiveModelPrototype(object):
     def isvKeys(self):
         return self.keya
 
-    def computeInitialJacobian(self,simdat=None,matdat=None,isotropic=True):
+    def compute_init_jacobian(self,simdat=None,matdat=None,isotropic=True):
         '''
         NAME
-           computeInitialJacobian
+           compute_init_jacobian
 
         PURPOSE
            compute the initial material Jacobian J = dsig/deps, assuming
@@ -278,10 +278,10 @@ class ConstitutiveModelPrototype(object):
 
         else:
             # material is not isotropic, numerically compute the jacobian
-            matdat.stashData("prescribed stress components")
-            matdat.storeData("prescribed stress components",[0,1,2,3,4,5])
+            matdat.stash_data("prescribed stress components")
+            matdat.store_data("prescribed stress components",[0,1,2,3,4,5])
             self.J0 = self.jacobian(simdat, matdat)
-            matdat.unstashData("prescribed stress components")
+            matdat.unstash_data("prescribed stress components")
             return
 
         return
@@ -329,46 +329,64 @@ class ConstitutiveModelPrototype(object):
         '''
     # local variables
         epsilon = 2.2e-16
-        v = matdat.getData("prescribed stress components")
+        v = matdat.get_data("prescribed stress components")
         nv = len(v)
         deps,Jsub = math.sqrt(epsilon),np.zeros((nv,nv))
 
-        dt = simdat.getData("time step")
-        d = matdat.getData("rate of deformation")
-        Fold = matdat.getData("deformation gradient",form="Matrix")
+        dt = simdat.get_data("time step")
+        d = matdat.get_data("rate of deformation")
+        Fold = matdat.get_data("deformation gradient",form="Matrix")
         dtime = 1 if dt == 0. else dt
 
         # stash the data
-        simdat.stashData("time step")
-        matdat.stashData("rate of deformation")
-        matdat.stashData("deformation gradient")
+        simdat.stash_data("time step")
+        matdat.stash_data("rate of deformation")
+        matdat.stash_data("deformation gradient")
 
         for n in range(nv):
             # perturb forward
             dp = np.array(d)
             dp[v[n]] = d[v[n]] + (deps/dtime)/2.
             fp = Fold + np.dot(toMatrix(dp),Fold)*dtime
-            matdat.storeData("rate of deformation",dp,old=True)
-            matdat.storeData("deformation gradient",fp,old=True)
-            self.updateState(simdat, matdat)
-            sigp = matdat.getData("stress",cur=True)
+            matdat.store_data("rate of deformation",dp,old=True)
+            matdat.store_data("deformation gradient",fp,old=True)
+            self.update_state(simdat, matdat)
+            sigp = matdat.get_data("stress",cur=True)
 
             # perturb backward
             dm = np.array(d)
             dm[v[n]] = d[v[n]] - (deps/dtime)/2.
             fm = Fold + np.dot(toMatrix(dm),Fold)*dtime
-            matdat.storeData("rate of deformation",dm,old=True)
-            matdat.storeData("deformation gradient",fm,old=True)
-            self.updateState(simdat, matdat)
-            sigm = matdat.getData("stress",cur=True)
+            matdat.store_data("rate of deformation",dm,old=True)
+            matdat.store_data("deformation gradient",fm,old=True)
+            self.update_state(simdat, matdat)
+            sigm = matdat.get_data("stress",cur=True)
 
             Jsub[n,:] = (sigp[v] - sigm[v])/deps
             continue
 
         # restore data
-        simdat.unstashData("time step")
-        matdat.unstashData("deformation gradient")
-        matdat.unstashData("rate of deformation")
+        simdat.unstash_data("time step")
+        matdat.unstash_data("deformation gradient")
+        matdat.unstash_data("rate of deformation")
 
         return Jsub
+
+    # The methods below are going to be depricated in favor of
+    # under_score_separated names. We keep them here for compatibility.
+    def parseParameters(self, *args):
+        self.parse_parameters(*args)
+        return
+    def setUp(self, *args, **kwargs):
+        """ set up model """
+        self.set_up(*args, **kwargs)
+        return
+    def updateState(self, *args):
+        self.update_state(*args)
+        return
+    def registerParameter(self, *args):
+        self.register_parameter(*args)
+        return
+
+
 

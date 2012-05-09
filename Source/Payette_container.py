@@ -135,27 +135,27 @@ class Payette:
 
         # set up the simulation data container and register obligatory data
         self.simdat = DataContainer(simname)
-        self.simdat.registerData("time", "Scalar",
+        self.simdat.register_data("time", "Scalar",
                                  init_val=0., plot_key="time")
-        self.simdat.registerData("time step","Scalar",
+        self.simdat.register_data("time step","Scalar",
                                  init_val=0., plot_key="timestep")
-        self.simdat.registerData("number of steps","Scalar", init_val=0)
-        self.simdat.registerData("leg number","Scalar", init_val=0 )
-        self.simdat.registerData("leg data", "List", init_val=lcontrol)
+        self.simdat.register_data("number of steps","Scalar", init_val=0)
+        self.simdat.register_data("leg number","Scalar", init_val=0 )
+        self.simdat.register_data("leg data", "List", init_val=lcontrol)
 
 
         # get mathplot
         mathplot = parse_mathplot_block(user_input.get("mathplot"))
-        self.simdat.registerOption("mathplot vars", mathplot)
+        self.simdat.register_option("mathplot vars", mathplot)
         if mathplot:
             math1 = os.path.join(basedir, simname + ".math1")
             math2 = os.path.join(basedir, simname + ".math2")
-            self.simdat.registerOption("math1", math1)
-            self.simdat.registerOption("math2", math2)
+            self.simdat.register_option("math1", math1)
+            self.simdat.register_option("math2", math2)
 
         # get extraction
         extract = parse_extraction_block(user_input.get("extraction"))
-        self.simdat.registerOption("extraction", extract)
+        self.simdat.register_option("extraction", extract)
 
         # check if user has specified simulation options
         for item in user_input["content"]:
@@ -172,31 +172,31 @@ class Payette:
             except:
                 val = str(item[1])
 
-            self.simdat.registerOption(item[0], val)
+            self.simdat.register_option(item[0], val)
             continue
 
         # register default options
-        self.simdat.registerOption("simname", simname)
-        self.simdat.registerOption("outfile", outfile)
-        self.simdat.registerOption("logfile", logfile)
-        self.simdat.registerOption("loglevel", loglevel)
-        self.simdat.registerOption("verbosity", opts.verbosity)
-        self.simdat.registerOption("sqa", opts.sqa)
-        self.simdat.registerOption("debug", opts.debug)
-        self.simdat.registerOption("material", self.material)
+        self.simdat.register_option("simname", simname)
+        self.simdat.register_option("outfile", outfile)
+        self.simdat.register_option("logfile", logfile)
+        self.simdat.register_option("loglevel", loglevel)
+        self.simdat.register_option("verbosity", opts.verbosity)
+        self.simdat.register_option("sqa", opts.sqa)
+        self.simdat.register_option("debug", opts.debug)
+        self.simdat.register_option("material", self.material)
 
-        if "strict" not in self.simdat.getAllOptions():
-            self.simdat.registerOption("strict",False)
+        if "strict" not in self.simdat.get_all_options():
+            self.simdat.register_option("strict",False)
             pass
 
-        if "nowriteprops" not in self.simdat.getAllOptions():
-            self.simdat.registerOption("nowriteprops", opts.nowriteprops)
+        if "nowriteprops" not in self.simdat.get_all_options():
+            self.simdat.register_option("nowriteprops", opts.nowriteprops)
 
-        if "norestart" in self.simdat.getAllOptions():
-            self.simdat.registerOption("write restart",False)
+        if "norestart" in self.simdat.get_all_options():
+            self.simdat.register_option("write restart",False)
 
         else:
-            self.simdat.registerOption("write restart", not opts.norestart)
+            self.simdat.register_option("write restart", not opts.norestart)
 
         # write out properties
         if not self.simdat.NOWRITEPROPS:
@@ -204,23 +204,23 @@ class Payette:
 
         if not self.material.eos_model:
             # register data not needed by the eos models
-            self.simdat.registerOption("emit", bcontrol["emit"])
-            self.simdat.registerOption("screenout", bcontrol["screenout"])
-            self.simdat.registerOption("nprints", bcontrol["nprints"])
-            self.simdat.registerOption("kappa", bcontrol["kappa"])
-            self.simdat.registerOption("legs", lcontrol)
-            self.simdat.registerOption("write vandd table",
+            self.simdat.register_option("emit", bcontrol["emit"])
+            self.simdat.register_option("screenout", bcontrol["screenout"])
+            self.simdat.register_option("nprints", bcontrol["nprints"])
+            self.simdat.register_option("kappa", bcontrol["kappa"])
+            self.simdat.register_option("legs", lcontrol)
+            self.simdat.register_option("write vandd table",
                                        opts.write_vandd_table)
-            self.simdat.registerOption("initial time", t0)
-            self.simdat.registerOption("termination time", tf)
-            self.simdat.registerOption("test restart", opts.testrestart)
-            self.simdat.registerOption("use table", opts.use_table)
-            self.simdat.registerOption("restart file", rfile)
+            self.simdat.register_option("initial time", t0)
+            self.simdat.register_option("termination time", tf)
+            self.simdat.register_option("test restart", opts.testrestart)
+            self.simdat.register_option("use table", opts.use_table)
+            self.simdat.register_option("restart file", rfile)
 
             # Below are obligatory options that may have been specified in the
             # input file.
-            if "proportional" not in self.simdat.getAllOptions():
-                self.simdat.registerOption("proportional",False)
+            if "proportional" not in self.simdat.get_all_options():
+                self.simdat.register_option("proportional",False)
 
         if parser_error.count():
             sys.exit("Stopping due to {0} previous parsing errors"
@@ -910,7 +910,7 @@ def parse_eos_boundary_block(*args, **kwargs):
             if len(vals) != 2:
                 parse_error("unacceptable entry in legs:\n" + tok)
             lcontrol.append(vals)
-                       
+
     #
     #                     BOUNDARY
     #
