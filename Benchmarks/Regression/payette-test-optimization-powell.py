@@ -18,7 +18,7 @@ class Test(PayetteTest):
         self.keywords = ["medium", "regression", "optimization", "powell"]
         self.runcommand = ["runPayette", "--no-writeprops", "--no-restart",
                            self.infile]
-        self.material = "py_elastic"
+        self.material = "elastic"
         self.aux_files = [os.path.join(self.tdir, "optimization_tests.tbl"),
                           os.path.join(self.tdir, "regression_tests.tbl")]
 

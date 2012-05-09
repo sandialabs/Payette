@@ -30,6 +30,7 @@ from Source.Payette_utils import *
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 from Source.Payette_tensor import I6, sym_map
+from Toolset.elastic_conversion import compute_elastic_constants
 
 try:
     import Source.Materials.Library.plastic as mtllib
@@ -67,12 +68,22 @@ class Plastic(ConstitutiveModelPrototype):
         self.imported = True if self.code == "python" else imported
 
         # register parameters
-        self.registerParameter("K", 0, aliases=["B0", "BKMOD"])
-        self.registerParameter("MU", 1, aliases=["G", "G0", "SHMOD"])
-        self.registerParameter("Y", 2, aliases=["A1", "YIELD STRENGTH"])
-        self.registerParameter("A", 3, aliases=[])
-        self.registerParameter("C", 4, aliases=[])
-        self.registerParameter("M", 5, aliases=[])
+        self.registerParameter("LAM", 0, aliases=[])
+        self.registerParameter("G", 1, aliases=["MU", "G0", "SHMOD"])
+        self.registerParameter("E", 2, aliases=["YOUNGS"])
+        self.registerParameter("NU", 3, aliases=["POISSONS", "POISSONS RATIO"])
+        self.registerParameter("K", 4, aliases=["B0", "BKMOD"])
+        self.registerParameter("H", 5, aliases=["CONSTRAINED"])
+        self.registerParameter("KO", 6, aliases=[])
+        self.registerParameter("CL", 7, aliases=[])
+        self.registerParameter("CT", 8, aliases=[])
+        self.registerParameter("CO", 9, aliases=[])
+        self.registerParameter("CR", 10, aliases=[])
+        self.registerParameter("RHO", 11, aliases=["DENSITY"])
+        self.registerParameter("Y", 12, aliases=["A1", "YIELD STRENGTH"])
+        self.registerParameter("A", 13, aliases=[])
+        self.registerParameter("C", 14, aliases=[])
+        self.registerParameter("M", 15, aliases=[])
         self.nprop = len(self.parameter_table.keys())
         pass
 
@@ -83,16 +94,34 @@ class Plastic(ConstitutiveModelPrototype):
         # parse parameters
         self.parseParameters(user_params)
 
+        # the plastic model only needs the bulk and shear modulus, but the
+        # user could have specified any one of the many elastic moduli.
+        # Convert them and get just the bulk and shear modulus
+        eui = compute_elastic_constants(*self.ui0[0:12])
+        for key, val in eui.items():
+            if key.upper() not in self.parameter_table:
+                continue
+            idx = self.parameter_table[key.upper()]["ui pos"]
+            self.ui0[idx] = val
+
+        # Payette wants ui to be the same length as ui0, but we don't want to
+        # work with the entire ui, so we only pick out what we want
+        mu, k = self.ui0[1], self.ui0[4]
+        self.ui = self.ui0
+        mui = np.array([k, mu] + self.ui0[12:].tolist())
+
         if self.code == "python":
-            self.ui, nxtra, xtra, names, keys = self._py_set_up()
+            self.mui, nxtra, xtra, names, keys = self._py_set_up(mui)
         else:
-            self.ui, nxtra, xtra, names, keys = self._fort_set_up()
+            self.mui, nxtra, xtra, names, keys = self._fort_set_up(mui)
 
         self.nsv = nxtra
-        self.bulk_modulus, self.shear_modulus = self.ui[0], self.ui[1]
+        self.bulk_modulus, self.shear_modulus = self.mui[0], self.mui[1]
 
         # register extra variables
         matdat.registerExtraVariables(nxtra, names, keys, xtra)
+
+        return
 
     def updateState(self, simdat, matdat):
         """
@@ -105,10 +134,10 @@ class Plastic(ConstitutiveModelPrototype):
         xtra = matdat.getData("extra variables")
 
         if self.code == "python":
-            sig, xtra = _py_update_state(self.ui, dt, d, sigold, xtra)
+            sig, xtra = _py_update_state(self.mui, dt, d, sigold, xtra)
 
         else:
-            a = [1, self.nsv, dt, self.ui, sigold, d, xtra, migError, migMessage]
+            a = [1, self.nsv, dt, self.mui, sigold, d, xtra, migError, migMessage]
             if not PC_F2PY_CALLBACK:
                 a = a[:-2]
             sig, xtra = mtllib.plast_calc(*a)
@@ -117,9 +146,9 @@ class Plastic(ConstitutiveModelPrototype):
         matdat.storeData("extra variables", xtra)
         matdat.storeData("stress", sig)
 
-    def _py_set_up(self):
+    def _py_set_up(self, mui):
 
-        k, mu, y, a, c, m = self.ui0
+        k, mu, y, a, c, m = mui
 
         if k <= 0.:
             reportError(iam, "Bulk modulus K must be positive")
@@ -171,16 +200,15 @@ class Plastic(ConstitutiveModelPrototype):
         xtra = np.zeros(nxtra)
         return ui, nxtra, xtra, names, keys
 
-
-    def _fort_set_up(self):
-        ui = self._check_props()
+    def _fort_set_up(self, mui):
+        ui = self._check_props(mui)
         nxtra, namea, keya, xtra, iadvct = self._set_field(ui)
         names = parseToken(nxtra, namea)
         keys = parseToken(nxtra, keya)
         return ui, nxtra, xtra, names, keys
 
-    def _check_props(self):
-        props = np.array(self.ui0)
+    def _check_props(self, mui):
+        props = np.array(mui)
         a = [props, migError, migMessage]
         if not PC_F2PY_CALLBACK:
             a = a[:-2]

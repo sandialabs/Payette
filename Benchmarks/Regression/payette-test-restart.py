@@ -21,7 +21,7 @@ class Test(PayetteTest):
                            "--test-restart",self.infile]
         self.restartcommand = ["runPayette","--no-writeprops",
                                "--test-restart",self.restartfile]
-        self.material = "py_elastic"
+        self.material = "elastic"
 
         self.keywords = ["payette","restart","regression","fast"]
         self.compare_method = self.compare_out_to_baseline_rms

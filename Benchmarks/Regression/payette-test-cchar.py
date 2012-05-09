@@ -16,7 +16,7 @@ class Test(PayetteTest):
         self.outfile = "{0}.out".format(self.name)
         self.runcommand = ["runPayette","--no-writeprops","--no-restart",
                            "--cchar=!",self.infile]
-        self.material = "py_elastic"
+        self.material = "elastic"
         self.keywords = ["payette","cchar","regression","fast"] # add keywords
 
         self.owner = "Tim Fuller"

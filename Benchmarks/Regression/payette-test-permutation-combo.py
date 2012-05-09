@@ -17,7 +17,7 @@ class Test(PayetteTest):
                          "insert", "permutation", "combination"]
         self.runcommand = ["runPayette", "--no-writeprops", "--no-restart",
                            self.infile]
-        self.material = "py_elastic"
+        self.material = "elastic"
         self.aux_files = [os.path.join(self.tdir, "regression_tests.tbl"), ]
 
         self.owner = 'Tim Fuller'

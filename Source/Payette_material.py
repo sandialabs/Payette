@@ -127,12 +127,15 @@ class Material:
         self.matdat.registerData("equivalent strain","Scalar",
                                  init_val=0.,
                                  plot_key="eqveps")
-        self.matdat.registerData("permittivity","SymTensor",
-                                 init_val=np.zeros(6),
-                                 plot_key="permtv")
-        self.matdat.registerData("electric field","Vector",
-                                 init_val=np.zeros(3),
-                                 plot_key="efield")
+
+        if self.constitutive_model.electric_field_model:
+            # electric field model data
+            self.matdat.registerData("permittivity","SymTensor",
+                                     init_val=np.zeros(6),
+                                     plot_key="permtv")
+            self.matdat.registerData("electric field","Vector",
+                                     init_val=np.zeros(3),
+                                     plot_key="efield")
 
         # non-plotable data
         self.matdat.registerData("prescribed stress", "Array",
