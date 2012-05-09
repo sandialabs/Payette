@@ -155,7 +155,18 @@ class Material:
         return
 
     def register_default_eos_data(self):
-        # @msw: finish this!
+        self.matdat.registerData("density","Scalar",
+                                 init_val=0.,
+                                 plot_key="rho")
+        self.matdat.registerData("temperature","Scalar",
+                                 init_val=0.,
+                                 plot_key="temp")
+        self.matdat.registerData("energy","Scalar",
+                                 init_val=0.,
+                                 plot_key="enrg")
+        self.matdat.registerData("pressure","Scalar",
+                                 init_val=0.,
+                                 plot_key="pres")
         pass
 
     def material_data(self):

@@ -428,7 +428,7 @@ def setupOutputFile(simdat, matdat, restart):
         ofile.flush()
         pass
 
-    if simdat.WRITE_VANDD_TABLE:
+    if hasattr(simdat, "WRITE_VANDD_TABLE") and simdat.WRITE_VANDD_TABLE:
         vname = os.path.splitext(simdat.OUTFILE)[0] + ".vtable"
         dname = os.path.splitext(simdat.OUTFILE)[0] + ".dtable"
 

@@ -221,6 +221,10 @@ class Payette:
             # input file.
             if "proportional" not in self.simdat.getAllOptions():
                 self.simdat.registerOption("proportional",False)
+        else:
+            # register data that is needed by the EOS models
+            for dict_key in bcontrol:
+                self.simdat.registerOption(dict_key, bcontrol[dict_key])
 
         if parser_error.count():
             sys.exit("Stopping due to {0} previous parsing errors"
@@ -234,7 +238,9 @@ class Payette:
 
         else:
             retcode = pd.eos_driver(self)
-            sys.exit("eos driver not yet implemented")
+
+        reportMessage("run_job()", "{0} Payette simulation ran to completion"
+                  .format(self.name))
 
         if not self.disp:
             return retcode
@@ -914,16 +920,35 @@ def parse_eos_boundary_block(*args, **kwargs):
     #
     #                     BOUNDARY
     #
+
+    bcontrol["nprints"] = 4
+    for tok in boundary_inp["content"]:
+        if tok.startswith("nprints"):
+            nprints = int("".join(tok.split()[1:2]))
+            bcontrol["nprints"] = nprints
+
     bcontrol["input units"] = None
     recognized_unit_systems = ["MKSK","CGSEV"]
     for tok in boundary_inp["content"]:
         if tok.startswith("input units"):
             input_units = tok.split()[2]
             if input_units.upper() not in recognized_unit_systems:
-                parser_error("Unrecognized unit system.")
+                parser_error("Unrecognized input unit system.")
             bcontrol["input units"] = input_units
     if bcontrol["input units"] == None:
         parser_error("Missing 'input units XYZ' keyword in boundary block.\n"
+                     "Please include that line with one of the following\n"
+                     "unit systems:\n" + "\n".join(recognized_unit_systems))
+
+    bcontrol["output units"] = None
+    for tok in boundary_inp["content"]:
+        if tok.startswith("output units"):
+            output_units = tok.split()[2]
+            if output_units.upper() not in recognized_unit_systems:
+                parser_error("Unrecognized output unit system.")
+            bcontrol["output units"] = output_units
+    if bcontrol["output units"] == None:
+        parser_error("Missing 'output units XYZ' keyword in boundary block.\n"
                      "Please include that line with one of the following\n"
                      "unit systems:\n" + "\n".join(recognized_unit_systems))
 
@@ -987,9 +1012,6 @@ def parse_eos_boundary_block(*args, **kwargs):
             bcontrol["path hugoniot"] = hugoniot
 
 
-
-    print("bcontrol: ", bcontrol)
-    print("lcontrol: ", lcontrol)
     return {"initial time": None, "termination time": None,
             "bcontrol": bcontrol, "lcontrol": lcontrol}
 

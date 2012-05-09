@@ -41,8 +41,8 @@ def eos_driver(the_model, **kwargs):
        eos_driver:
 
     PURPOSE
-       Run the single element simulation for an instance of the main Payette class
-       the_model
+       Run the single element simulation for an instance of the main Payette
+       class the_model
 
     INPUT
        the_model: Payette container class instance
@@ -56,16 +56,281 @@ def eos_driver(the_model, **kwargs):
     """
     if debug: pdb = __import__('pdb')
     cons_msg = "leg {0:{1}d}, step {2:{3}d}, time {4:.4E}, dt {5:.4E}"
+
+    K2eV = 8.617343e-5
+    erg2joule = 1.0e-4
+
     simdat = the_model.simulation_data()
+    material = simdat.MATERIAL
+    matdat = material.material_data()
+
+    eos_model = material.constitutiveModel()
+
+    nprints = simdat.getOption("nprints")
+    rho_temp_pairs = simdat.getData("leg data")
+    base_name = os.path.splitext(simdat.OUTFILE)[0]
+
+    txtfmt = lambda x: "{0:>25s}".format(str(x))
+    fltfmt = lambda x: "{0:25.14e}".format(float(x))
 
 
-    rho_t_pairs = simdat.data_container["leg data"]["stashed value"]
+################################################################################
+###############             DENSITY-TEMPERATURE LEGS             ###############
+################################################################################
+    if len(rho_temp_pairs) != 0:
+        simdat.OUTFILE = base_name + ".out"
+        OUTFILE = open(simdat.OUTFILE, "w")
 
-    print("EOSDRIVER")
-    print(rho_t_pairs)
-    print(dir(the_model.simdat))
-    print(dir(the_model.matdat))
-    sys.exit()
+        headers = [x[0] for x in sorted(eos_model.outdata.iteritems())]
+        msg = "{0}\n".format("".join([txtfmt(x) for x in headers]))
+        OUTFILE.write(msg)
+
+        for pair in rho_temp_pairs:
+            eos_model.evaluate_eos(simdat, matdat,
+                              rho = pair[0] / 1000.0, temp = pair[1] * K2eV)
+            # Convert from CGSEV to MKSK
+            eos_model.outdata["DENSITY"] *= 1000.0
+            eos_model.outdata["ENERGY"] *= erg2joule
+            eos_model.outdata["PRESSURE"] /= 10.0
+            eos_model.outdata["SOUNDSPEED"] /= 100.0
+            eos_model.outdata["TEMPERATURE"] /= K2eV
+
+            values = [x[1] for x in sorted(eos_model.outdata.iteritems())]
+            msg = "{0}\n".format("".join([fltfmt(x) for x in values]))
+            OUTFILE.write(msg)
+
+        OUTFILE.close()
+     
+
+################################################################################
+###############                     SURFACE                      ###############
+################################################################################
+    if (simdat.getOption("surface increments") != None and
+        simdat.getOption("density range") != None and
+        simdat.getOption("temperature range") != None):
+
+        t_range = simdat.getOption("temperature range")
+        rho_range = simdat.getOption("density range")
+        surf_incr = simdat.getOption("surface increments")
+
+        simdat.OUTFILE = base_name + ".surface"
+        OUTFILE = open(simdat.OUTFILE, "w")
+
+        loginf("=" * (80 - 6))
+        loginf("Begin surface")
+        DEJAVU = False
+        idx = 0
+        for rho in np.linspace(rho_range[0], rho_range[1], surf_incr):
+            for temp in np.linspace(t_range[0], t_range[1], surf_incr):
+                idx += 1
+                if idx%int(surf_incr**2/float(nprints)) == 0:
+                    loginf("Surface step {0}/{1}".format(idx,surf_incr**2))
+                # convert to CGSEV from MKSK
+                tmprho = rho/1000.0
+                tmptemp = K2eV*temp
+
+                eos_model.evaluate_eos(simdat, matdat,
+                                       rho = tmprho, temp = tmptemp)
+
+                # Write the headers if this is the first time through
+                if not DEJAVU:
+                    DEJAVU = True
+                    headers = [x[0] for x in
+                               sorted(eos_model.outdata.iteritems())]
+                    msg = "{0}\n".format("".join([txtfmt(x) for x in headers]))
+                    OUTFILE.write(msg)
+
+                # Convert from CGSEV to MKSK
+                eos_model.outdata["DENSITY"] *= 1000.0
+                eos_model.outdata["ENERGY"] *= erg2joule
+                eos_model.outdata["PRESSURE"] /= 10.0
+                eos_model.outdata["SOUNDSPEED"] /= 100.0
+                eos_model.outdata["TEMPERATURE"] /= K2eV
+
+                # Write the values
+                values = [x[1] for x in sorted(eos_model.outdata.iteritems())]
+                msg = "{0}\n".format("".join([fltfmt(x) for x in values]))
+                OUTFILE.write(msg)
+
+        OUTFILE.flush()
+        OUTFILE.close()
+        loginf("End surface")
+        loginf("Surface file: {0}".format(simdat.OUTFILE))
+
+################################################################################
+###############                     ISOTHERM                     ###############
+################################################################################
+    
+    if (simdat.getOption("path increments") != None and
+        simdat.getOption("path isotherm") != None and
+        simdat.getOption("density range") != None):
+
+        # isotherm = [density, temperature]
+        isotherm = simdat.getOption("path isotherm")
+        rho_range = simdat.getOption("density range")
+        path_incr = simdat.getOption("path increments")
+
+        if not rho_range[0] <= isotherm[0] <= rho_range[1]:
+            sys.exit("initial isotherm density not within range")
+
+        simdat.OUTFILE = base_name + ".isotherm"
+        OUTFILE = open(simdat.OUTFILE, "w")
+
+        loginf("=" * (80 - 6))
+        loginf("Begin isotherm")
+        DEJAVU = False
+        idx = 0
+        for rho in np.linspace(isotherm[0], rho_range[1], path_incr):
+            idx += 1
+            if idx%int(path_incr/float(nprints)) == 0:
+                loginf("Isotherm step {0}/{1}".format(idx,path_incr))
+
+            tmprho = rho/1000.0
+            tmptemp = K2eV*isotherm[1]
+
+            eos_model.evaluate_eos(simdat, matdat,
+                                   rho = tmprho, temp = tmptemp)
+
+            # Write the headers if this is the first time through
+            if not DEJAVU:
+                DEJAVU = True
+                headers = [x[0] for x in
+                           sorted(eos_model.outdata.iteritems())]
+                msg = "{0}\n".format("".join([txtfmt(x) for x in headers]))
+                OUTFILE.write(msg)
+
+            # Convert from CGSEV to MKSK
+            eos_model.outdata["DENSITY"] *= 1000.0
+            eos_model.outdata["ENERGY"] *= erg2joule
+            eos_model.outdata["PRESSURE"] /= 10.0
+            eos_model.outdata["SOUNDSPEED"] /= 100.0
+            eos_model.outdata["TEMPERATURE"] /= K2eV
+
+            # Write the values
+            values = [x[1] for x in sorted(eos_model.outdata.iteritems())]
+            msg = "{0}\n".format("".join([fltfmt(x) for x in values]))
+            OUTFILE.write(msg)
+
+        OUTFILE.flush()
+        OUTFILE.close()
+        loginf("End isotherm")
+        loginf("Isotherm file: {0}".format(simdat.OUTFILE))
+
+################################################################################
+###############                     HUGONIOT                     ###############
+################################################################################
+
+    if (simdat.getOption("path increments") != None and
+        simdat.getOption("path hugoniot") != None and
+        simdat.getOption("temperature range") != None and
+        simdat.getOption("density range") != None):
+
+        # hugoniot = [density, temperature]
+        hugoniot = simdat.getOption("path hugoniot")
+        rho_range = simdat.getOption("density range")
+        t_range = simdat.getOption("temperature range")
+        path_incr = simdat.getOption("path increments")
+
+
+        if not rho_range[0] <= hugoniot[0] <= rho_range[1]:
+            sys.exit("initial hugoniot density not within range")
+        if not t_range[0] <= hugoniot[1] <= t_range[1]:
+            sys.exit("initial hugoniot temperature not within range")
+
+        simdat.OUTFILE = base_name + ".hugoniot"
+        OUTFILE = open(simdat.OUTFILE, "w")
+
+        loginf("=" * (80 - 6))
+        loginf("Begin Hugoniot")
+
+        init_density_MKSK = hugoniot[0]
+        init_temperature_MKSK = hugoniot[1]
+
+        # Convert to CGSEV
+        init_density = init_density_MKSK/1000.0
+        init_temperature = K2eV*init_temperature_MKSK
+
+        eos_model.evaluate_eos(simdat, matdat,
+                               rho = init_density, temp = init_temperature)
+
+        init_energy = eos_model.outdata["ENERGY"]
+        init_pressure = eos_model.outdata["PRESSURE"]
+
+        idx = 0
+        DEJAVU = False
+        e = init_energy
+        for rho in np.linspace(hugoniot[0], rho_range[1], path_incr):
+            idx += 1
+            if idx%int(path_incr/float(nprints)) == 0:
+                loginf("Hugoniot step {0}/{1}".format(idx,path_incr))
+            #
+            # Here we solve the Rankine-Hugoniot equation as
+            # a function of energy with constant density:
+            #
+            # E-E0 == 0.5*[P(E,V)+P0]*(V0-V)
+            #
+            # Where V0 = 1/rho0 and V = 1/rho. We rewrite it as:
+            #
+            # 0.5*[P(E,V)+P0]*(V0-V)-E+E0 == 0.0 = f(E)
+            #
+            # The derivative is given by:
+            #
+            # df(E)/dE = 0.5*(dP/dE)*(1/rho0 - 1/rho) - 1
+            #
+            # The solution to the first equation is found by a simple
+            # application of newton's method:
+            #
+            # x_n+1 = x_n - f(E)/(df(E)/dE)
+            #
+
+            r = rho/1000.0
+            a = (1./init_density - 1./r)/2.
+
+            converged_idx = 0
+            CONVERGED = False
+            while not CONVERGED:
+                converged_idx += 1
+
+                eos_model.evaluate_eos(simdat, matdat, rho = r, enrg = e)
+
+                f = (eos_model.outdata["PRESSURE"] + init_pressure)*a - e + init_energy
+                df = eos_model.outdata["DPDT"]/eos_model.outdata["DEDT"]*a - 1.0
+                e = e - f/df*1.5
+                errval = abs(f/init_energy)
+                if errval < 1.0e-9 or converged_idx > 100:
+                    CONVERGED = True
+                    if converged_idx > 100:
+                        loginf("Max iterations reached (tol = {0:14.10e}).\n".format(1.0e-9)+
+                               "rel error   = {0:14.10e}\n".format(float(errval))+
+                               "abs error   = {0:14.10e}\n".format(float(f))+
+                               "func val    = {0:14.10e}\n".format(float(f))+
+                               "init_energy = {0:14.10e}\n".format(float(init_energy)))
+
+            # Write the headers if this is the first time through
+            if not DEJAVU:
+                DEJAVU = True
+                headers = [x[0] for x in sorted(eos_model.outdata.iteritems())]
+                msg = "{0}\n".format("".join([txtfmt(x) for x in headers]))
+                OUTFILE.write(msg)
+
+            # Convert from CGSEV to MKSK
+            eos_model.outdata["DENSITY"] *= 1000.0
+            eos_model.outdata["ENERGY"] *= erg2joule
+            eos_model.outdata["PRESSURE"] /= 10.0
+            eos_model.outdata["SOUNDSPEED"] /= 100.0
+            eos_model.outdata["TEMPERATURE"] /= K2eV
+
+            # Write the values
+            values = [x[1] for x in sorted(eos_model.outdata.iteritems())]
+            msg = "{0}\n".format("".join([fltfmt(x) for x in values]))
+            OUTFILE.write(msg)
+
+        OUTFILE.flush()
+        OUTFILE.close()
+        loginf("End Hugoniot")
+        loginf("Hugoniot file: {0}".format(simdat.OUTFILE))
+
+    return 0
 
  
 def solid_driver(the_model, **kwargs):
@@ -408,8 +673,5 @@ def solid_driver(the_model, **kwargs):
 
         continue # continue to next leg
     # ----------------------------------------------------- end{processing leg}
-
-    reportMessage(iam, "{0} Payette simulation ran to completion"
-                  .format(the_model.name))
 
     return 0

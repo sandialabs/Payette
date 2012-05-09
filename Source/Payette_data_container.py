@@ -330,13 +330,12 @@ class DataContainer:
 
         iam = "{0}.registerOption(self,name,val)".format(self.name)
 
-        option = self.option_container.get(name)
-        if option is None:
+        if not self.option_container.has_key(name):
             msg = ("{0} not in {1}.option_container. registered options are:\n{2}."
                    .format(name,self.name,", ".join(self.option_container.keys())))
             reportError(iam,msg)
 
-        return option
+        return self.option_container.get(name)
 
     def getData(self,name,stash=False,cur=False,form="Array"):
 

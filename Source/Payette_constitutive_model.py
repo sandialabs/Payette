@@ -87,7 +87,7 @@ class ConstitutiveModelPrototype(object):
             reportError(iam, "empty ui array")
 
         if self.eos_model:
-            print("Payette_constitutive_model.py: Do something here?")
+            # mss: do something here? But is seems unnecessary.
             return
 
         if not self.bulk_modulus:
