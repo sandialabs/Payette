@@ -27,14 +27,24 @@ import numpy as np
 
 from Source.Payette_utils import *
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
-
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
+from Source.Payette_tensor import I6
+from Toolset.elastic_conversion import compute_elastic_constants
 
+try:
+    import Source.Materials.Library.finite_elastic as mtllib
+    imported = True
+except:
+    imported = False
+    pass
+
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 attributes = {
     "payette material": True,
     "name": "finite_elastic",
-    "libname": "finite_elastic",
     "aliases": [],
+    "fortran source": True,
+    "build script": os.path.join(THIS_DIR, "Build_finite_elastic.py"),
     "material type": ["mechanical"],
     "default material": True,
     }
@@ -54,85 +64,169 @@ class FiniteElastic(ConstitutiveModelPrototype):
         self.aliases = attributes["aliases"]
         self.imported = True
 
+        self.code = kwargs["code"]
+        self.imported = True if self.code == "python" else imported
+
         # register parameters
-        self.registerParameter("MU", 0, aliases=["SHMOD", "G", "G0"])
-        self.registerParameter("NU", 1, aliases=["POISSONS_RATIO"])
-        self.registerParameter("K", 2, aliases=["BKMOD", "B0"])
-        self.registerParameter("C11", 3, aliases=[], parseable=False)
-        self.registerParameter("C12", 4, aliases=[], parseable=False)
-        self.registerParameter("C44", 5, aliases=[], parseable=False)
+        self.register_parameter("LAM", 0, aliases=[])
+        self.register_parameter("G", 1, aliases=["MU", "G0", "SHMOD"])
+        self.register_parameter("E", 2, aliases=["YOUNGS"])
+        self.register_parameter("NU", 3, aliases=["POISSONS", "POISSONS RATIO"])
+        self.register_parameter("K", 4, aliases=["B0", "BKMOD"])
+        self.register_parameter("H", 5, aliases=["CONSTRAINED"])
+        self.register_parameter("KO", 6, aliases=[])
+        self.register_parameter("CL", 7, aliases=[])
+        self.register_parameter("CT", 8, aliases=[])
+        self.register_parameter("CO", 9, aliases=[])
+        self.register_parameter("CR", 10, aliases=[])
+        self.register_parameter("RHO", 11, aliases=["DENSITY"])
+
         self.nprop = len(self.parameter_table.keys())
 
         pass
 
     # public methods
-    def setUp(self, matdat, user_params):
-        iam = self.name + ".setUp(self,material,props)"
+    def set_up(self, matdat, user_params):
+        iam = self.name + ".set_up"
 
         # parse parameters
-        self.parseParameters(user_params)
+        self.parse_parameters(user_params)
 
-        mu, nu = self.ui0[0:2]
+        # the elastic model only needs the bulk and shear modulus, but the
+        # user could have specified any one of the many elastic moduli.
+        # Convert them and get just the bulk and shear modulus
+        eui = compute_elastic_constants(*self.ui0[0:12])
+        for key, val in eui.items():
+            if key.upper() not in self.parameter_table:
+                continue
+            idx = self.parameter_table[key.upper()]["ui pos"]
+            self.ui0[idx] = val
 
+        # Payette wants ui to be the same length as ui0, but we don't want to
+        # work with the entire ui, so we only pick out what we want
+        mu, nu, k = self.ui0[1], self.ui0[3], self.ui0[4]
+        self.ui = self.ui0
+        mui = np.array([mu, nu, k])
+        self.bulk_modulus, self.shear_modulus = k, mu
+
+        if self.code == "python":
+            self.mui = self._py_set_up(mui)
+        else:
+            self.mui = self._fort_set_up(mui)
+
+        # register the green lagrange strain and second Piola-Kirchhoff stress
+        matdat.register_data("green strain","SymTensor",
+                            init_val = np.zeros(6),
+                            plot_key = "GREEN_STRAIN")
+        matdat.register_data("pk2 stress","SymTensor",
+                            init_val = np.zeros(6),
+                            plot_key = "PK2")
+
+        return
+
+    def jacobian(self, simdat, matdat):
+        v = matdat.get_data("prescribed stress components")
+        return self.J0[[[x] for x in v],v]
+
+    def update_state(self, simdat, matdat):
+        """
+           update the material state based on current state and strain increment
+        """
+        # deformation gradient and its determinant
+        F = matdat.get_data("deformation gradient")
+
+        if self.code == "python":
+            E, pk2, sig = _py_update_state(self.mui, F)
+
+        else:
+            a = [1, self.mui, F, migError, migMessage]
+            if not PC_F2PY_CALLBACK:
+                a = a[:-2]
+            E, pk2, sig = mtllib.finite_elast_calc(*a)
+
+        matdat.store_data("stress", sig)
+        matdat.store_data("pk2 stress", pk2)
+        matdat.store_data("green strain", E)
+
+        return
+
+    def _py_set_up(self, mui):
+
+        mu, nu, k = mui
         if nu < 0.:
             reportWarning(iam, "neg Poisson")
 
         if mu <= 0.:
             reportError(iam, "Shear modulus G must be positive")
 
-        # compute bulk modulus, c11, c12, and c44
-        k = 2.0 * mu * (1 + nu) / (3. * (1. - 2. * nu))
+        # compute c11, c12, and c44
         c11 = k + 4. / 3. * mu
         c12 = k - 2. / 3. * mu
         c44 = mu
 
-        self.bulk_modulus, self.shear_modulus = k, mu
+        return np.array([c11, c12, c44])
 
-        self.ui = np.array([mu, nu, k, c11, c12, c44])
-
-        # register the green lagrange strain and second Piola-Kirchhoff stress
-        matdat.registerData("green strain","SymTensor",
-                            init_val = np.zeros(6),
-                            plot_key = "GREEN_STRAIN")
-        matdat.registerData("pk2 stress","SymTensor",
-                            init_val = np.zeros(6),
-                            plot_key = "PK2")
+    def _fort_set_up(self, mui):
+        props = np.array(mui)
+        a = [props, migError, migMessage]
+        if not PC_F2PY_CALLBACK:
+            a = a[:-2]
+        ui = mtllib.finite_elast_chk(*a)
+        return ui
 
 
-        return
+def _py_update_state(ui, F):
 
-    def jacobian(self, simdat, matdat):
-        v = matdat.getData("prescribed stress components")
-        return self.J0[[[x] for x in v],v]
+    # user input
+    c11, c12, c44 = ui
 
-    def updateState(self, simdat, matdat):
-        """
-           update the material state based on current state and strain increment
-        """
-        # deformation gradient and its determinant
-        F = matdat.getData("deformation gradient", form="Matrix")
-        jac = np.linalg.det(F)
+    # Jacobian
+    jac = (F[0] * F[4] * F[8] + F[1] * F[5] * F[6] + F[2] * F[3] * F[7]
+         -(F[0] * F[5] * F[7] + F[1] * F[3] * F[8] + F[2] * F[4] * F[6]))
 
-        # green lagrange strain
-        E = 1. / 2. * (np.dot(F.T, F) - np.eye(3))
+    # green lagrange strain
+    E = np.zeros(6)
+    E[0] = F[0] * F[0] + F[3] * F[3] + F[6] * F[6]
+    E[1] = F[1] * F[1] + F[4] * F[4] + F[7] * F[7]
+    E[2] = F[2] * F[2] + F[5] * F[5] + F[8] * F[8]
+    E[3] = F[0] * F[1] + F[3] * F[4] + F[6] * F[7]
+    E[4] = F[1] * F[2] + F[4] * F[5] + F[7] * F[8]
+    E[5] = F[0] * F[2] + F[3] * F[5] + F[6] * F[8]
+    E = .5 * (E - I6)
 
-        # PK2 stress
-        c11, c12, c44 = self.ui[3:]
-        stress = np.zeros((3,3))
-        stress[0, 0] = c11 * E[0, 0] + c12 * E[1, 1] + c12 * E[2, 2]
-        stress[1, 1] = c12 * E[0, 0] + c11 * E[1, 1] + c12 * E[2, 2]
-        stress[2, 2] = c12 * E[0, 0] + c12 * E[1, 1] + c11 * E[2, 2]
-        stress[0, 1] = c44 * E[0, 1]
-        stress[1, 2] = c44 * E[1, 2]
-        stress[0, 2] = c44 * E[0, 2]
-        stress[1, 0] = stress[0, 1]
-        stress[2, 1] = stress[1, 2]
-        stress[2, 0] = stress[0, 2]
+    # PK2 stress
+    pk2 = np.zeros(6)
+    pk2[0] = c11 * E[0] + c12 * E[1] + c12 * E[2]
+    pk2[1] = c12 * E[0] + c11 * E[1] + c12 * E[2]
+    pk2[2] = c12 * E[0] + c12 * E[1] + c11 * E[2]
+    pk2[3:] = c44 * E[3:]
 
-        cauchy_stress = (1. / jac) * np.dot(F, np.dot(stress, F.T))
+    # cauchy stress
+    sig = np.zeros(6)
+    sig[0] = (F[0] * (F[0] * pk2[0] + F[1] * pk2[3] + F[2] * pk2[5]) +
+              F[1] * (F[0] * pk2[3] + F[1] * pk2[1] + F[2] * pk2[4]) +
+              F[2] * (F[0] * pk2[5] + F[1] * pk2[4] + F[2] * pk2[2]))
 
-        matdat.storeData("stress", cauchy_stress)
-        matdat.storeData("pk2 stress", stress)
-        matdat.storeData("green strain", E)
+    sig[1] = (F[3] * (F[3] * pk2[0] + F[4] * pk2[3] + F[5] * pk2[5]) +
+              F[4] * (F[3] * pk2[3] + F[4] * pk2[1] + F[5] * pk2[4]) +
+              F[5] * (F[3] * pk2[5] + F[4] * pk2[4] + F[5] * pk2[2]))
 
-        return
+    sig[2] = (F[6] * (F[6] * pk2[0] + F[7] * pk2[3] + F[8] * pk2[5]) +
+              F[7] * (F[6] * pk2[3] + F[7] * pk2[1] + F[8] * pk2[4]) +
+              F[8] * (F[6] * pk2[5] + F[7] * pk2[4] + F[8] * pk2[2]))
+
+    sig[3] = (F[0] * (F[3] * pk2[0] + F[4] * pk2[3] + F[5] * pk2[5]) +
+              F[1] * (F[3] * pk2[3] + F[4] * pk2[1] + F[5] * pk2[4]) +
+              F[2] * (F[3] * pk2[5] + F[4] * pk2[4] + F[5] * pk2[2]))
+
+    sig[4] = (F[3] * (F[6] * pk2[0] + F[7] * pk2[3] + F[8] * pk2[5]) +
+              F[4] * (F[6] * pk2[3] + F[7] * pk2[1] + F[8] * pk2[4]) +
+              F[5] * (F[6] * pk2[5] + F[7] * pk2[4] + F[8] * pk2[2]))
+
+    sig[5] = (F[0] * (F[6] * pk2[0] + F[7] * pk2[3] + F[8] * pk2[5]) +
+              F[1] * (F[6] * pk2[3] + F[7] * pk2[1] + F[8] * pk2[4]) +
+              F[2] * (F[6] * pk2[5] + F[7] * pk2[4] + F[8] * pk2[2]))
+
+    sig = (1. / jac) * sig
+    return E, pk2, sig
+

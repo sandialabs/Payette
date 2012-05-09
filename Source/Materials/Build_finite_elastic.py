@@ -37,7 +37,7 @@ class Build(MaterialBuilder):
 
         # initialize base class
         srcd = os.path.join(fdir, "Fortran")
-        sigf = os.path.join(fdir, "Payette_plastic.pyf")
+        sigf = os.path.join(fdir, "Payette_finite_elastic.pyf")
         MaterialBuilder.__init__(
             self, name, libname, srcd, compiler_info, sigf=sigf)
 
@@ -46,7 +46,7 @@ class Build(MaterialBuilder):
     def build_extension_module(self):
 
         # fortran files
-        srcs = ["plastic.f90"]
+        srcs = ["finite_elastic.f90"]
         self.source_files = [os.path.join(self.source_directory, x)
                              for x in srcs]
 

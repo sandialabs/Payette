@@ -58,63 +58,63 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         self.aliases = attributes["aliases"]
         self.imported = imported
 
-        self.registerParameter("B0",0,aliases=['BKMOD'])
-        self.registerParameter("B1",1,aliases=[])
-        self.registerParameter("B2",2,aliases=[])
-        self.registerParameter("G0",3,aliases=['SHMOD'])
-        self.registerParameter("G1",4,aliases=[])
-        self.registerParameter("G2",5,aliases=[])
-        self.registerParameter("G3",6,aliases=[])
-        self.registerParameter("A1",7,aliases=['yield strength'])
-        self.registerParameter("A2",8,aliases=[])
-        self.registerParameter("A3",9,aliases=[])
-        self.registerParameter("A4",10,aliases=[])
-        self.registerParameter("A5",11,aliases=[])
-        self.registerParameter("A6",12,aliases=[])
-        self.registerParameter("AN",13,aliases=[])
-        self.registerParameter("R0",14,aliases=[])
-        self.registerParameter("T0",15,aliases=[])
-        self.registerParameter("C0",16,aliases=[])
-        self.registerParameter("S1",17,aliases=['S1MG'])
-        self.registerParameter("GP",18,aliases=['GRPAR'])
-        self.registerParameter("CV",19,aliases=[])
-        self.registerParameter("TM",20,aliases=[])
-        self.registerParameter("T1",21,aliases=[])
-        self.registerParameter("T2",22,aliases=[])
-        self.registerParameter("T3",23,aliases=[])
-        self.registerParameter("T4",24,aliases=[])
-        self.registerParameter("TMPRXP",25,aliases=[])
-        self.registerParameter("SC",26,aliases=[])
-        self.registerParameter("IDK",27,aliases=[])
-        self.registerParameter("IDG",28,aliases=[])
-        self.registerParameter("A4PF",29,aliases=[])
-        self.registerParameter("CHI",30,aliases=['TQC'])
-        self.registerParameter("FREE01",31,aliases=['F1'])
-        self.registerParameter("SERIAL",32,aliases=[])
-        self.registerParameter("DEJAVU",33,aliases=[])
-        self.registerParameter("DC1",34,aliases=[])
-        self.registerParameter("DC2",35,aliases=[])
-        self.registerParameter("DC3",36,aliases=[])
-        self.registerParameter("DC4",37,aliases=[])
-        self.registerParameter("DC5",38,aliases=[])
-        self.registerParameter("DC6",39,aliases=[])
-        self.registerParameter("DC7",40,aliases=[])
-        self.registerParameter("DC8",41,aliases=[])
-        self.registerParameter("DC9",42,aliases=[])
-        self.registerParameter("DC10",43,aliases=[])
-        self.registerParameter("DC11",44,aliases=[])
-        self.registerParameter("DC12",45,aliases=[])
-        self.registerParameter("DC13",46,aliases=[])
+        self.register_parameter("B0",0,aliases=['BKMOD'])
+        self.register_parameter("B1",1,aliases=[])
+        self.register_parameter("B2",2,aliases=[])
+        self.register_parameter("G0",3,aliases=['SHMOD'])
+        self.register_parameter("G1",4,aliases=[])
+        self.register_parameter("G2",5,aliases=[])
+        self.register_parameter("G3",6,aliases=[])
+        self.register_parameter("A1",7,aliases=['yield strength'])
+        self.register_parameter("A2",8,aliases=[])
+        self.register_parameter("A3",9,aliases=[])
+        self.register_parameter("A4",10,aliases=[])
+        self.register_parameter("A5",11,aliases=[])
+        self.register_parameter("A6",12,aliases=[])
+        self.register_parameter("AN",13,aliases=[])
+        self.register_parameter("R0",14,aliases=[])
+        self.register_parameter("T0",15,aliases=[])
+        self.register_parameter("C0",16,aliases=[])
+        self.register_parameter("S1",17,aliases=['S1MG'])
+        self.register_parameter("GP",18,aliases=['GRPAR'])
+        self.register_parameter("CV",19,aliases=[])
+        self.register_parameter("TM",20,aliases=[])
+        self.register_parameter("T1",21,aliases=[])
+        self.register_parameter("T2",22,aliases=[])
+        self.register_parameter("T3",23,aliases=[])
+        self.register_parameter("T4",24,aliases=[])
+        self.register_parameter("TMPRXP",25,aliases=[])
+        self.register_parameter("SC",26,aliases=[])
+        self.register_parameter("IDK",27,aliases=[])
+        self.register_parameter("IDG",28,aliases=[])
+        self.register_parameter("A4PF",29,aliases=[])
+        self.register_parameter("CHI",30,aliases=['TQC'])
+        self.register_parameter("FREE01",31,aliases=['F1'])
+        self.register_parameter("SERIAL",32,aliases=[])
+        self.register_parameter("DEJAVU",33,aliases=[])
+        self.register_parameter("DC1",34,aliases=[])
+        self.register_parameter("DC2",35,aliases=[])
+        self.register_parameter("DC3",36,aliases=[])
+        self.register_parameter("DC4",37,aliases=[])
+        self.register_parameter("DC5",38,aliases=[])
+        self.register_parameter("DC6",39,aliases=[])
+        self.register_parameter("DC7",40,aliases=[])
+        self.register_parameter("DC8",41,aliases=[])
+        self.register_parameter("DC9",42,aliases=[])
+        self.register_parameter("DC10",43,aliases=[])
+        self.register_parameter("DC11",44,aliases=[])
+        self.register_parameter("DC12",45,aliases=[])
+        self.register_parameter("DC13",46,aliases=[])
         self.nprop = len(self.parameter_table.keys())
         self.ndc = 0
         pass
 
     # Public method
-    def setUp(self, matdat, user_params):
-        iam = self.name + ".setUp(self,material,props)"
+    def set_up(self, matdat, user_params):
+        iam = self.name + ".set_up(self,material,props)"
 
         # parse parameters
-        self.parseParameters(user_params)
+        self.parse_parameters(user_params)
 
         self.ui = self._check_props()
         (self.nsv,namea,keya,sv,rdim,iadvct,itype) = self._set_field()
@@ -122,28 +122,28 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         keya = parseToken(self.nsv,keya)
 
         # register the extra variables with the payette object
-        matdat.registerExtraVariables(self.nsv,namea,keya,sv)
+        matdat.register_xtra_vars(self.nsv,namea,keya,sv)
 
         self.bulk_modulus,self.shear_modulus = self.ui[0],self.ui[3]
 
         pass
 
-    def updateState(self, simdat, matdat):
+    def update_state(self, simdat, matdat):
         '''
            update the material state based on current state and strain increment
         '''
-        dt = simdat.getData("time step")
-        d = matdat.getData("rate of deformation")
-        sigold = matdat.getData("stress")
-        svold = matdat.getData("extra variables")
+        dt = simdat.get_data("time step")
+        d = matdat.get_data("rate of deformation")
+        sigold = matdat.get_data("stress")
+        svold = matdat.get_data("extra variables")
         a = [1,dt,self.ui,sigold,d,svold,migError,migMessage]
         if not PC_F2PY_CALLBACK: a = a[:-2]
         a.append(self.nsv)
         signew,svnew,usm = mtllib.diamm_calc(*a)
 
         # update data
-        matdat.storeData("stress",signew)
-        matdat.storeData("extra variables",svnew)
+        matdat.store_data("stress",signew)
+        matdat.store_data("extra variables",svnew)
 
         return
 

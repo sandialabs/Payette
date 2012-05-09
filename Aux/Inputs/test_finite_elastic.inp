@@ -1,0 +1,48 @@
+begin simulation py_finite_elastic
+
+begin boundary
+  kappa = 0
+  tstar = 1.
+  ampl = 1
+  estar = .002
+  stepstar = 500
+  begin legs
+    using time, strain
+    0 0 0 0 0 0 0
+    1 1 0 0 0 0 0
+  end legs
+
+end boundary
+
+begin material
+  constitutive model finite elastic
+  K = 137.e9
+  G = 53.e9
+end material
+
+end simulation
+
+begin simulation fort_finite_elastic
+
+begin boundary
+  kappa = 0
+  tstar = 1.
+  ampl = 1
+  estar = .002
+  stepstar = 500
+  begin legs
+    using time, strain
+    0 0 0 0 0 0 0
+    1 1 0 0 0 0 0
+  end legs
+
+end boundary
+
+begin material
+  constitutive model finite elastic
+  options fortran
+  K = 137.e9
+  G = 53.e9
+end material
+
+end simulation

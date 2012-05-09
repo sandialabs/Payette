@@ -87,12 +87,12 @@ def velGradCompFromE(simdat, matdat):
     '''
     # convert passed arrays to matrices
     k = simdat.KAPPA
-    dt = simdat.getData("time step")
-    E0 = matdat.getData("strain",form="Matrix")
-    Ef = matdat.getData("prescribed strain",form="Matrix")
+    dt = simdat.get_data("time step")
+    E0 = matdat.get_data("strain",form="Matrix")
+    Ef = matdat.get_data("prescribed strain",form="Matrix")
     dEdt = (Ef - E0)/dt
-    R = matdat.getData("rotation",form="Matrix")
-    dRdt = matdat.getData("rotation rate",form="Matrix")
+    R = matdat.get_data("rotation",form="Matrix")
+    dRdt = matdat.get_data("rotation rate",form="Matrix")
     Ri = R.T
 
     # stretch and its rate
@@ -106,8 +106,8 @@ def velGradCompFromE(simdat, matdat):
     d = 0.5*( L + L.T )
     w = L - d
 
-    matdat.storeData("rate of deformation",d)
-    matdat.storeData("vorticity",w)
+    matdat.store_data("rate of deformation",d)
+    matdat.store_data("vorticity",w)
     return
 
 def velGradCompFromF(simdat, matdat):
@@ -141,17 +141,17 @@ def velGradCompFromF(simdat, matdat):
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     '''
 
-    dt = simdat.getData("time step")
-    F_beg = matdat.getData("deformation gradient",form="Matrix")
-    F_end = matdat.getData("prescribed deformation gradient",form="Matrix")
+    dt = simdat.get_data("time step")
+    F_beg = matdat.get_data("deformation gradient",form="Matrix")
+    F_end = matdat.get_data("prescribed deformation gradient",form="Matrix")
     dFdt = (F_end - F_beg)/dt
 
     L = 0.5*dFdt*(la.inv(F_end) + la.inv(F_beg))
     d = 0.5*( L + L.T )
     w = L - d
 
-    matdat.storeData("vorticity",w)
-    matdat.storeData("rate of deformation",d)
+    matdat.store_data("vorticity",w)
+    matdat.store_data("rate of deformation",d)
     return
 
 def velGradCompFromP(simdat, matdat):
@@ -203,8 +203,8 @@ def velGradCompFromP(simdat, matdat):
     '''
 
     material = simdat.MATERIAL
-    depsdt_old = matdat.getData("strain rate")
-    v = matdat.getData("prescribed stress components")
+    depsdt_old = matdat.get_data("strain rate")
+    v = matdat.get_data("prescribed stress components")
     nv = len(v)
 
     if not simdat.PROPORTIONAL:
@@ -215,9 +215,9 @@ def velGradCompFromP(simdat, matdat):
             return
 
         # --- didn't converge, try Newton's method with initial d[v]=0.
-        dEdt = matdat.getData("strain rate")
+        dEdt = matdat.get_data("strain rate")
         dEdt[v] = np.zeros(nv)
-        matdat.storeData("strain rate",dEdt,old=True)
+        matdat.store_data("strain rate",dEdt,old=True)
 
         converged = piter.newton(material, simdat, matdat)
 
@@ -228,7 +228,7 @@ def velGradCompFromP(simdat, matdat):
 
     # --- Still didn't converge. Try downhill simplex method and accept whatever
     #     answer it returns:
-    matdat.restoreData("strain rate",depsdt_old)
+    matdat.restore_data("strain rate",depsdt_old)
     piter.simplex(material, simdat, matdat)
     return
 
@@ -282,10 +282,10 @@ def updateDeformation(simdat, matdat):
     iam = "updateDeformation(simdat, matdat)"
 
     k = simdat.KAPPA
-    dt = simdat.getData("time step")
-    F0 = matdat.getData("deformation gradient",form="Matrix")
-    d = matdat.getData("rate of deformation",form="Matrix")
-    w = matdat.getData("vorticity",form="Matrix")
+    dt = simdat.get_data("time step")
+    F0 = matdat.get_data("deformation gradient",form="Matrix")
+    d = matdat.get_data("rate of deformation",form="Matrix")
+    w = matdat.get_data("vorticity",form="Matrix")
 
     Ff = expm((d + w)*dt,simdat.STRICT)*F0
     U = sqrtm((Ff.T)*Ff,simdat.STRICT)
@@ -295,13 +295,13 @@ def updateDeformation(simdat, matdat):
     if np.linalg.det(Ff) <= 0.:
         reportError(iam,"negative Jacobian encountered")
 
-    matdat.storeData("strain",E)
-    matdat.storeData("deformation gradient",Ff)
+    matdat.store_data("strain",E)
+    matdat.store_data("deformation gradient",Ff)
 
     # compute the equivalent strain
     eps = toArray(E,symmetric=True)
     eqveps = np.sqrt( 2./3.*( sum(eps[:3]**2) + 2.*sum(eps[3:]**2)) )
-    matdat.storeData("equivalent strain",eqveps)
+    matdat.store_data("equivalent strain",eqveps)
 
     return
 

@@ -40,7 +40,7 @@ class Material:
        is instantiated by the Payette object.
 
     DATA
-       constitutiveModel: Material's constitutive model
+       ConstitutiveModel: Material's constitutive model
 
     AUTHORS
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
@@ -96,7 +96,7 @@ class Material:
             continue
 
         # register param table
-        self.matdat.registerOption("parameter table", param_table)
+        self.matdat.register_option("parameter table", param_table)
 
         pass
 
@@ -106,54 +106,54 @@ class Material:
         # register obligatory data
 
         # plotable data
-        self.matdat.registerData("stress", "SymTensor",
+        self.matdat.register_data("stress", "SymTensor",
                                  init_val=np.zeros(6),
                                  plot_key="sig")
-        self.matdat.registerData("stress rate", "SymTensor",
+        self.matdat.register_data("stress rate", "SymTensor",
                                  init_val=np.zeros(6),
                                  plot_key="dsigdt")
-        self.matdat.registerData("strain","SymTensor",
+        self.matdat.register_data("strain","SymTensor",
                                  init_val=np.zeros(6),
                                  plot_key="strain")
-        self.matdat.registerData("deformation gradient","Tensor",
+        self.matdat.register_data("deformation gradient","Tensor",
                                  init_val="Identity",
                                  plot_key="F")
-        self.matdat.registerData("rate of deformation","SymTensor",
+        self.matdat.register_data("rate of deformation","SymTensor",
                                  init_val=np.zeros(6),
                                  plot_key="d")
-        self.matdat.registerData("vorticity","Tensor",
+        self.matdat.register_data("vorticity","Tensor",
                                  init_val=np.zeros(9),
                                  plot_key="w")
-        self.matdat.registerData("equivalent strain","Scalar",
+        self.matdat.register_data("equivalent strain","Scalar",
                                  init_val=0.,
                                  plot_key="eqveps")
 
         if self.constitutive_model.electric_field_model:
             # electric field model data
-            self.matdat.registerData("permittivity","SymTensor",
+            self.matdat.register_data("permittivity","SymTensor",
                                      init_val=np.zeros(6),
                                      plot_key="permtv")
-            self.matdat.registerData("electric field","Vector",
+            self.matdat.register_data("electric field","Vector",
                                      init_val=np.zeros(3),
                                      plot_key="efield")
 
         # non-plotable data
-        self.matdat.registerData("prescribed stress", "Array",
+        self.matdat.register_data("prescribed stress", "Array",
                                  init_val=np.zeros(6))
-        self.matdat.registerData("prescribed stress components",
+        self.matdat.register_data("prescribed stress components",
                                  "Integer Array",
                                  init_val=np.zeros(6,dtype=int))
-        self.matdat.registerData("prescribed strain","SymTensor",
+        self.matdat.register_data("prescribed strain","SymTensor",
                                  init_val=np.zeros(6))
-        self.matdat.registerData("strain rate","SymTensor",
+        self.matdat.register_data("strain rate","SymTensor",
                                  init_val=np.zeros(6))
-        self.matdat.registerData("prescribed deformation gradient","Tensor",
+        self.matdat.register_data("prescribed deformation gradient","Tensor",
                                  init_val=np.zeros(9))
-        self.matdat.registerData("deformation gradient rate","Tensor",
+        self.matdat.register_data("deformation gradient rate","Tensor",
                                  init_val=np.zeros(9))
-        self.matdat.registerData("rotation","Tensor",
+        self.matdat.register_data("rotation","Tensor",
                                  init_val="Identity")
-        self.matdat.registerData("rotation rate","Tensor",
+        self.matdat.register_data("rotation rate","Tensor",
                                  init_val=np.zeros(9))
         return
 
@@ -175,11 +175,8 @@ class Material:
     def material_data(self):
         return self.matdat
 
-    def constitutiveModel(self):
-        return self.constitutive_model
-
-    def updateState(self, simdat, matdat):
-        return self.constitutive_model.updateState(simdat, matdat)
+    def update_state(self, simdat, matdat):
+        return self.constitutive_model.update_state(simdat, matdat)
 
     def jacobian(self, simdat, matdat):
         return self.constitutive_model.jacobian(simdat, matdat)

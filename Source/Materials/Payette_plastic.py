@@ -68,31 +68,31 @@ class Plastic(ConstitutiveModelPrototype):
         self.imported = True if self.code == "python" else imported
 
         # register parameters
-        self.registerParameter("LAM", 0, aliases=[])
-        self.registerParameter("G", 1, aliases=["MU", "G0", "SHMOD"])
-        self.registerParameter("E", 2, aliases=["YOUNGS"])
-        self.registerParameter("NU", 3, aliases=["POISSONS", "POISSONS RATIO"])
-        self.registerParameter("K", 4, aliases=["B0", "BKMOD"])
-        self.registerParameter("H", 5, aliases=["CONSTRAINED"])
-        self.registerParameter("KO", 6, aliases=[])
-        self.registerParameter("CL", 7, aliases=[])
-        self.registerParameter("CT", 8, aliases=[])
-        self.registerParameter("CO", 9, aliases=[])
-        self.registerParameter("CR", 10, aliases=[])
-        self.registerParameter("RHO", 11, aliases=["DENSITY"])
-        self.registerParameter("Y", 12, aliases=["A1", "YIELD STRENGTH"])
-        self.registerParameter("A", 13, aliases=[])
-        self.registerParameter("C", 14, aliases=[])
-        self.registerParameter("M", 15, aliases=[])
+        self.register_parameter("LAM", 0, aliases=[])
+        self.register_parameter("G", 1, aliases=["MU", "G0", "SHMOD"])
+        self.register_parameter("E", 2, aliases=["YOUNGS"])
+        self.register_parameter("NU", 3, aliases=["POISSONS", "POISSONS RATIO"])
+        self.register_parameter("K", 4, aliases=["B0", "BKMOD"])
+        self.register_parameter("H", 5, aliases=["CONSTRAINED"])
+        self.register_parameter("KO", 6, aliases=[])
+        self.register_parameter("CL", 7, aliases=[])
+        self.register_parameter("CT", 8, aliases=[])
+        self.register_parameter("CO", 9, aliases=[])
+        self.register_parameter("CR", 10, aliases=[])
+        self.register_parameter("RHO", 11, aliases=["DENSITY"])
+        self.register_parameter("Y", 12, aliases=["A1", "YIELD STRENGTH"])
+        self.register_parameter("A", 13, aliases=[])
+        self.register_parameter("C", 14, aliases=[])
+        self.register_parameter("M", 15, aliases=[])
         self.nprop = len(self.parameter_table.keys())
         pass
 
     # public methods
-    def setUp(self, matdat, user_params):
-        iam = self.name + ".setUp"
+    def set_up(self, matdat, user_params):
+        iam = self.name + ".set_up"
 
         # parse parameters
-        self.parseParameters(user_params)
+        self.parse_parameters(user_params)
 
         # the plastic model only needs the bulk and shear modulus, but the
         # user could have specified any one of the many elastic moduli.
@@ -119,19 +119,19 @@ class Plastic(ConstitutiveModelPrototype):
         self.bulk_modulus, self.shear_modulus = self.mui[0], self.mui[1]
 
         # register extra variables
-        matdat.registerExtraVariables(nxtra, names, keys, xtra)
+        matdat.register_xtra_vars(nxtra, names, keys, xtra)
 
         return
 
-    def updateState(self, simdat, matdat):
+    def update_state(self, simdat, matdat):
         """
            update the material state based on current state and strain increment
         """
         # get passed arguments
-        dt = simdat.getData("time step")
-        d = matdat.getData("rate of deformation")
-        sigold = matdat.getData("stress")
-        xtra = matdat.getData("extra variables")
+        dt = simdat.get_data("time step")
+        d = matdat.get_data("rate of deformation")
+        sigold = matdat.get_data("stress")
+        xtra = matdat.get_data("extra variables")
 
         if self.code == "python":
             sig, xtra = _py_update_state(self.mui, dt, d, sigold, xtra)
@@ -143,8 +143,8 @@ class Plastic(ConstitutiveModelPrototype):
             sig, xtra = mtllib.plast_calc(*a)
 
         # store updated data
-        matdat.storeData("extra variables", xtra)
-        matdat.storeData("stress", sig)
+        matdat.store_data("extra variables", xtra)
+        matdat.store_data("stress", sig)
 
     def _py_set_up(self, mui):
 

@@ -16,31 +16,32 @@ python module payette__user__routines
     end interface payette_user_interface
 end python module payette__user__routines
 
-python module elastic ! in
-    interface  ! in :elastic
-        subroutine elast_calc(nblk,dt,ui,sig,d)
+python module finite_elastic ! in
+    interface  ! in :finite_elastic
+        subroutine finite_elast_calc(nblk,ui,f,e,pk2,sig)
             use payette__user__routines
-            integer, parameter :: nprop=2
-            double precision intent(in) :: dt
+            integer, parameter :: nprop=3
             double precision dimension(nprop),intent(in) :: ui
-            double precision dimension(6),intent(in,out) :: sig
-            double precision dimension(6),intent(in) :: d
+            double precision dimension(9),intent(in) :: f
+            double precision dimension(6),intent(out) :: e
+            double precision dimension(6),intent(out) :: pk2
+            double precision dimension(6),intent(out) :: sig
             intent(callback) migerror
             external migerror
             intent(callback) migmessage
             external migmessage
-        end subroutine elast_calc
-        subroutine elast_chk(ui) ! in :diamm:.//diamm_mig.F
+        end subroutine finite_elast_calc
+        subroutine finite_elast_chk(ui) ! in :diamm:.//diamm_mig.F
             use payette__user__routines
-            integer, parameter :: nprop=2
+            integer, parameter :: nprop=3
             double precision dimension(nprop),intent(in,out) :: ui
             intent(callback) migerror
             external migerror
             intent(callback) migmessage
             external migmessage
-        end subroutine elast_chk
+        end subroutine finite_elast_chk
     end interface
-end python module elastic
+end python module finite_elastic
 
 ! This file was auto-generated with f2py (version:1).
 ! See http://cens.ioc.ee/projects/f2py2e/
