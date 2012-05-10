@@ -43,6 +43,7 @@ import shutil
 import platform
 import multiprocessing as mp
 from shutil import copyfile, rmtree
+from pickle import dump, load
 import datetime
 import getpass
 
@@ -144,6 +145,12 @@ def test_payette(argv):
         action="store_true",
         default=False,
         help="Ignore noncomforming tests [default: %default]")
+    parser.add_option(
+        "-u",
+        dest="TESTFILE",
+        action="store_true",
+        default=False,
+        help="Use previously generated test file [default: %default]")
 
     (opts, args) = parser.parse_args(argv)
 
@@ -176,16 +183,30 @@ def test_payette(argv):
         continue
     if errors:
         sys.exit("ERROR: stopping due to previous errors")
-    pu.loginf("Gathering Payette tests from\n{0}"
-              .format("\n".join([" " * 6 + x for x in test_dirs])))
-    errors, found_tests = find_tests(opts.KEYWORDS, opts.NOKEYWORDS,
-                                     opts.SPECTESTS, test_dirs)
 
-    # sort conforming tests from long to fast
-    fast_tests = [val for key, val in found_tests["fast"].items()]
-    medium_tests = [val for key, val in found_tests["medium"].items()]
-    long_tests = [val for key, val in found_tests["long"].items()]
-    conforming = long_tests + medium_tests + fast_tests
+    t_start = time.time()
+    conforming = None
+    if opts.TESTFILE:
+        try:
+            pu.loginf("Using Payette tests from\n{0}"
+                      .format(" " * 6 + pc.PC_FOUND_TESTS))
+            conforming = load(open(pc.PC_FOUND_TESTS, "r"))
+        except IOError:
+            pu.logwrn("test file {0} not imported".format(pc.PC_FOUND_TESTS))
+
+
+    if conforming is None:
+        pu.loginf("Gathering Payette tests from\n{0}"
+                  .format("\n".join([" " * 6 + x for x in test_dirs])))
+        errors, found_tests = find_tests(opts.KEYWORDS, opts.NOKEYWORDS,
+                                         opts.SPECTESTS, test_dirs)
+
+        # sort conforming tests from long to fast
+        fast_tests = [val for key, val in found_tests["fast"].items()]
+        medium_tests = [val for key, val in found_tests["medium"].items()]
+        long_tests = [val for key, val in found_tests["long"].items()]
+        conforming = long_tests + medium_tests + fast_tests
+        dump(conforming, open(pc.PC_FOUND_TESTS, "w"))
 
     # find mathematica notebooks
     mathnbs = {}
@@ -202,11 +223,13 @@ def test_payette(argv):
                         if x.endswith(".nb") or x.endswith(".m")]
             continue
         continue
+    t_find = time.time() - t_start
 
     if errors and not opts.IGNOREERROR:
         sys.exit("fix nonconforming benchmarks before continuing")
 
-    pu.loginf("Found {0} Payette tests".format(len(conforming)), end="\n\n")
+    pu.loginf("Found {0} Payette tests in {1:.2f}s."
+              .format(len(conforming), t_find), end="\n\n")
 
     if opts.INDEX:
         out = sys.stderr
@@ -236,7 +259,7 @@ def test_payette(argv):
         return 0
 
     # start the timer
-    runtimer = time.time()
+    t_start = time.time()
 
     # Make a TestResults directory named "TestResults.{platform}"
     if opts.buildpayette:
@@ -299,7 +322,7 @@ def test_payette(argv):
         pool.close()
         pool.join()
 
-    ttot = time.time() - runtimer
+    t_run = time.time() - t_start
     pu.logmes("=" * WIDTH_TERM)
 
     # copy the mathematica notebooks to the output directory
@@ -368,7 +391,9 @@ def test_payette(argv):
     nfailtorun = len(test_res["failed to run"])
     txtsummary = (
         "SUMMARY\n" +
-        "{0} benchmarks took {1:.2f}s.\n".format(len(conforming), ttot) +
+        "{0} benchmarks took {1:.2f}s. total\n".format(len(conforming),
+                                                       t_find + t_run) +
+        "{0} benchmarks took {1:.2f}s. to run\n".format(len(conforming), t_run) +
         "{0} benchmarks passed\n".format(npass) +
         "{0} benchmarks diffed\n".format(ndiff) +
         "{0} benchmarks failed\n".format(nfail) +
@@ -383,7 +408,7 @@ def test_payette(argv):
 
     longtxtsummary = (
          "=" * WIDTH_TERM + "\nLONG SUMMARY\n" +
-         "{0} benchmarks took {1:.2f}s.\n".format(len(conforming), ttot) +
+         "{0} benchmarks took {1:.2f}s.\n".format(len(conforming), t_run) +
          "{0:^{1}}\n".format("{0:-^30}".format(" system information "),
                              WIDTH_TERM) +
          "   Date complete:    {0:<}\n".format(str_date) +

@@ -223,6 +223,7 @@ PC_TESTS = [os.path.join(PC_ROOT, "Benchmarks")]
 USER_TESTS = os.getenv("PAYETTE_BENCHDIR", "")
 PC_TESTS.extend([x for x in USER_TESTS.split(os.pathsep) if x])
 PC_TOOLS = os.path.join(PC_ROOT, "Toolset")
+PC_FOUND_TESTS = os.path.join(PC_TOOLS, "__found_tests__.py")
 
 # modify sys.path
 if PC_ROOT not in sys.path:
@@ -305,6 +306,7 @@ PAYETTE_CONFIG["PC_DOCS"] = PC_DOCS
 PAYETTE_CONFIG["PC_SOURCE"] = PC_SOURCE
 PAYETTE_CONFIG["PC_TESTS"] = PC_TESTS
 PAYETTE_CONFIG["PC_TOOLS"] = PC_TOOLS
+PAYETTE_CONFIG["PC_FOUND_TESTS"] = PC_FOUND_TESTS
 PAYETTE_CONFIG["PC_MTLS"] = PC_MTLS
 PAYETTE_CONFIG["PC_MIG_UTILS"] = PC_MIG_UTILS
 PAYETTE_CONFIG["PC_MTLS_LIBRARY"] = PC_MTLS_LIBRARY
@@ -639,6 +641,7 @@ def clean_payette():
 
     pats_to_remove = ["*.pyc", "*.pyo", "Payette_config.py",
                       "Payette_installed_materials.py", "*{0}".format(soext),
+                      "__found_tests__.py",
                       "*.log", "*.echo", "*.prf", "*.diff", "*.xout", "*.out",
                       "*.math1", "*.math2", "*.props", "*.vtable", "*.dtable"]
     pats_to_remove.extend(PC_BUILT_EXES.keys())

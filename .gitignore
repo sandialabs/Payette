@@ -11,6 +11,7 @@ pconfigure
 *~
 
 # Payette files
+Toolset/__found_tests__.py
 *.cols
 *.out
 *.xout
