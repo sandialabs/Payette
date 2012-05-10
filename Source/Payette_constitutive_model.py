@@ -24,6 +24,7 @@
 import numpy as np
 import math
 import Source.Payette_tensor as pt
+import Source.Payette_utils as pu
 
 material_idx = 0
 
@@ -71,12 +72,12 @@ class ConstitutiveModelPrototype(object):
 
     def set_up(self, *args):
         """ set up model """
-        reportError(__file__,'Constitutive model must provide set_up method')
+        pu.reportError(__file__,'Constitutive model must provide set_up method')
         return
 
     def update_state(self, *args):
         """ update state """
-        reportError(__file__,'Constitutive model must provide update_state method')
+        pu.reportError(__file__,'Constitutive model must provide update_state method')
         return
 
     def finish_setup(self, matdat):
@@ -86,26 +87,26 @@ class ConstitutiveModelPrototype(object):
         iam = name + ".finish_setup"
 
         if self.errors:
-            reportError(iam, "previously encountered parsing errors")
+            pu.reportError(iam, "previously encountered parsing errors")
 
         if not any( self.ui ):
-            reportError(iam, "empty ui array")
+            pu.reportError(iam, "empty ui array")
 
         if self.eos_model:
             # mss: do something here? But is seems unnecessary.
             return
 
         if not self.bulk_modulus:
-            reportError(iam, "bulk modulus not defined")
+            pu.reportError(iam, "bulk modulus not defined")
 
         if not self.shear_modulus:
-            reportError(iam, "shear modulus not defined")
+            pu.reportError(iam, "shear modulus not defined")
 
         if self.J0 is None:
             self.compute_init_jacobian()
 
         if not any(x for y in self.J0 for x in y):
-            reportError(iam, "iniatial Jacobian is empty")
+            pu.reportError(iam, "iniatial Jacobian is empty")
 
         matdat.register_data("jacobian", "Matrix", init_val=self.J0)
         matdat.register_option("efield sim", self.electric_field_model)
@@ -117,15 +118,15 @@ class ConstitutiveModelPrototype(object):
 
         iam = self.name + ".registerParameter"
         if not isinstance(param_name,str):
-            reportError(iam,"parameter name must be a string, got {0}"
+            pu.reportError(iam,"parameter name must be a string, got {0}"
                         .format(param_name))
 
         if not isinstance(param_idx,int):
-            reportError(iam,"parameter index must be an int, got {0}"
+            pu.reportError(iam,"parameter index must be an int, got {0}"
                         .format(param_idx))
 
         if not isinstance(aliases,list):
-            reportError(iam,"aliases must be a list, got {0}".format(aliases))
+            pu.reportError(iam,"aliases must be a list, got {0}".format(aliases))
             pass
 
         # register full name, low case name, and aliases
@@ -138,13 +139,13 @@ class ConstitutiveModelPrototype(object):
                      if x in self.registered_params_and_aliases]
 
         if dupl_name:
-            reportWarning(iam,"duplicate parameter names: {0}"
+            pu.reportWarning(iam,"duplicate parameter names: {0}"
                           .format(", ".join(param_names)))
             self.errors += 1
             pass
 
         if param_idx in self.registered_param_idxs:
-            reportWarning(iam,"duplicate ui location [{0}] in parameter table"
+            pu.reportWarning(iam,"duplicate ui location [{0}] in parameter table"
                           .format(", ".join(param_names)))
             self.errors += 1
 
@@ -168,7 +169,7 @@ class ConstitutiveModelPrototype(object):
         self.ui0 = np.zeros(self.nprop)
 
         if not user_params:
-            reportError(iam,"No parameters given")
+            pu.reportError(iam,"No parameters given")
             return 1
 
         for param in user_params:
@@ -193,7 +194,7 @@ class ConstitutiveModelPrototype(object):
                 pass
 
             if not found:
-                reportWarning(iam,"unregistered parameter [{0}], will be ignored "
+                pu.reportWarning(iam,"unregistered parameter [{0}], will be ignored "
                               .format(name))
                 continue
 
@@ -225,7 +226,7 @@ class ConstitutiveModelPrototype(object):
         try:
             val = float(param_line[-1])
         except:
-            reportError(caller,"could not convert parameter {0} to float"
+            pu.reportError(caller,"could not convert parameter {0} to float"
                         .format(param_line[-1]))
             pass
         return name,val

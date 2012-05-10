@@ -225,7 +225,7 @@ class Payette:
         self.out_vars, self.out_format, self.out_nam = _parse_output_block(
             user_input.get("output"), self.plot_keys)
 
-        self._setup_outfiles()
+        self._setup_files()
 
         pass
 
@@ -313,13 +313,18 @@ class Payette:
             pass
         return
 
-    def _setup_outfiles(self):
+
+    def _setup_out_file(self, file_name):
+
+        if self._open_files.get(file_name) is not None:
+            self._open_files[file_name].close() 
+            del self._open_files[file_name]
 
         if self.is_restart:
-            self.outfile_obj = open(self.outfile, "a")
+            self.outfile_obj = open(file_name, "a")
 
         else:
-            self.outfile_obj = open(self.outfile, "w")
+            self.outfile_obj = open(file_name, "w")
 
             for key in self.out_vars:
                 self.outfile_obj.write(pu.textformat(key))
@@ -327,7 +332,12 @@ class Payette:
 
             self.outfile_obj.write("\n")
             self.outfile_obj.flush()
-        self._open_files[self.outfile] = self.outfile_obj
+        self._open_files[file_name] = self.outfile_obj
+        return
+
+    def _setup_files(self):
+
+        self._setup_out_file(self.outfile)
 
         self._write_avail_dat_to_log()
 
@@ -415,7 +425,7 @@ class Payette:
         pu.setup_logger(self.logfile, self.loglevel, mode="a")
         msg = "setting up simulation {0}".format(self.name)
         pu.reportMessage(iam, msg)
-        self._setup_outfiles()
+        self._setup_files()
         return
 
     def write_vel_and_disp(self, tbeg, tend, epsbeg, epsend):
@@ -1352,6 +1362,7 @@ def _parse_output_block(output, avail_keys):
                 out_format = _vars[idx+1].lower()
             except IndexError:
                 pu.reportWarning(iam, "format keyword found, but no format given")
+            continue
 
         out_vars.extend(_vars)
         continue

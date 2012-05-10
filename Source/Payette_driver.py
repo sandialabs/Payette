@@ -68,7 +68,7 @@ def eos_driver(the_model, **kwargs):
     nprints = simdat.get_option("nprints")
     rho_temp_pairs = simdat.get_data("leg data")
     simdir = the_model.simdir
-    simnam = the_model.nam
+    simnam = the_model.name
 
     txtfmt = lambda x: "{0:>25s}".format(str(x))
     fltfmt = lambda x: "{0:25.14e}".format(float(x))
@@ -116,15 +116,15 @@ def eos_driver(the_model, **kwargs):
         out_fnam = os.path.join(simdir, simnam + ".surface")
         out_fobj = open(out_fnam, "w")
 
-        loginf("=" * (80 - 6))
-        loginf("Begin surface")
+        pu.loginf("=" * (80 - 6))
+        pu.loginf("Begin surface")
         DEJAVU = False
         idx = 0
         for rho in np.linspace(rho_range[0], rho_range[1], surf_incr):
             for temp in np.linspace(t_range[0], t_range[1], surf_incr):
                 idx += 1
                 if idx%int(surf_incr**2/float(nprints)) == 0:
-                    loginf("Surface step {0}/{1}".format(idx,surf_incr**2))
+                    pu.loginf("Surface step {0}/{1}".format(idx,surf_incr**2))
                 # convert to CGSEV from MKSK
                 tmprho = rho/1000.0
                 tmptemp = K2eV*temp
@@ -154,8 +154,8 @@ def eos_driver(the_model, **kwargs):
 
         out_fobj.flush()
         out_fobj.close()
-        loginf("End surface")
-        loginf("Surface file: {0}".format(out_fnam))
+        pu.loginf("End surface")
+        pu.loginf("Surface file: {0}".format(out_fnam))
 
 ################################################################################
 ###############                     ISOTHERM                     ###############
@@ -176,14 +176,14 @@ def eos_driver(the_model, **kwargs):
         out_fnam = os.path.join(simdir, simnam + ".isotherm")
         out_fobj = open(out_fnam, "w")
 
-        loginf("=" * (80 - 6))
-        loginf("Begin isotherm")
+        pu.loginf("=" * (80 - 6))
+        pu.loginf("Begin isotherm")
         DEJAVU = False
         idx = 0
         for rho in np.linspace(isotherm[0], rho_range[1], path_incr):
             idx += 1
             if idx%int(path_incr/float(nprints)) == 0:
-                loginf("Isotherm step {0}/{1}".format(idx,path_incr))
+                pu.loginf("Isotherm step {0}/{1}".format(idx,path_incr))
 
             tmprho = rho/1000.0
             tmptemp = K2eV*isotherm[1]
@@ -213,8 +213,8 @@ def eos_driver(the_model, **kwargs):
 
         out_fobj.flush()
         out_fobj.close()
-        loginf("End isotherm")
-        loginf("Isotherm file: {0}".format(out_fnam))
+        pu.loginf("End isotherm")
+        pu.loginf("Isotherm file: {0}".format(out_fnam))
 
 ################################################################################
 ###############                     HUGONIOT                     ###############
@@ -240,8 +240,8 @@ def eos_driver(the_model, **kwargs):
         out_fnam = os.path.join(simdir, simnam + ".hugoniot")
         out_fobj = open(out_fnam, "w")
 
-        loginf("=" * (80 - 6))
-        loginf("Begin Hugoniot")
+        pu.loginf("=" * (80 - 6))
+        pu.loginf("Begin Hugoniot")
 
         init_density_MKSK = hugoniot[0]
         init_temperature_MKSK = hugoniot[1]
@@ -262,7 +262,7 @@ def eos_driver(the_model, **kwargs):
         for rho in np.linspace(hugoniot[0], rho_range[1], path_incr):
             idx += 1
             if idx%int(path_incr/float(nprints)) == 0:
-                loginf("Hugoniot step {0}/{1}".format(idx,path_incr))
+                pu.loginf("Hugoniot step {0}/{1}".format(idx,path_incr))
             #
             # Here we solve the Rankine-Hugoniot equation as
             # a function of energy with constant density:
@@ -300,7 +300,7 @@ def eos_driver(the_model, **kwargs):
                 if errval < 1.0e-9 or converged_idx > 100:
                     CONVERGED = True
                     if converged_idx > 100:
-                        loginf("Max iterations reached (tol = {0:14.10e}).\n".format(1.0e-9)+
+                        pu.loginf("Max iterations reached (tol = {0:14.10e}).\n".format(1.0e-9)+
                                "rel error   = {0:14.10e}\n".format(float(errval))+
                                "abs error   = {0:14.10e}\n".format(float(f))+
                                "func val    = {0:14.10e}\n".format(float(f))+
@@ -327,8 +327,8 @@ def eos_driver(the_model, **kwargs):
 
         out_fobj.flush()
         out_fobj.close()
-        loginf("End Hugoniot")
-        loginf("Hugoniot file: {0}".format(out_fnam))
+        pu.loginf("End Hugoniot")
+        pu.loginf("Hugoniot file: {0}".format(out_fnam))
 
     return 0
 
@@ -674,8 +674,5 @@ def solid_driver(the_model, **kwargs):
 
         continue # continue to next leg
     # ----------------------------------------------------- end{processing leg}
-
-    pu.reportMessage(iam, "{0} Payette simulation ran to completion"
-                     .format(the_model.name))
 
     return 0
