@@ -244,24 +244,22 @@ class Payette:
         math1 = os.path.join(self.simdir, self.name + ".math1")
         math2 = os.path.join(self.simdir, self.name + ".math2")
 
-        parameter_table = self.matdat.PARAMETER_TABLE
-
         # math1 is a file containing user inputs, and locations of simulation
         # output for mathematica to use
+        param_table = self.material.constitutive_model.parameter_table_idx_map
         with open( math1, "w" ) as f:
             # write out user given input
-            for item in parameter_table:
-                key = item["name"]
-                val = "{0:12.5E}".format(item["initial value"]).replace("E","*^")
-                f.write("{0:s}U={1:s}\n".format(key,val))
+            for idx, nam in sorted(param_table.iteritems()):
+                val = self.material.constitutive_model.ui0[idx]
+                val = "{0:12.5E}".format(val).replace("E","*^")
+                f.write("{0:s}U={1:s}\n".format(nam, val))
                 continue
 
             # write out checked, possibly modified, input
-            for item in parameter_table:
-                key = item["name"]
-                val = "{0:12.5E}".format(item["adjusted value"]).replace("E","*^")
-                f.write("{0:s}M={1:s}\n".format(key,val))
-                continue
+            for idx, nam in sorted(param_table.iteritems()):
+                val = self.material.constitutive_model.ui[idx]
+                val = "{0:12.5E}".format(val).replace("E","*^")
+                f.write("{0:s}M={1:s}\n".format(nam, val))
 
             # write out user requested plotable output
             f.write('simdat = Delete[Import["{0:s}", "Table"],-1];\n'
@@ -310,14 +308,13 @@ class Payette:
                 val = item["adjusted value"]
                 f.write("{0:s} = {1:12.5E}\n".format(key,val))
                 continue
-            pass
         return
 
 
     def _setup_out_file(self, file_name):
 
         if self._open_files.get(file_name) is not None:
-            self._open_files[file_name].close() 
+            self._open_files[file_name].close()
             del self._open_files[file_name]
 
         if self.is_restart:
