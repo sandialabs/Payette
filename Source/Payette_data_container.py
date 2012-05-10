@@ -22,7 +22,6 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-from __future__ import print_function
 import os
 import sys
 import re
@@ -51,6 +50,8 @@ class DataContainer:
                                               "Integer Array","List"]
         self.data_container_idx = 0
         self.data_container = {}
+        self.plot_key_map = {}
+        self.plot_key_list = []
         self.option_container = {}
         self.extra_vars_map = {}
         self.extra_vars_registered = False
@@ -64,7 +65,7 @@ class DataContainer:
         pass
 
     def register_data(self, name, typ, init_val=None, plot_key=None,
-                      dim=None, constant=False):
+                      dim=None, constant=False, plot_idx=None, xtra=None):
 
         """
             register data to the data container
@@ -79,8 +80,9 @@ class DataContainer:
         """
 
         iam = "{0}.register_data(self,name,**kwargs)".format(self.name)
-
-        if name in self.data_container:
+        if (name in self.data_container or
+            name.upper() in self.data_container or
+            name.lower() in self.data_container):
             reportError(iam,"variable {0} already registered".format(name))
 
         if typ not in self.data_types:
@@ -214,12 +216,14 @@ class DataContainer:
             stashed_value = init_val
 
         plotable = plot_key is not None
-        if not plotable: plot_name = None
+        if not plotable:
+            plot_name = None
+
         if plotable:
-            if not isinstance(plot_key,str):
+            if not isinstance(plot_key, str):
                 msg = ("plot_key for {0} must be a string, got {1}"
-                       .format(name,plot_key))
-                reportError(iam,msg)
+                       .format(name, plot_key))
+                reportError(iam, msg)
 
             # format the plot key
             plot_key = plot_key.replace(" ","_").upper()
@@ -252,23 +256,36 @@ class DataContainer:
                 plot_name = ["{0}{1}{2}".format(self.mapping(i,sym=False),tmp,name)
                              for i in range(self.ntens)]
 
+            if not isinstance(plot_key, list):
+                nam = name if xtra is None else xtra
+                self.plot_key_map[plot_key] = {"name": nam,
+                                               "idx": plot_idx,
+                                               "plot name": plot_name}
+                self.plot_key_list.append(plot_key)
+            else:
+                for idx, key in enumerate(plot_key):
+                    self.plot_key_map[key] = {"name": name,
+                                              "idx": idx,
+                                              "plot name": plot_name[idx]}
+                    self.plot_key_list.append(key)
+
         # register the data
-        self.data_container[name] = { "name": name,
-                                      "plot key": plot_key,
-                                      "plot name": plot_name,
-                                      "idx": self.data_container_idx,
-                                      "type": typ,
-                                      "shape": shape,
-                                      "value": value,
-                                      "old value": old_value,
-                                      "stashed value": old_value,
-                                      "constant": constant,
-                                      "plotable": plotable }
+        self.data_container[name] = {"name": name,
+                                     "plot key": plot_key,
+                                     "plot name": plot_name,
+                                     "idx": self.data_container_idx,
+                                     "type": typ,
+                                     "shape": shape,
+                                     "value": value,
+                                     "old value": old_value,
+                                     "stashed value": old_value,
+                                     "constant": constant,
+                                     "plotable": plotable}
         self.data_container_idx += 1
         setattr(self,name.replace(" ","_").upper(),old_value)
         return
 
-    def unregister_data(self,name):
+    def unregister_data(self, name):
         """ unregister data with the data container """
         iam = "unregister_data"
         try:
@@ -277,14 +294,13 @@ class DataContainer:
             reportWarning(iam,
                 "attempting to unregister non-registered data {0}".format(name))
 
-    def register_xtra_vars(self,nxtra,names,keys,values):
+    def register_xtra_vars(self, nxtra, names, keys, values):
         """ register extra data with the data container """
 
-        iam = ("{0}.register_xtra_vars(self,nxtra,names,keys,values)"
-               .format(self.name))
+        iam = "{0}.register_xtra_vars".format(self.name)
 
         if self.extra_vars_registered:
-            reporteError(iam,"extra variables can only be registered once")
+            reporteError(iam, "extra variables can only be registered once")
 
         self.extra_vars_registered = True
         self.num_extra = nxtra
@@ -293,11 +309,11 @@ class DataContainer:
             name = names[i]
             key = keys[i]
             value = values[i]
-            self.register_data(name,"Scalar",
-                               init_val = np.float64(value),
-                               plot_key = key)
+            self.register_data(name, "Scalar",
+                               init_val=np.float64(value),
+                               plot_key=key, xtra="extra variables",
+                               plot_idx=i)
             self.extra_vars_map[i] = name
-
             continue
 
         return
@@ -338,70 +354,85 @@ class DataContainer:
 
         return option
 
-    def get_data(self,name,stash=False,cur=False,form="Array"):
-
+    def get_data(self, name, stash=False, cur=False, form="Array"):
         """ return simulation_data[name][valtyp] """
 
         iam = "{0}.get_data(self,name)".format(self.name)
 
+        idx = None
+        if name in self.plot_key_map:
+            plot_key = name
+            name = self.plot_key_map[plot_key]["name"]
+            idx = self.plot_key_map[plot_key]["idx"]
+
         if stash and cur:
             reportError(iam,"cannot get stash and cur simultaneously")
 
-        if stash: valtyp = "stashed value"
-        elif cur: valtyp = "value"
-        else: valtyp = "old value"
+        if stash:
+            valtyp = "stashed value"
+        elif cur:
+            valtyp = "value"
+        else:
+            valtyp = "old value"
 
         # handle extra variables
         if name == "extra variables":
-            ex = [None]*self.num_extra
-            for idx, name in self.extra_vars_map.items():
-                ex[idx] = self.data_container[name][valtyp]
+            retval = np.zeros(self.num_extra)
+            for ixtra, nam in self.extra_vars_map.items():
+                retval[ixtra] = self.data_container[nam][valtyp]
                 continue
-            return np.array(ex)
-
-        data = self.data_container.get(name)
-        if data is None:
-            msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
-                   .format(name,self.name,", ".join(self.data_container.keys())))
-            reportError(iam,msg)
-
-        typ = data["type"]
-
-        if typ in self.tensor_vars:
-
-            if form == "Array":
-                return np.array(data[valtyp])
-
-            elif form == "MIG":
-                return toMig(data[valtyp])
-
-            elif form == "Matrix":
-                if typ == "Vector":
-                    reportError(iam,"cannont return vector matrix")
-
-                return toMatrix(data[valtyp])
-
-            else:
-                reportError(iam,"unrecognized form {0}".format(form))
-
-        elif typ == "List":
-            return [x for x in data[valtyp]]
-
-        elif typ == "Integer Array":
-            return np.array([x for x in data[valtyp]],dtype=int)
-
-        elif typ == "Array":
-            return np.array(data[valtyp])
 
         else:
-            return data[valtyp]
+            data = self.data_container.get(name)
+            if data is None:
+                # data not a key in the container, but data could be a plot key
+                msg = (
+                    "{0} not in {1}.data_container. registered data are:\n{2}."
+                    .format(name, self.name,
+                            ", ".join(self.data_container.keys())))
+                reportError(iam, msg)
 
-        return
+            typ = data["type"]
 
-    def restore_data(self,name,newval):
-        self.store_data(name,newval)
-        self.store_data(name,newval,old=True)
-        self.store_data(name,newval,stash=True)
+            if typ in self.tensor_vars:
+
+                if form == "Array":
+                    retval = np.array(data[valtyp])
+
+                elif form == "MIG":
+                    retval = toMig(data[valtyp])
+
+                elif form == "Matrix":
+                    if typ == "Vector":
+                        reportError(iam,"cannont return vector matrix")
+
+                    retval = toMatrix(data[valtyp])
+
+                else:
+                    reportError(iam,"unrecognized form {0}".format(form))
+
+            elif typ == "List":
+                retval = [x for x in data[valtyp]]
+
+            elif typ == "Integer Array":
+                retval = np.array([x for x in data[valtyp]],dtype=int)
+
+            elif typ == "Array":
+                retval = np.array(data[valtyp])
+
+            else:
+                retval = data[valtyp]
+
+        if idx is None:
+            return retval
+
+        else:
+            return retval[idx]
+
+    def restore_data(self, name, newval):
+        self.store_data(name, newval)
+        self.store_data(name, newval,old=True)
+        self.store_data(name, newval,stash=True)
         return
 
     def store_data(self, name, newval, stash=False, old=False):
@@ -434,7 +465,7 @@ class DataContainer:
         data = self.data_container.get(name)
         if data is None:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
-                   .format(name,self.name,", ".join(self.data_container.keys())))
+                   .format(name, self.name, ", ".join(self.data_container.keys())))
             reportError(iam,msg)
 
         typ = data["type"]
@@ -478,7 +509,7 @@ class DataContainer:
 
         return
 
-    def stash_data(self,name,cur=False):
+    def stash_data(self, name, cur=False):
 
         """ stash "old value" in "stashed value" """
 
@@ -487,22 +518,22 @@ class DataContainer:
         # handle extra variables
         if name == "extra variables":
             for idx,name in self.extra_vars_map:
-                value = self.get_data(name,cur=cur)
+                value = self.get_data(name, cur=cur)
                 # stash the value
-                self.store_data(name,value,stash=True)
+                self.store_data(name, value,stash=True)
                 continue
             return
 
-        value = self.get_data(name,cur=cur)
+        value = self.get_data(name, cur=cur)
         # stash the value
-        self.store_data(name,value,stash=True)
+        self.store_data(name, value, stash=True)
 
         return
 
     def get_stashed_data(self,name):
-        return self.get_data(name,stash=True)
+        return self.get_data(name, stash=True)
 
-    def unstash_data(self,name):
+    def unstash_data(self, name):
 
         """ unstash "value" from "stashed value" """
 
@@ -513,17 +544,17 @@ class DataContainer:
 
             for idx, name in self.extra_vars_map.items():
                 value = self.get_stashed_data(name)
-                self.store_data(name,value,old=True)
+                self.store_data(name, value, old=True)
                 continue
             return
 
         if name not in self.data_container:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
-                   .format(name,self.name,", ".join(self.data_container.keys())))
-            reportError(iam,msg)
+                   .format(name, self.name, ", ".join(self.data_container.keys())))
+            reportError(iam, msg)
 
         value = self.get_stashed_data(name)
-        self.store_data(name,value,old=True)
+        self.store_data(name, value, old=True)
 
         return
 
@@ -537,7 +568,6 @@ class DataContainer:
         return
 
     def advance_data(self, name, value=None):
-
         """ advance "value" to "old value" """
 
         iam = "{0}.advance_data(self,name)".format(self.name)
@@ -576,86 +606,49 @@ class DataContainer:
 
         return
 
-    def getExName(self,idx):
+    def getExName(self, idx):
         name = self.extra_vars_map.get(idx)
         if name is None:
             msg = "{0:d} not in {1}.extra_vars_map.".format(idx,self.name)
             reportError(iam,msg)
         return name
 
-    def getPlotKey(self,name):
+    def get_plot_key(self, name):
         data = self.data_container.get(name)
         if data is None:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
-                   .format(name,self.name,", ".join(self.data_container.keys())))
+                   .format(name, self.name,", ".join(self.data_container.keys())))
             reportError(iam,msg)
         return data["plot key"]
 
-    def getPlotName(self,name):
-        data = self.data_container.get(name)
-        if data is None:
-            msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
-                   .format(name,self.name,", ".join(self.data_container.keys())))
-            reportError(iam,msg)
-        return data["plot name"]
+    def get_plot_name(self, name, idx=None):
 
-    def plotKeys(self):
+        iam = "get_plot_name"
 
+        if name in self.plot_key_map:
+            plot_key = name
+            plot_name = self.plot_key_map[plot_key]["plot name"]
+
+        else:
+            data = self.data_container.get(name)
+            if data is None:
+                msg = ("{0} not in plotable data. plotable data are:\n{2}."
+                       .format(name, self.name,", ".join(self.plot_key_list)))
+                reportError(iam, msg)
+            plot_name = data["plot name"]
+            if idx is not None:
+                plot_name = plot_name[idx]
+        return plot_name
+
+    def plot_keys(self):
         """ return a list of plot keys in the order registered """
-
-        iam = "{0}.plotKeys(self)".format(self.name)
-
-        plot_keys = [None]*len(self.data_container)
-
-        for key, val in self.data_container.items():
-
-            # skip non plotable output
-            if not val["plotable"]: continue
-
-            plot_keys[val["idx"]] = val["plot key"]
-
-            continue
-
-        plot_keys = [x for x in plot_keys if x is not None]
-
-        # return flattened plot keys
-        return flatten(plot_keys)
-
-    def plot_data(self):
-
-        """
-            return list of current values of all plotable data in order registered
-        """
-
-        iam = "{0}.plotable_data(self)".format(self.name)
-
-        plot_data = [None]*len(self.data_container)
-
-        for name, dic in self.data_container.items():
-
-            # skip non plotable output
-            if not dic["plotable"]:
-                continue
-
-            idx = dic["idx"]
-            value = self.get_data(name)
-            plot_data[idx] = value
-
-            continue
-
-        plot_data = [x for x in plot_data if x is not None]
-
-        # return flattened plot keys
-        return flatten(plot_data)
+        return self.plot_key_list
 
     def plotable(self,name):
         return self.data_container[name]["plotable"]
 
     def dump_data(self,name):
-
-        """
-            return self.data_container[name]
-        """
+        """ return self.data_container[name] """
 
         iam = "{0}.dump_data(self)".format(self.name)
 

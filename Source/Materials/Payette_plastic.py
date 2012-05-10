@@ -80,7 +80,7 @@ class Plastic(ConstitutiveModelPrototype):
         self.register_parameter("CO", 9, aliases=[])
         self.register_parameter("CR", 10, aliases=[])
         self.register_parameter("RHO", 11, aliases=["DENSITY"])
-        self.register_parameter("Y", 12, aliases=["A1", "YIELD STRENGTH"])
+        self.register_parameter("Y", 12, aliases=["Y0", "A1", "YIELD STRENGTH"])
         self.register_parameter("A", 13, aliases=[])
         self.register_parameter("C", 14, aliases=[])
         self.register_parameter("M", 15, aliases=[])
@@ -148,6 +148,7 @@ class Plastic(ConstitutiveModelPrototype):
 
     def _py_set_up(self, mui):
 
+        iam = "_py_set_up"
         k, mu, y, a, c, m = mui
 
         if k <= 0.:
@@ -156,8 +157,11 @@ class Plastic(ConstitutiveModelPrototype):
         if mu <= 0.:
             reportError(iam, "Shear modulus MU must be positive")
 
-        if y <= 0.:
+        if y < 0.:
             reportError(iam, "Yield strength Y must be positive")
+
+        if y == 0:
+            y = 1.e99
 
         if a < 0.:
             reportError(iam,

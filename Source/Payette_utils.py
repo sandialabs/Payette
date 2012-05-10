@@ -28,6 +28,7 @@ import re
 import math
 import linecache
 import numpy as np
+from inspect import stack
 
 import Payette_config as pc
 import Source.Payette_extract as pe
@@ -36,9 +37,9 @@ if not os.path.isfile(os.path.join(
         os.path.dirname(os.path.realpath(__file__)),"../Payette_config.py")):
     sys.exit("ERROR: Payette_config.py must be written by configure.py")
 
-debug = False
-wcount, wthresh, wmax = 0, 0, 1000
 EPSILON = np.finfo(np.float).eps
+ACCLIM = .0001 / 100.
+
 
 '''
 NAME
@@ -52,6 +53,32 @@ PURPOSE
 AUTHORS
    Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
 '''
+
+
+class CountCalls(object):
+   "Decorator that keeps track of the number of times a function is called."
+
+   __instances = {}
+
+   def __init__(self, f):
+      self.__f = f
+      self.__numcalls = 0
+      CountCalls.__instances[f] = self
+
+   def __call__(self, *args, **kwargs):
+      self.__numcalls += 1
+      return self.__f(*args, **kwargs)
+
+   def count(self):
+      "Return the number of times the function f was called."
+      return CountCalls.__instances[self.__f].__numcalls
+
+   @staticmethod
+   def counts():
+      "Return a dict of {function: # of calls} for all registered functions."
+      return dict([(f.__name__, CountCalls.__instances[f].__numcalls)
+                   for f in CountCalls.__instances])
+
 
 class PayetteError(Exception):
     def __init__(self, msg, tracebacklimit=None):
@@ -69,25 +96,37 @@ class PayetteError(Exception):
 
 
 def reportError(f, msg, tracebacklimit=None):
-    f = fixFLength(f)
+    f = _adjust_fnam_length(f)
     msg = '{0} (reported from [{1}])'.format(msg, f)
     raise PayetteError(msg, tracebacklimit)
     return
 
 
+def whoami():
+    return stack()[1][3]
+
+
+@CountCalls
 def reportWarning(f, msg, limit=False):
-    global wcount, wthresh, wmax
+    wcount = CountCalls.counts()[whoami()]
     if limit:
-        if wcount <= wmax/200-1: wthresh = wcount+1
-        elif wcount > wmax/200 and wcount < wmax/100: wthresh = wmax/100
-        elif wcount > wmax/100 and wcount < wmax/10: wthresh = wmax/10
-        else: wthresh = wmax
+        max_warn = 1000
+        if wcount <= max_warn / 200 - 1:
+            thresh = wcount + 1
+        elif wcount > max_warn / 200 and wcount < max_warn / 100:
+            thresh = max_warn / 100
+        elif wcount > max_warn / 100 and wcount < max_warn / 10:
+            thresh = max_warn / 10
+        else:
+            thresh = max_warn
         wcount += 1
-        if wcount != wthresh: return
-        pass
+        if wcount != thresh:
+            return
+
     msg = 'WARNING: {0} (reported from [{1}])\n'.format(msg, f)
     simlog.write(msg)
-    if loglevel > 0: sys.stdout.write(msg)
+    if loglevel > 0:
+        sys.stdout.write(msg)
     return
 
 
@@ -101,6 +140,7 @@ def writeWarning(f, msg):
     return
 
 
+@CountCalls
 def reportMessage(f, msg, pre="INFO: "):
 #    msg = 'INFO: {0} (reported from [{1}])\n'.format(msg, f)
     msg = '{0}{1}\n'.format(pre, msg)
@@ -131,29 +171,12 @@ def migWarning(msg):
     return
 
 
-def fixFLength(f):
-    if not os.path.isfile(f): return f
+def _adjust_fnam_length(f):
+    if not os.path.isfile(f):
+        return f
     f = os.path.split(f)[1]
     basename,fext = os.path.splitext(f)
     return basename
-
-
-def payetteParametersDir():
-    lpd = os.path.join(pc.PC_AUX,'MaterialsDatabase')
-    if not os.path.isdir(lpd):
-        reportError(__file__,'Aux/MaterialsDatabase directory not found')
-        return 1
-    else:
-        return lpd
-
-
-def epsilon():
-    return np.finfo(np.float).eps
-
-
-def accuracyLim():
-    acc_per = .0001
-    return acc_per/100.
 
 
 def parseToken(n,stringa,token=r'|'):
@@ -186,11 +209,12 @@ def checkPythonVersion():
         raise SystemExit("Payette requires Python >= 2.6\n")
 
 
-def setupLogger(logfile,level,mode="w"):
-    global loglevel,simlog
+def setup_logger(logfile, level, mode="w"):
+    global loglevel, simlog
     loglevel = level
-    simlog = open(logfile,mode)
-    if mode == "w": simlog.write(pc.PC_INTRO + "\n")
+    simlog = open(logfile, mode)
+    if mode == "w":
+        simlog.write(pc.PC_INTRO + "\n")
     return
 
 
@@ -219,7 +243,8 @@ def read_input(user_input, user_cchar=None):
     # sure that a simulation is given
     recognized_blocks = ("simulation", "boundary", "legs", "material",
                          "optimization", "permutation", "enumeration",
-                         "mathplot", "name", "content", "extraction")
+                         "mathplot", "name", "content", "extraction",
+                         "output")
     incompatible_blocks = (("visualization", "optimization", "enumeration"),)
 
     user_dict = {}
@@ -411,155 +436,6 @@ def textformat(var):
         return "{0:>20}".format(str(var))
 
 
-def setupOutputFile(simdat, matdat, restart):
-
-    global ofile,vtable,dtable
-    if restart:
-        ofile = open(simdat.OUTFILE,'a')
-    else:
-        ofile = open(simdat.OUTFILE,'w')
-
-        # get the plot keys from the simvars
-        plot_keys = simdat.plotKeys()
-        plot_keys.extend(matdat.plotKeys())
-
-        for head in plot_keys: ofile.write(textformat(head))
-        ofile.write('\n')
-        ofile.flush()
-        pass
-
-    if simdat.WRITE_VANDD_TABLE:
-        vname = os.path.splitext(simdat.OUTFILE)[0] + ".vtable"
-        dname = os.path.splitext(simdat.OUTFILE)[0] + ".dtable"
-
-        # set up velocity and displacement table files
-        if restart:
-            vtable = open(vname,'a')
-        else:
-            vtable = open(vname,'w')
-            default = ['time','v1','v2','v3']
-            for head in default: vtable.write(textformat(head))
-            vtable.write('\n')
-            pass
-
-        if restart:
-            dtable = open(dname,'a')
-        else:
-            dtable = open(dname,'w')
-            default = ['time','d1','d2','d3']
-            for head in default: dtable.write(textformat(head))
-            dtable.write('\n')
-            dtable.write(textformat(0.))
-            for j in range(3): dtable.write(textformat(0.))
-            dtable.write("\n")
-            pass
-        pass
-
-    writeAvailableDataToLog(simdat,matdat)
-
-    return
-
-
-def writeState(simdat,matdat):
-
-    """ write the simulation and material data to the output file """
-    plot_data = simdat.plot_data()
-    plot_data.extend(matdat.plot_data())
-
-    for x in plot_data:
-        ofile.write(textformat(x))
-        continue
-    ofile.write('\n')
-
-    return None
-
-
-def writeMathPlot(simdat,matdat):
-
-    """
-    Write the $SIMNAME.math1 file for mathematica post processing
-    """
-
-    iam = "writeMathPlot"
-
-    math1 = simdat.MATH1
-    math2 = simdat.MATH2
-    outfile = simdat.OUTFILE
-    plotable = simdat.MATHPLOT_VARS
-    parameter_table = matdat.PARAMETER_TABLE
-
-    # get the plot keys from the simvars
-    plot_keys = simdat.plotKeys()
-    plot_keys.extend(matdat.plotKeys())
-
-    # math1 is a file containing user inputs, and locations of simulation output
-    # for mathematica to use
-    with open( math1, "w" ) as f:
-        # write out user given input
-        for item in parameter_table:
-            key = item["name"]
-            val = "{0:12.5E}".format(item["initial value"]).replace("E","*^")
-            f.write("{0:s}U={1:s}\n".format(key,val))
-            continue
-
-        # write out checked, possibly modified, input
-        for item in parameter_table:
-            key = item["name"]
-            val = "{0:12.5E}".format(item["adjusted value"]).replace("E","*^")
-            f.write("{0:s}M={1:s}\n".format(key,val))
-            continue
-
-        # write out user requested plotable output
-        f.write('simdat = Delete[Import["{0:s}", "Table"],-1];\n'
-                .format(outfile))
-        sig_idx = None
-
-        for i, item in enumerate(plot_keys):
-            if item == "SIG11": sig_idx = i + 1
-            f.write('{0:s}=simdat[[2;;,{1:d}]];\n'.format(item,i+1))
-            continue
-
-        # a few last ones...
-        if sig_idx != None:
-            pres=("-(simdat[[2;;,{0:d}]]".format(sig_idx) +
-                  "+simdat[[2;;,{0:d}]]".format(sig_idx + 1) +
-                  "+simdat[[2;;,{0:d}]])/3;".format(sig_idx+2))
-            f.write('PRES={0}\n'.format(pres))
-            pass
-        f.write("lastep=Length[{0}]\n".format(simdat.getPlotKey("time")))
-
-        pass
-
-    # math2 is a file containing mathematica directives to setup default plots
-    # that the user requested
-    lowhead = [x.lower() for x in plot_keys]
-    lowplotable = [x.lower() for x in plotable]
-    with open( math2, "w" ) as f:
-        f.write('showcy[{0},{{"cycle","time"}}]\n'
-                .format(simdat.getPlotKey("time")))
-
-        tmp = []
-        for item in plotable:
-            try:
-                name = plot_keys[lowhead.index(item.lower())]
-                f.write('grafhis[{0:s},"{0:s}"]\n'.format(name))
-            except:
-                tmp.append(item)
-                continue
-            continue
-
-        if tmp:
-            msg = (
-                "requested plot variable{0:s} {1:s} not available for mathplot"
-                .format("s" if len(tmp) > 1 else "", ", ".join(tmp)))
-            logwrn(msg, caller=iam)
-            pass
-
-        pass
-
-    return
-
-
 def writeAvailableDataToLog(simdat,matdat):
 
     plotable = simdat.MATHPLOT_VARS
@@ -671,97 +547,12 @@ def writeAvailableDataToLog(simdat,matdat):
     return
 
 
-def closeFiles():
-    try:
-        ofile.write("\n")
-        ofile.flush()
-        ofile.close()
-    except:
-        pass
+def close_aux_files():
     try:
         simlog.close()
-    except:
+
+    except OSError:
         pass
-
-
-def writeVelAndDispTable(t0,tf,tbeg,tend,epsbeg,epsend,kappa):
-    """
-    NAME
-        writeVelAndDispTable
-
-    PURPOSE
-        For each strain component, make a velocity and a displacement table and
-        write it to a file. Useful for setting up simulations in other host
-        codes.
-
-    INPUT
-        tbeg                time at beginning of step
-        tend                time at end of step
-        epsbeg              strain at beginning of step
-        epsend              strain at end of step
-
-    BACKGROUND
-        python implementation of similar function in Rebecca Brannon's MED driver
-
-    AUTHOR
-        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
-    """
-
-    dt = tend - tbeg
-    dsp,vel = np.zeros(3),np.zeros(3)
-
-#    # principal strains at beginning and end of leg
-#    psbeg,v = la.eigh(np.array([ [ epsbeg[0], epsbeg[3], epsbeg[5] ],
-#                                 [ epsbeg[3], epsbeg[1], epsbeg[4] ],
-#                                 [ epsbeg[5], epsbeg[4], epsbeg[2] ] ] ))
-#    psend,v = la.eigh(np.array([ [ epsend[0], epsend[3], epsend[5] ],
-#                                 [ epsend[3], epsend[1], epsend[4] ],
-#                                 [ epsend[5], epsend[4], epsend[2] ] ] ))
-
-    psbeg,psend = epsbeg,epsend
-    # determine average velocities that will ensure passing through the
-    # exact stretches at each interval boundary.
-    for j in range(3):
-        if kappa != 0.:
-            # Seth-Hill generalized strain is defined
-            # strain = (1/kappa)*[(stretch)^kappa - 1]
-            lam0 = (psbeg[j]*kappa + 1.)**(1./kappa)
-            lam = (psend[j]*kappa + 1.)**(1./kappa)
-
-        else:
-            # In the limit as kappa->0, the Seth-Hill strain becomes
-            # strain = ln(stretch).
-            lam0 = math.exp(psbeg[j])
-            lam = math.exp(psend[j])
-            pass
-        dsp[j] = lam - 1
-
-        # Except for logarithmic strain, a constant strain rate does NOT
-        # imply a constant boundary velocity. We will here determine a
-        # constant boundary velocity that will lead to the correct value of
-        # stretch at the beginning and end of the interval.
-        vel[j] = (lam - lam0)/dt
-        continue
-
-    # displacement
-    dtable.write(textformat(tend))
-    for j in range(3): dtable.write(textformat(dsp[j]))
-    dtable.write("\n")
-
-    # jump discontinuity in velocity will be specified by a VERY sharp change
-    # occuring from time = tjump - delt to time = tjump + delt
-    delt = tf*1.e-9
-    if tbeg > t0: tbeg += delt
-    if tend < tf: tend -= delt
-
-    vtable.write(textformat(tbeg))
-    for j in range(3): vtable.write(textformat(vel[j]))
-    vtable.write("\n")
-    vtable.write(textformat(tend))
-    for j in range(3): vtable.write(textformat(vel[j]))
-    vtable.write("\n")
-
-    return
 
 
 def flatten(x):
@@ -1384,30 +1175,6 @@ def get_input_lines(user_input, cchars):
     return all_input
 
 
-
-def write_extraction(simdat, matdat):
-    """ write out the requested extraction """
-
-    iam = "write_extraction"
-
-    # make sure that any extraction arguments are in the output file
-    lowhead = [x.lower() for x in simdat.plotKeys() + matdat.plotKeys()]
-    lowextract = [x.lower() for x in simdat.EXTRACTION]
-
-    exargs = [simdat.OUTFILE, "--silent", "--xout"]
-    for idx, item in enumerate(lowextract):
-        if not item[1:].isdigit() and item[1:] not in lowhead:
-            if not [x for x in item if x in "+/*-"]:
-                logwrn("ignoring bad extraction request " + item, caller=iam)
-                continue
-        exargs.append(item)
-        continue
-
-    error = pe.extract(exargs)
-
-    return
-
-
 def check_if_test_dir(dir_path):
     """ check if dir_path has __test_dir__.py """
     has__test_dir__ = False
@@ -1420,26 +1187,3 @@ def check_if_test_dir(dir_path):
     return has__test_dir__
 
 
-class CountCalls(object):
-   "Decorator that keeps track of the number of times a function is called."
-
-   __instances = {}
-
-   def __init__(self, f):
-      self.__f = f
-      self.__numcalls = 0
-      CountCalls.__instances[f] = self
-
-   def __call__(self, *args, **kwargs):
-      self.__numcalls += 1
-      return self.__f(*args, **kwargs)
-
-   def count(self):
-      "Return the number of times the function f was called."
-      return CountCalls.__instances[self.__f].__numcalls
-
-   @staticmethod
-   def counts():
-      "Return a dict of {function: # of calls} for all registered functions."
-      return dict([(f.__name__, CountCalls.__instances[f].__numcalls)
-                   for f in CountCalls.__instances])

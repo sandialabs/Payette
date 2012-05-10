@@ -1053,9 +1053,9 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
         # material model used in the test is installed
         if test.material is not None:
             if test.material not in pim.PAYETTE_INSTALLED_MATERIALS:
-                errors += 1
-                pu.logerr(("material model {0} required by {0} not installed"
-                           .format(test.material, test.name)), caller=iam)
+                pu.logwrn(("material model" + " '" + test.material + "' " +
+                           "required by" + " '" + test.name + "' " +
+                           "not installed, test will be skipped"), caller=iam)
                 continue
 
         speed = [x for x in speed_kws if x in test.keywords][0]

@@ -7,33 +7,29 @@ begin boundary
 
   begin legs
     0,     0.,   0.,   222222, 0., 0., 0., 0., 0., 0.
-    1,     1.,   1.,   222222, .1, 0., 0., 0., 0., 0.
+    1,     1.,   1.,   222222, .03, 0., 0., 0., 0., 0.
     2,     2.,   1.,   222222, 0., 0., 0., 0., 0., 0.
-    3,     3.,   1.,   888, .10517091808, 0., 0.
-    4,     4.,   1.,   888, 0., 0., 0.
-    5,     5.,   1.,   555555555, 1.10517091808, 0, 0, 0, 1, 0, 0, 0, 1
-    6,     6.,   1.,   555555555, 1, 0, 0, 0, 1, 0, 0, 0, 1
-    7,     7.,   1.,   2, .03
-    8,     8.,   1.,   2, 0
-    9,     9.,   1.,   222, .01, .01, .01
-   10,    10.,   1.,   222, .0, .0, .0
   end legs
 
 end boundary
 
 begin material
-  constitutive model hooke
+  constitutive model plastic
   G 54.e9   # 53.e9
   K 129.e9  # 135.e9
+  Y0 = 90.e6
 end material
 
-begin optimization
-  method fmin
-  maxiter 25
-  gold file test.gold
-  minimize sig11, sig22, sig33
-  optimize K, ubound 150.e9, lbound 125.e9
-  optimize G, ubound 45.e9, lbound 57.e9
-end optimization
+begin output
+  sig11 sig22 bsig11
+end output
+
+begin mathplot
+  sig11 sig22
+end mathplot
+
+begin extraction
+  @sig11 @sig22
+end extraction
 
 end simulation

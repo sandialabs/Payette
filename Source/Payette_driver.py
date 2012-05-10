@@ -27,9 +27,9 @@ import pickle
 import numpy as np
 
 import Source.Payette_iterative_solvers as citer
-import Source.Payette_kinematics as pkin
-from Source.Payette_utils import *
-from Source.Payette_tensor import *
+import Source.Payette_kinematics as pk
+import Source.Payette_utils as pu
+import Source.Payette_tensor as pt
 
 iam = "Payette_driver.solid_driver(the_model,restart)"
 
@@ -54,9 +54,11 @@ def eos_driver(the_model, **kwargs):
     AUTHORS
        Scot Swan, Sandia National Laboratories, mswan@sandia.gov
     """
-    if debug: pdb = __import__('pdb')
     cons_msg = "leg {0:{1}d}, step {2:{3}d}, time {4:.4E}, dt {5:.4E}"
     simdat = the_model.simulation_data()
+
+    if simdat.DEBUG:
+        pdb = __import__('pdb')
 
 
     rho_t_pairs = simdat.data_container["leg data"]["stashed value"]
@@ -87,11 +89,9 @@ def solid_driver(the_model, **kwargs):
     AUTHORS
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     """
-    if debug: pdb = __import__('pdb')
     cons_msg = "leg {0:{1}d}, step {2:{3}d}, time {4:.4E}, dt {5:.4E}"
 
     # -------------------- initialize and copy passed values to local variables
-
     try:
         restart = kwargs["restart"]
     except KeyError:
@@ -99,6 +99,9 @@ def solid_driver(the_model, **kwargs):
 
     # --- simulation data
     simdat = the_model.simulation_data()
+
+    if simdat.DEBUG:
+        pdb = __import__('pdb')
 
     # --- options
     verbose = simdat.VERBOSITY > 0
@@ -120,9 +123,8 @@ def solid_driver(the_model, **kwargs):
 
     # -------------------------------------------------------- initialize model
     # --- start output file and Mathematica files
-    msg = "starting calculations for simulation %s"%simdat.SIMNAME
-    reportMessage(iam, msg)
-    setupOutputFile(simdat, matdat, restart)
+    msg = "starting calculations for simulation {0}".format(the_model.name)
+    pu.reportMessage(iam, msg)
 
     # --- call the material model with zero state
     if ileg == 0:
@@ -131,7 +133,7 @@ def solid_driver(the_model, **kwargs):
         # advance and write data
         simdat.advance_all_data()
         matdat.advance_all_data()
-        writeState(simdat, matdat)
+        the_model.write_state()
 
     # ----------------------------------------------------------------------- #
 
@@ -139,11 +141,12 @@ def solid_driver(the_model, **kwargs):
     for leg in legs:
 
         # test restart capability
-        if simdat.TEST_RESTART and not restart:
+        if the_model.test_restart and not restart:
             if ileg == int(len(legs) / 2):
                 print("\n\nStopping to test Payette restart capabilities.\n"
                       "Restart the simulation by executing\n\n"
-                      "\t\trunPayette {0}\n\n".format(simdat.RESTART_FILE))
+                      "\t\trunPayette {0}\n\n".format(the_model.restart_file))
+                the_model.finish()
                 sys.exit(76)
 
         # read inputs and initialize for this leg
@@ -175,7 +178,7 @@ def solid_driver(the_model, **kwargs):
                 continue
 
         if verbose:
-            reportMessage(iam, cons_msg.format(lnum, lnl, 1, lns, t_beg, dt))
+            pu.reportMessage(iam, cons_msg.format(lnum, lnl, 1, lns, t_beg, dt))
 
         # --- loop through components of prdef and compute the values at the end
         #     of this leg:
@@ -185,9 +188,9 @@ def solid_driver(the_model, **kwargs):
         #       for ltype = 4: Pf at t_end -> prdef
         #       for ltype = 5: F_end at t_end -> prdef
         #       for ltype = 6: efld_end at t_end-> prdef
-        eps_end, F_end = Z6, I9
+        eps_end, F_end = pt.Z6, pt.I9
         if matdat.EFIELD_SIM:
-            efld_end = Z3
+            efld_end = pt.Z3
 
         # if stress is prescribed, we don't compute sig_end just yet, but sig_hld
         # which holds just those values of stress that are actually prescribed.
@@ -196,7 +199,7 @@ def solid_driver(the_model, **kwargs):
             if ltype[i] not in range(7):
                 msg = ("Invalid load type (ltype) parameter "
                        "{0} prescribed for leg {1}".format(ltype[i], lnum))
-                reportError(iam, msg)
+                pu.reportError(iam, msg)
                 return 1
 
             if ltype[i] == 0:
@@ -282,18 +285,18 @@ def solid_driver(the_model, **kwargs):
                 if dflg[0] == 5:
                     # --- deformation gradient prescribed
                     matdat.advance_data("prescribed deformation gradient", F_int)
-                    pkin.velGradCompFromF(simdat, matdat)
+                    pk.velGradCompFromF(simdat, matdat)
 
                 else:
                     # --- strain or strain rate prescribed
                     matdat.advance_data("prescribed strain", eps_int)
-                    pkin.velGradCompFromE(simdat, matdat)
+                    pk.velGradCompFromE(simdat, matdat)
 
             else:
                 # --- One or more stresses prescribed
                 matdat.advance_data("strain rate", depsdt)
                 matdat.advance_data("prescribed stress", prsig_int)
-                pkin.velGradCompFromP(simdat, matdat)
+                pk.velGradCompFromP(simdat, matdat)
                 matdat.advance_data("strain rate")
                 depsdt = matdat.get_data("strain rate")
                 matdat.store_data("rate of deformation", depsdt)
@@ -305,7 +308,7 @@ def solid_driver(the_model, **kwargs):
             matdat.advance_data("vorticity")
 
             # find the current {deformation gradient,strain} and advance them
-            pkin.updateDeformation(simdat, matdat)
+            pk.updateDeformation(simdat, matdat)
             matdat.advance_data("deformation gradient")
             matdat.advance_data("strain")
             matdat.advance_data("equivalent strain")
@@ -328,10 +331,10 @@ def solid_driver(the_model, **kwargs):
 
             # --- write state to file
             if (nsteps-n)%print_interval == 0:
-                writeState(simdat, matdat)
+                the_model.write_state()
 
             if simdat.SCREENOUT or ( verbose and (2 * n - nsteps) == 0 ):
-                reportMessage(iam, cons_msg.format(lnum, lnl, n, lns, t, dt))
+                pu.reportMessage(iam, cons_msg.format(lnum, lnl, n, lns, t, dt))
 
             # ------------------------------------------ begin{end of step SQA}
             if simdat.SQA:
@@ -341,11 +344,11 @@ def solid_driver(the_model, **kwargs):
                     dnom = max(np.max(np.abs(eps_int)), 0.)
                     dnom = dnom if dnom != 0. else 1.
                     rel_diff = max_diff / dnom
-                    if rel_diff > accuracyLim() and max_diff > epsilon():
+                    if rel_diff > pu.ACCLIM and max_diff > pu.EPSILON:
                         msg = ("E differs from prdef excessively at end of step "
                                "{0} of leg {1} with a percent difference of {2:f}"
                                .format(n, lnum, rel_diff * 100.))
-                        reportWarning(iam, msg)
+                        pu.reportWarning(iam, msg)
 
                 elif dflg == [5]:
                     F_tmp = matdat.get_data("deformation gradient")
@@ -353,10 +356,10 @@ def solid_driver(the_model, **kwargs):
                     dnom = max(np.max(np.abs(F_int)), 0.)
                     dnom = dnom if dnom != 0. else 1.
                     rel_diff = max_diff / dnom
-                    if rel_diff > accuracyLim() and max_diff > epsilon():
+                    if rel_diff > pu.ACCLIM and max_diff > pu.EPSILON:
                         msg = ("F differs from prdef excessively at end of step "
                                " with max_diff {0:f}".format(max_diff))
-                        reportWarning(iam, msg)
+                        pu.reportWarning(iam, msg)
 
             # -------------------------------------------- end{end of step SQA}
 
@@ -367,50 +370,49 @@ def solid_driver(the_model, **kwargs):
         simdat.advance_data("leg number", ileg + 1)
         ileg += 1
 
-        if simdat.WRITE_VANDD_TABLE:
-            writeVelAndDispTable(simdat.INITIAL_TIME, simdat.TERMINATION_TIME,
-                                 t_beg, t_end, eps_beg, eps_end, simdat.KAPPA)
+        if the_model.write_vandd_table:
+            the_model.write_vel_and_disp(t_beg, t_end, eps_beg, eps_end)
 
         # advances time must come after writing the v & d tables above
         t_beg = t_end
 
-        if simdat.WRITE_RESTART:
-            with open(simdat.RESTART_FILE, 'wb') as fobj:
+        if the_model.write_restart:
+            with open(the_model.restart_file, 'wb') as fobj:
                 pickle.dump(the_model, fobj, 2)
 
         # --- print message to screen
         if verbose and nsteps > 1:
-            reportMessage(iam, cons_msg.format(lnum, lnl, n + 1, lns, t, dt))
+            pu.reportMessage(iam, cons_msg.format(lnum, lnl, n + 1, lns, t, dt))
 
         # ----------------------------------------------- begin{end of leg SQA}
         if simdat.SQA:
             if dflg == [1] or dflg == [2] or dflg == [1,2]:
                 eps_tmp = matdat.get_data("strain")
                 max_diff = np.max(np.abs(eps_tmp - eps_end))
-                dnom = np.max(eps_end) if np.max(eps_end) >= epsilon() else 1.
+                dnom = np.max(eps_end) if np.max(eps_end) >= pu.EPSILON else 1.
                 rel_diff = max_diff / dnom
-                if rel_diff > accuracyLim() and max_diff > epsilon():
+                if rel_diff > pu.ACCLIM and max_diff > pu.EPSILON:
                     msg = ("E differs from prdef excessively at end of "
                            "leg {0} with relative diff {1:f}"
                            .format(lnum, rel_diff))
-                    reportWarning(iam, msg)
+                    pu.reportWarning(iam, msg)
 
             elif dflg == [5]:
                 F_tmp = matdat.get_data("deformation gradient")
                 max_diff = np.max(np.abs(F_tmp - F_end)) / np.max(np.abs(F_end))
-                dnom = np.max(F_end) if np.max(F_end) >= epsilon() else 1.
+                dnom = np.max(F_end) if np.max(F_end) >= pu.EPSILON else 1.
                 rel_diff = max_diff / dnom
-                if rel_diff > accuracyLim() and max_diff > epsilon():
+                if rel_diff > pu.ACCLIM and max_diff > pu.EPSILON:
                     msg = ("F differs from prdef excessively at end of leg "
                            " with max_diff {0:f}".format(max_diff))
-                    reportWarning(iam, msg)
+                    pu.reportWarning(iam, msg)
 
         # ------------------------------------------------- end{end of leg SQA}
 
         continue # continue to next leg
     # ----------------------------------------------------- end{processing leg}
 
-    reportMessage(iam, "{0} Payette simulation ran to completion"
-                  .format(the_model.name))
+    pu.reportMessage(iam, "{0} Payette simulation ran to completion"
+                     .format(the_model.name))
 
     return 0

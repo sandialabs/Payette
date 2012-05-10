@@ -31,14 +31,13 @@ import math
 import numpy as np
 import time
 
-from Source.Payette_utils import *
+from Source.Payette_utils import CountCalls as CountCalls
 from Source.Payette_material import Material
 from Source.Payette_data_container import DataContainer
 import Source.Payette_installed_materials as pim
 import Source.Payette_driver as pd
-
-
-PARSE_ERRORS = 0
+import Source.Payette_utils as pu
+import Source.Payette_extract as pe
 
 
 @CountCalls
@@ -68,13 +67,15 @@ class Payette:
 
         if opts.debug:
             opts.verbosity = 4
-        loglevel = opts.verbosity
+        self.loglevel = opts.verbosity
 
         delete = not opts.keep
-        basedir = os.getcwd()
+        self.simdir = os.getcwd()
 
         self.name = simname
         self.disp = opts.disp
+        self.write_vandd_table = opts.write_vandd_table
+        self._open_files = {}
 
         # check user input for required blocks
         req_blocks = ("material", )
@@ -82,54 +83,56 @@ class Payette:
             if block not in user_input:
                 parser_error("{0} block not found in input file".format(block))
 
-        outfile = os.path.join(basedir, simname + ".out")
-        if delete and os.path.isfile(outfile):
-            os.remove(outfile)
+        tmpnam = os.path.join(self.simdir, simname + ".out")
+        if delete and os.path.isfile(tmpnam):
+            os.remove(tmpnam)
 
-        elif os.path.isfile(outfile):
+        elif os.path.isfile(tmpnam):
             i = 0
             while True:
-                outfile = os.path.join(basedir, "%s.%i.out" % (simname, i))
-                if os.path.isfile(outfile):
+                tmpnam = os.path.join(self.simdir,
+                                      "{0}.{1:d}.out".format(simname, i))
+                if os.path.isfile(tmpnam):
                     i += 1
                     if i > 100:
-                        parser_error("Come on!  Really, over 100 output files???")
+                        parser_error("max number of output files exceeded")
 
                     else:
                         continue
                 else:
                     break
                 continue
+        self.outfile = tmpnam
 
         # logfile
-        logfile = "{0}.log".format(os.path.splitext(outfile)[0])
+        self.logfile = "{0}.log".format(os.path.splitext(self.outfile)[0])
         try:
-            os.remove(logfile)
+            os.remove(self.logfile)
         except OSError:
             pass
 
-        setupLogger(logfile,loglevel)
+        pu.setup_logger(self.logfile, self.loglevel)
 
         msg = "setting up simulation {0}".format(simname)
-        reportMessage(iam, msg)
+        pu.reportMessage(iam, msg)
 
         # file name for the Payette restart file
         self.is_restart = False
-        rfile = "{0}.prf".format(os.path.splitext(outfile)[0])
+        self.test_restart = opts.testrestart
 
         # set up the material
-        self.material = get_material(user_input.get("material"))
+        self.material = _parse_mtl_block(user_input.get("material"))
         self.matdat = self.material.material_data()
 
         # set up boundary and leg blocks
         bargs = [user_input.get("boundary"), user_input.get("legs")]
-        get_boundary = parse_boundary_block
+        get_boundary = _parse_boundary_block
         if self.material.eos_model:
-            get_boundary = parse_eos_boundary_block
+            get_boundary = _parse_eos_boundary_block
 
         boundary = get_boundary(*bargs)
-        t0 = boundary["initial time"]
-        tf = boundary["termination time"]
+        self.t0 = boundary["initial time"]
+        self.tf = boundary["termination time"]
         bcontrol = boundary["bcontrol"]
         lcontrol = boundary["lcontrol"]
 
@@ -142,20 +145,6 @@ class Payette:
         self.simdat.register_data("number of steps","Scalar", init_val=0)
         self.simdat.register_data("leg number","Scalar", init_val=0 )
         self.simdat.register_data("leg data", "List", init_val=lcontrol)
-
-
-        # get mathplot
-        mathplot = parse_mathplot_block(user_input.get("mathplot"))
-        self.simdat.register_option("mathplot vars", mathplot)
-        if mathplot:
-            math1 = os.path.join(basedir, simname + ".math1")
-            math2 = os.path.join(basedir, simname + ".math2")
-            self.simdat.register_option("math1", math1)
-            self.simdat.register_option("math2", math2)
-
-        # get extraction
-        extract = parse_extraction_block(user_input.get("extraction"))
-        self.simdat.register_option("extraction", extract)
 
         # check if user has specified simulation options
         for item in user_input["content"]:
@@ -176,46 +165,36 @@ class Payette:
             continue
 
         # register default options
-        self.simdat.register_option("simname", simname)
-        self.simdat.register_option("outfile", outfile)
-        self.simdat.register_option("logfile", logfile)
-        self.simdat.register_option("loglevel", loglevel)
         self.simdat.register_option("verbosity", opts.verbosity)
         self.simdat.register_option("sqa", opts.sqa)
         self.simdat.register_option("debug", opts.debug)
         self.simdat.register_option("material", self.material)
 
         if "strict" not in self.simdat.get_all_options():
-            self.simdat.register_option("strict",False)
-            pass
+            self.simdat.register_option("strict", False)
 
         if "nowriteprops" not in self.simdat.get_all_options():
             self.simdat.register_option("nowriteprops", opts.nowriteprops)
 
         if "norestart" in self.simdat.get_all_options():
-            self.simdat.register_option("write restart",False)
-
+            self.write_restart = False
         else:
-            self.simdat.register_option("write restart", not opts.norestart)
+            self.write_restart = not opts.norestart
+        if self.write_restart:
+            self.restart_file = os.path.splitext(self.outfile)[0] + ".prf"
 
         # write out properties
         if not self.simdat.NOWRITEPROPS:
-            self.write_mtl_params()
+            self._write_mtl_params()
 
         if not self.material.eos_model:
             # register data not needed by the eos models
             self.simdat.register_option("emit", bcontrol["emit"])
+            self.simdat.register_option("kappa", bcontrol["kappa"])
             self.simdat.register_option("screenout", bcontrol["screenout"])
             self.simdat.register_option("nprints", bcontrol["nprints"])
-            self.simdat.register_option("kappa", bcontrol["kappa"])
             self.simdat.register_option("legs", lcontrol)
-            self.simdat.register_option("write vandd table",
-                                       opts.write_vandd_table)
-            self.simdat.register_option("initial time", t0)
-            self.simdat.register_option("termination time", tf)
-            self.simdat.register_option("test restart", opts.testrestart)
             self.simdat.register_option("use table", opts.use_table)
-            self.simdat.register_option("restart file", rfile)
 
             # Below are obligatory options that may have been specified in the
             # input file.
@@ -226,8 +205,297 @@ class Payette:
             sys.exit("Stopping due to {0} previous parsing errors"
                      .format(parser_error.count()))
 
+        # list of plot keys for all plotable data
+        self.plot_keys = [x for x in self.simdat.plot_keys()]
+        self.plot_keys.extend(self.matdat.plot_keys())
+
+        # get mathplot
+        self.mathplot_vars = _parse_mathplot_block(
+            user_input.get("mathplot"), self.plot_keys)
+
+        # get extraction
+        self.extraction_vars = _parse_extraction_block(
+            user_input.get("extraction"), self.plot_keys)
+
+        # get output block
+        self.output_vars = _parse_output_block(
+            user_input.get("output"), self.plot_keys)
+
+        self._setup_outfiles()
+
         pass
 
+    # private methods
+    def _write_extraction(self):
+        """ write out the requested extraction """
+        exargs = [self.outfile, "--silent", "--xout"] + self.extraction_vars
+        error = pe.extract(exargs)
+        return
+
+    def _write_mathplot(self):
+        """ Write the $SIMNAME.math1 file for mathematica post processing """
+
+        iam = "_write_mathplot"
+
+        math1 = os.path.join(self.simdir, self.name + ".math1")
+        math2 = os.path.join(self.simdir, self.name + ".math2")
+
+        parameter_table = self.matdat.PARAMETER_TABLE
+
+        # math1 is a file containing user inputs, and locations of simulation
+        # output for mathematica to use
+        with open( math1, "w" ) as f:
+            # write out user given input
+            for item in parameter_table:
+                key = item["name"]
+                val = "{0:12.5E}".format(item["initial value"]).replace("E","*^")
+                f.write("{0:s}U={1:s}\n".format(key,val))
+                continue
+
+            # write out checked, possibly modified, input
+            for item in parameter_table:
+                key = item["name"]
+                val = "{0:12.5E}".format(item["adjusted value"]).replace("E","*^")
+                f.write("{0:s}M={1:s}\n".format(key,val))
+                continue
+
+            # write out user requested plotable output
+            f.write('simdat = Delete[Import["{0:s}", "Table"],-1];\n'
+                    .format(self.outfile))
+            sig_idx = None
+
+            for i, item in enumerate(self.output_vars):
+                if item == "SIG11": sig_idx = i + 1
+                f.write('{0:s}=simdat[[2;;,{1:d}]];\n'.format(item,i+1))
+                continue
+
+            # a few last ones...
+            if sig_idx != None:
+                pres=("-(simdat[[2;;,{0:d}]]".format(sig_idx) +
+                      "+simdat[[2;;,{0:d}]]".format(sig_idx + 1) +
+                      "+simdat[[2;;,{0:d}]])/3;".format(sig_idx+2))
+                f.write('PRES={0}\n'.format(pres))
+            f.write("lastep=Length[{0}]\n".format(self.simdat.get_plot_key("time")))
+
+        # math2 is a file containing mathematica directives to setup default
+        # plots that the user requested
+        lowhead = [x.lower() for x in self.output_vars]
+        lowplotable = [x.lower() for x in self.mathplot_vars]
+        with open( math2, "w" ) as f:
+            f.write('showcy[{0},{{"cycle","time"}}]\n'
+                    .format(self.simdat.get_plot_key("time")))
+
+            for item in self.mathplot_vars:
+                name = self.plot_keys[lowhead.index(item.lower())]
+                f.write('grafhis[{0:s},"{0:s}"]\n'.format(name))
+                continue
+
+        return
+
+    def _close_open_files(self):
+        for fnam, fobj in self._open_files.items():
+            fobj.flush()
+            fobj.close()
+            continue
+        return
+
+    def _write_mtl_params(self):
+        with open(self.name + ".props", "w" ) as f:
+            for item in self.matdat.PARAMETER_TABLE:
+                key = item["name"]
+                val = item["adjusted value"]
+                f.write("{0:s} = {1:12.5E}\n".format(key,val))
+                continue
+            pass
+        return
+
+    def _setup_outfiles(self):
+
+        if self.is_restart:
+            self.outfile_obj = open(self.outfile, "a")
+
+        else:
+            self.outfile_obj = open(self.outfile, "w")
+
+            for key in self.output_vars:
+                self.outfile_obj.write(pu.textformat(key))
+                continue
+
+            self.outfile_obj.write("\n")
+            self.outfile_obj.flush()
+        self._open_files[self.outfile] = self.outfile_obj
+
+        self._write_avail_dat_to_log()
+
+        if self.write_vandd_table:
+            # set up files
+            vname = os.path.splitext(self.outfile)[0] + ".vtable"
+            dname = os.path.splitext(self.outfile)[0] + ".dtable"
+
+            # set up velocity and displacement table files
+            if self.is_restart:
+                self.vtable_fobj = open(vname, "a")
+
+            else:
+                self.vtable_fobj = open(vname, "w")
+                default = ["time", "v1", "v2", "v3"]
+                for key in default:
+                    self.vtable_fobj.write(pu.textformat(key))
+                self.vtable_fobj.write("\n")
+            self._open_files[vname] = self.vtable_fobj
+
+            if self.is_restart:
+                self.dtable_fobj = open(dname, "a")
+
+            else:
+                self.dtable_fobj = open(dname, "w")
+                default = ["time", "d1", "d2", "d3"]
+                for key in default:
+                    self.dtable_fobj.write(pu.textformat(key))
+                self.dtable_fobj.write("\n")
+                self.dtable_fobj.write(pu.textformat(0.))
+                for init_disp in [0.] * 3:
+                    self.dtable_fobj.write(pu.textformat(init_disp))
+                self.dtable_fobj.write("\n")
+            self._open_files[dname] = self.dtable_fobj
+
+        return
+
+    def _write_avail_dat_to_log(self):
+        """ write to the log file a list of all available data and whether or
+        not it was requested for being plotted """
+
+        def _write_plotable(idx, key, name, val):
+            """ write to the logfile the available variables """
+            tok = "plotable" if key in self.output_vars else "no request"
+            pu.writeToLog("{0:<3d} {1:<10s}: {2:<10s} = {3:<50s} = {4:12.5E}"
+                          .format(idx, tok, key, name, val))
+            return
+
+        # write to the log file what is plotable and not requested, along with
+        # inital value
+        pu.writeToLog("Summary of available output")
+
+        for plot_idx, plot_key in enumerate(self.plot_keys):
+            if plot_key in self.simdat.plot_keys():
+                dat = self.simdat
+            else:
+                dat = self.matdat
+            plot_name = dat.get_plot_name(plot_key)
+            val = dat.get_data(plot_key)
+            _write_plotable(plot_idx + 1, plot_key, plot_name, val)
+            continue
+
+        return
+
+    def write_state(self):
+        """ write the simulation and material data to the output file """
+        data = []
+        for plot_key in self.output_vars:
+            if plot_key in self.simdat.plot_keys():
+                dat = self.simdat
+            else:
+                dat = self.matdat
+            data.append(dat.get_data(plot_key))
+            continue
+
+        for dat in data:
+            self.outfile_obj.write(pu.textformat(dat))
+            continue
+        self.outfile_obj.write('\n')
+        return
+
+    def setup_restart(self):
+        iam = self.name + "setup_restart"
+        self.is_restart = True
+        pu.setup_logger(self.logfile, self.loglevel, mode="a")
+        msg = "setting up simulation {0}".format(self.name)
+        pu.reportMessage(iam, msg)
+        self._setup_outfiles()
+        return
+
+    def write_vel_and_disp(self, tbeg, tend, epsbeg, epsend):
+        """For each strain component, make a velocity and a displacement table
+        and write it to a file. Useful for setting up simulations in other
+        host codes.
+
+        Parameters
+        ----------
+        tbeg : float
+          time at beginning of step
+        tend : float
+          time at end of step
+        epsbeg : float
+          strain at beginning of step
+        epsend : float
+          strain at end of step
+
+        Background
+        ----------
+          python implementation of similar function in Rebecca Brannon's MED
+          driver
+
+        """
+        if not self.write_vandd_table:
+            return
+
+        dt = tend - tbeg
+        disp, vlcty = np.zeros(3), np.zeros(3)
+
+
+        psbeg, psend = epsbeg, epsend
+
+        # determine average velocities that will ensure passing through the
+        # exact stretches at each interval boundary.
+        for j in range(3):
+            if self.simdat.KAPPA != 0.:
+                # Seth-Hill generalized strain is defined
+                # strain = (1/kappa)*[(stretch)^kappa - 1]
+                lam0 = (psbeg[j] * kappa + 1.) ** (1. / kappa)
+                lam = (psend[j] * kappa + 1.) ** (1. / kappa)
+
+            else:
+                # In the limit as kappa->0, the Seth-Hill strain becomes
+                # strain = ln(stretch).
+                lam0 = math.exp(psbeg[j])
+                lam = math.exp(psend[j])
+
+            disp[j] = lam - 1
+
+            # Except for logarithmic strain, a constant strain rate does NOT
+            # imply a constant boundary velocity. We will here determine a
+            # constant boundary velocity that will lead to the correct value of
+            # stretch at the beginning and end of the interval.
+            vlcty[j] = (lam - lam0) / dt
+            continue
+
+        # displacement
+        self.dtable_fobj.write(pu.textformat(tend))
+
+        for item in disp:
+            self.dtable_fobj.write(pu.textformat(item))
+        self.dtable_fobj.write("\n")
+
+        # jump discontinuity in velocity will be specified by a VERY sharp change
+        # occuring from time = tjump - delt to time = tjump + delt
+        delt = self.tf * 1.e-9
+        if tbeg > self.t0:
+            tbeg += delt
+
+        if tend < self.tf:
+            tend -= delt
+
+        self.vtable_fobj.write(pu.textformat(tbeg))
+        for item in vlcty:
+            self.vtable_fobj.write(pu.textformat(item))
+        self.vtable_fobj.write("\n")
+        self.vtable_fobj.write(pu.textformat(tend))
+        for item in vlcty:
+            self.vtable_fobj.write(pu.textformat(item))
+        self.vtable_fobj.write("\n")
+        return
+
+    # public methods
     def run_job(self, *args, **kwargs):
         if not self.material.eos_model:
             retcode = pd.solid_driver(self, restart=self.is_restart)
@@ -244,41 +512,25 @@ class Payette:
 
     def finish(self):
 
-        # close the log and output files
-        closeFiles()
+        # close the files
+        pu.close_aux_files()
+        self._close_open_files()
 
         # write the mathematica files
-        if self.simdat.MATHPLOT_VARS:
-            writeMathPlot(self.simdat, self.matdat)
+        if self.mathplot_vars:
+            self._write_mathplot()
 
         # extract requested variables
-        if self.simdat.EXTRACTION:
-            write_extraction(self.simdat, self.matdat)
+        if self.extraction_vars:
+            self._write_extraction()
 
         return
 
     def simulation_data(self):
         return self.simdat
 
-    def write_mtl_params(self):
-        with open(self.simdat.SIMNAME + ".props", "w" ) as f:
-            for item in self.matdat.PARAMETER_TABLE:
-                key = item["name"]
-                val = item["adjusted value"]
-                f.write("{0:s} = {1:12.5E}\n".format(key,val))
-                continue
-            pass
-        return
 
-    def setup_restart(self):
-        iam = self.name + "setup_restart"
-        setupLogger(self.simdat.LOGFILE,self.simdat.LOGLEVEL,mode="a")
-        msg = "setting up simulation %s"%self.simdat.SIMNAME
-        self.is_restart = True
-        reportMessage(iam, msg)
-
-
-def parse_first_leg(leg):
+def _parse_first_leg(leg):
     """Parse the first leg of the legs block.
 
     The first leg of the legs block may be in one of two forms.  The usual
@@ -311,35 +563,37 @@ def parse_first_leg(leg):
 
     Examples
     --------
-    >>> parse_first_leg([0, 0., 0, 222222, 0, 0, 0, 0, 0, 0])
+    >>> _parse_first_leg([0, 0., 0, 222222, 0, 0, 0, 0, 0, 0])
     {"table": False}
 
-    >>> parse_first_leg(["using", "dt", "strain"])
+    >>> _parse_first_leg(["using", "dt", "strain"])
     {"table": True, "ttyp": "dt", "deftyp": "strain", "len": 6,
      "colidx": range(7)}
 
-    >>> parse_first_leg(["using", "dt", "strain", "from", "columns", "1:7"])
+    >>> _parse_first_leg(["using", "dt", "strain", "from", "columns", "1:7"])
     {"table": True, "ttyp": "dt", "deftyp": "strain", "len": 6,
      "colidx": range(7)}
 
-    >>> parse_first_leg(["using", "dt", "stress", "from",
+    >>> _parse_first_leg(["using", "dt", "stress", "from",
                          "columns", "1,2,3,4,5,6,7"])
     {"table": True, "ttyp": "dt", "deftyp": "strain", "len": 6,
      "colidx": range(7)}
 
-    >>> parse_first_leg(["using", "dt", "strain", "from", "columns", "1-7"])
+    >>> _parse_first_leg(["using", "dt", "strain", "from", "columns", "1-7"])
     {"table": True, "ttyp": "dt", "deftyp": "strain", "len": 6,
      "colidx": range(7)}
 
-    >>> parse_first_leg(["using", "dt", "strain", "from", "columns", "1,5-10"])
+    >>> _parse_first_leg(["using", "dt", "strain", "from", "columns", "1,5-10"])
     {"table": True, "ttyp": "dt", "deftyp": "strain", "len": 6,
      "colidx": [0,4,5,6,7,8,9,20]}
 
-    >>> parse_first_leg(["using", "dt", "strain", "from", "columns", "1,5-7"])
+    >>> _parse_first_leg(["using", "dt", "strain", "from", "columns", "1,5-7"])
     {"table": True, "ttyp": "dt", "deftyp": "strain", "len": 6,
      "colidx": [0,4,5,6]}
 
     """
+
+    iam = "_parse_first_leg"
 
     errors = 0
     allowed_legs = {
@@ -461,7 +715,7 @@ def parse_first_leg(leg):
     return leg_inf
 
 
-def get_material(material_inp=None):
+def _parse_mtl_block(material_inp=None):
     """ Read material block from input file, parse it, and create material
     object
 
@@ -476,6 +730,8 @@ def get_material(material_inp=None):
         the instantiated material object
 
     """
+
+    iam = "_parse_mtl_block"
 
     if material_inp is None:
         return None
@@ -525,7 +781,7 @@ def get_material(material_inp=None):
     return material
 
 
-def parse_boundary_block(*args, **kwargs):
+def _parse_boundary_block(*args, **kwargs):
     """Scan the user input for a begin boundary .. end boundary block and
     parse it
 
@@ -554,7 +810,7 @@ def parse_boundary_block(*args, **kwargs):
 
     """
 
-    iam = "parse_boundary_block"
+    iam = "_parse_boundary_block"
 
     boundary_inp, legs_inp = args[0:2]
     if boundary_inp is None:
@@ -648,7 +904,7 @@ def parse_boundary_block(*args, **kwargs):
         leg = [x.strip() for x in leg.replace(","," ").split() if x]
 
         if ileg == 0:
-            g_inf = parse_first_leg(leg)
+            g_inf = _parse_first_leg(leg)
 
             if g_inf["table"]:
                 # the first leg let us know the user specified a table,
@@ -765,7 +1021,7 @@ def parse_boundary_block(*args, **kwargs):
                 # of rotation x and angle of rotation theta
                 R,V = np.linalg.qr(F)
                 U = np.dot(R.T,F)
-                if np.max(np.abs(R - np.eye(3))) > epsilon():
+                if np.max(np.abs(R - np.eye(3))) > pu.EPSILON:
                     parser_error(
                         "rotation encountered in leg {0}. ".format(leg_no) +
                         "rotations are not yet supported")
@@ -888,7 +1144,8 @@ def parse_boundary_block(*args, **kwargs):
     return {"initial time": t0, "termination time": tf,
             "bcontrol": bcontrol, "lcontrol": lcontrol}
 
-def parse_eos_boundary_block(*args, **kwargs):
+
+def _parse_eos_boundary_block(*args, **kwargs):
     # @msw: I have put None for all of the entries, but that might break
     # something down stream?
     boundary_inp, legs_inp = args[:2]
@@ -908,7 +1165,7 @@ def parse_eos_boundary_block(*args, **kwargs):
         for tok in legs_inp["content"]:
             vals = [float(x) for x in tok.split()]
             if len(vals) != 2:
-                parse_error("unacceptable entry in legs:\n" + tok)
+                parser_error("unacceptable entry in legs:\n" + tok)
             lcontrol.append(vals)
 
     #
@@ -993,36 +1250,104 @@ def parse_eos_boundary_block(*args, **kwargs):
     return {"initial time": None, "termination time": None,
             "bcontrol": bcontrol, "lcontrol": lcontrol}
 
-def parse_mathplot_block(mathplot):
-    plotable = []
+
+def _parse_extraction_block(extraction, avail_keys):
+
+    iam = "_parse_extraction_block"
+
+    extraction_vars = []
+    if extraction is None:
+        return extraction_vars
+
+    for items in extraction["content"]:
+        for pat, repl in ((",", " "), (";", " "), (":", " "), ):
+            items = items.replace(pat, repl)
+            continue
+        items = items.split()
+        for item in items:
+            if item[0] not in ("%", "@") and not item[0].isdigit():
+                msg = "unrecognized extraction request {0}".format(item)
+                reportWarning(iam, msg)
+                continue
+
+            elif item[1:].lower() not in [x.lower() for x in avail_keys]:
+                msg = ("requested extraction variable {0} not found"
+                       .format(item))
+                reportWarning(iam, msg)
+                continue
+
+            extraction_vars.append(item)
+
+        continue
+
+    return [x.upper() for x in extraction_vars]
+
+def _parse_mathplot_block(mathplot, avail_keys):
+
+    iam = "_parse_mathplot_block"
+
+    mathplot_vars = []
     if mathplot is None:
-        return plotable
+        return mathplot_vars
 
     for item in mathplot["content"]:
         for pat, repl in ((",", " "), (";", " "), (":", " "), ):
             item = item.replace(pat, repl)
             continue
-        plotable.extend(item.split())
+        mathplot_vars.extend(item.split())
         continue
-    return [x.upper() for x in plotable]
 
-def parse_extraction_block(extraction):
-    extract = []
-    if extraction is None:
-        return extract
-    for item in extraction["content"]:
+    bad_keys = [x for x in mathplot_vars if x.lower() not in
+                [y.lower() for y in avail_keys]]
+    if bad_keys:
+        msg = (
+            "requested mathplot variable{0:s} {1:s} not found"
+            .format("s" if len(bad_keys) > 1 else "", ", ".join(bad_keys)))
+        reportWarning(iam, msg)
+
+    return [x.upper() for x in mathplot_vars if x not in bad_keys]
+
+
+def _parse_output_block(output, avail_keys):
+
+    iam = "_parse_output_block"
+
+    output_vars = []
+    if output is None:
+        return avail_keys
+
+    for item in output["content"]:
         for pat, repl in ((",", " "), (";", " "), (":", " "), ):
             item = item.replace(pat, repl)
             continue
-        item = item.split()
-        for x in item:
-            if x[0] not in ("%", "@"):
-                msg = "unrecognized extraction request {0}".format(x)
-                reportWarning(iam, msg)
-                continue
-            extract.append(x)
+        output_vars.extend([x.upper() for x in item.split()])
         continue
-    return [x.upper() for x in extract]
+
+    if "ALL" in output_vars:
+        output_vars = avail_keys
+
+    bad_keys = [x for x in output_vars if x.lower() not in
+                [y.lower() for y in avail_keys]]
+    if bad_keys:
+        msg = (
+            "requested output variable{0:s} {1:s} not found"
+            .format("s" if len(bad_keys) > 1 else "", ", ".join(bad_keys)))
+        reportWarning(iam, msg)
+
+    output_vars = [x.upper() for x in output_vars if x not in bad_keys]
+
+    if not output_vars:
+        reportError(iam, "no output variables found")
+
+    if "TIME" not in output_vars:
+        output_vars.insert(0, "TIME")
+
+    elif output_vars.index("TIME") != 0:
+        output_vars.remove("TIME")
+        output_vars.insert(0, "TIME")
+
+    return output_vars
+
 
 if __name__ == "__main__":
     sys.exit("Payette_container.py must be called by runPayette")
