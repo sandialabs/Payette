@@ -25,8 +25,8 @@ import numpy as np
 import scipy.optimize
 import sys
 
-from Source.Payette_utils import *
-from Source.Payette_tensor import *
+import Source.Payette_utils as pu
+import Source.Payette_tensor as pt
 
 def newton(material, simdat, matdat):
     '''
@@ -107,7 +107,7 @@ def newton(material, simdat, matdat):
 
     nv = len(v)
     sig_dif = np.zeros(nv)
-    tol1, tol2 = epsilon(), math.sqrt(epsilon())
+    tol1, tol2 = pu.EPSILON, math.sqrt(pu.EPSILON)
     maxit1, maxit2, depsmax, converged = 20, 30, 0.2, 0
 
     # --- Check if strain increment is too large
@@ -115,7 +115,7 @@ def newton(material, simdat, matdat):
         return converged
 
     # --- Initialize
-    Fnew = Fold + np.dot(toMatrix(depsdt),Fold)*dt
+    Fnew = Fold + np.dot(pt.toMatrix(depsdt),Fold)*dt
 
     # replace deformation rate and gradient with current best guesses
     matdat.store_data("deformation gradient",Fnew,old=True)
@@ -142,7 +142,7 @@ def newton(material, simdat, matdat):
             sys.exit("here")
             depsdt[v] -= np.linalg.lstsq(Js,sig_dif)[0]/dt
             msg = 'Using least squares approximation to matrix inverse'
-            reportWarning(__file__,msg,limit=True)
+            pu.reportWarning(__file__, msg, limit=True)
             pass
 
         if (depsmag(depsdt,dt) > depsmax):
@@ -151,7 +151,7 @@ def newton(material, simdat, matdat):
             matdat.restore_data("deformation gradient",Fold)
             return converged
 
-        Fnew = Fold + np.dot(toMatrix(depsdt),Fold)*dt
+        Fnew = Fold + np.dot(pt.toMatrix(depsdt),Fold)*dt
         matdat.store_data("rate of deformation",depsdt,old=True)
         matdat.store_data("deformation gradient",Fnew,old=True)
         material.update_state(simdat, matdat)
@@ -252,7 +252,7 @@ def func(depsdt_opt,material,simdat,matdat):
     depsdt[v] = depsdt_opt
     Fold = matdat.get_data("deformation gradient",form="Matrix")
     dold = matdat.get_data("rate of deformation")
-    Fnew = Fold + np.dot(toMatrix(depsdt),Fold)*dt
+    Fnew = Fold + np.dot(pt.toMatrix(depsdt),Fold)*dt
 
     # store the best guesses
     matdat.store_data("rate of deformation",depsdt,old=True)

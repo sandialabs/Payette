@@ -28,8 +28,8 @@ import scipy
 from scipy import linalg
 
 import Source.Payette_iterative_solvers as piter
-from Source.Payette_utils import *
-from Source.Payette_tensor import *
+import Source.Payette_utils as pu
+import Source.Payette_tensor as pt
 
 # global identity matrix
 I = np.eye(3)
@@ -287,19 +287,19 @@ def updateDeformation(simdat, matdat):
     d = matdat.get_data("rate of deformation",form="Matrix")
     w = matdat.get_data("vorticity",form="Matrix")
 
-    Ff = expm((d + w)*dt,simdat.STRICT)*F0
-    U = sqrtm((Ff.T)*Ff,simdat.STRICT)
-    if k == 0: E = logm(U,simdat.STRICT)
-    else: E = 1./k*(powm(U,k,simdat.STRICT) - I)
+    Ff = pt.expm((d + w)*dt,simdat.STRICT)*F0
+    U = pt.sqrtm((Ff.T)*Ff,simdat.STRICT)
+    if k == 0: E = pt.logm(U,simdat.STRICT)
+    else: E = 1./k*(pt.powm(U,k,simdat.STRICT) - I)
 
     if np.linalg.det(Ff) <= 0.:
-        reportError(iam,"negative Jacobian encountered")
+        pu.reportError(iam,"negative Jacobian encountered")
 
     matdat.store_data("strain",E)
     matdat.store_data("deformation gradient",Ff)
 
     # compute the equivalent strain
-    eps = toArray(E,symmetric=True)
+    eps = pt.toArray(E,symmetric=True)
     eqveps = np.sqrt( 2./3.*( sum(eps[:3]**2) + 2.*sum(eps[3:]**2)) )
     matdat.store_data("equivalent strain",eqveps)
 
@@ -332,8 +332,8 @@ def rightStretch(k,E,strict=False):
     AUTHORS
        Tim Fuller, Sandial National Laboratories, tjfulle@sandia.gov
     '''
-    if k == 0.: return expm(np.matrix(E),strict)
-    else: return powm(k*np.matrix(E) + I,1./k,strict)
+    if k == 0.: return pt.expm(np.matrix(E),strict)
+    else: return pt.powm(k*np.matrix(E) + I,1./k,strict)
 
 def leftStretch(k,e,strict=False):
     '''
@@ -362,6 +362,6 @@ def leftStretch(k,e,strict=False):
     AUTHORS
        Tim Fuller, Sandial National Laboratories, tjfulle@sandia.gov
     '''
-    if k == 0.: return expm(np.matrix(e),strict)
-    else: return powm(k*np.matrix(e) + I,1./k,strict)
+    if k == 0.: return pt.expm(np.matrix(e),strict)
+    else: return pt.powm(k*np.matrix(e) + I,1./k,strict)
 

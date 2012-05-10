@@ -23,7 +23,7 @@
 import numpy
 import scipy
 
-from Payette_utils import *
+import Payette_utils as pu
 
 nvec = 3
 nsym = 6
@@ -74,27 +74,27 @@ class Tensor(numpy.ndarray):
             if len(init.shape) == 1:
                 if init.shape[0]  != 9:
                     message = "Length of Tensor must be 9, got {0}".format(len(init))
-                    raise reportError(self.iam,message)
+                    raise pu.reportError(self.iam,message)
                 pass
 
             elif len(init.shape) == 2:
                 if init.shape != (3,3):
                     message = "Tensor must be 3x3, got {0}".format(init.shape)
-                    raise reportError(self.iam,message)
+                    raise pu.reportError(self.iam,message)
                 for rown, row in enumerate(init): new_tensor[rown:] = row[:]
                 return new_tensor
 
             else:
                 message = "Tensor must be 3x3, got {0}".format(init.shape)
-                raise reportError(self.iam,message)
+                raise pu.reportError(self.iam,message)
 
         elif not isinstance(init,(list,tuple)):
             message = "Got non list initial value for Tensor: {0}".format(init)
-            raise reportError(self.iam,message)
+            raise pu.reportError(self.iam,message)
 
         elif len(init) != 9:
             message = "Length of Tensor must be 9, got {0}".format(len(init))
-            raise reportError(self.iam,message)
+            raise pu.reportError(self.iam,message)
 
         for idx, val in enumerate(init): new_tensor[tens_map[idx]] = val
 
@@ -139,33 +139,33 @@ class SymTensor(Tensor,numpy.ndarray):
                 if init.shape[0]  != 6:
                     message = ("Length of SymTensor must be 6, got {0}"
                                .format(len(init)))
-                    raise reportError(self.iam,message)
+                    raise pu.reportError(self.iam,message)
                 pass
 
             elif len(init.shape) == 2:
                 if init.shape != (3,3):
                     message = "SymTensor must be 3x3, got {0}".format(init.shape)
-                    raise reportError(self.iam,message)
+                    raise pu.reportError(self.iam,message)
                 if ( abs(init[(1,0)] - init[(0,1)]) > tol or
                      abs(init[(2,0)] - init[(0,2)]) > tol or
                      abs(init[(2,1)] - init[(1,2)]) > tol ):
                     message = ("got non symmetric array to SymTensor: {0}"
                                .format(init))
-                    raise reportError(self.iam,message)
+                    raise pu.reportError(self.iam,message)
                 for rown, row in enumerate(init): new_symtensor[rown:] = row[:]
                 return new_symtensor
 
             else:
                 message = "Tensor must be 3x3, got {0}".format(init.shape)
-                raise reportError(self.iam,message)
+                raise pu.reportError(self.iam,message)
 
         elif not isinstance(init,(list,tuple)):
             message = "Got non list initial value for SymTensor: {0}".format(init)
-            raise reportError(self.iam,message)
+            raise pu.reportError(self.iam,message)
 
         if len(init) != 6:
             message = "Length of SymTensor must be 6, got {0}".format(len(init))
-            raise reportError(self.iam,message)
+            raise pu.reportError(self.iam,message)
 
         for idx, val in enumerate(init): new_symtensor[symtens_map[idx]] = val
         new_symtensor[(1,0)] = new_symtensor[(0,1)]
@@ -205,11 +205,11 @@ class Vector(numpy.ndarray):
 
         elif not isinstance(init,(list,tuple,numpy.ndarray)):
             message = "Got non list initial value for Vector: {0}".format(init)
-            raise reportError(self.iam,message)
+            raise pu.reportError(self.iam,message)
 
         if len(init) != 3:
             message = "Length of Vector must be 3, got {0}".format(len(init))
-            raise reportError(self.iam,message)
+            raise pu.reportError(self.iam,message)
 
         for idx, val in enumerate(init): new_vector[vec_map[idx]] = val
 
@@ -265,7 +265,7 @@ def sqrtm(a,strict=False):
     if numpy.isnan(aa).any() or numpy.isinf(aa).any():
         msg = ("Probably reaching the numerical limits for the "
                "magnitude of the deformation.")
-        reportError(__file__,msg)
+        pu.reportError(__file__,msg)
         pass
     if isdiag(aa):
         sqrta = Z3x3

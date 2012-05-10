@@ -200,6 +200,10 @@ class Payette:
             # input file.
             if "proportional" not in self.simdat.get_all_options():
                 self.simdat.register_option("proportional",False)
+        else:
+            # register data that is needed by the EOS models
+            for dict_key in bcontrol:
+                self.simdat.register_option(dict_key, bcontrol[dict_key])
 
         if parser_error.count():
             sys.exit("Stopping due to {0} previous parsing errors"
@@ -218,7 +222,7 @@ class Payette:
             user_input.get("extraction"), self.plot_keys)
 
         # get output block
-        self.output_vars = _parse_output_block(
+        self.out_vars, self.out_format, self.out_nam = _parse_output_block(
             user_input.get("output"), self.plot_keys)
 
         self._setup_outfiles()
@@ -264,7 +268,7 @@ class Payette:
                     .format(self.outfile))
             sig_idx = None
 
-            for i, item in enumerate(self.output_vars):
+            for i, item in enumerate(self.out_vars):
                 if item == "SIG11": sig_idx = i + 1
                 f.write('{0:s}=simdat[[2;;,{1:d}]];\n'.format(item,i+1))
                 continue
@@ -279,7 +283,7 @@ class Payette:
 
         # math2 is a file containing mathematica directives to setup default
         # plots that the user requested
-        lowhead = [x.lower() for x in self.output_vars]
+        lowhead = [x.lower() for x in self.out_vars]
         lowplotable = [x.lower() for x in self.mathplot_vars]
         with open( math2, "w" ) as f:
             f.write('showcy[{0},{{"cycle","time"}}]\n'
@@ -317,7 +321,7 @@ class Payette:
         else:
             self.outfile_obj = open(self.outfile, "w")
 
-            for key in self.output_vars:
+            for key in self.out_vars:
                 self.outfile_obj.write(pu.textformat(key))
                 continue
 
@@ -367,7 +371,7 @@ class Payette:
 
         def _write_plotable(idx, key, name, val):
             """ write to the logfile the available variables """
-            tok = "plotable" if key in self.output_vars else "no request"
+            tok = "plotable" if key in self.out_vars else "no request"
             pu.writeToLog("{0:<3d} {1:<10s}: {2:<10s} = {3:<50s} = {4:12.5E}"
                           .format(idx, tok, key, name, val))
             return
@@ -391,7 +395,7 @@ class Payette:
     def write_state(self):
         """ write the simulation and material data to the output file """
         data = []
-        for plot_key in self.output_vars:
+        for plot_key in self.out_vars:
             if plot_key in self.simdat.plot_keys():
                 dat = self.simdat
             else:
@@ -502,7 +506,9 @@ class Payette:
 
         else:
             retcode = pd.eos_driver(self)
-            sys.exit("eos driver not yet implemented")
+
+        pu.reportMessage("run_job()", "{0} Payette simulation ran to completion"
+                         .format(self.name))
 
         if not self.disp:
             return retcode
@@ -1118,7 +1124,7 @@ def _parse_boundary_block(*args, **kwargs):
         # stress and or stress rate is used to control this leg. For
         # these cases, kappa is set to 0. globally.
         if kappa != 0.:
-            reportWarning(
+            pu.reportWarning(
                 iam,
                 "WARNING: stress control boundary conditions "
                 "only compatible with kappa=0. kappa is being "
@@ -1171,16 +1177,35 @@ def _parse_eos_boundary_block(*args, **kwargs):
     #
     #                     BOUNDARY
     #
+
+    bcontrol["nprints"] = 4
+    for tok in boundary_inp["content"]:
+        if tok.startswith("nprints"):
+            nprints = int("".join(tok.split()[1:2]))
+            bcontrol["nprints"] = nprints
+
     bcontrol["input units"] = None
     recognized_unit_systems = ["MKSK","CGSEV"]
     for tok in boundary_inp["content"]:
         if tok.startswith("input units"):
             input_units = tok.split()[2]
             if input_units.upper() not in recognized_unit_systems:
-                parser_error("Unrecognized unit system.")
+                parser_error("Unrecognized input unit system.")
             bcontrol["input units"] = input_units
     if bcontrol["input units"] == None:
         parser_error("Missing 'input units XYZ' keyword in boundary block.\n"
+                     "Please include that line with one of the following\n"
+                     "unit systems:\n" + "\n".join(recognized_unit_systems))
+
+    bcontrol["output units"] = None
+    for tok in boundary_inp["content"]:
+        if tok.startswith("output units"):
+            output_units = tok.split()[2]
+            if output_units.upper() not in recognized_unit_systems:
+                parser_error("Unrecognized output unit system.")
+            bcontrol["output units"] = output_units
+    if bcontrol["output units"] == None:
+        parser_error("Missing 'output units XYZ' keyword in boundary block.\n"
                      "Please include that line with one of the following\n"
                      "unit systems:\n" + "\n".join(recognized_unit_systems))
 
@@ -1244,9 +1269,6 @@ def _parse_eos_boundary_block(*args, **kwargs):
             bcontrol["path hugoniot"] = hugoniot
 
 
-
-    print("bcontrol: ", bcontrol)
-    print("lcontrol: ", lcontrol)
     return {"initial time": None, "termination time": None,
             "bcontrol": bcontrol, "lcontrol": lcontrol}
 
@@ -1267,13 +1289,13 @@ def _parse_extraction_block(extraction, avail_keys):
         for item in items:
             if item[0] not in ("%", "@") and not item[0].isdigit():
                 msg = "unrecognized extraction request {0}".format(item)
-                reportWarning(iam, msg)
+                pu.reportWarning(iam, msg)
                 continue
 
             elif item[1:].lower() not in [x.lower() for x in avail_keys]:
                 msg = ("requested extraction variable {0} not found"
                        .format(item))
-                reportWarning(iam, msg)
+                pu.reportWarning(iam, msg)
                 continue
 
             extraction_vars.append(item)
@@ -1303,7 +1325,7 @@ def _parse_mathplot_block(mathplot, avail_keys):
         msg = (
             "requested mathplot variable{0:s} {1:s} not found"
             .format("s" if len(bad_keys) > 1 else "", ", ".join(bad_keys)))
-        reportWarning(iam, msg)
+        pu.reportWarning(iam, msg)
 
     return [x.upper() for x in mathplot_vars if x not in bad_keys]
 
@@ -1312,41 +1334,56 @@ def _parse_output_block(output, avail_keys):
 
     iam = "_parse_output_block"
 
-    output_vars = []
+    supported_formats = ("ascii", )
+    out_format = "ascii"
+    out_vars = []
     if output is None:
-        return avail_keys
+        return avail_keys, out_format, None
 
     for item in output["content"]:
         for pat, repl in ((",", " "), (";", " "), (":", " "), ):
             item = item.replace(pat, repl)
             continue
-        output_vars.extend([x.upper() for x in item.split()])
+
+        _vars = [x.upper() for x in item.split()]
+        if "FORMAT" in _vars:
+            try:
+                idx = _vars.index("FORMAT")
+                out_format = _vars[idx+1].lower()
+            except IndexError:
+                pu.reportWarning(iam, "format keyword found, but no format given")
+
+        out_vars.extend(_vars)
         continue
 
-    if "ALL" in output_vars:
-        output_vars = avail_keys
+    if out_format not in supported_formats:
+        pu.reportError(iam, "output format {0} not supported, choose from {1}"
+                       .format(out_format, ", ".join(supported_formats)))
 
-    bad_keys = [x for x in output_vars if x.lower() not in
+    if "ALL" in out_vars:
+        out_vars = avail_keys
+
+    bad_keys = [x for x in out_vars if x.lower() not in
                 [y.lower() for y in avail_keys]]
     if bad_keys:
         msg = (
             "requested output variable{0:s} {1:s} not found"
             .format("s" if len(bad_keys) > 1 else "", ", ".join(bad_keys)))
-        reportWarning(iam, msg)
+        pu.reportWarning(iam, msg)
 
-    output_vars = [x.upper() for x in output_vars if x not in bad_keys]
+    out_vars = [x.upper() for x in out_vars if x not in bad_keys]
 
-    if not output_vars:
-        reportError(iam, "no output variables found")
+    if not out_vars:
+        pu.reportError(iam, "no output variables found")
 
-    if "TIME" not in output_vars:
-        output_vars.insert(0, "TIME")
+    if "TIME" not in out_vars:
+        out_vars.insert(0, "TIME")
 
-    elif output_vars.index("TIME") != 0:
-        output_vars.remove("TIME")
-        output_vars.insert(0, "TIME")
+    elif out_vars.index("TIME") != 0:
+        out_vars.remove("TIME")
+        out_vars.insert(0, "TIME")
 
-    return output_vars
+    return out_vars, out_format, output["name"]
 
 
 if __name__ == "__main__":

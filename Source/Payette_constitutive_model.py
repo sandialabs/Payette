@@ -23,7 +23,7 @@
 
 import numpy as np
 import math
-from Source.Payette_tensor import *
+import Source.Payette_tensor as pt
 
 material_idx = 0
 
@@ -92,7 +92,7 @@ class ConstitutiveModelPrototype(object):
             reportError(iam, "empty ui array")
 
         if self.eos_model:
-            print("Payette_constitutive_model.py: Do something here?")
+            # mss: do something here? But is seems unnecessary.
             return
 
         if not self.bulk_modulus:
@@ -347,7 +347,7 @@ class ConstitutiveModelPrototype(object):
             # perturb forward
             dp = np.array(d)
             dp[v[n]] = d[v[n]] + (deps/dtime)/2.
-            fp = Fold + np.dot(toMatrix(dp),Fold)*dtime
+            fp = Fold + np.dot(pt.toMatrix(dp),Fold)*dtime
             matdat.store_data("rate of deformation",dp,old=True)
             matdat.store_data("deformation gradient",fp,old=True)
             self.update_state(simdat, matdat)
@@ -356,7 +356,7 @@ class ConstitutiveModelPrototype(object):
             # perturb backward
             dm = np.array(d)
             dm[v[n]] = d[v[n]] - (deps/dtime)/2.
-            fm = Fold + np.dot(toMatrix(dm),Fold)*dtime
+            fm = Fold + np.dot(pt.toMatrix(dm),Fold)*dtime
             matdat.store_data("rate of deformation",dm,old=True)
             matdat.store_data("deformation gradient",fm,old=True)
             self.update_state(simdat, matdat)

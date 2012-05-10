@@ -21,6 +21,7 @@ begin material
 end material
 
 begin output
+  format ascii # default: ascii
   sig11 sig22 bsig11
 end output
 

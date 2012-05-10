@@ -27,7 +27,7 @@ from distutils import sysconfig
 from copy import deepcopy
 from numpy.f2py import main as f2py
 
-from Payette_config import *
+import Payette_config as pc
 from Source.Payette_utils import BuildError, get_module_name_and_path
 
 class MaterialBuilder():
@@ -52,22 +52,20 @@ class MaterialBuilder():
         # format the signature file
         self.format_signature_file()
 
-        if not PC_F2PY_CALLBACK:
+        if not pc.PC_F2PY_CALLBACK:
             self.pre_directives.append("-DNOPYCALLBACK")
-            pass
 
         if not os.path.isfile(self.signature_file):
             raise BuildError("{0} signature file not found".format(self.name),40)
 
         self.incdirs = [ ".", "{0}".format(self.source_directory),
-                         "{0}".format(PC_MTLS_INCLUDES) ]
+                         "{0}".format(pc.PC_MTLS_INCLUDES) ]
         self.libdirs = []
         self.libs = []
 
         # f2py opts
         f2py_opts = compiler_info["f2py"]
         self.f2pyopts = [f2py_opts["compiler"],"-c"] + f2py_opts["options"]
-        pass
 
     def build_extension_module(self):
         raise BuildError("build script must provide this function",1)
@@ -81,22 +79,23 @@ class MaterialBuilder():
         elif not isinstance(self.source_files,list):
             self.source_files = [self.source_files]
 
-        else: pass
-
         for srcf in self.source_files:
             if not os.path.isfile(srcf):
                 BuildError("{0}: source file {1} not found".format(fcn,srcf),1)
             continue
 
         # remove extension module files if they exist
-        for d in [self.source_directory, PC_MTLS_LIBRARY]:
-            try: os.remove(os.path.join(d,self.libname))
-            except: pass
+        for d in [self.source_directory, pc.PC_MTLS_LIBRARY]:
+            try:
+                os.remove(os.path.join(d,self.libname))
+            except OSError:
+                pass
+
             continue
 
         # f2py pulls its arguments from sys.argv. Here, we build sys.argv to what
         # f2py expects. Later sys.argv will be restored.
-        ffiles = self.source_files + [ PC_MIG_UTILS ]
+        ffiles = self.source_files + [pc.PC_MIG_UTILS]
         incsearch = ["-I{0}".format(x) for x in self.incdirs]
         libsearch = ["-L{0}".format(x) for x in self.libdirs]
         libs = ["-l{0}".format(x) for x in self.libs]
@@ -115,26 +114,28 @@ class MaterialBuilder():
                     # f2py returns none if successful, it is an exception if not
                     # successful
                     built = not f2py()
-                    pass
-                pass
         except:
             built = False
-            pass
 
         # restore sys.{argv,stdout,stderr}
         sys.argv = deepcopy(tmp)
         sys.stdout, sys.stderr  = sys.__stdout__, sys.__stderr__
 
         # remove nocallback_file, if it exists
-        try: os.remove(self.nocallback_file)
-        except: pass
+        try:
+            os.remove(self.nocallback_file)
+        except OSError:
+            pass
 
         # remove object files
         for f in self.source_files:
             fnam,fext = os.path.splitext(f)
             obj = fnam + ".o"
-            try: os.remove(obj)
-            except: pass
+            try:
+                os.remove(obj)
+            except OSError:
+                pass
+
             continue
 
         if not built:
@@ -153,10 +154,12 @@ class MaterialBuilder():
 
         # copy the extension module file to the library directory
         shutil.move(self.libname,
-                    os.path.join(PC_MTLS_LIBRARY,self.libname))
+                    os.path.join(pc.PC_MTLS_LIBRARY, self.libname))
 
-        try: os.remove(echo)
-        except: pass
+        try:
+            os.remove(echo)
+        except OSError:
+            pass
 
         return 0
 
@@ -164,7 +167,7 @@ class MaterialBuilder():
 
         """ format signature file from original sigature file """
 
-        if PC_F2PY_CALLBACK:
+        if pc.PC_F2PY_CALLBACK:
             return
 
         sigf_lines = open(self.signature_file,"r").readlines()
@@ -174,13 +177,15 @@ class MaterialBuilder():
         lines = []
         for line in sigf_lines:
 
-            if not line.split(): continue
+            if not line.split():
+                continue
 
             if "end python module payette__user__routines" in line:
                 in_callback = False
                 continue
 
-            if "use payette__user__routines" in line: continue
+            if "use payette__user__routines" in line:
+                continue
 
             if "python module payette__user__routines" in line:
                 in_callback = True
@@ -190,7 +195,7 @@ class MaterialBuilder():
                 if line.split() and line.split()[0] == "subroutine":
                     sub = line.split("(")[0].strip()[len("subroutine"):].strip()
                     user_routines.append(sub)
-                    pass
+
                 continue
 
             lines.append(line)
@@ -202,11 +207,10 @@ class MaterialBuilder():
         with open(self.signature_file,"w") as f:
 
             for line in lines:
-                if [x for x in user_routines if x in line.split()]: continue
+                if [x for x in user_routines if x in line.split()]:
+                    continue
                 f.write(line)
                 continue
-
-            pass
 
         return
 

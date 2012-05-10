@@ -24,9 +24,9 @@
 import copy
 import sys
 import logging
+import numpy as np
 
-from Source.Payette_utils import *
-
+import Source.Payette_utils as pu
 import Source.Payette_installed_materials as pim
 from Source.Payette_data_container import DataContainer
 
@@ -66,7 +66,7 @@ class Material:
                    "If rebuilding Payette does not fix the problem, "
                    "please contact the Payette\ndevelopers."
                    .format(self.constitutive_model.name,PC_MTLS_LIBRARY))
-            reportError(iam,msg)
+            pu.reportError(iam,msg)
 
         self.eos_model = self.constitutive_model.eos_model
 
@@ -158,8 +158,19 @@ class Material:
         return
 
     def register_default_eos_data(self):
-        # @msw: finish this!
-        pass
+        self.matdat.register_data("density", "Scalar",
+                                 init_val=0.,
+                                 plot_key="rho")
+        self.matdat.register_data("temperature", "Scalar",
+                                 init_val=0.,
+                                 plot_key="temp")
+        self.matdat.register_data("energy", "Scalar",
+                                 init_val=0.,
+                                 plot_key="enrg")
+        self.matdat.register_data("pressure", "Scalar",
+                                 init_val=0.,
+                                 plot_key="pres")
+        return
 
     def material_data(self):
         return self.matdat
