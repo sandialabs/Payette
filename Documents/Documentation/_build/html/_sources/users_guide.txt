@@ -1,9 +1,0 @@
-
-Users Guide
-===========
-
-.. toctree::
-   :maxdepth: 2
-
-   Files/running_payette
-   Files/input_blocks

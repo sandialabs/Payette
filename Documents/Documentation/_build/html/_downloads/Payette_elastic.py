@@ -24,143 +24,163 @@
 import sys
 import os
 import numpy as np
+from math import sqrt
 
 from Source.Payette_utils import *
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
+from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
+from Source.Payette_tensor import I6, sym_map
+from Toolset.elastic_conversion import compute_elastic_constants
 
 try:
     import Source.Materials.Library.elastic as mtllib
     imported = True
-except ImportError:
+except:
     imported = False
     pass
-
-from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 attributes = {
     "payette material": True,
     "name": "elastic",
+    "aliases": ["hooke", "linear elastic"],
     "fortran source": True,
     "build script": os.path.join(THIS_DIR, "Build_elastic.py"),
-    "aliases": ["hooke", "elasticity", "linear elastic"],
     "material type": ["mechanical"],
     "default material": True,
     }
 
+w = np.array([1., 1., 1., 2., 2., 2.])
+
 class Elastic(ConstitutiveModelPrototype):
+    """ Elasticity model.
+
+    Use MFLG = 0 for python implementation, MFLG = 1 for fortran
+
     """
-    CLASS NAME
-       Elastic
 
-    PURPOSE
-       Constitutive model for an elastic material. When instantiated, the Elastic
-       material initializes itself by first checking the user input
-       (_check_props) and then initializing any internal state variables
-       (_set_field). Then, at each timestep, the driver update the Material state
-       by calling updateState.
-
-    METHODS
-       _check_props
-       _set_field
-       updateState
-
-    FORTRAN
-       The core code for the Elastic material is contained in
-       Fortran/Elastic/elastic.f.  The module Library/elastic is created by f2py.
-       elastic.f defines the following public subroutines
-
-          hookechk: fortran data check routine called by _check_props
-          hookerxv: fortran field initialization  routine called by _set_field
-          hooke_incremental: fortran stress update called by updateState
-
-       See the documentation in elastic.f for more information.
-
-    AUTHORS
-       Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
-    """
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super(Elastic, self).__init__()
-
         self.name = attributes["name"]
         self.aliases = attributes["aliases"]
-        self.imported = imported
+
+        self.code = kwargs["code"]
+        self.imported = True if self.code == "python" else imported
 
         # register parameters
-        self.registerParameter("LAM", 0, aliases=[])
-        self.registerParameter("G", 1, aliases=['SHMOD'])
-        self.registerParameter("E", 2, aliases=['YMOD'])
-        self.registerParameter("NU", 3, aliases=['POISSONS'])
-        self.registerParameter("K", 4, aliases=['BKMOD'])
-        self.registerParameter("H", 5, aliases=[])
-        self.registerParameter("KO", 6, aliases=[])
-        self.registerParameter("CL", 7, aliases=[])
-        self.registerParameter("CT", 8, aliases=[])
-        self.registerParameter("CO", 9, aliases=[])
-        self.registerParameter("CR", 10, aliases=[])
-        self.registerParameter("RHO", 11, aliases=[])
+        self.register_parameter("LAM", 0, aliases=[])
+        self.register_parameter("G", 1, aliases=["MU", "G0", "SHMOD"])
+        self.register_parameter("E", 2, aliases=["YOUNGS"])
+        self.register_parameter("NU", 3, aliases=["POISSONS", "POISSONS RATIO"])
+        self.register_parameter("K", 4, aliases=["B0", "BKMOD"])
+        self.register_parameter("H", 5, aliases=["CONSTRAINED"])
+        self.register_parameter("KO", 6, aliases=[])
+        self.register_parameter("CL", 7, aliases=[])
+        self.register_parameter("CT", 8, aliases=[])
+        self.register_parameter("CO", 9, aliases=[])
+        self.register_parameter("CR", 10, aliases=[])
+        self.register_parameter("RHO", 11, aliases=["DENSITY"])
         self.nprop = len(self.parameter_table.keys())
-
         pass
 
-    # Public methods
-    def setUp(self,simdat,matdat,user_params,f_params):
-        iam = self.name + ".setUp(self,material,props)"
-
-        if not imported: return
+    # public methods
+    def set_up(self, matdat, user_params):
+        iam = self.name + ".set_up"
 
         # parse parameters
-        self.parseParameters(user_params,f_params)
+        self.parse_parameters(user_params)
 
-        # check parameters
-        self.ui = self._check_props()
-        self.nsv,namea,keya,sv,rdim,iadvct,itype = self._set_field()
-        namea = parseToken(self.nsv,namea)
-        keya = parseToken(self.nsv,keya)
+        # the elastic model only needs the bulk and shear modulus, but the
+        # user could have specified any one of the many elastic moduli.
+        # Convert them and get just the bulk and shear modulus
+        eui = compute_elastic_constants(*self.ui0[0:12])
+        for key, val in eui.items():
+            if key.upper() not in self.parameter_table:
+                continue
+            idx = self.parameter_table[key.upper()]["ui pos"]
+            self.ui0[idx] = val
 
-        # register the extra variables with the payette object
-        matdat.registerExtraVariables(self.nsv,namea,keya,sv)
+        # Payette wants ui to be the same length as ui0, but we don't want to
+        # work with the entire ui, so we only pick out what we want
+        mu, k = self.ui0[1], self.ui0[4]
+        self.ui = self.ui0
+        mui = np.array([k, mu])
 
-        self.bulk_modulus,self.shear_modulus = self.ui[4],self.ui[1]
+        self.bulk_modulus, self.shear_modulus = k, mu
 
-        pass
-
-    # redefine Jacobian to return initial jacobian
-    def jacobian(self,simdat,matdat):
-        if not imported: return
-        v = simdat.getData("prescribed stress components")
-        return self.J0[[[x] for x in v],v]
-
-    def updateState(self,simdat,matdat):
-        """
-           update the material state based on current state and strain increment
-        """
-        if not imported: return
-        dt = simdat.getData("time step")
-        d = simdat.getData("rate of deformation")
-        sigold = matdat.getData("stress")
-        svold = matdat.getData("extra variables")
-
-        a = [dt,self.ui,sigold,d,svold,migError,migMessage]
-        if not PC_F2PY_CALLBACK: a = a[:-2]
-        sig, sv, usm = mtllib.hooke_incremental(*a)
-
-        matdat.storeData("extra variables",sv)
-        matdat.storeData("stress",sig)
+        if self.code == "python":
+            self.mui = self._py_set_up(mui)
+        else:
+            self.mui = self._fort_set_up(mui)
 
         return
 
-    # Private methods
-    def _check_props(self):
-        props = np.array(self.ui0)
-        a = [props,props,props,migError,migMessage]
-        if not PC_F2PY_CALLBACK: a = a[:-2]
-        ui = mtllib.hookechk(*a)
+    def jacobian(self, simdat, matdat):
+        v = matdat.get_data("prescribed stress components")
+        return self.J0[[[x] for x in v],v]
+
+    def update_state(self, simdat, matdat):
+        """
+           update the material state based on current state and strain increment
+        """
+        # get passed arguments
+        dt = simdat.get_data("time step")
+        d = matdat.get_data("rate of deformation")
+        sigold = matdat.get_data("stress")
+
+        if self.code == "python":
+            sig = _py_update_state(self.mui, dt, d, sigold)
+
+        else:
+            a = [1, dt, self.mui, sigold, d, migError, migMessage]
+            if not PC_F2PY_CALLBACK:
+                a = a[:-2]
+            sig = mtllib.elast_calc(*a)
+
+        # store updated data
+        matdat.store_data("stress", sig)
+
+    def _py_set_up(self, mui):
+
+        k, mu = mui
+
+        if k <= 0.:
+            reportError(iam, "Bulk modulus K must be positive")
+
+        if mu <= 0.:
+            reportError(iam, "Shear modulus MU must be positive")
+
+        # poisson's ratio
+        nu = (3. * k - 2 * mu) / (6 * k + 2 * mu)
+        if nu < 0.:
+            reportWarning(iam, "negative Poisson's ratio")
+
+        ui = np.array([k, mu])
+
         return ui
 
-    def _set_field(self,*args,**kwargs):
-        a = [self.ui,self.ui,self.ui,migError,migMessage]
-        if not PC_F2PY_CALLBACK: a = a[:-2]
-        field = mtllib.hookerxv(*a)
-        return field
+    def _fort_set_up(self, mui):
+        props = np.array(mui)
+        a = [props, migError, migMessage]
+        if not PC_F2PY_CALLBACK:
+            a = a[:-2]
+        ui = mtllib.elast_chk(*a)
+        return ui
 
+
+def _py_update_state(ui, dt, d, sigold):
+
+    # strain increment
+    de = d * dt
+
+    # user properties
+    k, mu = ui
+
+    # useful constants
+    twomu = 2. * mu
+    alam = k - twomu / 3.
+
+    # elastic stress update
+    trde = np.sum(de * I6)
+    sig = sigold + alam * trde * I6 + twomu * de
+    return sig

@@ -10,13 +10,18 @@ The ``Payette`` project has the following directory structure
 
 ::
 
-  PAYETTE_ROOT
-    configure.py
+  PAYETTE_ROOT/
+      configure.py
+    COPYING
     __init__.py
     README
 
     Aux/
       Inputs/
+
+    Benchmarks/
+      Materials/
+      Regression/
 
     MaterialsDatabase/
 
@@ -31,10 +36,6 @@ The ``Payette`` project has the following directory structure
       Materials/
         Fortran/
         Library/
-
-    Tests/
-      Materials/
-      Regression/
 
     Toolset/
 

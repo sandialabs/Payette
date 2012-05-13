@@ -1,0 +1,117 @@
+%%
+%% This is file `orig_tensors.sty',
+\ProvidesPackage{$LATEX$/payette_tensors}[2009/01/14 v1.0 tensor typesetting]
+\RequirePackage{amsmath,amsfonts,amssymb,amsthm,mathrsfs}
+\RequirePackage{bbm,bm}
+\RequirePackage{ifthen}
+\RequirePackage{upgreek}
+\RequirePackage{stmaryrd}
+
+% -- tensor typesetting
+\newcommand{\Tensor}[4][]{%
+  \ifthenelse{\equal{#4}{}}{%
+    {#1{\boldsymbol{#2}}_{#3}}%
+  }{%
+    {#1{\boldsymbol{#2}}^{\:#4}_{#3}}%
+  }%
+}
+
+% ------------------------------------------------------------- tensor operations
+\newcommand{\Adj}[1]{#1\tensopsupscrtext{CT}} % adjugate
+\newcommand{\ArbProd}{\odot}
+\newcommand{\Cof}[1]{#1\tensopsupscrtext{C}}
+\newcommand{\Cofi}[2]{\Cof{#1}\tosubsm{#2}}      % indicial cofactor
+\newcommand{\dev}{\operatorname{dev}}
+\newcommand{\DevTensor}[1]{{#1^{\prime}}}
+\newcommand{\DotProd}{{\boldsymbol{\cdot}}}
+\newcommand{\DDotProd}{{\ensuremath{\boldsymbol{:}}}}
+\newcommand{\DyadicProd}{{\otimes}}
+\newcommand{\Inv}[1]{#1\tensopsupscrmath{-1}}
+\newcommand{\Inverse}[1]{#1\tensopsupscrmath{-1}}
+\newcommand{\InvTrans}[1]{#1\tensopsupscrtext{-T}}
+\newcommand{\iso}{\operatorname{iso}}
+\newcommand{\IsoPart}[1]{#1\mossst{iso}}
+\newcommand{\QDotProd}{{\DDotProd{}}{\DDotProd{}}}
+\newcommand{\SymOp}{\operatorname{sym}}
+\newcommand{\TDotProd}{{\boldsymbol{\dot{:}}}}
+%\newcommand{\TDotProd}{{{{\lower .2ex\hbox{$\scriptscriptstyle{\bullet}$}}%
+%        {\kern -.325em\raise .41ex\hbox{$\scriptscriptstyle{\bullet}$}}}%
+%      {\kern -.320em\raise  1.ex\hbox{$\scriptscriptstyle{\bullet}$}}}}
+\newcommand{\Trans}[1]{\Transpose{#1}}
+\newcommand{\Transpose}[1]{#1\tensopsupscrtext{T}}
+\newcommand{\TraceOp}{\operatorname{tr}}
+\newcommand{\Trace}[1]{\TraceOp#1}
+\newcommand{\DetOp}{\operatorname{det}}
+\newcommand{\Det}[1]{\DetOp#1}
+
+% ----------------------------------------------------------------- Misc. tensors
+\newcommand{\TensSymDevPart}[1]{#1\tensopsupscrtext{sd}}
+\newcommand{\TensSkewPart}[1]{#1\tensopsupscrtext{skew}}
+\newcommand{\TensIsoPart}[1]{#1\tensopsupscrtext{iso}}
+
+% ----------------------------------------------------------- first order tensors
+\newcommand{\aaa}{\Tensor{a}{}{}}
+\newcommand{\bbb}{\Tensor{b}{}{}}
+\newcommand{\ccc}{\Tensor{c}{}{}}
+\newcommand{\ZeroVector}{\Tensor{0}{}{}}
+
+% ---------------------------------------------------------- second order tensors
+\newcommand{\A}{\Tensor{A}{}{}}
+\newcommand{\B}{\Tensor{B}{}{}}
+\newcommand{\Cc}{\Tensor{C}{}{}}
+\newcommand{\SpatialPosition}{\Tensor{x}{}{}}
+\newcommand{\ReferencePosition}{\Tensor{X}{}{}}
+\newcommand{\BaseVector}[2][e]{\Tensor{\mathrm{#1}{#2}{}}}
+\newcommand{\BaseTensor}[2][E]{\Tensor{\mathrm{#1}{#2}{}}}
+\newcommand{\Identity}[1][\delta]{\Tensor{#1}{}{}}
+\newcommand{\SOIdentity}{\Identity}
+\newcommand{\NSOIdentity}{\hat{\Identity}}
+\newcommand{\IndIdentity}[1]{\delta\tosubsm{#1}}
+\newcommand{\ZeroTensor}{\Tensor{0}{}{}}
+\newcommand{\OrthogTensor}{\Tensor{Q}{}{}}
+\newcommand{\RotTensor}{\Tensor{R}{}{}}
+\newcommand{\KronDelta}[1]{\delta\tosubsm{#1}}
+
+% ---------------------------------------------------------------- basis tensors
+\newcommand{\BaseTensP}{\BaseTensor{p}}
+\newcommand{\BaseTensZ}{\BaseTensor{z}}
+\newcommand{\BaseTensR}{\BaseTensor{r}}
+\newcommand{\BaseTensT}{\BaseTensor{\theta}}
+\newcommand{\Er}{\BaseTensR}
+\newcommand{\Ez}{\BaseTensZ}
+\newcommand{\Et}{\BaseTensT}
+
+% ---------------------------------------------------------- fourth order tensors
+\newcommand{\AAA}{\Tensor{\mathbb{A}}{}{}}
+\newcommand{\BBB}{\Tensor{\mathbb{B}}{}{}}
+\newcommand{\CCC}{\Tensor{\mathbb{C}}{}{}}
+\newcommand{\FourthOIdent}{\Tensor{\mathbb{I}}{}{}}
+\newcommand{\FOBaseTensor}[2][E]{\Tensor{\mathrm{#1}}\tosubsm{#2}{}}
+\newcommand{\Esd}{\tenssymdevpart{\FOBaseTensor{}}}
+\newcommand{\Eiso}{\tensisopart{\FOBaseTensor{}}}
+\newcommand{\Eskew}{\tensskewpart{\FOBaseTensor{}}}
+\newcommand{\ProjOp}{\Tensor{\mathbb{P}{}{}}}
+\newcommand{\ProjTensor}{\Tensor{\mathbb{P}{}{}}}
+\newcommand{\ArbProjTensor}{\mathcal{P}}
+\newcommand{\ProjTensCoef}{\Gamma}
+
+% ------------------------------------------------------- arbitrary order tensors
+\newcommand{\ArbOTensor}{\boldsymbol{\mathcal{A}}}
+
+% from here down is code to define the tensor typesetting for the tensor types
+% above
+% ----------------------------------------------------------- internal shortcuts
+\def\SSCRSIZE{\scriptstyle}
+\def\SSSCRSIZE{\scriptscriptstyle}
+\def\tensopsupscrtext#1{^{\SSCRSIZE\mathrm{#1}}}
+\def\tensopsubscrtext#1{_{\SSCRSIZE\mathrm{#1}}}
+\def\tensopsupscrmath#1{^{\SSCRSIZE{#1}}}
+\def\tosubsm#1{_{\SSCRSIZE{#1}}}
+\def\tenssymdevpart#1{#1\tensopsupscrtext{sd}}
+\def\tensskewpart#1{#1\tensopsupscrtext{skew}}
+\def\tensisopart#1{#1\tensopsupscrtext{iso}}
+
+
+\endinput
+%%
+%% End of file `orig_tensors.sty'.

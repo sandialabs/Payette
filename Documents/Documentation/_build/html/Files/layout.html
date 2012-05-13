@@ -25,7 +25,6 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="Payette 1.0 documentation" href="../index.html" />
     <link rel="next" title="Obtaining Payette" href="obtaining.html" />
     <link rel="prev" title="Introduction" href="introduction.html" /> 
@@ -57,13 +56,18 @@
 <div class="section" id="payette-directory-structure">
 <h2><em>Payette</em> Directory Structure<a class="headerlink" href="#payette-directory-structure" title="Permalink to this headline">¶</a></h2>
 <p>The <tt class="docutils literal"><span class="pre">Payette</span></tt> project has the following directory structure</p>
-<div class="highlight-python"><pre>PAYETTE_ROOT
-  configure.py
+<div class="highlight-python"><pre>PAYETTE_ROOT/
+    configure.py
+  COPYING
   __init__.py
   README
 
   Aux/
     Inputs/
+
+  Benchmarks/
+    Materials/
+    Regression/
 
   MaterialsDatabase/
 
@@ -78,10 +82,6 @@
     Materials/
       Fortran/
       Library/
-
-  Tests/
-    Materials/
-    Regression/
 
   Toolset/</pre>
 </div>
