@@ -104,7 +104,7 @@ Installation
 
    which will build the *Payette* material libraries and create a configuration
    file of all built and installed materials in
-   :file:`PAYETTE_ROOT/Source/Materials/Payette_installed_materials.py`
+   :file:`PAYETTE_ROOT/Source/Payette_installed_materials.py`
 
 
 Testing the Installation

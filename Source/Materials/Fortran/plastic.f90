@@ -21,25 +21,27 @@
 ! FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 ! DEALINGS IN THE SOFTWARE.
 
+
+! ***************************************************************************** !
+
+
 subroutine plast_chk(ui)
-  !***********************************************************************
+  ! *************************************************************************** !
   !     REQUIRED MIG DATA CHECK ROUTINE
   !     Checks validity of user inputs for DMM model.
   !     Sets defaults for unspecified user input.
   !     Adjusts user input to be self-consistent.
-  !
-  !***********************************************************************
+  ! *************************************************************************** !
 
   implicit none
 
-  !...................................................................... passed
+  !........................................................................passed
   double precision, dimension (*) :: ui
-  !...................................................................... local
+  !.........................................................................local
   double precision :: k, mu, y, a, c, m, nu
   character*9 iam
   parameter(iam='plast_chk' )
-
-  ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ plast_chk
+  ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ plast_chk
 
   k = ui(1)
   mu = ui(2)
@@ -73,40 +75,43 @@ subroutine plast_chk(ui)
   return
 end subroutine plast_chk
 
+
+! ***************************************************************************** !
+
+
 subroutine plast_rxv(nx, namea, keya, rinit, iadvct)
-!**********************************************************************
-!     REQUESTED EXTRA VARIABLES FOR KAYENTA
-!
-!     This subroutine creates lists of the internal state variables
-!     needed for DMM. This routine merely sends a
-!     LIST of internal state variable requirements back to the host
-!     code.   IT IS THE RESPONSIBILITY OF THE HOST CODE to loop over
-!     the items in each list to actually establish necessary storage
-!     and (if desired) set up plotting, restart, and advection
-!     control for each internal state variable.
-!
-!     called by: host code after all input data have been checked
-!
-!***********************************************************************
+  ! *************************************************************************** !
+  !     REQUESTED EXTRA VARIABLES FOR KAYENTA
+  !
+  !     This subroutine creates lists of the internal state variables
+  !     needed for DMM. This routine merely sends a
+  !     LIST of internal state variable requirements back to the host
+  !     code.   IT IS THE RESPONSIBILITY OF THE HOST CODE to loop over
+  !     the items in each list to actually establish necessary storage
+  !     and (if desired) set up plotting, restart, and advection
+  !     control for each internal state variable.
+  !
+  !     called by: host code after all input data have been checked
+  ! *************************************************************************** !
 
   implicit none
 
-  !.................................................................. parameters
+  !....................................................................parameters
   integer, parameter :: nsv=7
   integer, parameter :: mmcn=50, mmck=10, mnunit=7
   integer, parameter :: mmcna=nsv*mmcn, mmcka=nsv*mmck
 
-  !...................................................................... passed
+  !........................................................................passed
   integer :: nx
   integer, dimension(*) :: iadvct
   double precision, dimension(*) :: rinit
   character*1 namea(*), keya(*)
 
-  !...................................................................... local
+  !.........................................................................local
   character*(mmcn) name(nsv)
   character*(mmck) key(nsv)
+  ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ plast_rxv
 
-  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ plast_rxv
   call logmes('############# requesting plastic extra variables')
 
   rinit(1:nsv) = 0.d0
@@ -114,39 +119,39 @@ subroutine plast_rxv(nx, namea, keya, rinit, iadvct)
   nx = 0
   ! equivalent plastic strain
   nx = nx+1
-  name(nx) = 'equivalent plastic strain'
-  key(nx) = 'EQPS'
+  name(nx) = 'distortional plastic strain'
+  key(nx) = 'GAM'
   iadvct(nx) = 0        ! input and output
 
   ! -- back stress
   nx=nx+1
   name(nx)='11 component of back stress'
-  key(nx)='QSSIG11'
+  key(nx)='BSIG11'
   iadvct(nx)=1
 
   nx=nx+1
   name(nx)='22 component of back stress'
-  key(nx)='QSSIG22'
+  key(nx)='BSIG22'
   iadvct(nx)=1
 
   nx=nx+1
   name(nx)='33 component of back stress'
-  key(nx)='QSSIG33'
+  key(nx)='BSIG33'
   iadvct(nx)=1
 
   nx=nx+1
   name(nx)='12 component of back stress'
-  key(nx)='QSSIG12'
+  key(nx)='BSIG12'
   iadvct(nx)=1
 
   nx=nx+1
   name(nx)='23 component of back stress'
-  key(nx)='QSSIG23'
+  key(nx)='BSIG23'
   iadvct(nx)=1
 
   nx=nx+1
   name(nx)='13 component of back stress'
-  key(nx)='QSSIG13'
+  key(nx)='BSIG13'
   iadvct(nx)=1
 
   call tokens(nx, name, namea)
@@ -155,17 +160,16 @@ subroutine plast_rxv(nx, namea, keya, rinit, iadvct)
 end subroutine plast_rxv
 
 
-
-
+!****************************************************************************** !
 
 
 subroutine plast_calc(nc, nsv, dt, ui, sigarg, darg, svarg)
-  !***********************************************************************
+  !**************************************************************************** !
   !
   !     Description:
   !       Combined kinematic/isotropic hardening plasticity
   !
-  !***********************************************************************
+  !**************************************************************************** !
   !
   !     input arguments
   !     ===============
@@ -184,107 +188,153 @@ subroutine plast_calc(nc, nsv, dt, ui, sigarg, darg, svarg)
   !     ================
   !      USM      dp                      uniaxial strain modulus
   !
-  !***********************************************************************
+  !**************************************************************************** !
   !
   !      stresss and strains, plastic strain tensors
   !          11, 22, 33, 12, 23, 13
   !
-  !***********************************************************************
+  !**************************************************************************** !
 
   implicit none
 
-  !.................................................................. parameters
-  double precision, parameter :: root23=sqrt(2.d0/3.d0), two_third=2.d0/3.d0
+  !....................................................................parameters
   double precision, parameter, dimension(6) :: delta = (/1.,1.,1.,0.,0.,0./)
   double precision, parameter, dimension(6) :: w = (/1.,1.,1.,2.,2.,2./)
-
-  !...................................................................... passed
+  !........................................................................passed
   integer :: nc, nsv
   double precision :: dt
   double precision, dimension(*) :: ui
   double precision, dimension(nsv, nc) :: svarg
   double precision, dimension(6, nc) :: sigarg, darg
-  !...................................................................... local
+  !........................................................................local
   integer :: ic
-  double precision :: k, mu, y0, y, a, c, m, twomu, alam, smean, trde, dsmag
-  double precision :: eqps, facyld, nddp, h_kin, h_iso, dnom, diff, radius, dlam
-  double precision :: fac
-  double precision, dimension(6) :: de, sig, bstress, ds, s
-
-  ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ plast_chk
+  double precision :: k, mu, y0, y, a, c, m, twomu, threek, rt2j2
+  double precision :: gam, facyld, dfdy, hy, h, radius
+  double precision :: dlam, num, dnom
+  double precision, dimension(6) :: de, sig, dsig, bstress, xid, xi, n, p
+  double precision, dimension(6) :: dfda, ha
+  character*10 iam
+  parameter(iam='plast_calc' )
+  ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ plast_calc
 
   ! user properties
   k = ui(1)
   mu = ui(2)
   y0 = ui(3)
-  a = ui(4) * two_third
+  a = ui(4)
   c = ui(5)
   m = ui(6)
 
   ! constants
-  twomu = 2. * mu
-  alam = k - twomu / 3.
+  twomu = 2.d0 * mu
+  threek = 3.d0 * k
 
   gather_scatter: do ic = 1, nc
 
      ! get passed arguments
      de = darg(1:6, ic) * dt
-     eqps = svarg(1, ic)
+     gam = svarg(1, ic)
      bstress = svarg(2:7, ic)
 
      ! elastic predictor
-     trde = sum(de * delta)
-     sig = sigarg(1:6, ic) + alam * trde * delta + twomu * de
+     dsig = threek * iso(de) + twomu * dev(de)
+     sig = sigarg(1:6, ic) + dsig
 
      ! elastic predictor relative to back stress - shifted stress
-     s = sig - bstress
+     xi = sig - bstress
 
      ! deviator of shifted stress and its magnitude
-     smean = sum(s * delta) / 3.
-     ds = s - smean * delta
-     dsmag = sqrt(sum(w * ds * ds))
+     xid = dev(xi)
+     rt2j2 = mag(xid)
 
      ! yield stress
      y = y0
-     if(c .ne. 0.d0) y = y + c * eqps ** (1 / m)
-     radius = root23 * y
+     if(c .ne. 0.d0) y = y + c * gam ** (1 / m)
+     radius = sqrt(2.d0 / 3.d0) * y
 
      ! check yield
      facyld = 0.d0
-     if(dsmag - radius .ge. 0.d0) facyld = 1.d0
-     dsmag = dsmag + (1.d0 - facyld)
+     if(rt2j2 - radius .ge. 0.d0) facyld = 1.d0
 
-     ! increment in plastic strain
-     nddp = twomu
-     h_kin = a
-     h_iso = 0
-     if(c .ne. 0.d0) h_iso = root23 * m * c * ((y - y0) / c) ** ((m-1)/m)
-     dnom = nddp + h_kin + h_iso
+     ! yield surface normal and return direction
+     !                   df/dsig
+     !            n = -------------,  p = C : n
+     !                 ||df/dsig||
+     !
+     !            df           xid         || df ||      1
+     !           ---- = ----------------,  ||----|| = -------
+     !           dsig    root2 * radius    ||dsig||    root2
+     n = xid / radius
+     p = threek * iso(n) + twomu * dev(n)
 
-     diff = dsmag - radius
-     dlam = facyld * diff / dnom
+     ! consistency parameter
+     !                  n : dsig
+     !         dlam = -----------,  H = dfda : ha + dfdy * hy
+     !                 n : p - H
+
+     ! numerator
+     num = ddp(n, dsig)
+
+     ! denominator
+     ha = 2.d0 / 3.d0 * a * dev(n)
+     dfda = -xid / sqrt(2.d0) / radius
+     hy = 0.d0
+     if(c .ne. 0.d0) hy = m * c * ((y - y0) / c) ** ((m - 1) / m)
+     dfdy = -1.d0 / sqrt(3.d0)
+     H = sqrt(2.d0) * (ddp(dfda, ha) + dfdy * hy)
+     dnom = ddp(n, p) - H + (1.d0 - facyld)
+
+     dlam = facyld * num / dnom
+     if(dlam .lt. 0.d0) call bombed(iam//": negative dlam")
 
      ! equivalet plastic strain
-     eqps = eqps + root23 * dlam
-
-     ! work with unit tensors
-     dlam = dlam / dsmag
+     gam = gam + dlam
 
      ! update back stress
-     fac = a * dlam
-     bstress = bstress + fac * ds
+     bstress = bstress + 2.d0 / 3.d0 * a * dlam * dev(n)
 
      ! update stress
-     fac = twomu * dlam
-     sig = sig - fac * ds
+     sig = sig - dlam * p
 
      ! store data
      sigarg(1:6, ic) = sig
-     svarg(1, ic) = eqps
+     svarg(1, ic) = gam
      svarg(2:7, ic) = bstress
 
   end do gather_scatter
 
   return
+
+  contains
+
+    function ddp(a, b)
+      implicit none
+      double precision ddp
+      double precision, dimension(6) :: a, b
+      ddp = sum(w * a * b)
+      return
+    end function ddp
+
+    function mag(a)
+      implicit none
+      double precision mag
+      double precision, dimension(6) :: a
+      mag = sqrt(ddp(a, a))
+      return
+    end function mag
+
+    function dev(a)
+      implicit none
+      double precision, dimension(6) :: dev, a
+      dev = a - iso(a)
+      return
+    end function dev
+
+    function iso(a)
+      implicit none
+      double precision, dimension(6) :: iso, a
+      iso = ddp(a, delta) / 3. * delta
+      return
+    end function iso
 
 end subroutine plast_calc

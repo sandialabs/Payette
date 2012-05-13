@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Payette Material Model Driver - Official Documentation
-========================================================
+======================================================
 
 .. toctree::
    :maxdepth: 2
@@ -19,6 +19,7 @@ Payette Material Model Driver - Official Documentation
    Files/installing_materials
    Files/optimization
    Files/permutation
+   Files/materials
 
 
 Indices and tables

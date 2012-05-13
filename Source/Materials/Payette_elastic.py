@@ -43,7 +43,7 @@ THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 attributes = {
     "payette material": True,
     "name": "elastic",
-    "aliases": ["hooke"],
+    "aliases": ["hooke", "linear elastic"],
     "fortran source": True,
     "build script": os.path.join(THIS_DIR, "Build_elastic.py"),
     "material type": ["mechanical"],

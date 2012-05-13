@@ -33,7 +33,7 @@ import Source.Payette_tensor as pt
 
 iam = "Payette_driver.solid_driver(the_model,restart)"
 
-np.set_printoptions(precision=2)
+np.set_printoptions(precision=4)
 
 def eos_driver(the_model, **kwargs):
     """

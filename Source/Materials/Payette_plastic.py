@@ -29,7 +29,7 @@ from math import sqrt
 from Source.Payette_utils import *
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
-from Source.Payette_tensor import I6, sym_map
+from Source.Payette_tensor import sym_map
 from Toolset.elastic_conversion import compute_elastic_constants
 
 try:
@@ -39,11 +39,12 @@ except:
     imported = False
     pass
 
+
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 attributes = {
     "payette material": True,
     "name": "plastic",
-    "aliases": [],
+    "aliases": ["elastic plastic", "von mises"],
     "fortran source": True,
     "build script": os.path.join(THIS_DIR, "Build_plastic.py"),
     "material type": ["mechanical"],
@@ -51,6 +52,7 @@ attributes = {
     }
 
 w = np.array([1., 1., 1., 2., 2., 2.])
+delta = np.array([1., 1., 1., 0., 0., 0.])
 
 class Plastic(ConstitutiveModelPrototype):
     """ Plasticity model.
@@ -77,7 +79,7 @@ class Plastic(ConstitutiveModelPrototype):
         self.register_parameter("KO", 6, aliases=[])
         self.register_parameter("CL", 7, aliases=[])
         self.register_parameter("CT", 8, aliases=[])
-        self.register_parameter("CO", 9, aliases=[])
+        self.register_parameter("C0", 9, aliases=[])
         self.register_parameter("CR", 10, aliases=[])
         self.register_parameter("RHO", 11, aliases=["DENSITY"])
         self.register_parameter("Y", 12, aliases=["Y0", "A1", "YIELD STRENGTH"])
@@ -192,8 +194,8 @@ class Plastic(ConstitutiveModelPrototype):
         names, keys = [], []
 
         # equivalent plastic strain
-        names.append("equivalent plastic strain")
-        keys.append("eqps")
+        names.append("distortional plastic strain")
+        keys.append("gam")
 
         # back stress
         for i in range(6):
@@ -226,63 +228,90 @@ class Plastic(ConstitutiveModelPrototype):
 
 def _py_update_state(ui, dt, d, sigold, xtra):
 
+    iam = "plastic._py_update_state"
+
+    # passed quantities
     de = d * dt
-    eqps = xtra[0]
+    gam = xtra[0]
     bstress = xtra[1:]
-
-    # user properties
     k, mu, y0, a, c, m = ui
-    a = 2. / 3. * a
-
-    # useful constants
-    twomu = 2. * mu
-    alam = k - twomu / 3.
-    root23 = sqrt(2. / 3.)
+    threek, twomu = 3. * k, 2. * mu
 
     # elastic predictor
-    trde = np.sum(de * I6)
-    sig = sigold + alam * trde * I6 + twomu * de
+    dsig = threek * _iso(de) + twomu * _dev(de)
+    sig = sigold + dsig
 
     # elastic predictor relative to back stress - shifted stress
-    s = sig - bstress
+    xi = sig - bstress
 
     # deviator of shifted stress and its magnitude
-    smean = np.sum(s * I6) / 3.
-    ds = s - smean * I6
-    dsmag = sqrt(np.sum(w * ds * ds))
+    xid = _dev(xi)
+    rt2j2 = _mag(xid)
 
     # yield stress
-    y = y0 if c == 0. else y0 + c * eqps ** (1 / m)
-    radius = root23 * y
+    y = y0 if c == 0. else y0 + c * gam ** (1 / m)
+    radius = sqrt(2. / 3.) * y
 
     # check yield
-    facyld = 0. if dsmag - radius <= 0. else 1.
-    dsmag = dsmag + (1. - facyld)
+    facyld = 0. if rt2j2 - radius <= 0. else 1.
 
-    # increment in plastic strain
-    nddp = twomu
-    h_kin = a
-    h_iso = 0 if c == 0. else root23 * m * c * ((y - y0) / c) ** ((m-1)/m)
-    dnom = nddp + h_kin + h_iso
+    # yield surface normal and return direction
+    #                   df/dsig
+    #            n = -------------,  p = C : n
+    #                 ||df/dsig||
+    #
+    #            df           xid         || df ||      1
+    #           ---- = ----------------,  ||----|| = -------
+    #           dsig    root2 * radius    ||dsig||    root2
+    n = xid / radius
+    p = threek * _iso(n) + twomu * _dev(n)
 
-    diff = dsmag - radius
-    dlam = facyld * diff / dnom
+    # consistency parameter
+    #                  n : dsig
+    #         dgam = -----------,  H = dfda : ha + dfdy * hy
+    #                 n : p - H
+
+    # numerator
+    num = _ddp(n, dsig)
+
+    # denominator
+    ha = 2. / 3. * a * _dev(n)
+    dfda = -xid / sqrt(2.) / radius
+    hy = 0. if c == 0. else m * c * ((y - y0) / c) ** ((m - 1) / m)
+    dfdy = -1. / sqrt(3.)
+    H = sqrt(2.) * (_ddp(dfda, ha) + dfdy * hy)
+    dnom = _ddp(n, p) - H + (1. - facyld)
+
+    dgam = facyld * num / dnom
+    if dgam < 0.:
+        reportError(iam, "negative dgam")
 
     # equivalet plastic strain
-    eqps += root23 * dlam
-
-    # work with unit tensors
-    dlam = dlam / dsmag
+    gam += dgam
 
     # update back stress
-    fac = a * dlam
-    bstress = bstress + fac * ds
+    bstress = bstress + 2. / 3. * a * dgam * _dev(n)
 
     # update stress
-    fac = twomu * dlam
-    sig = sig - fac * ds
+    sig = sig - dgam * p
 
     # store data
-    xtra = np.concatenate((np.array([eqps]), bstress))
+    xtra = np.concatenate((np.array([gam]), bstress))
 
     return sig, xtra
+
+def _ddp(a, b):
+    """ double dot product of symmetric second order tensors a and b """
+    return np.sum(w * a * b)
+
+def _mag(a):
+    """ magnitude of symmetric second order tensor a """
+    return sqrt(_ddp(a, a))
+
+def _dev(a):
+    """ deviatoric part of symmetric second order tensor a """
+    return a  - _iso(a)
+
+def _iso(a):
+    """ isotropic part of symmetric second order tensor a """
+    return _ddp(a, delta) / 3. * delta
