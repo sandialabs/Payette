@@ -93,6 +93,8 @@ subroutine finite_elast_calc(nc, ui, farg, earg, pk2arg, sigarg)
   !
   !******************************************************************************
 
+  use tensors
+
   implicit none
 
   !....................................................................parameters
@@ -106,10 +108,8 @@ subroutine finite_elast_calc(nc, ui, farg, earg, pk2arg, sigarg)
   double precision, dimension(9, nc) :: farg
   !.........................................................................local
   integer :: ic
-  double precision :: c11, c12, c44, jac
+  double precision :: c11, c12, c44
   double precision, dimension(6) :: e, pk2, sig
-  double precision, dimension(9) :: f
-
   ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ finite_elast_chk
 
   ! user properties
@@ -119,21 +119,8 @@ subroutine finite_elast_calc(nc, ui, farg, earg, pk2arg, sigarg)
 
   gather_scatter: do ic = 1, nc
 
-     ! pass passed args to local
-     f(1:9) = farg(1:9, ic)
-
-     ! jacobian
-     jac = f(1) * f(5) * f(9) + f(2) * f(6) * f(7) + f(3) * f(4) * f(8) &
-         -(f(1) * f(6) * f(8) + f(2) * f(4) * f(9) + f(3) * f(5) * f(7))
-
      ! green lagrange strain
-     e(1) = f(1) * f(1) + f(4) * f(4) + f(7) * f(7)
-     e(2) = f(2) * f(2) + f(5) * f(5) + f(8) * f(8)
-     e(3) = f(3) * f(3) + f(6) * f(6) + f(9) * f(9)
-     e(4) = f(1) * f(2) + f(4) * f(5) + f(7) * f(8)
-     e(5) = f(2) * f(3) + f(5) * f(6) + f(8) * f(9)
-     e(6) = f(1) * f(3) + f(4) * f(6) + f(7) * f(9)
-     e = .5d0 * (e - delta)
+     e = .5d0 * (tada(farg(1:9, ic)) - delta)
 
      ! pk2 stress
      pk2(1) = c11 * e(1) + c12 * e(2) + c12 * e(3)
@@ -142,31 +129,7 @@ subroutine finite_elast_calc(nc, ui, farg, earg, pk2arg, sigarg)
      pk2(4:) = c44 * e(4:)
 
      ! cauchy stress
-     sig(1) = f(1) * (f(1) * pk2(1) + f(2) * pk2(4) + f(3) * pk2(6)) + &
-              f(2) * (f(1) * pk2(4) + f(2) * pk2(2) + f(3) * pk2(5)) + &
-              f(3) * (f(1) * pk2(6) + f(2) * pk2(5) + f(3) * pk2(3))
-
-     sig(2) = f(4) * (f(4) * pk2(1) + f(5) * pk2(4) + f(6) * pk2(6)) + &
-              f(5) * (f(4) * pk2(4) + f(5) * pk2(2) + f(6) * pk2(5)) + &
-              f(6) * (f(4) * pk2(6) + f(5) * pk2(5) + f(6) * pk2(3))
-
-     sig(3) = f(7) * (f(7) * pk2(1) + f(8) * pk2(4) + f(9) * pk2(6)) + &
-              f(8) * (f(7) * pk2(4) + f(8) * pk2(2) + f(9) * pk2(5)) + &
-              f(9) * (f(7) * pk2(6) + f(8) * pk2(5) + f(9) * pk2(3))
-
-     sig(4) = f(1) * (f(4) * pk2(1) + f(5) * pk2(4) + f(6) * pk2(6)) + &
-              f(2) * (f(4) * pk2(4) + f(5) * pk2(2) + f(6) * pk2(5)) + &
-              f(3) * (f(4) * pk2(6) + f(5) * pk2(5) + f(6) * pk2(3))
-
-     sig(5) = f(4) * (f(7) * pk2(1) + f(8) * pk2(4) + f(9) * pk2(6)) + &
-              f(5) * (f(7) * pk2(4) + f(8) * pk2(2) + f(9) * pk2(5)) + &
-              f(6) * (f(7) * pk2(6) + f(8) * pk2(5) + f(9) * pk2(3))
-
-     sig(6) = f(1) * (f(7) * pk2(1) + f(8) * pk2(4) + f(9) * pk2(6)) + &
-              f(2) * (f(7) * pk2(4) + f(8) * pk2(2) + f(9) * pk2(5)) + &
-              f(3) * (f(7) * pk2(6) + f(8) * pk2(5) + f(9) * pk2(3))
-
-     sig = (1. / jac) * sig
+     sig = push(pk2, farg(1:9, ic))
 
      ! pass local to passed args
      earg(1:6, ic) = e(1:6)
@@ -178,3 +141,4 @@ subroutine finite_elast_calc(nc, ui, farg, earg, pk2arg, sigarg)
   return
 
 end subroutine finite_elast_calc
+

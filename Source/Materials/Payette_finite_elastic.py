@@ -26,9 +26,10 @@ import os
 import numpy as np
 
 import Source.Payette_utils as pu
+import Source.Materials.tensors as mt
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
-from Source.Payette_tensor import I6
+from Source.Payette_tensor import delta
 from Toolset.elastic_conversion import compute_elastic_constants
 
 try:
@@ -180,19 +181,8 @@ def _py_update_state(ui, F):
     # user input
     c11, c12, c44 = ui
 
-    # Jacobian
-    jac = (F[0] * F[4] * F[8] + F[1] * F[5] * F[6] + F[2] * F[3] * F[7]
-         -(F[0] * F[5] * F[7] + F[1] * F[3] * F[8] + F[2] * F[4] * F[6]))
-
     # green lagrange strain
-    E = np.zeros(6)
-    E[0] = F[0] * F[0] + F[3] * F[3] + F[6] * F[6]
-    E[1] = F[1] * F[1] + F[4] * F[4] + F[7] * F[7]
-    E[2] = F[2] * F[2] + F[5] * F[5] + F[8] * F[8]
-    E[3] = F[0] * F[1] + F[3] * F[4] + F[6] * F[7]
-    E[4] = F[1] * F[2] + F[4] * F[5] + F[7] * F[8]
-    E[5] = F[0] * F[2] + F[3] * F[5] + F[6] * F[8]
-    E = .5 * (E - I6)
+    E = 0.5 * (mt.tada(F) - delta)
 
     # PK2 stress
     pk2 = np.zeros(6)
@@ -201,32 +191,7 @@ def _py_update_state(ui, F):
     pk2[2] = c12 * E[0] + c12 * E[1] + c11 * E[2]
     pk2[3:] = c44 * E[3:]
 
-    # cauchy stress
-    sig = np.zeros(6)
-    sig[0] = (F[0] * (F[0] * pk2[0] + F[1] * pk2[3] + F[2] * pk2[5]) +
-              F[1] * (F[0] * pk2[3] + F[1] * pk2[1] + F[2] * pk2[4]) +
-              F[2] * (F[0] * pk2[5] + F[1] * pk2[4] + F[2] * pk2[2]))
+    sig = mt.push(pk2, F)
 
-    sig[1] = (F[3] * (F[3] * pk2[0] + F[4] * pk2[3] + F[5] * pk2[5]) +
-              F[4] * (F[3] * pk2[3] + F[4] * pk2[1] + F[5] * pk2[4]) +
-              F[5] * (F[3] * pk2[5] + F[4] * pk2[4] + F[5] * pk2[2]))
-
-    sig[2] = (F[6] * (F[6] * pk2[0] + F[7] * pk2[3] + F[8] * pk2[5]) +
-              F[7] * (F[6] * pk2[3] + F[7] * pk2[1] + F[8] * pk2[4]) +
-              F[8] * (F[6] * pk2[5] + F[7] * pk2[4] + F[8] * pk2[2]))
-
-    sig[3] = (F[0] * (F[3] * pk2[0] + F[4] * pk2[3] + F[5] * pk2[5]) +
-              F[1] * (F[3] * pk2[3] + F[4] * pk2[1] + F[5] * pk2[4]) +
-              F[2] * (F[3] * pk2[5] + F[4] * pk2[4] + F[5] * pk2[2]))
-
-    sig[4] = (F[3] * (F[6] * pk2[0] + F[7] * pk2[3] + F[8] * pk2[5]) +
-              F[4] * (F[6] * pk2[3] + F[7] * pk2[1] + F[8] * pk2[4]) +
-              F[5] * (F[6] * pk2[5] + F[7] * pk2[4] + F[8] * pk2[2]))
-
-    sig[5] = (F[0] * (F[6] * pk2[0] + F[7] * pk2[3] + F[8] * pk2[5]) +
-              F[1] * (F[6] * pk2[3] + F[7] * pk2[1] + F[8] * pk2[4]) +
-              F[2] * (F[6] * pk2[5] + F[7] * pk2[4] + F[8] * pk2[2]))
-
-    sig = (1. / jac) * sig
     return E, pk2, sig
 
