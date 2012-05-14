@@ -21,12 +21,10 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import sys
 import os
-import logging
 import numpy as np
 
-from Source.Payette_utils import *
+import Source.Payette_utils as pu
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 try:
     import Source.Materials.Library.elastic_plastic as mtllib
@@ -118,8 +116,8 @@ class ElasticPlastic(ConstitutiveModelPrototype):
 
         self.ui = self._check_props()
         (self.nsv,namea,keya,sv,rdim,iadvct,itype) = self._set_field()
-        namea = parseToken(self.nsv,namea)
-        keya = parseToken(self.nsv,keya)
+        namea = pu.parseToken(self.nsv,namea)
+        keya = pu.parseToken(self.nsv,keya)
 
         # register the extra variables with the payette object
         matdat.register_xtra_vars(self.nsv,namea,keya,sv)
@@ -136,7 +134,7 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         d = matdat.get_data("rate of deformation")
         sigold = matdat.get_data("stress")
         svold = matdat.get_data("extra variables")
-        a = [1,dt,self.ui,sigold,d,svold,migError,migMessage]
+        a = [1, dt, self.ui, sigold, d, svold, pu.migError, pu.migMessage]
         if not PC_F2PY_CALLBACK: a = a[:-2]
         a.append(self.nsv)
         signew,svnew,usm = mtllib.diamm_calc(*a)
@@ -151,13 +149,13 @@ class ElasticPlastic(ConstitutiveModelPrototype):
     # Private method
     def _check_props(self,**kwargs):
         props = np.array(self.ui0)
-        a = [props,migError,migMessage]
+        a = [props, pu.migError, pu.migMessage]
         if not PC_F2PY_CALLBACK: a = a[:-2]
         ui = mtllib.dmmchk(*a)
         return ui
 
     def _set_field(self,*args,**kwargs):
-        a = [self.ui,migError,migMessage]
+        a = [self.ui, pu.migError, pu.migMessage]
         if not PC_F2PY_CALLBACK: a = a[:-2]
         return mtllib.dmmrxv(*a)
 
