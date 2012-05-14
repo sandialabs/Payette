@@ -145,11 +145,12 @@ class MaterialBuilder():
         # make sure the module is loadable
         try:
             py_mod, py_path = get_module_name_and_path(self.libname)
-            fp, pathname, description = imp.find_module(py_mod,py_path)
-            build = imp.load_module(py_mod,fp,pathname,description)
+            fp, pathname, description = imp.find_module(py_mod, py_path)
+            build = imp.load_module(py_mod, fp, pathname, description)
             fp.close()
-        except ImportError(e):
-            raise BuildError("{0}".format(str(e)),35)
+        except ImportError:
+            print("{0} not imported".format(py_mod))
+            return 1
 
 
         # copy the extension module file to the library directory

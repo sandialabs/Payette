@@ -9,6 +9,7 @@ class Test(PayetteTest):
 
 
         self.enabled = True
+        self.enabled = False
 
         self.name = os.path.splitext(os.path.basename(__file__))[0]
         self.tdir = os.path.dirname(os.path.realpath(__file__))

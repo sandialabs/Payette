@@ -1,5 +1,13 @@
 module tensors
 
+  private delta, w
+  public tada, symleaf, dd66x6, push, tmul, ddp, mag, dev, iso
+
+  double precision, parameter, dimension(6) :: &
+       delta = (/1.d0, 1.d0, 1.d0, 0.d0, 0.d0, 0.d0/), &
+       w = (/1.d0, 1.d0, 1.d0, 2.d0, 2.d0, 2.d0/)
+
+
 contains
 
   function tada(a)
@@ -29,8 +37,6 @@ contains
     return
   end function tada
 
-  !****************************************************************************
-
   function symleaf(farg)
     !**************************************************************************
     ! Compute the 6x6 Mandel matrix (with index mapping {11,22,33,12,23,31})
@@ -42,12 +48,12 @@ contains
     !                   {B}=[FF]{A}
     !
     ! If F is a deformation F, then B is the "push" (spatial) transformation
-    ! of the reference tensor A If F is Inverse[F], then B is the "pull"
+    ! of the reference tensor A. If F is Inverse[F], then B is the "pull"
     ! (reference) transformation of the spatial tensor A, and therefore B
     ! would be Inverse[FF]{A}.
 
     ! If F is a rotation, then B is the rotation of A, and FF would be be a
-    ! 6x6 orthogonal matrix, just as is F
+    ! 6x6 orthogonal matrix, just as is F.
     !
     ! Parameters
     ! ----------
@@ -101,10 +107,6 @@ contains
     symleaf(6, 6) = f(3, 1) * f(1, 3) + f(3, 3) * f(1, 1)
     return
   end function symleaf
-
-
-  !****************************************************************************
-
 
   function dd66x6(job, a, x)
     !**************************************************************************
@@ -169,10 +171,6 @@ contains
     return
   end function dd66x6
 
-
-  !****************************************************************************
-
-
   function push(a, f)
     !**************************************************************************
     ! Performs the "push" transformation
@@ -209,6 +207,73 @@ contains
     push = dd66x6(1, symleaf(f), a) / detf
     return
   end function push
+
+  function unrot(a, r)
+    implicit none
+    !....................................................................passed
+    double precision, dimension(6) :: a, unrot
+    double precision, dimension(9) :: r
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~push
+    unrot = dd66x6(1, symleaf(inv(r)), a)
+    return
+  end function unrot
+
+  function rot(a, r)
+    implicit none
+    !....................................................................passed
+    double precision, dimension(6) :: a, rot
+    double precision, dimension(9) :: r
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~push
+    rot = dd66x6(1, symleaf(r), a)
+    return
+  end function rot
+
+  function inv(a)
+    ! return the inverse of a.
+    double precision, dimension(9) :: a, inv
+    deta = a(1) * a(5) * a(9) + a(2) * a(6) * a(7) + a(3) * a(4) * a(8) &
+         -(a(1) * a(6) * a(8) + a(2) * a(4) * a(9) + a(3) * a(5) * a(7))
+    inv(1) = (a(5) * a(9) - a(8) * a(6)) / deta
+    inv(2) = (a(8) * a(3) - a(2) * a(9)) / deta
+    inv(3) = (a(2) * a(6) - a(5) * a(3)) / deta
+    inv(4) = (a(6) * a(7) - a(9) * a(4)) / deta
+    inv(5) = (a(9) * a(1) - a(3) * a(7)) / deta
+    inv(6) = (a(3) * a(4) - a(6) * a(1)) / deta
+    inv(7) = (a(4) * a(8) - a(7) * a(5)) / deta
+    inv(8) = (a(7) * a(2) - a(1) * a(8)) / deta
+    inv(9) = (a(1) * a(5) - a(4) * a(2)) / deta
+    return
+  end function inv
+
+  function ddp(a, b)
+    implicit none
+    double precision ddp
+    double precision, dimension(6) :: a, b
+    ddp = sum(w * a * b)
+    return
+  end function ddp
+
+  function mag(a)
+    implicit none
+    double precision mag
+    double precision, dimension(6) :: a
+    mag = sqrt(ddp(a, a))
+    return
+  end function mag
+
+  function dev(a)
+    implicit none
+    double precision, dimension(6) :: dev, a
+    dev = a - iso(a)
+    return
+  end function dev
+
+  function iso(a)
+    implicit none
+    double precision, dimension(6) :: iso, a
+    iso = ddp(a, delta) / 3. * delta
+    return
+  end function iso
 
 end module tensors
 

@@ -89,6 +89,8 @@ subroutine elast_calc(nc, dt, ui, sigarg, darg)
   !
   !***********************************************************************
 
+  use tensors
+
   implicit none
 
   !.................................................................. parameters
@@ -102,7 +104,7 @@ subroutine elast_calc(nc, dt, ui, sigarg, darg)
   double precision, dimension(6, nc) :: sigarg, darg
   !...................................................................... local
   integer :: ic
-  double precision :: k, mu, twomu, alam, trde
+  double precision :: k, mu, twomu, threek
   double precision, dimension(6) :: de
 
   ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ elast_chk
@@ -113,7 +115,7 @@ subroutine elast_calc(nc, dt, ui, sigarg, darg)
 
   ! constants
   twomu = 2. * mu
-  alam = k - twomu / 3.
+  threek = 3. * k
 
   gather_scatter: do ic = 1, nc
 
@@ -121,8 +123,7 @@ subroutine elast_calc(nc, dt, ui, sigarg, darg)
      de = darg(1:6, ic) * dt
 
      ! elastic stress update
-     trde = sum(de * delta)
-     sigarg(1:6, ic) = sigarg(1:6, ic) + alam * trde * delta + twomu * de
+     sigarg(1:6, ic) = sigarg(1:6, ic) + threek * iso(de) + twomu * dev(de)
 
   end do gather_scatter
 

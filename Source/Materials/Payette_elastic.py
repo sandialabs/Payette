@@ -24,12 +24,12 @@
 import sys
 import os
 import numpy as np
-from math import sqrt
 
 import Source.Payette_utils as pu
+import Source.Materials.tensors as mt
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
-from Source.Payette_tensor import I6, sym_map
+from Source.Payette_tensor import delta, sym_map
 from Toolset.elastic_conversion import compute_elastic_constants
 
 try:
@@ -49,8 +49,6 @@ attributes = {
     "material type": ["mechanical"],
     "default material": True,
     }
-
-w = np.array([1., 1., 1., 2., 2., 2.])
 
 class Elastic(ConstitutiveModelPrototype):
     """ Elasticity model.
@@ -175,12 +173,8 @@ def _py_update_state(ui, dt, d, sigold):
 
     # user properties
     k, mu = ui
-
-    # useful constants
     twomu = 2. * mu
-    alam = k - twomu / 3.
+    threek = 3. * k
 
     # elastic stress update
-    trde = np.sum(de * I6)
-    sig = sigold + alam * trde * I6 + twomu * de
-    return sig
+    return sigold + threek * mt.iso(de) + twomu * mt.dev(de)

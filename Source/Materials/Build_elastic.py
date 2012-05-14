@@ -45,7 +45,7 @@ class Build(MaterialBuilder):
     def build_extension_module(self):
 
         # fortran files
-        srcs = ["elastic.f90"]
+        srcs = ["tensors.f90", "elastic.f90"]
         self.source_files = [os.path.join(self.source_directory, x)
                              for x in srcs]
 

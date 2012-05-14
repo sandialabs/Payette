@@ -34,27 +34,11 @@ class Test(PayetteTest):
 
     def get_input_string(self):
 
-        mtl_props= """
-AN=1.
-B0=11.634e9
-G0=10.018e9
-G1=5
-A1=8.27e6
-A4=0.23
-R0=3500
-T0=298
-GP=1.0
-S1=1
-CV=800
-TM=1e99
-IDK=1
-IDG=1
-"""
-
         input_string = """begin simulation payette-test-input-str
   begin material
-    constitutive model elastic_plastic
-    {0}
+    constitutive model elastic
+    B0=11.634e9
+    G0=10.018e9
   end material
   begin boundary
     estar = -1.
@@ -71,8 +55,9 @@ end simulation
 
 begin simulation payette-test-input-str-1
   begin material
-    constitutive model elastic_plastic
-    {0}
+    constitutive model elastic
+    B0=11.634e9
+    G0=10.018e9
   end material
   begin boundary
     estar = -1.
@@ -86,7 +71,7 @@ begin simulation payette-test-input-str-1
     end legs
   end boundary
 end simulation
-""".format(mtl_props)
+"""
         return input_string
 
     def runTest(self):

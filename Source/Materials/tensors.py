@@ -1,6 +1,9 @@
 import numpy as np
 from math import sqrt
 
+w = np.array([1., 1., 1., 2., 2., 2.])
+delta = np.array([1., 1., 1., 0., 0., 0.])
+
 def tada(a):
     """ Compute Transpose(a).a
 
@@ -182,4 +185,18 @@ def push(a, f):
           -(f[0] * f[5] * f[7] + f[1] * f[3] * f[8] + f[2] * f[4] * f[6]))
     return np.array(dd66x6(1, symleaf(f), a)) / detf
 
+def ddp(a, b):
+    """ double dot product of symmetric second order tensors a and b """
+    return np.sum(w * a * b)
 
+def mag(a):
+    """ magnitude of symmetric second order tensor a """
+    return sqrt(ddp(a, a))
+
+def dev(a):
+    """ deviatoric part of symmetric second order tensor a """
+    return a  - iso(a)
+
+def iso(a):
+    """ isotropic part of symmetric second order tensor a """
+    return ddp(a, delta) / 3. * delta

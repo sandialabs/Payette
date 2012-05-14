@@ -21,15 +21,16 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import sys
 import os
+import sys
 import numpy as np
 from math import sqrt
 
 import Source.Payette_utils as pu
+import Source.Materials.tensors as mt
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
-from Source.Payette_tensor import sym_map
+from Source.Payette_tensor import delta, sym_map
 from Toolset.elastic_conversion import compute_elastic_constants
 
 try:
@@ -37,7 +38,6 @@ try:
     imported = True
 except:
     imported = False
-    pass
 
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -51,13 +51,8 @@ attributes = {
     "default material": True,
     }
 
-w = np.array([1., 1., 1., 2., 2., 2.])
-delta = np.array([1., 1., 1., 0., 0., 0.])
-
 class Plastic(ConstitutiveModelPrototype):
     """ Plasticity model.
-
-    Use MFLG = 0 for python implementation, MFLG = 1 for fortran
 
     """
 
@@ -239,15 +234,15 @@ def _py_update_state(ui, dt, d, sigold, xtra):
     threek, twomu = 3. * k, 2. * mu
 
     # elastic predictor
-    dsig = threek * _iso(de) + twomu * _dev(de)
+    dsig = threek * mt.iso(de) + twomu * mt.dev(de)
     sig = sigold + dsig
 
     # elastic predictor relative to back stress - shifted stress
     xi = sig - bstress
 
     # deviator of shifted stress and its magnitude
-    xid = _dev(xi)
-    rt2j2 = _mag(xid)
+    xid = mt.dev(xi)
+    rt2j2 = mt.mag(xid)
 
     # yield stress
     y = y0 if c == 0. else y0 + c * gam ** (1 / m)
@@ -266,7 +261,7 @@ def _py_update_state(ui, dt, d, sigold, xtra):
     #           ---- = ----------------,  ||----|| = -------
     #           dsig    root2 * radius    ||dsig||    root2
     n = xid / rt2j2  #radius
-    p = threek * _iso(n) + twomu * _dev(n)
+    p = threek * mt.iso(n) + twomu * mt.dev(n)
 
     # consistency parameter
     #                  n : dsig
@@ -274,25 +269,25 @@ def _py_update_state(ui, dt, d, sigold, xtra):
     #                 n : p - H
 
     # numerator
-    num = _ddp(n, dsig)
+    num = mt.ddp(n, dsig)
 
     # denominator
-    ha = 2. / 3. * a * _dev(n)
+    ha = 2. / 3. * a * mt.dev(n)
     dfda = -xid / sqrt(2.) / rt2j2 # radius
     hy = 0. if c == 0. else m * c * ((y - y0) / c) ** ((m - 1) / m)
     dfdy = -1. / sqrt(3.)
-    H = sqrt(2.) * (_ddp(dfda, ha) + dfdy * hy)
-    dnom = _ddp(n, p) - H + (1. - facyld) # avoid any divide by zero
+    H = sqrt(2.) * (mt.ddp(dfda, ha) + dfdy * hy)
+    dnom = mt.ddp(n, p) - H + (1. - facyld) # avoid any divide by zero
 
     dlam = facyld * num / dnom
     if dlam < 0.:
         pu.reportError(iam, "negative dlam")
 
     # equivalet plastic strain
-    gam += dlam * _mag(_dev(n))
+    gam += dlam * mt.mag(mt.dev(n))
 
     # update back stress
-    bstress = bstress + 2. / 3. * a * dlam * _dev(n)
+    bstress = bstress + 2. / 3. * a * dlam * mt.dev(n)
 
     # update stress
     sig = sig - dlam * p
@@ -302,18 +297,3 @@ def _py_update_state(ui, dt, d, sigold, xtra):
 
     return sig, xtra
 
-def _ddp(a, b):
-    """ double dot product of symmetric second order tensors a and b """
-    return np.sum(w * a * b)
-
-def _mag(a):
-    """ magnitude of symmetric second order tensor a """
-    return sqrt(_ddp(a, a))
-
-def _dev(a):
-    """ deviatoric part of symmetric second order tensor a """
-    return a  - _iso(a)
-
-def _iso(a):
-    """ isotropic part of symmetric second order tensor a """
-    return _ddp(a, delta) / 3. * delta

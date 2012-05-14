@@ -195,6 +195,8 @@ subroutine plast_calc(nc, nsv, dt, ui, sigarg, darg, svarg)
   !
   !**************************************************************************** !
 
+  use tensors
+
   implicit none
 
   !....................................................................parameters
@@ -305,37 +307,5 @@ subroutine plast_calc(nc, nsv, dt, ui, sigarg, darg, svarg)
   end do gather_scatter
 
   return
-
-  contains
-
-    function ddp(a, b)
-      implicit none
-      double precision ddp
-      double precision, dimension(6) :: a, b
-      ddp = sum(w * a * b)
-      return
-    end function ddp
-
-    function mag(a)
-      implicit none
-      double precision mag
-      double precision, dimension(6) :: a
-      mag = sqrt(ddp(a, a))
-      return
-    end function mag
-
-    function dev(a)
-      implicit none
-      double precision, dimension(6) :: dev, a
-      dev = a - iso(a)
-      return
-    end function dev
-
-    function iso(a)
-      implicit none
-      double precision, dimension(6) :: iso, a
-      iso = ddp(a, delta) / 3. * delta
-      return
-    end function iso
 
 end subroutine plast_calc
