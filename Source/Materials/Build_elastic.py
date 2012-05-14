@@ -24,6 +24,7 @@ from __future__ import print_function
 
 import os,sys
 
+import Payette_config as pc
 from Source.Payette_utils import BuildError
 from Source.Payette_material_builder import MaterialBuilder
 
@@ -45,9 +46,10 @@ class Build(MaterialBuilder):
     def build_extension_module(self):
 
         # fortran files
-        srcs = ["tensors.f90", "elastic.f90"]
+        srcs = ["elastic.f90"]
         self.source_files = [os.path.join(self.source_directory, x)
                              for x in srcs]
+        self.source_files.append(os.path.join(pc.PC_FORTRAN, "tensors.f90"))
 
         self.build_extension_module_with_f2py()
 

@@ -245,6 +245,22 @@ contains
     return
   end function inv
 
+  function d9x6(a, b)
+    double precision, dimension(9) :: a, d9x6
+    double precision, dimension(6) :: b
+    d9x6 = (/ &
+         a(1) * b(1) + a(4) * b(4) + a(7) * b(6), &
+         a(4) * b(2) + a(1) * b(4) + a(7) * b(5), &
+         a(7) * b(3) + a(4) * b(5) + a(1) * b(6), &
+         a(2) * b(1) + a(5) * b(4) + a(8) * b(6), &
+         a(5) * b(2) + a(2) * b(4) + a(8) * b(5), &
+         a(8) * b(3) + a(5) * b(5) + a(2) * b(6), &
+         a(3) * b(1) + a(6) * b(4) + a(9) * b(6), &
+         a(6) * b(2) + a(3) * b(4) + a(9) * b(5), &
+         a(9) * b(3) + a(6) * b(5) + a(3) * b(6)/)
+    return
+  end function d9x6
+
   function ddp(a, b)
     implicit none
     double precision ddp

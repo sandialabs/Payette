@@ -26,10 +26,9 @@ import os
 import numpy as np
 
 import Source.Payette_utils as pu
-import Source.Materials.tensors as mt
+import Source.Payette_tensor as pt
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
-from Source.Payette_tensor import delta, sym_map
 from Toolset.elastic_conversion import compute_elastic_constants
 
 try:
@@ -177,4 +176,4 @@ def _py_update_state(ui, dt, d, sigold):
     threek = 3. * k
 
     # elastic stress update
-    return sigold + threek * mt.iso(de) + twomu * mt.dev(de)
+    return sigold + threek * pt.iso(de) + twomu * pt.dev(de)

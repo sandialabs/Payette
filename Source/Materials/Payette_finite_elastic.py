@@ -26,10 +26,9 @@ import os
 import numpy as np
 
 import Source.Payette_utils as pu
-import Source.Materials.tensors as mt
+import Source.Payette_tensor as pt
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
-from Source.Payette_tensor import delta
 from Toolset.elastic_conversion import compute_elastic_constants
 
 try:
@@ -182,7 +181,7 @@ def _py_update_state(ui, F):
     c11, c12, c44 = ui
 
     # green lagrange strain
-    E = 0.5 * (mt.tada(F) - delta)
+    E = 0.5 * (pt.tada(F) - pt.delta)
 
     # PK2 stress
     pk2 = np.zeros(6)
@@ -191,7 +190,7 @@ def _py_update_state(ui, F):
     pk2[2] = c12 * E[0] + c12 * E[1] + c11 * E[2]
     pk2[3:] = c44 * E[3:]
 
-    sig = mt.push(pk2, F)
+    sig = pt.push(pk2, F)
 
     return E, pk2, sig
 

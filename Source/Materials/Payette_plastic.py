@@ -27,10 +27,9 @@ import numpy as np
 from math import sqrt
 
 import Source.Payette_utils as pu
-import Source.Materials.tensors as mt
+import Source.Payette_tensor as pt
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
-from Source.Payette_tensor import delta, sym_map
 from Toolset.elastic_conversion import compute_elastic_constants
 
 try:
@@ -195,8 +194,8 @@ class Plastic(ConstitutiveModelPrototype):
 
         # back stress
         for i in range(6):
-            names.append("{0} component of back stress".format(sym_map[i]))
-            keys.append("BSIG{0}".format(sym_map[i]))
+            names.append("{0} component of back stress".format(pt.sym_map[i]))
+            keys.append("BSIG{0}".format(pt.sym_map[i]))
             continue
         nxtra = len(keys)
         xtra = np.zeros(nxtra)
@@ -272,22 +271,22 @@ def _py_update_state(ui, dt, d, sigold, xtra):
     num = mt.ddp(n, dsig)
 
     # denominator
-    ha = 2. / 3. * a * mt.dev(n)
+    ha = 2. / 3. * a * pt.dev(n)
     dfda = -xid / sqrt(2.) / rt2j2 # radius
     hy = 0. if c == 0. else m * c * ((y - y0) / c) ** ((m - 1) / m)
     dfdy = -1. / sqrt(3.)
-    H = sqrt(2.) * (mt.ddp(dfda, ha) + dfdy * hy)
-    dnom = mt.ddp(n, p) - H + (1. - facyld) # avoid any divide by zero
+    H = sqrt(2.) * (pt.ddp(dfda, ha) + dfdy * hy)
+    dnom = pt.ddp(n, p) - H + (1. - facyld) # avoid any divide by zero
 
     dlam = facyld * num / dnom
     if dlam < 0.:
         pu.reportError(iam, "negative dlam")
 
     # equivalet plastic strain
-    gam += dlam * mt.mag(mt.dev(n))
+    gam += dlam * pt.mag(pt.dev(n))
 
     # update back stress
-    bstress = bstress + 2. / 3. * a * dlam * mt.dev(n)
+    bstress = bstress + 2. / 3. * a * dlam * pt.dev(n)
 
     # update stress
     sig = sig - dlam * p
