@@ -115,7 +115,7 @@ def newton(material, simdat, matdat):
         return converged
 
     # --- Initialize
-    Fnew = Fold + np.dot(pt.toMatrix(depsdt),Fold)*dt
+    Fnew = Fold + np.dot(pt.to_matrix(depsdt),Fold)*dt
 
     # replace deformation rate and gradient with current best guesses
     matdat.store_data("deformation gradient",Fnew,old=True)
@@ -151,7 +151,7 @@ def newton(material, simdat, matdat):
             matdat.restore_data("deformation gradient",Fold)
             return converged
 
-        Fnew = Fold + np.dot(pt.toMatrix(depsdt),Fold)*dt
+        Fnew = Fold + np.dot(pt.to_matrix(depsdt),Fold)*dt
         matdat.store_data("rate of deformation",depsdt,old=True)
         matdat.store_data("deformation gradient",Fnew,old=True)
         material.update_state(simdat, matdat)
@@ -252,7 +252,7 @@ def func(depsdt_opt,material,simdat,matdat):
     depsdt[v] = depsdt_opt
     Fold = matdat.get_data("deformation gradient",form="Matrix")
     dold = matdat.get_data("rate of deformation")
-    Fnew = Fold + np.dot(pt.toMatrix(depsdt),Fold)*dt
+    Fnew = Fold + np.dot(pt.to_matrix(depsdt),Fold)*dt
 
     # store the best guesses
     matdat.store_data("rate of deformation",depsdt,old=True)

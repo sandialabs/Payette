@@ -233,15 +233,15 @@ def _py_update_state(ui, dt, d, sigold, xtra):
     threek, twomu = 3. * k, 2. * mu
 
     # elastic predictor
-    dsig = threek * mt.iso(de) + twomu * mt.dev(de)
+    dsig = threek * pt.iso(de) + twomu * pt.dev(de)
     sig = sigold + dsig
 
     # elastic predictor relative to back stress - shifted stress
     xi = sig - bstress
 
     # deviator of shifted stress and its magnitude
-    xid = mt.dev(xi)
-    rt2j2 = mt.mag(xid)
+    xid = pt.dev(xi)
+    rt2j2 = pt.mag(xid)
 
     # yield stress
     y = y0 if c == 0. else y0 + c * gam ** (1 / m)
@@ -260,7 +260,7 @@ def _py_update_state(ui, dt, d, sigold, xtra):
     #           ---- = ----------------,  ||----|| = -------
     #           dsig    root2 * radius    ||dsig||    root2
     n = xid / rt2j2  #radius
-    p = threek * mt.iso(n) + twomu * mt.dev(n)
+    p = threek * pt.iso(n) + twomu * pt.dev(n)
 
     # consistency parameter
     #                  n : dsig
@@ -268,7 +268,7 @@ def _py_update_state(ui, dt, d, sigold, xtra):
     #                 n : p - H
 
     # numerator
-    num = mt.ddp(n, dsig)
+    num = pt.ddp(n, dsig)
 
     # denominator
     ha = 2. / 3. * a * pt.dev(n)

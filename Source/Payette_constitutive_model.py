@@ -348,7 +348,7 @@ class ConstitutiveModelPrototype(object):
             # perturb forward
             dp = np.array(d)
             dp[v[n]] = d[v[n]] + (deps/dtime)/2.
-            fp = Fold + np.dot(pt.toMatrix(dp),Fold)*dtime
+            fp = Fold + np.dot(pt.to_matrix(dp),Fold)*dtime
             matdat.store_data("rate of deformation",dp,old=True)
             matdat.store_data("deformation gradient",fp,old=True)
             self.update_state(simdat, matdat)
@@ -357,7 +357,7 @@ class ConstitutiveModelPrototype(object):
             # perturb backward
             dm = np.array(d)
             dm[v[n]] = d[v[n]] - (deps/dtime)/2.
-            fm = Fold + np.dot(pt.toMatrix(dm),Fold)*dtime
+            fm = Fold + np.dot(pt.to_matrix(dm),Fold)*dtime
             matdat.store_data("rate of deformation",dm,old=True)
             matdat.store_data("deformation gradient",fm,old=True)
             self.update_state(simdat, matdat)

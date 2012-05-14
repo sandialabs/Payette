@@ -299,7 +299,7 @@ def updateDeformation(simdat, matdat):
     matdat.store_data("deformation gradient",Ff)
 
     # compute the equivalent strain
-    eps = pt.toArray(E,symmetric=True)
+    eps = pt.to_array(E,symmetric=True)
     eqveps = np.sqrt( 2./3.*( sum(eps[:3]**2) + 2.*sum(eps[3:]**2)) )
     matdat.store_data("equivalent strain",eqveps)
 

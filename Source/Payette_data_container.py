@@ -405,7 +405,7 @@ class DataContainer:
                     if typ == "Vector":
                         pu.reportError(iam,"cannont return vector matrix")
 
-                    retval = pt.toMatrix(data[valtyp])
+                    retval = pt.to_matrix(data[valtyp])
 
                 else:
                     pu.reportError(iam,"unrecognized form {0}".format(form))
@@ -476,9 +476,9 @@ class DataContainer:
 
             if newval.shape == (3,3):
                 if typ == "Tensor":
-                    newval = pt.toArray(newval,symmetric=False)
+                    newval = pt.to_array(newval,symmetric=False)
                 elif typ == "SymTensor":
-                    newval = pt.toArray(newval)
+                    newval = pt.to_array(newval)
                 else:
                     pu.reportError(iam,"vector cannot be converted from matrix")
 
