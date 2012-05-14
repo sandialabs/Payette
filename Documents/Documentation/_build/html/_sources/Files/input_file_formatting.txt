@@ -88,7 +88,7 @@ defined. A ``material`` block takes the following form::
 
    Parameters are associated with the material, and not the constitutive model.
    This allows different materials to be exercised by different constitutive
-   models without changing parameters.
+   models without changing parameter values.
 
 An example ``material`` input block for an elastic material would look like::
 
@@ -150,70 +150,72 @@ microsecond values.
 
 .. _emit_keyword:
 
-.. data:: emit
+emit
 
-Write all data (``emit = all``) or data from only 10 timesteps (``emit =
-sparse``) to the output file.
+  Write all data (``emit = all``) or data from only 10 timesteps (``emit =
+  sparse``) to the output file.
 
 
 .. _screenout_keyword:
 
-.. data:: screenout
+screenout
 
-Print out all timestep information to the console.
+  Print out all timestep information to the console.
 
 
 .. _nprints_keyword:
 
-.. data:: nprints
+nprints
 
-Total number of writes to the output file during the simulation.
+  Total number of writes to the output file during the simulation.
 
 
 .. _ampl_keyword:
 
-.. data:: ampl
+ampl
 
-Multiplier on all leg inputs. ``ampl`` may be used to increase or decrease the
-peak values of the given inputs without changing the rates of those inputs.
+  Multiplier on all leg inputs. ``ampl`` may be used to increase or decrease
+  the peak values of the given inputs without changing the rates of those
+  inputs.
 
 
 .. _ratfac_keyword:
 
-.. data:: ratfac
+ratfac
 
-Multiplier on strain and stress rates - effectively achieved by dividing each
-time by ``ratfac``.
+  Multiplier on strain and stress rates - effectively achieved by dividing
+  each time by ``ratfac``.
 
 
 .. _kappa_keyword:
 
-.. data:: kappa
+kappa
 
-The keyword ``kappa`` is only used/defined for the purposes of strain or strain
-rate control. It refers to the coefficient used in the Seth-Hill generalized
-strain definition
+  The keyword ``kappa`` is only used/defined for the purposes of strain or
+  strain rate control. It refers to the coefficient used in the Seth-Hill
+  generalized strain definition
 
-.. math::
+  .. math::
 
-   [\varepsilon] = \frac{1}{\kappa}\left( [U]^\kappa - [I]\right)
+     \Strain = \frac{1}{\kappa}\left( \RightStretch^\kappa - \SOIdentity\right)
 
-Where :math:`\kappa` is the keyword ``kappa``, :math:`[\varepsilon]` is the
-strain tensor, :math:`[U]` is the right Cauchy stretch tensor, and :math:`[I]` is
-the identity tensor. Common values of :math:`\kappa` and the associated common
-names for each (there is some ambiguity in the names) are:
+  Where :math:`\kappa` is the keyword ``kappa``, :math:`\Strain` is the strain
+  tensor, :math:`\RightStretch` is the right Cauchy stretch tensor, and
+  :math:`\SOIdentity` is the second order identity tensor. Common values of
+  :math:`\kappa` and the associated common names for each (there is some
+  ambiguity in the names) are:
 
-  .. tabularcolumns:: |c|l|
+    .. tabularcolumns:: |c|l|
 
-  ==============      ==========================
-  :math:`\kappa`      Name(s)
-  ==============      ==========================
-  :math:`-2`          Green
-  :math:`-1`          True, Cauchy
-  :math:`0`           Logarithmic, Hencky, True
-  :math:`1`           Engineering, Swainger
-  :math:`2`           Lagrange, Almansi
-  ==============      ==========================
+    ==============      ==========================
+    :math:`\kappa`      Name(s)
+    ==============      ==========================
+    :math:`-2`          Green
+    :math:`-1`          True, Cauchy
+    :math:`0`           Logarithmic, Hencky, True
+    :math:`1`           Engineering, Swainger
+    :math:`2`           Lagrange, Almansi
+    ==============      ==========================
 
 
 .. _legs_block:
@@ -464,7 +466,8 @@ step, strain table ::
 Optional Blocks
 ===============
 
-The following blocks are optional: ``mathplot``, ``enumerate``.
+The following blocks are optional: ``mathplot``, ``permutation``,
+``extraction``, ``optimization``.
 
 
 ``mathplot`` Block
@@ -485,28 +488,6 @@ plotable variables is listed in each simulation's log file. Each line in the
 ``mathplot`` block can contain an arbitrary number of space, comma, or semi-colon
 delimited variables.
 
-
-``enumeration`` Block
----------------------
-
-The ``enumeration`` block is used to run a batch of simulations that are
-very similar to the base input given. The basic syntax is::
-
-  begin enumeration
-    enumerate PARAM1 VAL1 VAL2 VAL3 ...
-    enumerate PARAM2 VAL4 VAL5 VAL6 ...
-    ...
-  end enumeration
-
-This would take the general input and spawn simulations where the value associated
-with PARAM1 is replace by VAL1 and the value associated with PARAM2 is replaced by
-VAL4, then another simulation where PARAM1->VAL2 and PARAM2->VAL5, etc.
-
-Directories containing each individual simulation and its output are put into a
-general directory called ``SIMNAME.enum`` with the individual simulations being
-contained in subdirectories named ``job.X`` where the ``SIMNAME`` is the simulation
-name defined in the first line of the input file (``begin simulation SIMNAME``) and ``X`` is
-replaced by the index of the job being run.
 
 .. _inserting_files:
 

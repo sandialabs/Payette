@@ -23,7 +23,6 @@
 from __future__ import print_function
 import os,sys
 
-from Payette_config import *
 from Source.Payette_utils import BuildError
 from Source.Payette_material_builder import MaterialBuilder
 

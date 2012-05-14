@@ -26,7 +26,7 @@ import os
 import numpy as np
 from math import sqrt
 
-from Source.Payette_utils import *
+import Source.Payette_utils as pu
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 from Source.Payette_tensor import I6, sym_map
@@ -43,7 +43,7 @@ THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 attributes = {
     "payette material": True,
     "name": "elastic",
-    "aliases": ["hooke"],
+    "aliases": ["hooke", "linear elastic"],
     "fortran source": True,
     "build script": os.path.join(THIS_DIR, "Build_elastic.py"),
     "material type": ["mechanical"],
@@ -132,7 +132,7 @@ class Elastic(ConstitutiveModelPrototype):
             sig = _py_update_state(self.mui, dt, d, sigold)
 
         else:
-            a = [1, dt, self.mui, sigold, d, migError, migMessage]
+            a = [1, dt, self.mui, sigold, d, pu.migError, pu.migMessage]
             if not PC_F2PY_CALLBACK:
                 a = a[:-2]
             sig = mtllib.elast_calc(*a)
@@ -145,15 +145,15 @@ class Elastic(ConstitutiveModelPrototype):
         k, mu = mui
 
         if k <= 0.:
-            reportError(iam, "Bulk modulus K must be positive")
+            pu.reportError(iam, "Bulk modulus K must be positive")
 
         if mu <= 0.:
-            reportError(iam, "Shear modulus MU must be positive")
+            pu.reportError(iam, "Shear modulus MU must be positive")
 
         # poisson's ratio
         nu = (3. * k - 2 * mu) / (6 * k + 2 * mu)
         if nu < 0.:
-            reportWarning(iam, "negative Poisson's ratio")
+            pu.reportWarning(iam, "negative Poisson's ratio")
 
         ui = np.array([k, mu])
 
@@ -161,7 +161,7 @@ class Elastic(ConstitutiveModelPrototype):
 
     def _fort_set_up(self, mui):
         props = np.array(mui)
-        a = [props, migError, migMessage]
+        a = [props, pu.migError, pu.migMessage]
         if not PC_F2PY_CALLBACK:
             a = a[:-2]
         ui = mtllib.elast_chk(*a)

@@ -25,8 +25,8 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="top" title="Payette 1.0 documentation" href="../index.html" />
+    <link rel="next" title="Installed Materials" href="materials.html" />
     <link rel="prev" title="Optimization" href="optimization.html" /> 
   </head>
   <body>
@@ -36,6 +36,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="../genindex.html" title="General Index"
              accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="materials.html" title="Installed Materials"
+             accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="optimization.html" title="Optimization"
              accesskey="P">previous</a> |</li>
@@ -51,14 +54,41 @@
   <div class="section" id="permutation">
 <h1>Permutation<a class="headerlink" href="#permutation" title="Permalink to this headline">¶</a></h1>
 <p><em>Payette</em> has the ability to assist in understanding the sensitivity of a
-material model to user inputs by permutating selecting user inputs and running
-a simulation with the permutated inputs. Below is a summary of the
-permutation block.</p>
+material model to user inputs by running a batch of simulations using
+permutated user inputs. Below is a summary of the permutation block.</p>
 <div class="section" id="permutation-block">
 <h2>Permutation Block<a class="headerlink" href="#permutation-block" title="Permalink to this headline">¶</a></h2>
-<p>Input for the permutation problem is done in the <tt class="docutils literal"><span class="pre">permutation</span></tt> block. We
-specify every available option showing its default value in brackets, along
-with other available options in braces, if applicable.</p>
+<p>The <tt class="docutils literal"><span class="pre">permutation</span></tt> block is used to run a batch of simulations that are very
+similar to the base input given. The basic syntax is:</p>
+<div class="highlight-python"><pre>begin permutation
+  method zip
+  permutate PARAM1 VAL1 VAL2 VAL3 ...
+  permutate PARAM2 VAL4 VAL5 VAL6 ...
+  ...
+end permutation</pre>
+</div>
+<p>This would take the general input and spawn simulations where the value associated
+with PARAM1 is replace by VAL1 and the value associated with PARAM2 is replaced by
+VAL4, then another simulation where PARAM1-&gt;VAL2 and PARAM2-&gt;VAL5, etc.</p>
+<p>Directories containing each individual simulation and its output are put into
+a general directory called <tt class="docutils literal"><span class="pre">SIMNAME.perm</span></tt> with the individual simulations
+being contained in subdirectories named <tt class="docutils literal"><span class="pre">job.X</span></tt> where the <tt class="docutils literal"><span class="pre">SIMNAME</span></tt> is the
+simulation name defined in the first line of the input file (<tt class="docutils literal"><span class="pre">begin</span>
+<span class="pre">simulation</span> <span class="pre">SIMNAME</span></tt>) and <tt class="docutils literal"><span class="pre">X</span></tt> is replaced by the index of the job being run.</p>
+<div class="section" id="methods">
+<h3>Methods<a class="headerlink" href="#methods" title="Permalink to this headline">¶</a></h3>
+<dl class="docutils">
+<dt><strong>zip</strong> (default)</dt>
+<dd>Zip together ranges and/or sequences of permutated parameters. Length of
+each parameter&#8217;s permutation list must be the same.</dd>
+<dt><strong>combination</strong></dt>
+<dd>Combine ranges and/or sequences of permutated parameters in to all possible
+combinations.</dd>
+</dl>
+</div>
+</div>
+<div class="section" id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="example-1">
 <h3>Example 1<a class="headerlink" href="#example-1" title="Permalink to this headline">¶</a></h3>
 <p>Zip a range of bulk and shear moduli.</p>
@@ -111,17 +141,6 @@ end permutation</pre>
 end permutation</pre>
 </div>
 </div>
-<div class="section" id="methods">
-<h3>Methods<a class="headerlink" href="#methods" title="Permalink to this headline">¶</a></h3>
-<dl class="docutils">
-<dt><strong>zip</strong> (default)</dt>
-<dd>Zip together ranges and/or sequences of permutated parameters. Length of
-each parameter&#8217;s permutation list must be the same.</dd>
-<dt><strong>combination</strong></dt>
-<dd>Combine ranges and/or sequences of permutated parameters in to all possible
-combinations.</dd>
-</dl>
-</div>
 </div>
 </div>
 
@@ -135,11 +154,14 @@ combinations.</dd>
   <ul>
 <li><a class="reference internal" href="#">Permutation</a><ul>
 <li><a class="reference internal" href="#permutation-block">Permutation Block</a><ul>
+<li><a class="reference internal" href="#methods">Methods</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#examples">Examples</a><ul>
 <li><a class="reference internal" href="#example-1">Example 1</a></li>
 <li><a class="reference internal" href="#example-2">Example 2</a></li>
 <li><a class="reference internal" href="#example-3">Example 3</a></li>
 <li><a class="reference internal" href="#example-4">Example 4</a></li>
-<li><a class="reference internal" href="#methods">Methods</a></li>
 </ul>
 </li>
 </ul>
@@ -149,6 +171,9 @@ combinations.</dd>
   <h4>Previous topic</h4>
   <p class="topless"><a href="optimization.html"
                         title="previous chapter">Optimization</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="materials.html"
+                        title="next chapter">Installed Materials</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="../_sources/Files/permutation.txt"
@@ -177,6 +202,9 @@ combinations.</dd>
         <li class="right" style="margin-right: 10px">
           <a href="../genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="materials.html" title="Installed Materials"
+             >next</a> |</li>
         <li class="right" >
           <a href="optimization.html" title="Optimization"
              >previous</a> |</li>

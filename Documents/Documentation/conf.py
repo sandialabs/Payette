@@ -25,7 +25,27 @@ import sys, os
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.todo', 'sphinx.ext.pngmath', 'sphinx.ext.mathjax']
+extensions = ['sphinx.ext.todo', 'sphinx.ext.pngmath'] #, 'sphinx.ext.mathjax']
+
+# latex preamble
+pream = []
+_latex = os.path.join(os.path.dirname(__file__), "_latex")
+_pckgs = [os.path.join(_latex, x) for x in os.listdir(_latex) if
+          x.startswith("orig_") and
+          x.endswith(".sty")]
+for pckg in _pckgs:
+    fdir, fnam = os.path.split(pckg)
+    f_pream = os.path.join(_latex, fnam.replace("orig_", "payette_"))
+    pream.append(os.path.splitext(f_pream)[0])
+    with open(f_pream, "w") as fobj:
+        for line in open(os.path.join(_latex, fnam), "r").readlines():
+            if "$LATEX$" in line:
+                line = line.replace("$LATEX$", _latex)
+            fobj.write(line)
+            continue
+    continue
+
+pngmath_latex_preamble = "\n".join(["\usepackage{{{0}}}".format(x) for x in pream])
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

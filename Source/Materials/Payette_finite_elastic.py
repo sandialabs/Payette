@@ -25,7 +25,7 @@ import sys
 import os
 import numpy as np
 
-from Source.Payette_utils import *
+import Source.Payette_utils as pu
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 from Source.Payette_tensor import I6
@@ -139,7 +139,7 @@ class FiniteElastic(ConstitutiveModelPrototype):
             E, pk2, sig = _py_update_state(self.mui, F)
 
         else:
-            a = [1, self.mui, F, migError, migMessage]
+            a = [1, self.mui, F, pu.migError, pu.migMessage]
             if not PC_F2PY_CALLBACK:
                 a = a[:-2]
             E, pk2, sig = mtllib.finite_elast_calc(*a)
@@ -154,10 +154,10 @@ class FiniteElastic(ConstitutiveModelPrototype):
 
         mu, nu, k = mui
         if nu < 0.:
-            reportWarning(iam, "neg Poisson")
+            pu.reportWarning(iam, "neg Poisson")
 
         if mu <= 0.:
-            reportError(iam, "Shear modulus G must be positive")
+            pu.reportError(iam, "Shear modulus G must be positive")
 
         # compute c11, c12, and c44
         c11 = k + 4. / 3. * mu
@@ -168,7 +168,7 @@ class FiniteElastic(ConstitutiveModelPrototype):
 
     def _fort_set_up(self, mui):
         props = np.array(mui)
-        a = [props, migError, migMessage]
+        a = [props, pu.migError, pu.migMessage]
         if not PC_F2PY_CALLBACK:
             a = a[:-2]
         ui = mtllib.finite_elast_chk(*a)
