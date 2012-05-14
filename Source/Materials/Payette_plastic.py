@@ -27,7 +27,7 @@ import numpy as np
 from math import sqrt
 
 import Source.Payette_utils as pu
-import Source.Payette_tensor as pt
+from Source.Payette_tensor import sym_map, iso, dev, mag, ddp
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 from Toolset.elastic_conversion import compute_elastic_constants
@@ -133,10 +133,9 @@ class Plastic(ConstitutiveModelPrototype):
             sig, xtra = _py_update_state(self.mui, dt, d, sigold, xtra)
 
         else:
-            a = [1, self.nsv, dt, self.mui, sigold, d, xtra,
-                 pu.migError, pu.migMessage]
-            if not PC_F2PY_CALLBACK:
-                a = a[:-2]
+            a = [1, self.nsv, dt, self.mui, sigold, d, xtra]
+            if PC_F2PY_CALLBACK:
+                a += [pu.migError, pu.migMessage]
             sig, xtra = mtllib.plast_calc(*a)
 
         # store updated data
@@ -194,8 +193,8 @@ class Plastic(ConstitutiveModelPrototype):
 
         # back stress
         for i in range(6):
-            names.append("{0} component of back stress".format(pt.sym_map[i]))
-            keys.append("BSIG{0}".format(pt.sym_map[i]))
+            names.append("{0} component of back stress".format(sym_map[i]))
+            keys.append("BSIG{0}".format(sym_map[i]))
             continue
         nxtra = len(keys)
         xtra = np.zeros(nxtra)
@@ -210,15 +209,16 @@ class Plastic(ConstitutiveModelPrototype):
 
     def _check_props(self, mui):
         props = np.array(mui)
-        a = [props, pu.migError, pu.migMessage]
-        if not PC_F2PY_CALLBACK:
-            a = a[:-2]
+        a = [props]
+        if PC_F2PY_CALLBACK:
+            a += [pu.migError, pu.migMessage]
         ui = mtllib.plast_chk(*a)
         return ui
 
     def _set_field(self, ui):
-        a = [pu.migError, pu.migMessage]
-        if not PC_F2PY_CALLBACK: a = a[:-2]
+        a = []
+        if PC_F2PY_CALLBACK:
+            a += [pu.migError, pu.migMessage]
         return mtllib.plast_rxv(*a)
 
 def _py_update_state(ui, dt, d, sigold, xtra):
@@ -233,15 +233,15 @@ def _py_update_state(ui, dt, d, sigold, xtra):
     threek, twomu = 3. * k, 2. * mu
 
     # elastic predictor
-    dsig = threek * pt.iso(de) + twomu * pt.dev(de)
+    dsig = threek * iso(de) + twomu * dev(de)
     sig = sigold + dsig
 
     # elastic predictor relative to back stress - shifted stress
     xi = sig - bstress
 
     # deviator of shifted stress and its magnitude
-    xid = pt.dev(xi)
-    rt2j2 = pt.mag(xid)
+    xid = dev(xi)
+    rt2j2 = mag(xid)
 
     # yield stress
     y = y0 if c == 0. else y0 + c * gam ** (1 / m)
@@ -260,7 +260,7 @@ def _py_update_state(ui, dt, d, sigold, xtra):
     #           ---- = ----------------,  ||----|| = -------
     #           dsig    root2 * radius    ||dsig||    root2
     n = xid / rt2j2  #radius
-    p = threek * pt.iso(n) + twomu * pt.dev(n)
+    p = threek * iso(n) + twomu * dev(n)
 
     # consistency parameter
     #                  n : dsig
@@ -268,25 +268,25 @@ def _py_update_state(ui, dt, d, sigold, xtra):
     #                 n : p - H
 
     # numerator
-    num = pt.ddp(n, dsig)
+    num = ddp(n, dsig)
 
     # denominator
-    ha = 2. / 3. * a * pt.dev(n)
+    ha = 2. / 3. * a * dev(n)
     dfda = -xid / sqrt(2.) / rt2j2 # radius
     hy = 0. if c == 0. else m * c * ((y - y0) / c) ** ((m - 1) / m)
     dfdy = -1. / sqrt(3.)
-    H = sqrt(2.) * (pt.ddp(dfda, ha) + dfdy * hy)
-    dnom = pt.ddp(n, p) - H + (1. - facyld) # avoid any divide by zero
+    H = sqrt(2.) * (ddp(dfda, ha) + dfdy * hy)
+    dnom = ddp(n, p) - H + (1. - facyld) # avoid any divide by zero
 
     dlam = facyld * num / dnom
     if dlam < 0.:
         pu.reportError(iam, "negative dlam")
 
     # equivalet plastic strain
-    gam += dlam * pt.mag(pt.dev(n))
+    gam += dlam * mag(dev(n))
 
     # update back stress
-    bstress = bstress + 2. / 3. * a * dlam * pt.dev(n)
+    bstress = bstress + 2. / 3. * a * dlam * dev(n)
 
     # update stress
     sig = sig - dlam * p

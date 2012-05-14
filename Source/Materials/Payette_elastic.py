@@ -26,7 +26,7 @@ import os
 import numpy as np
 
 import Source.Payette_utils as pu
-import Source.Payette_tensor as pt
+from Source.Payette_tensor import iso, dev
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 from Toolset.elastic_conversion import compute_elastic_constants
@@ -129,9 +129,9 @@ class Elastic(ConstitutiveModelPrototype):
             sig = _py_update_state(self.mui, dt, d, sigold)
 
         else:
-            a = [1, dt, self.mui, sigold, d, pu.migError, pu.migMessage]
-            if not PC_F2PY_CALLBACK:
-                a = a[:-2]
+            a = [1, dt, self.mui, sigold, d]
+            if PC_F2PY_CALLBACK:
+                a += [pu.migError, pu.migMessage]
             sig = mtllib.elast_calc(*a)
 
         # store updated data
@@ -158,9 +158,9 @@ class Elastic(ConstitutiveModelPrototype):
 
     def _fort_set_up(self, mui):
         props = np.array(mui)
-        a = [props, pu.migError, pu.migMessage]
-        if not PC_F2PY_CALLBACK:
-            a = a[:-2]
+        a = [props]
+        if PC_F2PY_CALLBACK:
+            a += [pu.migError, pu.migMessage]
         ui = mtllib.elast_chk(*a)
         return ui
 
@@ -176,4 +176,4 @@ def _py_update_state(ui, dt, d, sigold):
     threek = 3. * k
 
     # elastic stress update
-    return sigold + threek * pt.iso(de) + twomu * pt.dev(de)
+    return sigold + threek * iso(de) + twomu * dev(de)

@@ -26,7 +26,7 @@ import os
 import numpy as np
 
 import Source.Payette_utils as pu
-import Source.Payette_tensor as pt
+from Source.Payette_tensor import tada, delta, push
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 from Toolset.elastic_conversion import compute_elastic_constants
@@ -139,9 +139,9 @@ class FiniteElastic(ConstitutiveModelPrototype):
             E, pk2, sig = _py_update_state(self.mui, F)
 
         else:
-            a = [1, self.mui, F, pu.migError, pu.migMessage]
-            if not PC_F2PY_CALLBACK:
-                a = a[:-2]
+            a = [1, self.mui, F]
+            if PC_F2PY_CALLBACK:
+                a += [pu.migError, pu.migMessage]
             E, pk2, sig = mtllib.finite_elast_calc(*a)
 
         matdat.store_data("stress", sig)
@@ -168,9 +168,9 @@ class FiniteElastic(ConstitutiveModelPrototype):
 
     def _fort_set_up(self, mui):
         props = np.array(mui)
-        a = [props, pu.migError, pu.migMessage]
-        if not PC_F2PY_CALLBACK:
-            a = a[:-2]
+        a = [props]
+        if PC_F2PY_CALLBACK:
+            a += [pu.migError, pu.migMessage]
         ui = mtllib.finite_elast_chk(*a)
         return ui
 
@@ -181,7 +181,7 @@ def _py_update_state(ui, F):
     c11, c12, c44 = ui
 
     # green lagrange strain
-    E = 0.5 * (pt.tada(F) - pt.delta)
+    E = 0.5 * (tada(F) - delta)
 
     # PK2 stress
     pk2 = np.zeros(6)
@@ -190,7 +190,7 @@ def _py_update_state(ui, F):
     pk2[2] = c12 * E[0] + c12 * E[1] + c11 * E[2]
     pk2[3:] = c44 * E[3:]
 
-    sig = pt.push(pk2, F)
+    sig = push(pk2, F)
 
     return E, pk2, sig
 
