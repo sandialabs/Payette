@@ -22,6 +22,7 @@
 # DEALINGS IN THE SOFTWARE.
 import sys
 import os
+import imp
 import numpy as np
 
 import Payette_config as pc
@@ -47,12 +48,15 @@ class Material:
     def __init__(self, constitutive_model, user_params, *args, **kwargs):
 
         iam = "Material.__init__"
+
+        # get the material's constitutive model object
         py_mod = constitutive_model["module"]
-        py_path = os.path.dirname(constitutive_model["file"])
+        py_path = [os.path.dirname(constitutive_model["file"])]
         cls_nam = constitutive_model["class name"]
-        if py_path not in sys.path:
-            sys.path.insert(0, py_path)
-        exec "from {0} import {1} as cmod".format(py_mod, cls_nam)
+        fobj, pathname, description = imp.find_module(py_mod, py_path)
+        py_module = imp.load_module(py_mod, fobj, pathname, description)
+        fobj.close()
+        cmod = getattr(py_module, cls_nam)
 
         # instantiate the constiutive model
         self.constitutive_model = cmod(*args, **kwargs)
