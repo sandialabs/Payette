@@ -1,9 +1,12 @@
 module tensors
 
-  private delta, w, diag9
+  private delta, w, diag9, i6, i15, sk, dk
   public ata, symleaf, dd66x6, push, pull, ddp, mag, dev, iso, matinv
 
-  double precision, parameter, dimension(6) :: &
+  ! kind specifiers
+  integer, parameter :: sk=selected_real_kind(6), dk=selected_real_kind(14)
+
+  real(kind=dk), parameter, dimension(6) :: &
        delta = (/1.d0, 1.d0, 1.d0, 0.d0, 0.d0, 0.d0/), &
        w = (/1.d0, 1.d0, 1.d0, 2.d0, 2.d0, 2.d0/)
   integer, parameter, dimension(3) :: diag9 = (/1, 5, 9/)
@@ -26,8 +29,8 @@ contains
     !**************************************************************************
     implicit none
     !....................................................................passed
-    double precision, dimension(6) :: ata
-    double precision, dimension(9) :: a
+    real(kind=dk), dimension(6) :: ata
+    real(kind=dk), dimension(9) :: a
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ata
     ata(1) = a(1) * a(1) + a(4) * a(4) + a(7) * a(7)
     ata(2) = a(2) * a(2) + a(5) * a(5) + a(8) * a(8)
@@ -78,8 +81,8 @@ contains
     !**************************************************************************
     implicit none
     !....................................................................passed
-    double precision, dimension(3, 3) :: f
-    double precision, dimension(6, 6) :: symleaf
+    real(kind=dk), dimension(3, 3) :: f
+    real(kind=dk), dimension(6, 6) :: symleaf
     !.....................................................................local
     integer i, j
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~symleaf
@@ -140,12 +143,12 @@ contains
     implicit none
     !....................................................................passed
     integer job
-    double precision, dimension(6) :: x, dd66x6
-    double precision, dimension(6, 6) :: a
+    real(kind=dk), dimension(6) :: x, dd66x6
+    real(kind=dk), dimension(6, 6) :: a
     !.....................................................................local
-    double precision, parameter, dimension(6) :: &
+    real(kind=dk), parameter, dimension(6) :: &
          mandel=(/1.d0,1.d0,1.d0,sqrt(2.d0),sqrt(2.d0),sqrt(2.d0)/)
-    double precision, dimension(6) :: t
+    real(kind=dk), dimension(6) :: t
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~dd66x6
 
     !  Construct the Mandel version of x
@@ -199,11 +202,11 @@ contains
     !**************************************************************************
     implicit none
     !....................................................................passed
-    double precision, dimension(6) :: a, push
-    double precision, dimension(9) :: f
+    real(kind=dk), dimension(6) :: a, push
+    real(kind=dk), dimension(9) :: f
     !.....................................................................local
-    double precision :: detf
-    double precision, dimension(3, 3) :: ff
+    real(kind=dk) :: detf
+    real(kind=dk), dimension(3, 3) :: ff
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~push
     detf = f(1) * f(5) * f(9) + f(2) * f(6) * f(7) + f(3) * f(4) * f(8) &
          -(f(1) * f(6) * f(8) + f(2) * f(4) * f(9) + f(3) * f(5) * f(7))
@@ -238,11 +241,11 @@ contains
     !**************************************************************************
     implicit none
     !....................................................................passed
-    double precision, dimension(6) :: a, pull
-    double precision, dimension(9) :: f
+    real(kind=dk), dimension(6) :: a, pull
+    real(kind=dk), dimension(9) :: f
     !.....................................................................local
-    double precision :: detf
-    double precision, dimension(3, 3) :: ff
+    real(kind=dk) :: detf
+    real(kind=dk), dimension(3, 3) :: ff
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~pull
     detf = f(1) * f(5) * f(9) + f(2) * f(6) * f(7) + f(3) * f(4) * f(8) &
          -(f(1) * f(6) * f(8) + f(2) * f(4) * f(9) + f(3) * f(5) * f(7))
@@ -255,9 +258,9 @@ contains
     !**************************************************************************
     implicit none
     !....................................................................passed
-    double precision, dimension(6) :: a, unrot
-    double precision, dimension(9) :: r
-    double precision, dimension(3, 3) :: rt
+    real(kind=dk), dimension(6) :: a, unrot
+    real(kind=dk), dimension(9) :: r
+    real(kind=dk), dimension(3, 3) :: rt
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~unrot
     rt = transpose(reshape(r, shape(rt)))
     unrot = dd66x6(1, symleaf(rt), a)
@@ -268,9 +271,9 @@ contains
     !**************************************************************************
     implicit none
     !....................................................................passed
-    double precision, dimension(6) :: a, rot
-    double precision, dimension(9) :: r
-    double precision, dimension(3, 3) :: rr
+    real(kind=dk), dimension(6) :: a, rot
+    real(kind=dk), dimension(9) :: r
+    real(kind=dk), dimension(3, 3) :: rr
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~rot
     rr = reshape(r, shape(rr))
     rot = dd66x6(1, symleaf(rr), a)
@@ -291,8 +294,8 @@ contains
     !**************************************************************************
     implicit none
     !....................................................................passed
-    double precision :: det
-    double precision, dimension(9) :: a, inv
+    real(kind=dk) :: det
+    real(kind=dk), dimension(9) :: a, inv
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~rot
     det = a(1) * a(5) * a(9) + a(2) * a(6) * a(7) + a(3) * a(4) * a(8) &
         -(a(1) * a(6) * a(8) + a(2) * a(4) * a(9) + a(3) * a(5) * a(7))
@@ -324,8 +327,8 @@ contains
     !**************************************************************************
     implicit none
     !....................................................................passed
-    double precision, dimension(9) :: a, dp9x6
-    double precision, dimension(6) :: b
+    real(kind=dk), dimension(9) :: a, dp9x6
+    real(kind=dk), dimension(6) :: b
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~dp9x6
     dp9x6 = (/a(1) * b(1) + a(4) * b(4) + a(7) * b(6), &
               a(4) * b(2) + a(1) * b(4) + a(7) * b(5), &
@@ -354,8 +357,8 @@ contains
     !**************************************************************************
     implicit none
     !....................................................................passed
-    double precision ddp
-    double precision, dimension(6) :: a, b
+    real(kind=dk) ddp
+    real(kind=dk), dimension(6) :: a, b
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ddp
     ddp = sum(w * a * b)
     return
@@ -376,8 +379,8 @@ contains
     !**************************************************************************
     implicit none
     !....................................................................passed
-    double precision, dimension(6) :: a
-    double precision, dimension(3) :: b, dp6x3
+    real(kind=dk), dimension(6) :: a
+    real(kind=dk), dimension(3) :: b, dp6x3
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~dp6x3
     dp6x3 = (/a(1) * b(1) + a(4) * b(2) + a(6) * b(3), &
               a(4) * b(1) + a(2) * b(2) + a(5) * b(3), &
@@ -400,8 +403,8 @@ contains
     !**************************************************************************
     implicit none
     !....................................................................passed
-    double precision, dimension(3) :: a, b
-    double precision, dimension(6) :: dyad
+    real(kind=dk), dimension(3) :: a, b
+    real(kind=dk), dimension(6) :: dyad
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~dp6x3
     dyad = (/a(1) * b(1), a(2) * b(2), a(3) * b(3), &
              a(1) * b(2), a(2) * b(3), a(1) * b(3)/)
@@ -422,8 +425,8 @@ contains
     !**************************************************************************
     implicit none
     !....................................................................passed
-    double precision mag
-    double precision, dimension(6) :: a
+    real(kind=dk) mag
+    real(kind=dk), dimension(6) :: a
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~mag
     mag = sqrt(ddp(a, a))
     return
@@ -443,7 +446,7 @@ contains
     !**************************************************************************
     implicit none
     !....................................................................passed
-    double precision, dimension(6) :: dev, a
+    real(kind=dk), dimension(6) :: dev, a
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~dev
     dev = a - iso(a)
     return
@@ -463,7 +466,7 @@ contains
     !**************************************************************************
     implicit none
     !....................................................................passed
-    double precision, dimension(6) :: iso, a
+    real(kind=dk), dimension(6) :: iso, a
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~iso
     iso = ddp(a, delta) / 3. * delta
     return
@@ -495,13 +498,13 @@ contains
     implicit none
     !....................................................................passed
     integer :: n
-    double precision, dimension(n, n) :: a, matinv
+    real(kind=dk), dimension(n, n) :: a, matinv
     !.....................................................................local
     integer :: row, col, icond
     integer, dimension(1) :: v
-    double precision :: wmax, fac, wcond=1.d-13
-    double precision, dimension(n) :: dum
-    double precision, dimension(n, n) :: w
+    real(kind=dk) :: wmax, fac, wcond=1.d-13
+    real(kind=dk), dimension(n) :: dum
+    real(kind=dk), dimension(n, n) :: w
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~matinv
 
     ! Initialize
