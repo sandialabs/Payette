@@ -55,6 +55,8 @@ def run_payette(argv, disp=0):
 
     """
 
+    iam = "runPayette"
+
     # ************************************************************************
     # -- command line option parsing
     usage = "usage: runPayette [options] <input file>"
@@ -316,22 +318,22 @@ def run_payette(argv, disp=0):
 
             elif os.path.isfile(os.path.join(pc.PC_INPUTS, arg)):
                 ftmp = os.path.join(pc.PC_INPUTS, arg)
-                pu.writeMessage(__file__, "Using " + ftmp + " as input")
+                pu.write_msg_to_screen(iam, "Using " + ftmp + " as input")
 
             elif not fext or fext == ".":
                 # add .inp extension to arg
                 arginp = fbase + ".inp"
                 if os.path.isfile(arginp):
                     ftmp = arginp
-                    pu.writeMessage(__file__, "Using " + ftmp + " as input")
+                    pu.write_msg_to_screen(iam, "Using " + ftmp + " as input")
 
                 elif os.path.isfile(os.path.join(pc.PC_INPUTS, arginp)):
                     ftmp = os.path.join(pc.PC_INPUTS, arginp)
-                    pu.writeMessage(__file__, "Using " + ftmp + " as input")
+                    pu.write_msg_to_screen(iam, "Using " + ftmp + " as input")
 
             if not ftmp:
-                pu.writeWarning(
-                    __file__, "{0} not found in {1}, {2}, or {3}"
+                pu.write_wrn_to_screen(
+                    iam, "{0} not found in {1}, {2}, or {3}"
                     .format(arg,
                             os.path.dirname(os.path.realpath(arg)),
                             os.getcwd(),
@@ -346,8 +348,8 @@ def run_payette(argv, disp=0):
             continue
 
         if badf:
-            pu.writeWarning(__file__, "The following files were not found: {0}"
-                            .format(", ".join(badf)))
+            pu.write_wrn_to_screen(iam, "The following files were not found: {0}"
+                                   .format(", ".join(badf)))
 
         if not foundf and not input_lines:
             parser.print_help()
@@ -374,7 +376,7 @@ def run_payette(argv, disp=0):
     opts.verbosity = opts.verbosity if nproc == 1 else 0
 
     if nproc > 1:
-        pu.writeWarning(__file__, """
+        pu.write_wrn_to_screen(iam, """
              Running with multiple processors.  Logging to the console
              has been turned off.  If a job hangs, [ctrl-c] at the
              console will not shut down Payette.  Instead, put the job

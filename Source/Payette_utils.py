@@ -95,15 +95,17 @@ class PayetteError(Exception):
         Exception.__init__(self, head+msg)
 
 
-def reportError(f, msg, tracebacklimit=None):
-    f = _adjust_fnam_length(f)
-    msg = '{0} (reported from [{1}])'.format(msg, f)
-    raise PayetteError(msg, tracebacklimit)
-    return
-
-
 def whoami():
     return stack()[1][3]
+
+
+@CountCalls
+def reportMessage(f, msg, pre="INFO: "):
+#    msg = 'INFO: {0} (reported from [{1}])\n'.format(msg, f)
+    msg = '{0}{1}\n'.format(pre, msg)
+    simlog.write(msg)
+    if loglevel > 0: sys.stdout.write(msg)
+    return
 
 
 @CountCalls
@@ -130,28 +132,11 @@ def reportWarning(f, msg, limit=False):
     return
 
 
-def writeMessage(f, msg):
-    sys.stdout.write("INFO: {0:s}\n".format(msg))
-    return
-
-
-def writeWarning(f, msg):
-    sys.stdout.write("WARNING: {0:s}\n".format(msg))
-    return
-
-
 @CountCalls
-def reportMessage(f, msg, pre="INFO: "):
-#    msg = 'INFO: {0} (reported from [{1}])\n'.format(msg, f)
-    msg = '{0}{1}\n'.format(pre, msg)
-    simlog.write(msg)
-    if loglevel > 0: sys.stdout.write(msg)
-    return
-
-
-def writeToLog(msg):
-    msg = "{0:s}\n".format(msg)
-    simlog.write(msg)
+def reportError(iam, msg, tracebacklimit=None):
+    iam = _adjust_nam_length(iam)
+    msg = '{0} (reported from [{1}])'.format(msg, iam)
+    raise PayetteError(msg, tracebacklimit)
     return
 
 
@@ -171,15 +156,29 @@ def migWarning(msg):
     return
 
 
-def _adjust_fnam_length(f):
-    if not os.path.isfile(f):
-        return f
-    f = os.path.split(f)[1]
-    basename,fext = os.path.splitext(f)
-    return basename
+def write_msg_to_screen(iam, msg):
+    sys.stdout.write("INFO: {0:s}\n".format(msg))
+    return
 
 
-def parseToken(n,stringa,token=r'|'):
+def write_wrn_to_screen(iam, msg):
+    sys.stdout.write("WARNING: {0:s}\n".format(msg))
+    return
+
+
+def write_to_simlog(msg):
+    msg = "{0:s}\n".format(msg)
+    simlog.write(msg)
+    return
+
+
+def _adjust_nam_length(nam):
+    if not os.path.isfile(nam):
+        return nam
+    return os.path.splitext(os.path.basename(nam))[0]
+
+
+def parse_token(n,stringa,token=r'|'):
     parsed_string = []
     i = 0
     while i < n:
@@ -202,11 +201,11 @@ def parseToken(n,stringa,token=r'|'):
         continue
     return parsed_string
 
-
-def checkPythonVersion():
+def check_py_version():
     (major, minor, micro, releaselevel, serial) = sys.version_info
     if (major != 3 and major != 2) or (major == 2 and minor < 6):
         raise SystemExit("Payette requires Python >= 2.6\n")
+    return
 
 
 def setup_logger(logfile, level, mode="w"):
@@ -632,10 +631,13 @@ def compute_rms_closest_point_residual(set1x, set1y, set2x, set2y):
         tmp_arr = []
         for jdx in range(0, lset1x - 1):
             kdx = jdx+1
-            dist_from_pt0 = dist_pt_to_pt(set1x[jdx],set1y[jdx],set2x[idx],set2y[idx])
-            dist_from_pt1 = dist_pt_to_pt(set1x[kdx],set1y[kdx],set2x[idx],set2y[idx])
+            dist_from_pt0 = dist_pt_to_pt(
+                set1x[jdx], set1y[jdx], set2x[idx], set2y[idx])
+            dist_from_pt1 = dist_pt_to_pt(
+                set1x[kdx], set1y[kdx], set2x[idx], set2y[idx])
 
-            # use dot(a,b)/(mag(a)*mag(b)) = cos(theta) to find the distance from the line.
+            # use dot(a,b)/(mag(a)*mag(b)) = cos(theta) to find the distance
+            # from the line.
             vec_a_x = set1x[jdx]-set1x[kdx]
             vec_a_y = set1y[jdx]-set1y[kdx]
             vec_b_x = set2x[idx]-set1x[kdx]
@@ -1064,15 +1066,18 @@ def get_input_lines(user_input, cchars):
     return all_input
 
 
-def check_if_test_dir(dir_path):
-    """ check if dir_path has __test_dir__.py """
-    has__test_dir__ = False
-    for dirnam, dirs, files in os.walk(dir_path):
-        if "__test_dir__.py" in files:
-            has__test_dir__ = True
-            break
-        continue
+# the following are being kept around for back compatibiltiy
+def parseToken(*args, **kwargs):
+    return parse_token(*args, **kwargs)
+def checkPythonVersion():
+    return check_py_version()
+def writeMessage(*args):
+    return write_msg_to_screen(*args)
+def writeWarning(*args):
+    return write_wrn_to_screen(*args)
+def writeToLog(*args):
+    return write_to_simlog(*args)
 
-    return has__test_dir__
+
 
 

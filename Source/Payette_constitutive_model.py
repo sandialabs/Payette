@@ -56,6 +56,7 @@ class ConstitutiveModelPrototype(object):
         self.name = None
         self.aliases = []
         self.parameter_table = {}
+        self.user_input_params = {}
         self.parameter_table_idx_map = {}
         self.nprop = 0
         self.ndc = 0
@@ -154,82 +155,100 @@ class ConstitutiveModelPrototype(object):
         self.registered_param_idxs.append(param_idx)
 
         # populate parameter_table
-        self.parameter_table[full_name] = { "name":full_name,
-                                            "names":param_names,
-                                            "ui pos":param_idx,
-                                            "parseable":parseable}
+        self.parameter_table[full_name] = { "name": full_name,
+                                            "names": param_names,
+                                            "ui pos": param_idx,
+                                            "parseable": parseable}
         self.parameter_table_idx_map[param_idx] = full_name
         return
 
-    def parse_parameters(self, user_params):
-        """
-           parse user input and populate the params array
-        """
+    def parse_parameters(self, *args):
+        """ populate the materials ui array from the self.params dict """
+
         iam = self.name + ".parse_parameters"
+
         self.ui0 = np.zeros(self.nprop)
 
-        if not user_params:
-            pu.reportError(iam,"No parameters given")
-            return 1
+        # we have the name and value, now we need to get its position in the
+        # ui array
+        param_nam = None
+        ignored, not_parseable = [], []
+        for param, param_val in self.user_input_params.items():
+            if param in self.parameter_table:
+                param_nam = param
 
-        for param in user_params:
-
-            name, val = self._parse_param_line(iam,param)
-
-            # we have the name and value, now we need to get its position in the
-            # ui array
-            found = False
-            try:
-                ui_idx = self.parameter_table[name]["ui pos"]
-                found = True
-
-            except KeyError:
+            else:
                 # look for alias
-                for parameter in self.parameter_table:
-                    if name in self.parameter_table[parameter]["names"]:
-                        ui_idx = self.parameter_table[parameter]["ui pos"]
-                        found = True
+                for key, val in self.parameter_table.items():
+                    if param in val["names"]:
+                        param_nam = key
                         break
                     continue
-                pass
 
-            if not found:
-                pu.reportWarning(iam,"unregistered parameter [{0}], will be ignored "
-                              .format(name))
+            if param_nam is None:
+                ignored.append(param)
                 continue
 
-            self.ui0[ui_idx] = val
+            if not self.parameter_table[param_nam]["parseable"]:
+                not_parseable.append(param)
+                continue
+
+            ui_idx = self.parameter_table[param_nam]["ui pos"]
+            self.ui0[ui_idx] = param_val
             continue
+
+        if ignored:
+            pu.reportWarning(iam,
+                             "ignoring unregistered parameters: {0}"
+                             .format(", ".join(ignored)))
+        if not_parseable:
+            pu.reportWarning(iam,
+                             "ignoring unparseable parameters: {0}"
+                             .format(", ".join(not_parseable)))
 
         return
 
-    def _parse_param_line(self,caller,param_line):
-        # we want to return a name, value pair for a string that comes in as
-        # any of the following:
-        #      name = value
-        #      long_name = value
-        #      long name = value
-        #      name,value
-        #      name value
-        # etc.
+    def _parse_user_params(self, user_params):
+        """ read the user params and populate user_input_params """
+        iam = self.name + "._parse_user_params"
 
-        # strip and lowcase param_line
-        param_line = param_line.strip().lower()
+        if not user_params:
+            pu.reportError(iam, "no parameters found")
+            return 1
 
-        # replace "=" and "," with spaces and split
-        param_line = param_line.replace("="," ").replace(","," ").split()
-        # param_line is now of form
-        #     param_line = [ string, string, ..., string ]
-        # we need to assume that the last string is the value and anything up
-        # to the last is the name
-        name = "_".join(param_line[0:len(param_line)-1])
-        try:
-            val = float(param_line[-1])
-        except:
-            pu.reportError(caller,"could not convert parameter {0} to float"
-                        .format(param_line[-1]))
-            pass
-        return name,val
+        errors = 0
+        for line in user_params:
+            # strip and lowcase the line
+            line = line.strip().lower()
+
+            # replace "=" and "," with spaces and split
+            for char in "=,":
+                line = line.replace(char, " ")
+                continue
+            line = line.split()
+
+            # the line is now of form
+            #     line = [string, string, ..., string]
+            # we assume that the last string is the value and anything up
+            # to the last is the name
+            name = "_".join(line[0:-1])
+            val = line[-1]
+            try:
+                val = float(val)
+            except:
+                errors += 1
+                msg = ("could not convert {0} for parameter {1} to float"
+                       .format(val, name))
+                pu.reportWarning(iam, msg)
+                continue
+
+            self.user_input_params[name] = val
+            continue
+
+        if errors:
+            pu.reportError(iam, "stopping due to previous errors")
+
+        return
 
     def initialize_state(self, material_data):
         pass

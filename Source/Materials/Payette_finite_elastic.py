@@ -26,7 +26,7 @@ import os
 import numpy as np
 
 import Source.Payette_utils as pu
-from Source.Payette_tensor import tada, delta, push
+from Source.Payette_tensor import ata, delta, push
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 from Toolset.elastic_conversion import compute_elastic_constants
@@ -80,17 +80,20 @@ class FiniteElastic(ConstitutiveModelPrototype):
         self.register_parameter("CO", 9, aliases=[])
         self.register_parameter("CR", 10, aliases=[])
         self.register_parameter("RHO", 11, aliases=["DENSITY"])
+        self.register_parameter("C11", 12, aliases=[], parseable=False)
+        self.register_parameter("C12", 13, aliases=[], parseable=False)
+        self.register_parameter("C44", 14, aliases=[], parseable=False)
 
         self.nprop = len(self.parameter_table.keys())
 
         pass
 
     # public methods
-    def set_up(self, matdat, user_params):
+    def set_up(self, matdat):
         iam = self.name + ".set_up"
 
         # parse parameters
-        self.parse_parameters(user_params)
+        self.parse_parameters()
 
         # the elastic model only needs the bulk and shear modulus, but the
         # user could have specified any one of the many elastic moduli.
@@ -114,13 +117,15 @@ class FiniteElastic(ConstitutiveModelPrototype):
         else:
             self.mui = self._fort_set_up(mui)
 
+        self.ui[-3:] = self.mui
+
         # register the green lagrange strain and second Piola-Kirchhoff stress
         matdat.register_data("green strain","SymTensor",
-                            init_val = np.zeros(6),
-                            plot_key = "GREEN_STRAIN")
+                             init_val = np.zeros(6),
+                             plot_key = "GREEN_STRAIN")
         matdat.register_data("pk2 stress","SymTensor",
-                            init_val = np.zeros(6),
-                            plot_key = "PK2")
+                             init_val = np.zeros(6),
+                             plot_key = "PK2")
 
         return
 
@@ -181,7 +186,7 @@ def _py_update_state(ui, F):
     c11, c12, c44 = ui
 
     # green lagrange strain
-    E = 0.5 * (tada(F) - delta)
+    E = 0.5 * (ata(F) - delta)
 
     # PK2 stress
     pk2 = np.zeros(6)

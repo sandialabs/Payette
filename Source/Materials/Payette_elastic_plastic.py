@@ -108,11 +108,11 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         pass
 
     # Public method
-    def set_up(self, matdat, user_params):
+    def set_up(self, matdat):
         iam = self.name + ".set_up(self,material,props)"
 
         # parse parameters
-        self.parse_parameters(user_params)
+        self.parse_parameters()
 
         self.ui = self._check_props()
         (self.nsv,namea,keya,sv,rdim,iadvct,itype) = self._set_field()

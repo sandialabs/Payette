@@ -173,7 +173,7 @@ def to_mig(a):
     if len(a) == 9:
         return np.array([a[0], a[3], a[5], a[6], a[1], a[4], a[8], a[7], a[2]])
 
-def tada(a):
+def ata(a):
     """ Compute Transpose(a).a
 
     Parameters
@@ -182,18 +182,16 @@ def tada(a):
 
     Returns
     -------
-    tada : array_like
+    ata : array_like
       Symmetric tensor defined by Transpose(a).a stored as 6x1 Voight array
 
     """
-    tada = np.zeros(6)
-    tada[0] = a[0] * a[0] + a[3] * a[3] + a[6] * a[6]
-    tada[1] = a[1] * a[1] + a[4] * a[4] + a[7] * a[7]
-    tada[2] = a[2] * a[2] + a[5] * a[5] + a[8] * a[8]
-    tada[3] = a[0] * a[1] + a[3] * a[4] + a[6] * a[7]
-    tada[4] = a[1] * a[2] + a[4] * a[5] + a[7] * a[8]
-    tada[5] = a[0] * a[2] + a[3] * a[5] + a[6] * a[8]
-    return tada
+    return np.array([a[0] * a[0] + a[3] * a[3] + a[6] * a[6],
+                     a[1] * a[1] + a[4] * a[4] + a[7] * a[7],
+                     a[2] * a[2] + a[5] * a[5] + a[8] * a[8],
+                     a[0] * a[1] + a[3] * a[4] + a[6] * a[7],
+                     a[1] * a[2] + a[4] * a[5] + a[7] * a[8],
+                     a[0] * a[2] + a[3] * a[5] + a[6] * a[8]])
 
 
 def symleaf(farg):

@@ -175,9 +175,7 @@ def test_payette(argv):
         if not os.path.isdir(dirnam):
             errors += 1
             pu.logerr("benchmark directory {0} not found".format(dirnam))
-        elif pu.check_if_test_dir(dirnam):
-            test_dirs.append(dirnam)
-        else:
+        elif "__test_dir__.py" not in os.listdir(dirnam):
             errors += 1
             pu.logerr("__test_dir__.py not found in {0}".format(dirnam))
         continue

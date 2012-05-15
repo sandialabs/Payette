@@ -120,7 +120,7 @@ subroutine finite_elast_calc(nc, ui, farg, earg, pk2arg, sigarg)
   gather_scatter: do ic = 1, nc
 
      ! green lagrange strain
-     e = .5d0 * (tada(farg(1:9, ic)) - delta)
+     e = .5d0 * (ata(farg(1:9, ic)) - delta)
 
      ! pk2 stress
      pk2(1) = c11 * e(1) + c12 * e(2) + c12 * e(3)

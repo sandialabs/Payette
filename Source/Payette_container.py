@@ -379,13 +379,13 @@ class Payette:
         def _write_plotable(idx, key, name, val):
             """ write to the logfile the available variables """
             tok = "plotable" if key in self.out_vars else "no request"
-            pu.writeToLog("{0:<3d} {1:<10s}: {2:<10s} = {3:<50s} = {4:12.5E}"
-                          .format(idx, tok, key, name, val))
+            pu.write_to_simlog("{0:<3d} {1:<10s}: {2:<10s} = {3:<50s} = {4:12.5E}"
+                               .format(idx, tok, key, name, val))
             return
 
         # write to the log file what is plotable and not requested, along with
         # inital value
-        pu.writeToLog("Summary of available output")
+        pu.write_to_simlog("Summary of available output")
 
         for plot_idx, plot_key in enumerate(self.plot_keys):
             if plot_key in self.simdat.plot_keys():

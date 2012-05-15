@@ -81,11 +81,11 @@ class Elastic(ConstitutiveModelPrototype):
         pass
 
     # public methods
-    def set_up(self, matdat, user_params):
+    def set_up(self, matdat):
         iam = self.name + ".set_up"
 
         # parse parameters
-        self.parse_parameters(user_params)
+        self.parse_parameters()
 
         # the elastic model only needs the bulk and shear modulus, but the
         # user could have specified any one of the many elastic moduli.

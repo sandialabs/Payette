@@ -26,6 +26,7 @@ import sys
 import logging
 import numpy as np
 
+import Payette_config as pc
 import Source.Payette_utils as pu
 import Source.Payette_installed_materials as pim
 from Source.Payette_data_container import DataContainer
@@ -56,17 +57,17 @@ class Material:
 
         # check if the model was successfully imported
         if not self.constitutive_model.imported:
-            msg = ("Error importing the {0} material model.\n"
-                   "If the material model is a fortran extension library, "
-                   "it probably was not built correctly.\nTo check, go to "
-                   "{1}/Source/Materials/Library\nand try importing "
-                   "the material's extension module directly in a python "
-                   "session.\nIf it does not import, you will need to rebuild "
-                   "the extension module.\n"
-                   "If rebuilding Payette does not fix the problem, "
-                   "please contact the Payette\ndevelopers."
-                   .format(self.constitutive_model.name,PC_MTLS_LIBRARY))
-            pu.reportError(iam,msg)
+            msg = """Error importing the {0} material model.
+If the material model is a fortran extension library, it probably was not
+built correctly.  To check, go to
+
+{1}
+
+and try importing the material's extension module directly in a python
+session.  If it does not import, you will need to rebuild the extension module.
+If rebuilding Payette does not fix the problem, please contact the
+Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
+            pu.reportError(iam, msg)
 
         self.eos_model = self.constitutive_model.eos_model
 
@@ -81,7 +82,8 @@ class Material:
         register_default_data()
 
         # set up the constitutive model
-        self.constitutive_model.setUp(self.matdat, user_params)
+        self.constitutive_model._parse_user_params(user_params)
+        self.constitutive_model.set_up(self.matdat)
         self.constitutive_model.finish_setup(self.matdat)
         self.constitutive_model.initialize_state(self.matdat)
 

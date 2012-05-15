@@ -32,7 +32,8 @@ from Source.Payette_utils import BuildError, get_module_name_and_path
 
 class MaterialBuilder():
 
-    def __init__(self, name, libname, srcd, compiler_info, sigf=None):
+    def __init__(self, name, libname, srcd, compiler_info,
+                 sigf=None, incdirs=None, libdirs=None, libs=None):
 
         self.name = name
         self.source_directory = srcd
@@ -56,16 +57,40 @@ class MaterialBuilder():
             self.pre_directives.append("-DNOPYCALLBACK")
 
         if not os.path.isfile(self.signature_file):
-            raise BuildError("{0} signature file not found".format(self.name),40)
+            raise BuildError(
+                "{0} signature file not found".format(self.name), 40)
 
+        # include directories
         self.incdirs = [ ".", "{0}".format(self.source_directory),
                          "{0}".format(pc.PC_MTLS_INCLUDES) ]
+        if incdirs is not None:
+            if not isinstance(incdirs, (list, tuple)):
+                incdirs = [incdirs]
+            for incdir in incdirs:
+                if not os.path.isdir(incdir):
+                    msg = "incdir {0} not found".format(incdir)
+                    raise BuildError(msg, 60)
+                self.incdirs.append(incdir)
         self.libdirs = []
+        if libdirs is not None:
+            if not isinstance(libdirs, (list, tuple)):
+                libdirs = [libdirs]
+            for libdir in libdirs:
+                if not os.path.isdir(libdir):
+                    msg = "libdir {0} not found".format(libdir)
+                    raise BuildError(msg, 60)
+                self.libdirs.append(libdir)
         self.libs = []
+        if libs is not None:
+            if not isinstance(libs, (list, tuple)):
+                libs = [libs]
+            self.libdirs.extend(libs)
 
         # f2py opts
         f2py_opts = compiler_info["f2py"]
         self.f2pyopts = [f2py_opts["compiler"],"-c"] + f2py_opts["options"]
+
+        pass
 
     def build_extension_module(self):
         raise BuildError("build script must provide this function",1)
