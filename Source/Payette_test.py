@@ -29,6 +29,7 @@ import numpy as np
 import math
 import subprocess
 import time
+import pickle
 
 if __name__ == "__main__":
     thisd = os.path.dirname(os.path.realpath(__file__))
@@ -37,7 +38,6 @@ if __name__ == "__main__":
 
 import Payette_config as pc
 import Source.Payette_utils as pu
-import Source.Payette_installed_materials as pim
 
 speed_kws = ["fast", "medium", "long"]
 type_kws = ["verification", "validation", "prototype", "regression"]
@@ -1051,8 +1051,10 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
 
         # we've gotten this far, so the test was requested, now check if the
         # material model used in the test is installed
+        with open(pc.PC_MTLS_FILE, "rb") as fobj:
+            constitutive_models = pickle.load(fobj)
         if test.material is not None:
-            if test.material not in pim.PAYETTE_INSTALLED_MATERIALS:
+            if constitutive_models.get(test.material) is None:
                 pu.logwrn(("material model" + " '" + test.material + "' " +
                            "required by" + " '" + test.name + "' " +
                            "not installed, test will be skipped"), caller=iam)
@@ -1066,6 +1068,7 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
     return errors, found_tests
 
 if __name__ == "__main__":
+
     errors, found_tests = find_tests(["elastic","fast"],[],[])
 
     fast_tests = [ val for key,val in found_tests["fast"].items() ]

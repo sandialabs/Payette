@@ -20,15 +20,12 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
-import copy
 import sys
-import logging
+import os
 import numpy as np
 
 import Payette_config as pc
 import Source.Payette_utils as pu
-import Source.Payette_installed_materials as pim
 from Source.Payette_data_container import DataContainer
 
 class Material:
@@ -47,10 +44,15 @@ class Material:
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     '''
 
-    def __init__(self, model_nam, user_params, *args, **kwargs ):
+    def __init__(self, constitutive_model, user_params, *args, **kwargs):
 
         iam = "Material.__init__"
-        cmod = pim.PAYETTE_CONSTITUTIVE_MODELS[model_nam]["class name"]
+        py_mod = constitutive_model["module"]
+        py_path = os.path.dirname(constitutive_model["file"])
+        cls_nam = constitutive_model["class name"]
+        if py_path not in sys.path:
+            sys.path.insert(0, py_path)
+        exec "from {0} import {1} as cmod".format(py_mod, cls_nam)
 
         # instantiate the constiutive model
         self.constitutive_model = cmod(*args, **kwargs)

@@ -484,6 +484,9 @@ def print_final_timing_info(tim0):
 
 if __name__ == "__main__":
 
+    if not os.path.isfile(pc.PC_MTLS_FILE):
+        sys.exit("buildPayette must be executed before tests can be run")
+
     ARGV = sys.argv[1:]
 
     if "--profile" in ARGV:

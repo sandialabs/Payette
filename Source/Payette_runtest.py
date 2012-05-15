@@ -150,7 +150,8 @@ def test_payette(argv):
         dest="TESTFILE",
         action="store_true",
         default=False,
-        help="Use previously generated test file [default: %default]")
+        help=("Use previously generated test file, -F is implied "
+              "[default: %default]"))
 
     (opts, args) = parser.parse_args(argv)
 
@@ -163,7 +164,7 @@ def test_payette(argv):
     pu.logmes(pc.PC_INTRO)
 
     # pass user option to global variables
-    FORCERERUN = opts.FORCERERUN
+    FORCERERUN = opts.FORCERERUN or opts.TESTFILE
     POSTPROCESS = opts.POSTPROCESS
 
     # find tests
@@ -681,6 +682,9 @@ def write_html_summary(fname, results):
 
 
 if __name__ == "__main__":
+
+    if not os.path.isfile(pc.PC_MTLS_FILE):
+        sys.exit("buildPayette must be executed before tests can be run")
 
     ARGV = sys.argv[1:]
     if "--profile" in ARGV:

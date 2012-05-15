@@ -49,19 +49,13 @@ Barf files are dumps from a material model of the form:
     .
 
 """
-
 import sys
 import numpy as np
 
+import Payette_config as pc
 import Source.Payette_utils as pu
 import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr
-try:
-    import Source.Payette_installed_materials as pim
-except ImportError:
-    sys.exit("buildPayette must be run to create "
-             "Source/Materials/Payette_installed_materials.py")
-
 
 def error(caller, message):
     """ Give error message and exit. """
@@ -139,15 +133,23 @@ class PayetteBarf(object):
         iam = "PayetteBarf.get_barf_info(self)"
 
         # get the constitutive model
+        with open(pc.PC_MTLS_FILE, "rb") as fobj:
+            constitutive_models = pickle.load(fobj)
         tmp = self.barf["lines"][0].lower().split()
         cmod, version = tmp[0], tmp[2]
-        if cmod not in pim.PAYETTE_INSTALLED_MATERIALS:
+        constitutive_model = constitutive_models.get(cmod)
+        if constitutive_model is None:
             error(iam, "constitutive model {0} not installed".format(cmod))
 
         message = self.barf["lines"][2].strip()
 
         # instantiate the constitutive model class
-        cmod_obj = pim.PAYETTE_CONSTITUTIVE_MODELS[cmod]["class name"]()
+        py_mod = constitutive_model["module"]
+        py_path = os.path.dirname(constitutive_model["file"])
+        cls_nam = constitutive_model["class name"]
+        if py_path not in sys.path:
+            sys.path.insert(0, py_path)
+        exec "from {0} import {1} as cmod_obj".format(py_mod, cls_nam)
 
         self.barf["constitutive model instance"] = cmod_obj
         self.barf["constitutive model"] = cmod

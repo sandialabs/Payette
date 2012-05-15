@@ -37,10 +37,10 @@ foo
 
 # Payette configuration files
 Payette_config.py
-Payette_installed_materials.py
 nocallback.signature.pyf
 host_defines.h
 TestResults.*
+installed_materials.pkl
 
 # Example output
 Examples/exmpl_*.opt*

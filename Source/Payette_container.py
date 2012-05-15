@@ -20,24 +20,20 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
-
 #from __future__ import print_function
 import os
 import sys
-import re
-import imp
 import math
 import numpy as np
-import time
+import pickle
 
-from Source.Payette_utils import CountCalls as CountCalls
-from Source.Payette_material import Material
-from Source.Payette_data_container import DataContainer
-import Source.Payette_installed_materials as pim
+import Payette_config as pc
 import Source.Payette_driver as pd
 import Source.Payette_utils as pu
 import Source.Payette_extract as pe
+from Source.Payette_utils import CountCalls as CountCalls
+from Source.Payette_material import Material
+from Source.Payette_data_container import DataContainer
 
 
 @CountCalls
@@ -780,9 +776,11 @@ def _parse_mtl_block(material_inp=None):
     # spaces with _ in all model names and convert to lower case
     model_nam = model_nam.lower().replace(" ","_")
     constitutive_model = None
-    for key, val in pim.PAYETTE_CONSTITUTIVE_MODELS.items():
+    with open(pc.PC_MTLS_FILE, "rb") as fobj:
+        constitutive_models = pickle.load(fobj)
+    for key, val in constitutive_models.items():
         if model_nam == key or model_nam in val["aliases"]:
-            constitutive_model = key
+            constitutive_model = val
         continue
 
     if constitutive_model is None:
