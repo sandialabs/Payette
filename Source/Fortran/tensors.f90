@@ -7,8 +7,8 @@ module tensors
   integer, parameter :: sk=selected_real_kind(6), dk=selected_real_kind(14)
 
   real(kind=dk), parameter, dimension(6) :: &
-       delta = (/1.d0, 1.d0, 1.d0, 0.d0, 0.d0, 0.d0/), &
-       w = (/1.d0, 1.d0, 1.d0, 2.d0, 2.d0, 2.d0/)
+       delta = (/1., 1., 1., 0., 0., 0./), &
+       w = (/1., 1., 1., 2., 2., 2./)
   integer, parameter, dimension(3) :: diag9 = (/1, 5, 9/)
 
 
@@ -90,12 +90,12 @@ contains
        do j = 1, 3
           symleaf(i, j) = f(i, j) ** 2
        end do
-       symleaf(i, 4) = sqrt(2.d0) * f(i, 1) * f(i, 2)
-       symleaf(i, 5) = sqrt(2.d0) * f(i, 2) * f(i, 3)
-       symleaf(i, 6) = sqrt(2.d0) * f(i, 3) * f(i, 1)
-       symleaf(4, i) = sqrt(2.d0) * f(1, i) * f(2, i)
-       symleaf(5, i) = sqrt(2.d0) * f(2, i) * f(3, i)
-       symleaf(6, i) = sqrt(2.d0) * f(3, i) * f(1, i)
+       symleaf(i, 4) = sqrt(2.) * f(i, 1) * f(i, 2)
+       symleaf(i, 5) = sqrt(2.) * f(i, 2) * f(i, 3)
+       symleaf(i, 6) = sqrt(2.) * f(i, 3) * f(i, 1)
+       symleaf(4, i) = sqrt(2.) * f(1, i) * f(2, i)
+       symleaf(5, i) = sqrt(2.) * f(2, i) * f(3, i)
+       symleaf(6, i) = sqrt(2.) * f(3, i) * f(1, i)
     enddo
     symleaf(4, 4) = f(1, 2) * f(2, 1) + f(1, 1) * f(2, 2)
     symleaf(5, 4) = f(2, 2) * f(3, 1) + f(2, 1) * f(3, 2)
@@ -147,7 +147,7 @@ contains
     real(kind=dk), dimension(6, 6) :: a
     !.....................................................................local
     real(kind=dk), parameter, dimension(6) :: &
-         mandel=(/1.d0,1.d0,1.d0,sqrt(2.d0),sqrt(2.d0),sqrt(2.d0)/)
+         mandel=(/1.,1.,1.,sqrt(2.),sqrt(2.),sqrt(2.)/)
     real(kind=dk), dimension(6) :: t
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~dd66x6
 
@@ -211,7 +211,7 @@ contains
     detf = f(1) * f(5) * f(9) + f(2) * f(6) * f(7) + f(3) * f(4) * f(8) &
          -(f(1) * f(6) * f(8) + f(2) * f(4) * f(9) + f(3) * f(5) * f(7))
     ff = reshape(f, shape(ff))
-    push = 1.d0 / detf * dd66x6(1, symleaf(ff), a)
+    push = 1. / detf * dd66x6(1, symleaf(ff), a)
     return
   end function push
 
@@ -509,10 +509,10 @@ contains
 
     ! Initialize
 
-    icond = 0.d0
-    matinv  = 0.d0
+    icond = 0.
+    matinv  = 0.
     do row = 1, n
-       matinv(row, row) = 1.d0
+       matinv(row, row) = 1.
     end do
     w = a
     do row = 1, n
@@ -538,7 +538,7 @@ contains
        matinv(col, :) = matinv(row, :)
        matinv(row, :) = dum(:)
        wmax = w(col, col)
-       if(abs(wmax) .lt. wcond) then
+       if(abs(wmax) < wcond) then
           icond = 1
           return
        end if
@@ -546,7 +546,7 @@ contains
        w(row,col:) = w(row, col:) / wmax
        matinv(row, :) = matinv(row, :) / wmax
        do row = 1, n
-          if(row .eq. col) cycle
+          if(row == col) cycle
           fac = w(row, col)
           w(row, col:) = w(row, col:) - fac * w(col, col:)
           matinv(row, :) = matinv(row, :) - fac * matinv(col, :)

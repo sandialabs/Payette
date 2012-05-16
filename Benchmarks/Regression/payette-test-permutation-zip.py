@@ -13,7 +13,7 @@ class Test(PayetteTest):
         self.tdir = os.path.dirname(os.path.realpath(__file__))
 
         self.infile = "{0}.inp".format(os.path.join(self.tdir, self.name))
-        self.keywords = ["medium", "regression", "elastic", "using",
+        self.keywords = ["builtin", "medium", "regression", "elastic", "using",
                          "insert", "permutation", "zip"]
         self.runcommand = ["runPayette", "--no-writeprops", "--no-restart",
                            self.infile]

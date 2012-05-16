@@ -33,10 +33,12 @@ subroutine finite_elast_chk(ui)
 
   implicit none
 
+  !....................................................................parameters
+  integer, parameter :: dk=selected_real_kind(14)
   !........................................................................passed
-  double precision, dimension (*) :: ui
+  real(kind=dk), dimension (*) :: ui
   !.........................................................................local
-  double precision :: k, mu, nu, c11, c12, c44
+  real(kind=dk) :: k, mu, nu, c11, c12, c44
   character*16 iam
   parameter(iam='finite_elast_chk' )
 
@@ -45,11 +47,11 @@ subroutine finite_elast_chk(ui)
   mu = ui(1)
   nu = ui(2)
   k = ui(3)
-  if(k .le. 0.d0) &
+  if(k <= 0.) &
        call faterr(iam, "Bulk modulus K must be positive")
-  if(mu .le. 0.d0) &
+  if(mu <= 0.) &
        call faterr(iam, "Shear modulus MU must be positive")
-  if(nu .lt. 0.d0) &
+  if(nu < 0.) &
        call logmes("WARNING: negative Poisson's ratio")
 
   ! redefine the elastic constants
@@ -96,20 +98,19 @@ subroutine finite_elast_calc(nc, ui, farg, earg, pk2arg, sigarg)
   use tensors
 
   implicit none
-
   !....................................................................parameters
-  double precision, parameter, dimension(6) :: delta = (/1.,1.,1.,0.,0.,0./)
-  double precision, parameter, dimension(6) :: w = (/1.,1.,1.,2.,2.,2./)
-
+  integer, parameter :: dk=selected_real_kind(14)
+  real(kind=dk), parameter, dimension(6) :: delta = (/1.,1.,1.,0.,0.,0./)
+  real(kind=dk), parameter, dimension(6) :: w = (/1.,1.,1.,2.,2.,2./)
   !........................................................................passed
   integer :: nc
-  double precision, dimension(*) :: ui
-  double precision, dimension(6, nc) :: earg, pk2arg, sigarg
-  double precision, dimension(9, nc) :: farg
+  real(kind=dk), dimension(*) :: ui
+  real(kind=dk), dimension(6, nc) :: earg, pk2arg, sigarg
+  real(kind=dk), dimension(9, nc) :: farg
   !.........................................................................local
   integer :: ic
-  double precision :: c11, c12, c44
-  double precision, dimension(6) :: e, pk2, sig
+  real(kind=dk) :: c11, c12, c44
+  real(kind=dk), dimension(6) :: e, pk2, sig
   ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ finite_elast_chk
 
   ! user properties

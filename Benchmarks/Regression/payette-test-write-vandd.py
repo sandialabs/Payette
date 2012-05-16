@@ -18,8 +18,9 @@ class Test(PayetteTest):
         self.baseline = ["{0:s}.dgold".format(os.path.join(self.tdir,self.name)),
                          "{0:s}.vgold".format(os.path.join(self.tdir,self.name))]
         self.tables = [self.name + ".dtable", self.name + ".vtable"]
-        self.keywords = ["payette","regression","fast","vtable","dtable"]
-        self.runcommand = ["runPayette","--no-writeprops","--no-restart",
+        self.keywords = ["builtin", "payette", "regression",
+                         "fast", "vtable", "dtable"]
+        self.runcommand = ["runPayette", "--no-writeprops", "--no-restart",
                            "-w",self.infile]
         self.material = "elastic"
 

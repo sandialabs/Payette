@@ -20,7 +20,7 @@ class Test(PayetteTest):
         self.runcommand = ["--no-restart","--no-writeprops","-v","0",
                            "--input-str={0}".format(self.input_string)]
         self.material = "elastic"
-        self.keywords = ["payette","input_str","regression","fast"]
+        self.keywords = ["payette","input_str","regression","fast","builtin"]
 
         self.owner = "Tim Fuller"
         self.date = "February 25, 2012"

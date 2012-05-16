@@ -257,6 +257,9 @@ def test_payette(argv):
 
         return 0
 
+    if not conforming:
+        sys.exit("No tests found")
+
     # start the timer
     t_start = time.time()
 

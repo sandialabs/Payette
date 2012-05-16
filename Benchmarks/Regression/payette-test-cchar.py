@@ -17,7 +17,7 @@ class Test(PayetteTest):
         self.runcommand = ["runPayette","--no-writeprops","--no-restart",
                            "--cchar=!",self.infile]
         self.material = "elastic"
-        self.keywords = ["payette","cchar","regression","fast"] # add keywords
+        self.keywords = ["payette","cchar","regression","fast","builtin"]
 
         self.owner = "Tim Fuller"
         self.date = "February 25, 2012"

@@ -15,7 +15,8 @@ class Test(PayetteTest):
         self.infile = "{0}.inp".format(os.path.join(self.tdir, self.name))
         self.outfile = "{0}.opt/{0}.opt".format(self.name)
         self.baseline = "{0}.gold".format(os.path.join(self.tdir, self.name))
-        self.keywords = ["fast", "regression", "optimization", "cobyla"]
+        self.keywords = ["builtin", "fast", "regression",
+                         "optimization", "cobyla"]
         self.runcommand = ["runPayette", "--no-writeprops", "--no-restart",
                            self.infile]
         self.material = "elastic"

@@ -713,7 +713,7 @@ def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):
 
     if non_existent:
         pu.logwrn("requested material[s] {0} not found"
-                  .format(", ".join(non_existent)), pre=SPACE)
+                  .format(", ".join(non_existent)))
 
     return payette_materials
 

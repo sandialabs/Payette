@@ -22,23 +22,25 @@
 ! DEALINGS IN THE SOFTWARE.
 
 
-! ***************************************************************************** !
+!*******************************************************************************!
 
 
 subroutine plast_chk(ui)
-  ! *************************************************************************** !
+  !*****************************************************************************!
   !     REQUIRED MIG DATA CHECK ROUTINE
   !     Checks validity of user inputs for DMM model.
   !     Sets defaults for unspecified user input.
   !     Adjusts user input to be self-consistent.
-  ! *************************************************************************** !
+  !*****************************************************************************!
 
   implicit none
 
+  !....................................................................parameters
+  integer, parameter :: dk=selected_real_kind(14)
   !........................................................................passed
-  double precision, dimension (*) :: ui
+  real(kind=dk), dimension (*) :: ui
   !.........................................................................local
-  double precision :: k, mu, y, a, c, m, nu
+  real(kind=dk) :: k, mu, y, a, c, m, nu
   character*9 iam
   parameter(iam='plast_chk' )
   ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ plast_chk
@@ -49,38 +51,38 @@ subroutine plast_chk(ui)
   a = ui(4)
   c = ui(5)
   m = ui(6)
-  if(k .le. 0.d0) &
+  if(k <= 0.) &
        call faterr(iam, "Bulk modulus K must be positive")
-  if(mu .le. 0.d0) &
+  if(mu <= 0.) &
        call faterr(iam, "Shear modulus MU must be positive")
-  if(y .le. 0.d0) &
+  if(y <= 0.) &
        call faterr(iam, "Yield strength Y must be positive")
-  if(a .lt. 0.d0) &
+  if(a < 0.) &
        call faterr(iam, "Kinematic hardening modulus A must be non-negative")
-  if(c .lt. 0.d0) &
+  if(c < 0.) &
        call faterr(iam, "Isotropic hardening modulus C must be non-negative")
-  if(m .lt. 0.d0) then
+  if(m < 0.) then
        call faterr(iam, "Isotropic hardening power M must be non-negative")
-  else if(m .eq. 0.d0) then
-     if(c .ne. 0.d0) &
+  else if(m == 0.) then
+     if(c /= 0.) &
           call logmes("Isotropic hardening modulus C being set 0 because M = 0")
-     ui(5) = 0.d0
+     ui(5) = 0.
   end if
 
   ! poisson's ratio
-  nu = (3.d0 * k - 2.d0 * mu) / (6.d0 * k + 2.d0 * mu)
-  if(nu .lt. 0.d0) &
+  nu = (3. * k - 2. * mu) / (6. * k + 2. * mu)
+  if(nu < 0.) &
        call logmes("WARNING: negative Poisson's ratio")
 
   return
 end subroutine plast_chk
 
 
-! ***************************************************************************** !
+!*******************************************************************************!
 
 
 subroutine plast_rxv(nx, namea, keya, rinit, iadvct)
-  ! *************************************************************************** !
+  !*****************************************************************************!
   !     REQUESTED EXTRA VARIABLES FOR KAYENTA
   !
   !     This subroutine creates lists of the internal state variables
@@ -92,19 +94,19 @@ subroutine plast_rxv(nx, namea, keya, rinit, iadvct)
   !     control for each internal state variable.
   !
   !     called by: host code after all input data have been checked
-  ! *************************************************************************** !
+  !*****************************************************************************!
 
   implicit none
 
   !....................................................................parameters
+  integer, parameter :: dk=selected_real_kind(14)
   integer, parameter :: nsv=7
   integer, parameter :: mmcn=50, mmck=10, mnunit=7
   integer, parameter :: mmcna=nsv*mmcn, mmcka=nsv*mmck
-
   !........................................................................passed
   integer :: nx
   integer, dimension(*) :: iadvct
-  double precision, dimension(*) :: rinit
+  real(kind=dk), dimension(*) :: rinit
   character*1 namea(*), keya(*)
 
   !.........................................................................local
@@ -114,7 +116,7 @@ subroutine plast_rxv(nx, namea, keya, rinit, iadvct)
 
   call logmes('############# requesting plastic extra variables')
 
-  rinit(1:nsv) = 0.d0
+  rinit(1:nsv) = 0.
 
   nx = 0
   ! equivalent plastic strain
@@ -160,16 +162,16 @@ subroutine plast_rxv(nx, namea, keya, rinit, iadvct)
 end subroutine plast_rxv
 
 
-!****************************************************************************** !
+!*******************************************************************************!
 
 
 subroutine plast_calc(nc, nsv, dt, ui, sigarg, darg, svarg)
-  !**************************************************************************** !
+  !*****************************************************************************!
   !
   !     Description:
   !       Combined kinematic/isotropic hardening plasticity
   !
-  !**************************************************************************** !
+  !*****************************************************************************!
   !
   !     input arguments
   !     ===============
@@ -188,33 +190,31 @@ subroutine plast_calc(nc, nsv, dt, ui, sigarg, darg, svarg)
   !     ================
   !      USM      dp                      uniaxial strain modulus
   !
-  !**************************************************************************** !
+  !*****************************************************************************!
   !
   !      stresss and strains, plastic strain tensors
   !          11, 22, 33, 12, 23, 13
   !
-  !**************************************************************************** !
-
+  !*****************************************************************************!
   use tensors
-
   implicit none
-
   !....................................................................parameters
-  double precision, parameter, dimension(6) :: delta = (/1.,1.,1.,0.,0.,0./)
-  double precision, parameter, dimension(6) :: w = (/1.,1.,1.,2.,2.,2./)
+  integer, parameter :: dk=selected_real_kind(14)
+  real(kind=dk), parameter, dimension(6) :: delta = (/1.,1.,1.,0.,0.,0./)
+  real(kind=dk), parameter, dimension(6) :: w = (/1.,1.,1.,2.,2.,2./)
   !........................................................................passed
   integer :: nc, nsv
-  double precision :: dt
-  double precision, dimension(*) :: ui
-  double precision, dimension(nsv, nc) :: svarg
-  double precision, dimension(6, nc) :: sigarg, darg
+  real(kind=dk) :: dt
+  real(kind=dk), dimension(*) :: ui
+  real(kind=dk), dimension(nsv, nc) :: svarg
+  real(kind=dk), dimension(6, nc) :: sigarg, darg
   !........................................................................local
   integer :: ic
-  double precision :: k, mu, y0, y, a, c, m, twomu, threek, rt2j2
-  double precision :: gam, facyld, dfdy, hy, h, radius
-  double precision :: dlam, num, dnom
-  double precision, dimension(6) :: de, sig, dsig, bstress, xid, xi, n, p
-  double precision, dimension(6) :: dfda, ha
+  real(kind=dk) :: k, mu, y0, y, a, c, m, twomu, threek, rt2j2
+  real(kind=dk) :: gam, facyld, dfdy, hy, h, radius
+  real(kind=dk) :: dlam, num, dnom
+  real(kind=dk), dimension(6) :: de, sig, dsig, bstress, xid, xi, n, p
+  real(kind=dk), dimension(6) :: dfda, ha
   character*10 iam
   parameter(iam='plast_calc' )
   ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ plast_calc
@@ -228,8 +228,8 @@ subroutine plast_calc(nc, nsv, dt, ui, sigarg, darg, svarg)
   m = ui(6)
 
   ! constants
-  twomu = 2.d0 * mu
-  threek = 3.d0 * k
+  twomu = 2. * mu
+  threek = 3. * k
 
   gather_scatter: do ic = 1, nc
 
@@ -251,13 +251,13 @@ subroutine plast_calc(nc, nsv, dt, ui, sigarg, darg, svarg)
 
      ! yield stress
      y = y0
-     if(c .ne. 0.d0) y = y + c * gam ** (1 / m)
-     radius = sqrt(2.d0 / 3.d0) * y
+     if(c /= 0.) y = y + c * gam ** (1 / m)
+     radius = sqrt(2. / 3.) * y
 
      ! check yield
-     facyld = 0.d0
-     if(rt2j2 - radius .ge. 0.d0) facyld = 1.d0
-     rt2j2 = rt2j2 + (1.d0 - facyld) ! avoid any divide by zero
+     facyld = 0.
+     if(rt2j2 - radius >= 0.) facyld = 1.
+     rt2j2 = rt2j2 + (1. - facyld) ! avoid any divide by zero
 
      ! yield surface normal and return direction
      !                   df/dsig
@@ -279,22 +279,22 @@ subroutine plast_calc(nc, nsv, dt, ui, sigarg, darg, svarg)
      num = ddp(n, dsig)
 
      ! denominator
-     ha = 2.d0 / 3.d0 * a * dev(n)
-     dfda = -xid / sqrt(2.d0) / rt2j2 ! radius
-     hy = 0.d0
-     if(c .ne. 0.d0) hy = m * c * ((y - y0) / c) ** ((m - 1) / m)
-     dfdy = -1.d0 / sqrt(3.d0)
-     H = sqrt(2.d0) * (ddp(dfda, ha) + dfdy * hy)
-     dnom = ddp(n, p) - H + (1.d0 - facyld) ! avoid any divide by zero
+     ha = 2. / 3. * a * dev(n)
+     dfda = -xid / sqrt(2.) / rt2j2 ! radius
+     hy = 0.
+     if(c /= 0.) hy = m * c * ((y - y0) / c) ** ((m - 1) / m)
+     dfdy = -1. / sqrt(3.)
+     H = sqrt(2.) * (ddp(dfda, ha) + dfdy * hy)
+     dnom = ddp(n, p) - H + (1. - facyld) ! avoid any divide by zero
 
      dlam = facyld * num / dnom
-     if(dlam .lt. 0.d0) call bombed(iam//": negative dlam")
+     if(dlam < 0.) call bombed(iam//": negative dlam")
 
      ! equivalet plastic strain
      gam = gam + dlam * mag(dev(n))
 
      ! update back stress
-     bstress = bstress + 2.d0 / 3.d0 * a * dlam * dev(n)
+     bstress = bstress + 2. / 3. * a * dlam * dev(n)
 
      ! update stress
      sig = sig - dlam * p

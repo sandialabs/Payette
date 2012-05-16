@@ -23,7 +23,7 @@ class Test(PayetteTest):
                                "--test-restart",self.restartfile]
         self.material = "elastic"
 
-        self.keywords = ["payette","restart","regression","fast"]
+        self.keywords = ["builtin","payette","restart","regression","fast"]
         self.compare_method = self.compare_out_to_baseline_rms
         self.owner = "Tim Fuller"
         self.date = "February 25, 2012"

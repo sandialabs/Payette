@@ -17,7 +17,7 @@ class Test(PayetteTest):
         self.outfile = "{0}.out".format(self.name)
         self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
         self.keywords = ["fast", "verification", "finite_elastic",
-                         "uniaxial_strain", "python_model"]
+                         "uniaxial_strain", "python_model", "builtin"]
         self.runcommand = ["runPayette","--no-writeprops","--no-restart",self.infile]
         self.material = "finite_elastic"
 

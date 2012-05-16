@@ -643,8 +643,8 @@ def clean_payette():
     soext = sysconfig.get_config_var("SO")
 
     pats_to_remove = ["*.pyc", "*.pyo", "Payette_config.py",
-                      "Payette_installed_materials.py", "*{0}".format(soext),
-                      "__found_tests__.py",
+                      "*{0}".format(soext),
+                      "installed_materials.pkl", "__found_tests__.py",
                       "*.log", "*.echo", "*.prf", "*.diff", "*.xout", "*.out",
                       "*.math1", "*.math2", "*.props", "*.vtable", "*.dtable"]
     pats_to_remove.extend(PC_BUILT_EXES.keys())

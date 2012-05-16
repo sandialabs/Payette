@@ -23,48 +23,49 @@
 
 
 subroutine elast_chk(ui)
-  !***********************************************************************
+  !******************************************************************************
   !     REQUIRED MIG DATA CHECK ROUTINE
   !     Checks validity of user inputs for DMM model.
   !     Sets defaults for unspecified user input.
   !     Adjusts user input to be self-consistent.
-  !
-  !***********************************************************************
-
+  !******************************************************************************
   implicit none
-
-  !...................................................................... passed
-  double precision, dimension (*) :: ui
-  !...................................................................... local
-  double precision :: k, mu, nu
+  !....................................................................parameters
+  integer, parameter :: dk=selected_real_kind(14)
+  !........................................................................passed
+  real(kind=dk), dimension (*) :: ui
+  !.........................................................................local
+  real(kind=dk) :: k, mu, nu
   character*9 iam
   parameter(iam='elast_chk' )
-
-  ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ elast_chk
+  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~elast_chk
 
   k = ui(1)
   mu = ui(2)
-  if(k .le. 0.d0) &
+  if(k <= 0.) &
        call faterr(iam, "Bulk modulus K must be positive")
-  if(mu .le. 0.d0) &
+  if(mu <= 0.) &
        call faterr(iam, "Shear modulus MU must be positive")
 
   ! poisson's ratio
-  nu = (3.d0 * k - 2.d0 * mu) / (6.d0 * k + 2.d0 * mu)
-  if(nu .lt. 0.d0) &
+  nu = (3. * k - 2. * mu) / (6. * k + 2. * mu)
+  if(nu < 0.) &
        call logmes("WARNING: negative Poisson's ratio")
 
   return
 end subroutine elast_chk
 
 
+!********************************************************************************
+
+
 subroutine elast_calc(nc, dt, ui, sigarg, darg)
-  !***********************************************************************
+  !******************************************************************************
   !
   !     Description:
   !       Hooke's law elasticity
   !
-  !***********************************************************************
+  !******************************************************************************
   !
   !     input arguments
   !     ===============
@@ -82,32 +83,28 @@ subroutine elast_calc(nc, dt, ui, sigarg, darg)
   !     ================
   !      USM      dp                      uniaxial strain modulus
   !
-  !***********************************************************************
+  !******************************************************************************
   !
   !      stresss and strains
   !          11, 22, 33, 12, 23, 13
   !
-  !***********************************************************************
-
+  !******************************************************************************
   use tensors
-
   implicit none
-
-  !.................................................................. parameters
-  double precision, parameter, dimension(6) :: delta = (/1.,1.,1.,0.,0.,0./)
-  double precision, parameter, dimension(6) :: w = (/1.,1.,1.,2.,2.,2./)
-
-  !...................................................................... passed
+  !....................................................................parameters
+  integer, parameter :: dk=selected_real_kind(14)
+  real(kind=dk), parameter, dimension(6) :: delta = (/1.,1.,1.,0.,0.,0./)
+  real(kind=dk), parameter, dimension(6) :: w = (/1.,1.,1.,2.,2.,2./)
+  !........................................................................passed
   integer :: nc
-  double precision :: dt
-  double precision, dimension(*) :: ui
-  double precision, dimension(6, nc) :: sigarg, darg
-  !...................................................................... local
+  real(kind=dk) :: dt
+  real(kind=dk), dimension(*) :: ui
+  real(kind=dk), dimension(6, nc) :: sigarg, darg
+  !.........................................................................local
   integer :: ic
-  double precision :: k, mu, twomu, threek
-  double precision, dimension(6) :: de
-
-  ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ elast_chk
+  real(kind=dk) :: k, mu, twomu, threek
+  real(kind=dk), dimension(6) :: de
+  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~elast_chk
 
   ! user properties
   k = ui(1)
