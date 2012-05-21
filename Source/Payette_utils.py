@@ -96,11 +96,13 @@ class PayetteError(Exception):
 
 
 def whoami():
+    """ return name of calling function """
     return stack()[1][3]
 
 
 @CountCalls
 def reportMessage(f, msg, pre="INFO: "):
+    """ report message to log """
 #    msg = 'INFO: {0} (reported from [{1}])\n'.format(msg, f)
     msg = '{0}{1}\n'.format(pre, msg)
     simlog.write(msg)
@@ -110,6 +112,7 @@ def reportMessage(f, msg, pre="INFO: "):
 
 @CountCalls
 def reportWarning(f, msg, limit=False):
+    """ report warning to log """
     wcount = CountCalls.counts()[whoami()]
     if limit:
         max_warn = 1000
@@ -134,6 +137,7 @@ def reportWarning(f, msg, limit=False):
 
 @CountCalls
 def reportError(iam, msg, tracebacklimit=None):
+    """ report error to log and raise error """
     iam = _adjust_nam_length(iam)
     msg = '{0} (reported from [{1}])'.format(msg, iam)
     raise PayetteError(msg, tracebacklimit)
@@ -141,44 +145,52 @@ def reportError(iam, msg, tracebacklimit=None):
 
 
 def migMessage(msg):
+    """ mig interface to reportMessage """
     reportMessage("MIG", msg)
     return
 
 
 def migError(msg):
+    """ mig interface to reportError """
     msg = ' '.join([x for x in msg.split(' ') if x])
     reportError("MIG", msg, tracebacklimit=0)
     return
 
 
 def migWarning(msg):
+    """ mig interface to reportWarning """
     reportWarning("MIG", msg)
     return
 
 
 def write_msg_to_screen(iam, msg):
+    """ write a message to stdout """
     sys.stdout.write("INFO: {0:s}\n".format(msg))
     return
 
 
 def write_wrn_to_screen(iam, msg):
+    """ write warning to stdout """
     sys.stdout.write("WARNING: {0:s}\n".format(msg))
     return
 
 
 def write_to_simlog(msg):
+    """ write message to simulation log """
     msg = "{0:s}\n".format(msg)
     simlog.write(msg)
     return
 
 
 def _adjust_nam_length(nam):
+    """ adjust the length of a file name """
     if not os.path.isfile(nam):
         return nam
     return os.path.splitext(os.path.basename(nam))[0]
 
 
 def parse_token(n,stringa,token=r'|'):
+    """ python implementation of mig partok """
     parsed_string = []
     i = 0
     while i < n:
@@ -202,6 +214,7 @@ def parse_token(n,stringa,token=r'|'):
     return parsed_string
 
 def check_py_version():
+    """ check python version compatibility """
     (major, minor, micro, releaselevel, serial) = sys.version_info
     if (major != 3 and major != 2) or (major == 2 and minor < 6):
         raise SystemExit("Payette requires Python >= 2.6\n")
@@ -209,6 +222,7 @@ def check_py_version():
 
 
 def setup_logger(logfile, level, mode="w"):
+    """ set up the simulation logger """
     global loglevel, simlog
     loglevel = level
     simlog = open(logfile, mode)
@@ -218,13 +232,12 @@ def setup_logger(logfile, level, mode="w"):
 
 
 def parse_error(message):
+    """ quite on parsing error """
     sys.exit("ERROR: {0}".format(message))
 
 
 def read_input(user_input, user_cchar=None):
-    """
-       read a list of user inputs and return
-    """
+    """ read a list of user inputs and return """
 
     if not user_input:
         parse_error("no user input sent to read_input")
@@ -236,8 +249,8 @@ def read_input(user_input, user_cchar=None):
         cchars.append(user_cchar)
 
     # get all of the input blocks for the file
-    input_lines = get_input_lines(user_input, cchars)
-    input_sets = get_blocks(input_lines)
+    input_lines = _get_input_lines(user_input, cchars)
+    input_sets = _get_blocks(input_lines)
 
     # input_sets contains a list of all blocks in the file, parse it to make
     # sure that a simulation is given
@@ -291,7 +304,7 @@ def read_input(user_input, user_cchar=None):
     return user_dict
 
 
-def get_blocks(user_input):
+def _get_blocks(user_input):
     """ Find all input blocks in user_input.
 
     Input blocks are blocks of instructions in
@@ -354,8 +367,7 @@ def get_blocks(user_input):
             except ValueError:
                 block_nam = None
 
-            new_block = {block_typ: {"name": block_nam,
-                                     "content": [], }}
+            new_block = {block_typ: {"name": block_nam, "content": [], }}
 
             if not block_stack:
                 # First encountered block, old block is now done, store it
@@ -416,32 +428,29 @@ def get_blocks(user_input):
     return block_tree
 
 
-def remove_block(input_lines, block):
-    idx_0, idx_f, lines = find_block(input_lines, block)
+def _remove_block(input_lines, block):
+    """ remove the requested block from input_lines """
+    idx_0, idx_f, lines = _find_block(input_lines, block)
     del input_lines[idx_0:idx_f + 1]
     return input_lines
 
-def find_block(input_lines, block):
 
+def _find_block(input_lines, block):
+    """ find block in input_lines """
     block_lines = []
     idx_0, idx_f = None, None
     for idx, line in enumerate(input_lines):
-        sline = line.lower().strip().split()
-        if not sline:
-            continue
-        if sline[0] in ("#", "$"):
-            continue
-
-        if sline[0] == "begin":
+        sline = line.split()
+        if sline[0].lower() == "begin":
             if sline[1] == block:
                 idx_0 = idx
-        elif sline[0] == "end":
+        elif sline[0].lower() == "end":
             if sline[1] == block:
                 idx_f = idx
         continue
 
     if idx_0 is not None and idx_f is not None:
-        block_lines = input_lines[idx_0+1:idx_f]
+        block_lines = input_lines[idx_0 + 1:idx_f]
 
     return idx_0, idx_f, block_lines
 
@@ -468,6 +477,7 @@ def textformat(var):
 
 
 def close_aux_files():
+    """ close auxilary files """
     try:
         simlog.close()
 
@@ -497,7 +507,6 @@ def flatten(x):
             result.extend(flatten(el))
         else:
             result.append(el)
-            pass
         continue
     return result
 
@@ -524,6 +533,7 @@ class BuildError(Exception):
 
 
 def get_module_name_and_path(py_file):
+    """ return module name and path as list """
     return (os.path.splitext(os.path.basename(py_file))[0],
             [os.path.dirname(py_file)])
 
@@ -534,16 +544,19 @@ def get_module_name(py_file):
 
 
 def begmes(msg, pre="", end="  "):
+    """ begin a message to stdout """
     print("{0}{1}...".format(pre, msg), end=end)
     return
 
 
 def endmes(msg, pre="", end="\n"):
+    """ end message to stdout """
     print("{0}{1}".format(pre, msg), end=end)
     return
 
 
 def loginf(msg, pre="", end="\n", caller=None):
+    """ log an info message to stdout """
     if caller is not None:
         msg = "{0} [reported by {1}]".format(msg, caller)
     print("{0}INFO: {1}".format(pre, msg), end=end)
@@ -551,6 +564,7 @@ def loginf(msg, pre="", end="\n", caller=None):
 
 
 def logmes(msg, pre="", end="\n", caller=None):
+    """ log a message to stdout """
     if caller is not None:
         msg = "{0} [reported by {1}]".format(msg, caller)
     print("{0}{1}".format(pre, msg), end=end)
@@ -558,6 +572,7 @@ def logmes(msg, pre="", end="\n", caller=None):
 
 
 def logwrn(msg, pre="", end="\n", caller=None):
+    """ log a warning to stdout """
     if caller is not None:
         msg = "{0} [reported by {1}]".format(msg, caller)
 
@@ -566,6 +581,7 @@ def logwrn(msg, pre="", end="\n", caller=None):
 
 
 def logerr(msg, pre="", end="\n", caller=None):
+    """ log an error to stdout """
     if caller is not None:
         msg = "{0} [reported by {1}]".format(msg, caller)
 
@@ -1026,7 +1042,7 @@ def write_input_file(nam, inp_dict, inp_f):
     return
 
 
-def get_input_lines(user_input, cchars):
+def _get_input_lines(raw_user_input, cchars):
     """Read the user input, inserting files if encountered
 
     Parameters
@@ -1045,9 +1061,11 @@ def get_input_lines(user_input, cchars):
 
     insert_kws = ("insert", "include")
 
-    use_blocks = []
+    used_blocks = []
     all_input = []
     iline = 0
+
+    user_input = _remove_all_comments(raw_user_input, cchars)
 
     # infinite loop for reading the input file and getting all inserted files
     while True:
@@ -1063,30 +1081,21 @@ def get_input_lines(user_input, cchars):
                 break
 
         # get the next line of input
-        line = user_input[iline].strip()
-
-        # skip blank and comment lines
-        if not line.split() or line[0] in cchars:
-            iline += 1
-            continue
-
-        # remove inline comments
-        for cchar in cchars:
-            line = line.split(cchar)[0]
+        line = user_input[iline]
 
         # check for internal "use" directives
         if line.split()[0] == "use":
-            use_block = " ".join(line.split()[1:])
-            use_blocks.append(use_block)
+            block = " ".join(line.split()[1:])
             # check if insert is given in file
-            idx_0, idx_f, block_insert = find_block(user_input, use_block)
+            idx_0, idx_f, block_insert = _find_block(user_input, block)
             if idx_0 is None:
-                parse_error("'use' block '{0:s}' not found".format(use_block))
+                parse_error("'use' block '{0:s}' not found".format(block))
             elif idx_f is None:
                 parse_error("end of 'use' block '{0:s}' not found"
-                            .format(use_block))
-            else:
-                all_input.extend(block_insert)
+                            .format(block))
+
+            used_blocks.append(block)
+            all_input.extend(block_insert)
 
         # check for inserts
         elif line.split()[0] in insert_kws:
@@ -1096,12 +1105,7 @@ def get_input_lines(user_input, cchars):
                 parse_error("inserted file '{0:s}' not found".format(insert))
 
             insert_lines = open(insert, "r").readlines()
-            for insert_line in insert_lines:
-                if not insert_line.split() or insert_line[0] in cchars:
-                    continue
-                for cchar in cchars:
-                    insert_line = insert_line.split(cchar)[0]
-                all_input.append(insert_line.strip())
+            all_input.extend(_remove_all_comments(insert_lines, cchars))
 
         else:
             all_input.append(line)
@@ -1110,10 +1114,28 @@ def get_input_lines(user_input, cchars):
 
         continue
 
-    for use_block in list(set(use_blocks)):
-        all_input = remove_block(all_input, use_block)
+    for block in list(set(used_blocks)):
+        all_input = _remove_block(all_input, block)
 
     return all_input
+
+
+def _remove_all_comments(lines, cchars):
+    """ remove all comments from lines """
+    stripped_lines = []
+    for line in lines:
+        line = line.strip()
+        # skip blank and comment lines
+        if not line.split() or line[0] in cchars:
+            continue
+
+        # remove inline comments
+        for cchar in cchars:
+            line = line.split(cchar)[0]
+
+        stripped_lines.append(line)
+        continue
+    return stripped_lines
 
 
 # the following are being kept around for back compatibiltiy
