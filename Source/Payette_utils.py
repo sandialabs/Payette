@@ -236,7 +236,8 @@ def read_input(user_input, user_cchar=None):
         cchars.append(user_cchar)
 
     # get all of the input blocks for the file
-    input_sets = get_blocks(get_input_lines(user_input, cchars))
+    input_lines = get_input_lines(user_input, cchars)
+    input_sets = get_blocks(input_lines)
 
     # input_sets contains a list of all blocks in the file, parse it to make
     # sure that a simulation is given
@@ -353,7 +354,8 @@ def get_blocks(user_input):
             except ValueError:
                 block_nam = None
 
-            new_block = {block_typ: {"name": block_nam, "content": []}}
+            new_block = {block_typ: {"name": block_nam,
+                                     "content": [], }}
 
             if not block_stack:
                 # First encountered block, old block is now done, store it
@@ -412,6 +414,36 @@ def get_blocks(user_input):
     block_tree.append(block)
 
     return block_tree
+
+
+def remove_block(input_lines, block):
+    idx_0, idx_f, lines = find_block(input_lines, block)
+    del input_lines[idx_0:idx_f + 1]
+    return input_lines
+
+def find_block(input_lines, block):
+
+    block_lines = []
+    idx_0, idx_f = None, None
+    for idx, line in enumerate(input_lines):
+        sline = line.lower().strip().split()
+        if not sline:
+            continue
+        if sline[0] in ("#", "$"):
+            continue
+
+        if sline[0] == "begin":
+            if sline[1] == block:
+                idx_0 = idx
+        elif sline[0] == "end":
+            if sline[1] == block:
+                idx_f = idx
+        continue
+
+    if idx_0 is not None and idx_f is not None:
+        block_lines = input_lines[idx_0+1:idx_f]
+
+    return idx_0, idx_f, block_lines
 
 
 def textformat(var):
@@ -1013,6 +1045,7 @@ def get_input_lines(user_input, cchars):
 
     insert_kws = ("insert", "include")
 
+    use_blocks = []
     all_input = []
     iline = 0
 
@@ -1041,10 +1074,24 @@ def get_input_lines(user_input, cchars):
         for cchar in cchars:
             line = line.split(cchar)[0]
 
+        # check for internal "use" directives
+        if line.split()[0] == "use":
+            use_block = " ".join(line.split()[1:])
+            use_blocks.append(use_block)
+            # check if insert is given in file
+            idx_0, idx_f, block_insert = find_block(user_input, use_block)
+            if idx_0 is None:
+                parse_error("'use' block '{0:s}' not found".format(use_block))
+            elif idx_f is None:
+                parse_error("end of 'use' block '{0:s}' not found"
+                            .format(use_block))
+            else:
+                all_input.extend(block_insert)
+
         # check for inserts
-        if line.split()[0] in insert_kws:
-            inserted_file = True
+        elif line.split()[0] in insert_kws:
             insert = " ".join(line.split()[1:])
+
             if not os.path.isfile(insert):
                 parse_error("inserted file '{0:s}' not found".format(insert))
 
@@ -1062,6 +1109,9 @@ def get_input_lines(user_input, cchars):
         iline += 1
 
         continue
+
+    for use_block in list(set(use_blocks)):
+        all_input = remove_block(all_input, use_block)
 
     return all_input
 

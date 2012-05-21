@@ -142,23 +142,29 @@ class Payette:
         self.simdat.register_data("leg number","Scalar", init_val=0 )
         self.simdat.register_data("leg data", "List", init_val=lcontrol)
 
-        # check if user has specified simulation options
+        # check if user has specified simulation options directly in the input file
         for item in user_input["content"]:
             for pat, repl in ((",", " "), (";", " "), (":", " "), ):
                 item = item.replace(pat, repl)
                 continue
             item = item.split()
 
-            if len(item) == 1:
+            if item[-1] not in ("True", "False"):
                 item.append("True")
 
             try:
-                val = eval(item[1])
+                val = eval(item[-1])
             except:
-                val = str(item[1])
+                val = str(item[-1])
 
-            self.simdat.register_option(item[0], val)
+
+            self.simdat.register_option(" ".join(item[:-1]), val)
             continue
+
+        if "check setup" in self.simdat.get_all_options() or opts.check_setup:
+            sys.exit("EXITING to check setup")
+
+
 
         # register default options
         self.simdat.register_option("verbosity", opts.verbosity)
