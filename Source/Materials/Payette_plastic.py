@@ -60,7 +60,10 @@ class Plastic(ConstitutiveModelPrototype):
         self.name = attributes["name"]
         self.aliases = attributes["aliases"]
 
-        self.code = kwargs["code"]
+        try:
+            self.code = kwargs["code"]
+        except KeyError:
+            self.code = "python"
         self.imported = True if self.code == "python" else imported
 
         # register parameters

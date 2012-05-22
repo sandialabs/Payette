@@ -64,7 +64,11 @@ class FiniteElastic(ConstitutiveModelPrototype):
         self.aliases = attributes["aliases"]
         self.imported = True
 
-        self.code = kwargs["code"]
+        try:
+            self.code = kwargs["code"]
+        except KeyError:
+            self.code = "python"
+
         self.imported = True if self.code == "python" else imported
 
         # register parameters
