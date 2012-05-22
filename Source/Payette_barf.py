@@ -51,6 +51,7 @@ Barf files are dumps from a material model of the form:
 """
 import sys
 import numpy as np
+import pickle
 
 import Payette_config as pc
 import Source.Payette_utils as pu
@@ -132,28 +133,17 @@ class PayetteBarf(object):
 
         iam = "PayetteBarf.get_barf_info(self)"
 
-        # get the constitutive model
-        with open(pc.PC_MTLS_FILE, "rb") as fobj:
-            constitutive_models = pickle.load(fobj)
+        # get the model name
         tmp = self.barf["lines"][0].lower().split()
-        cmod, version = tmp[0], tmp[2]
-        constitutive_model = constitutive_models.get(cmod)
-        if constitutive_model is None:
-            error(iam, "constitutive model {0} not installed".format(cmod))
+        model_name, version = tmp[0], tmp[2]
+
+        # get the constitutive model
+        cmod = pu.get_constitutive_model_object(model_name)
 
         message = self.barf["lines"][2].strip()
 
-        # get the material's constitutive model object
-        py_mod = constitutive_model["module"]
-        py_path = [os.path.dirname(constitutive_model["file"])]
-        cls_nam = constitutive_model["class name"]
-        fobj, pathname, description = imp.find_module(py_mod, py_path)
-        py_module = imp.load_module(py_mod, fobj, pathname, description)
-        fobj.close()
-        cmod_obj = getattr(py_module, cls_nam)
-
-        self.barf["constitutive model instance"] = cmod_obj
-        self.barf["constitutive model"] = cmod
+        self.barf["constitutive model instance"] = cmod
+        self.barf["constitutive model"] = model_name
         self.barf["model version"] = version
         self.barf["model revision"] = self.barf["lines"][1].split()[2]
         self.barf["barf message"] = self.barf["lines"][2].strip()

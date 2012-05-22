@@ -25,7 +25,6 @@ import os
 import sys
 import math
 import numpy as np
-import pickle
 from copy import deepcopy
 
 import Payette_config as pc
@@ -797,19 +796,9 @@ def _parse_mtl_block(material_inp=None):
     # constitutive model given, now see if it is available, here we replace
     # spaces with _ in all model names and convert to lower case
     model_nam = model_nam.lower().replace(" ","_")
-    constitutive_model = None
-    with open(pc.PC_MTLS_FILE, "rb") as fobj:
-        constitutive_models = pickle.load(fobj)
-    for key, val in constitutive_models.items():
-        if model_nam == key or model_nam in val["aliases"]:
-            constitutive_model = val
-        continue
-
-    if constitutive_model is None:
-        parser_error("constitutive model {0} not found".format(model_nam))
 
     # instantiate the material object
-    material = Material(constitutive_model, user_params, **user_options)
+    material = Material(model_nam, user_params, **user_options)
 
     return material
 

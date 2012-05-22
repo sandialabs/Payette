@@ -45,18 +45,12 @@ class Material:
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     '''
 
-    def __init__(self, constitutive_model, user_params, *args, **kwargs):
+    def __init__(self, model_name, user_params, *args, **kwargs):
 
         iam = "Material.__init__"
 
         # get the material's constitutive model object
-        py_mod = constitutive_model["module"]
-        py_path = [os.path.dirname(constitutive_model["file"])]
-        cls_nam = constitutive_model["class name"]
-        fobj, pathname, description = imp.find_module(py_mod, py_path)
-        py_module = imp.load_module(py_mod, fobj, pathname, description)
-        fobj.close()
-        cmod = getattr(py_module, cls_nam)
+        cmod = pu.get_constitutive_model_object(model_name)
 
         # instantiate the constiutive model
         self.constitutive_model = cmod(*args, **kwargs)

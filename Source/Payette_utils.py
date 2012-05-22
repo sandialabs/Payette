@@ -28,6 +28,8 @@ import re
 import math
 import linecache
 import numpy as np
+import pickle
+import imp
 from inspect import stack
 
 import Payette_config as pc
@@ -1139,6 +1141,41 @@ def _remove_all_comments(lines, cchars):
     return stripped_lines
 
 
+def get_constitutive_model(model_name):
+    """ get the constitutive model dictionary of model_name """
+    constitutive_model = None
+    constitutive_models = get_installed_models()
+
+    for key, val in constitutive_models.items():
+        if model_name == key or model_name in val["aliases"]:
+            constitutive_model = val
+        continue
+
+    if constitutive_model is None:
+        logerr("constitutive model {0} not found".format(model_name))
+
+    return constitutive_model
+
+
+def get_constitutive_model_object(model_name):
+    """ get the actual model object """
+    constitutive_model = get_constitutive_model(model_name)
+    py_mod = constitutive_model["module"]
+    py_path = [os.path.dirname(constitutive_model["file"])]
+    cls_nam = constitutive_model["class name"]
+    fobj, pathname, description = imp.find_module(py_mod, py_path)
+    py_module = imp.load_module(py_mod, fobj, pathname, description)
+    fobj.close()
+    cmod = getattr(py_module, cls_nam)
+    return cmod
+
+
+def get_installed_models():
+    """ return a list of all installed models """
+    with open(pc.PC_MTLS_FILE, "rb") as fobj:
+        constitutive_models = pickle.load(fobj)
+    return constitutive_models
+
 # the following are being kept around for back compatibiltiy
 def parseToken(*args, **kwargs):
     return parse_token(*args, **kwargs)
@@ -1150,7 +1187,4 @@ def writeWarning(*args):
     return write_wrn_to_screen(*args)
 def writeToLog(*args):
     return write_to_simlog(*args)
-
-
-
 
