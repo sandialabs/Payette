@@ -169,13 +169,17 @@ class ConstitutiveModelPrototype(object):
         self.parameter_table_idx_map[param_idx] = full_name
         return
 
-    def get_parameter_names_and_values(self):
+    def get_parameter_names_descriptions_and_values(self):
         """Returns a 2D list of names and values
-               [ ["name", val], ["name2", val2], ... ]
+               [ ["name",  "description",  val],
+                 ["name2", "description2", val2],
+                 [...] ]
         """
         table = []
         for param, param_dict in self.parameter_table.items():
-            table.append([param, param_dict["default value"]])
+            table.append([param,
+                          param_dict["description"],
+                          param_dict["default value"]])
         return table
 
     def parse_parameters(self, *args):
