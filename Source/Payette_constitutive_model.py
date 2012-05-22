@@ -115,7 +115,11 @@ class ConstitutiveModelPrototype(object):
         return
 
     def register_parameter(self, param_name, param_idx,
-                           aliases=[], parseable=True, default=0.):
+                           aliases=None, parseable=True, default=0.,
+                           description="No description"):
+
+        if aliases is None:
+            aliases = []
 
         iam = self.name + ".registerParameter"
         if not isinstance(param_name,str):
@@ -155,11 +159,13 @@ class ConstitutiveModelPrototype(object):
         self.registered_param_idxs.append(param_idx)
 
         # populate parameter_table
-        self.parameter_table[full_name] = { "name": full_name,
-                                            "names": param_names,
-                                            "ui pos": param_idx,
-                                            "parseable": parseable,
-                                            "default value": default}
+        self.parameter_table[full_name] = {"name": full_name,
+                                           "names": param_names,
+                                           "ui pos": param_idx,
+                                           "parseable": parseable,
+                                           "default value": default,
+                                           "description": description,}
+
         self.parameter_table_idx_map[param_idx] = full_name
         return
 
