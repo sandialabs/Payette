@@ -1404,6 +1404,10 @@ def _parse_output_block(output, avail_keys):
     if not out_vars:
         pu.reportError(iam, "no output variables found")
 
+    # remove duplicates
+    uniq = set(out_vars)
+    out_vars = [x for x in out_vars if x in uniq and not uniq.remove(x)]
+
     if "TIME" not in out_vars:
         out_vars.insert(0, "TIME")
 

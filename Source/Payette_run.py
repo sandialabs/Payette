@@ -449,13 +449,13 @@ def _run_job(args):
     if timing:
         tim2 = time.time()
 
-    # finish up
-    the_model.finish()
-    del the_model
-
     # print timing info
     if timing:
         print_timing_info(tim0, tim1, tim2, the_model.name)
+
+    # finish up
+    the_model.finish()
+    del the_model
 
     return retcode
 
