@@ -40,8 +40,6 @@ class ConstitutiveModelPrototype(object):
        setField
        checkProperties
        update_state
-       modelParameters
-       internalStateVariables
        derivedConstants
        isvKeys
 
@@ -73,12 +71,14 @@ class ConstitutiveModelPrototype(object):
 
     def set_up(self, *args):
         """ set up model """
-        pu.reportError(__file__,'Constitutive model must provide set_up method')
+        pu.reportError(__file__,
+                       'Constitutive model must provide set_up method')
         return
 
     def update_state(self, *args):
         """ update state """
-        pu.reportError(__file__,'Constitutive model must provide update_state method')
+        pu.reportError(__file__,
+                       'Constitutive model must provide update_state method')
         return
 
     def finish_setup(self, matdat):
@@ -122,15 +122,15 @@ class ConstitutiveModelPrototype(object):
             aliases = []
 
         iam = self.name + ".registerParameter"
-        if not isinstance(param_name,str):
+        if not isinstance(param_name, str):
             pu.reportError(iam,"parameter name must be a string, got {0}"
                         .format(param_name))
 
-        if not isinstance(param_idx,int):
+        if not isinstance(param_idx, int):
             pu.reportError(iam,"parameter index must be an int, got {0}"
                         .format(param_idx))
 
-        if not isinstance(aliases,list):
+        if not isinstance(aliases, list):
             pu.reportError(iam,"aliases must be a list, got {0}".format(aliases))
             pass
 
@@ -147,14 +147,13 @@ class ConstitutiveModelPrototype(object):
             pu.reportWarning(iam,"duplicate parameter names: {0}"
                           .format(", ".join(param_names)))
             self.errors += 1
-            pass
 
         if param_idx in self.registered_param_idxs:
             pu.reportWarning(iam,"duplicate ui location [{0}] in parameter table"
                           .format(", ".join(param_names)))
             self.errors += 1
 
-        self.registered_params.extend(full_name)
+        self.registered_params.append(full_name)
         self.registered_params_and_aliases.extend(param_names)
         self.registered_param_idxs.append(param_idx)
 
@@ -165,18 +164,29 @@ class ConstitutiveModelPrototype(object):
                                            "parseable": parseable,
                                            "default value": default,
                                            "description": description,}
-
         self.parameter_table_idx_map[param_idx] = full_name
         return
 
-    def get_parameter_names_and_values(self):
+    def get_parameter_names_and_values(self, default=True):
         """Returns a 2D list of names and values
                [ ["name", val], ["name2", val2], ... ]
+
         """
-        table = []
+        table = [None] * self.nprop
         for param, param_dict in self.parameter_table.items():
-            table.append([param, param_dict["default value"]])
+            idx = param_dict["ui pos"]
+            name = param_dict["name"]
+            val = param_dict["default value"] if default else self.ui[idx]
+            table[idx] = [name, val]
         return table
+
+    def get_parameter_names(self, aliases=False):
+        """Returns a list of parameter names, and optionally aliases"""
+        param_names = [None] * self.nprop
+        for p, pdict in self.parameter_table.items():
+            idx = pdict["ui pos"]
+            param_names[idx] = pdict["names"] if aliases else pdict["name"]
+        return param_names
 
     def parse_parameters(self, *args):
         """ populate the materials ui array from the self.params dict """
@@ -184,9 +194,11 @@ class ConstitutiveModelPrototype(object):
         iam = self.name + ".parse_parameters"
 
         self.ui0 = np.zeros(self.nprop)
+        self.ui = np.zeros(self.nprop)
         for param, param_dict in self.parameter_table.items():
             idx = param_dict["ui pos"]
             self.ui0[idx] = param_dict["default value"]
+            self.ui[idx] = param_dict["default value"]
             continue
 
         # we have the name and value, now we need to get its position in the
@@ -272,27 +284,6 @@ class ConstitutiveModelPrototype(object):
 
     def initialize_state(self, material_data):
         pass
-
-    def initialParameters(self):
-        return self.ui0
-
-    def checkedParameters(self):
-        return self.ui
-
-    def modelParameters(self):
-        return self.ui
-
-    def initialJacobian(self):
-        return self.J0
-
-    def internalStateVariables(self):
-        return self.sv
-
-    def derivedConstants(self):
-        return self.dc
-
-    def isvKeys(self):
-        return self.keya
 
     def compute_init_jacobian(self,simdat=None,matdat=None,isotropic=True):
         '''

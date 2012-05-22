@@ -50,17 +50,12 @@ attributes = {
     }
 
 class Elastic(ConstitutiveModelPrototype):
-    """ Elasticity model.
-
-    Use MFLG = 0 for python implementation, MFLG = 1 for fortran
-
-    """
+    """ Elasticity model. """
 
     def __init__(self, *args, **kwargs):
         super(Elastic, self).__init__()
         self.name = attributes["name"]
         self.aliases = attributes["aliases"]
-
 
         try:
             self.code = kwargs["code"]
