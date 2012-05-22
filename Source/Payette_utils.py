@@ -1018,7 +1018,9 @@ def write_input_file(nam, inp_dict, inp_f):
     req_blocks = ("content", "simulation", "boundary", "legs", "material", "name")
     with open(inp_f, "w") as fobj:
         fobj.write("begin simulation {0}\n".format(nam))
-        fobj.write("\n".join(inp_dict["content"]) + "\n")
+        content = inp_dict["content"]
+        if content:
+            fobj.write("\n".join(content) + "\n")
         # boundary block
         fobj.write("begin boundary\n")
         fobj.write("\n".join(inp_dict["boundary"]["content"]) + "\n")
@@ -1038,7 +1040,6 @@ def write_input_file(nam, inp_dict, inp_f):
             fobj.write("\n".join(val["content"]) + "\n")
             fobj.write("end {0}\n".format(key) + "\n")
         fobj.write("end simulation")
-
     return
 
 

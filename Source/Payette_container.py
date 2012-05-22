@@ -26,6 +26,7 @@ import sys
 import math
 import numpy as np
 import pickle
+from copy import deepcopy
 
 import Payette_config as pc
 import Source.Payette_driver as pd
@@ -64,6 +65,9 @@ class Payette:
         if opts.debug:
             opts.verbosity = 4
         self.loglevel = opts.verbosity
+
+        # save the user input
+        self.user_input = deepcopy(user_input)
 
         delete = not opts.keep
         self.simdir = os.getcwd()
@@ -182,8 +186,15 @@ class Payette:
             self.write_restart = False
         else:
             self.write_restart = not opts.norestart
+
         if self.write_restart:
             self.restart_file = os.path.splitext(self.outfile)[0] + ".prf"
+
+        if "write input" in self.simdat.get_all_options():
+            self.write_input = True
+            self.user_input["content"].remove("write input")
+        else:
+            self.write_input = False
 
         # write out properties
         if not self.simdat.NOWRITEPROPS:
@@ -538,6 +549,11 @@ class Payette:
         # extract requested variables
         if self.extraction_vars:
             self._write_extraction()
+
+        if self.write_input:
+            pu.write_input_file(
+                self.name, self.user_input,
+                os.path.join(self.simdir, self.name + ".inp"))
 
         return
 
