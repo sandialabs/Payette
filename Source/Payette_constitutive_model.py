@@ -169,15 +169,17 @@ class ConstitutiveModelPrototype(object):
 
     def get_parameter_names_and_values(self, default=True):
         """Returns a 2D list of names and values
-               [ ["name", val], ["name2", val2], ... ]
-
+               [ ["name",  "description",  val],
+                 ["name2", "description2", val2],
+                 [...] ]
         """
         table = [None] * self.nprop
         for param, param_dict in self.parameter_table.items():
             idx = param_dict["ui pos"]
             name = param_dict["name"]
             val = param_dict["default value"] if default else self.ui[idx]
-            table[idx] = [name, val]
+            desc = param_dict["description"]
+            table[idx] = [name, desc, val]
         return table
 
     def get_parameter_names(self, aliases=False):
