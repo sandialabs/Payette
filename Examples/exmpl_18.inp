@@ -1,0 +1,37 @@
+# Example 18
+# Title: exmpl_18
+# Author: Tim Fuller, tjfulle@sandia.gov
+# Keywords: table, insert, strain control, use block
+
+begin simulation exmpl_18
+  nowriteprops
+  norestart
+
+  # insert the material_001 block found elsewhere in this file. This example
+  # is a bit contrived, but if a file has several simulations, all with the
+  # same material, or boundary, for example, being able to insert a block from
+  # elsewhere in the file is useful.
+  use material_001
+
+  begin boundary
+    kappa = 0
+    tstar = 1.
+    ampl = 1
+    begin legs
+      using dt, strain, from columns 2, 3:8
+      insert exmpls.tbl
+    end legs
+  end boundary
+end simulation
+
+# below is the named "material_001" block. It could have been named anything.
+# It must be outside of any other block. The input parser will find it and
+# insert it in the appropriate simulation block.
+begin material_001
+  begin material
+    constitutive model hooke
+    G 53.e9
+    K 135.e9
+  end material
+end material_001
+

@@ -1,0 +1,40 @@
+
+Table of Examples
+=================
+
+--------------+------------------------------------------------------------
+Input File     Description
+--------------+------------------------------------------------------------
+exmpl_0.inp    Preliminary example
+exmpl_1.inp    Read in leg [time, strain] data from table
+exmpl_2.inp    Read in leg [time, strain] data from table in external file
+exmpl_3.inp    Read in leg [dt, strain] data from table in external file
+exmpl_4.inp    Read in leg [time, stress] data from table in external file
+exmpl_5.inp    Read in leg [time, stress] data from table in external file
+               using different formatting than in exmpl_4.inp
+exmpl_6.inp    Read in leg [time, stress] data from table in external file
+               using different formatting than in exmpl_4.inp
+exmpl_7.inp    Optimization example.  Find optimized values for bulk and
+               shear moduli by minimizing sig11, sig22, and sig33 vs time
+	       using the simplex method
+exmpl_8.inp    Optimization example.  Find optimized values for bulk and
+               shear moduli by minimizing sig11, sig22, and sig33 vs time
+	       using the Powell method
+exmpl_9.inp    Optimization example.  Find optimized values for bulk and
+               shear moduli by minimizing sig11, sig22, and sig33 vs time
+	       using the cobyla method
+exmpl_10.inp   Optimization example.  Find optimized values for bulk and
+               shear moduli by minimizing sig11, sig22, and sig33
+	       using the simplex method
+exmpl_11.inp    Optimization example.  Find optimized values for bulk and
+               shear moduli by minimizing sig11, sig22, and sig33
+	       using the Powell method
+exmpl_12.inp   Optimization example.  Find optimized values for bulk and
+               shear moduli by minimizing sig11, sig22, and sig33
+	       using the cobyla method
+exmpl_13.inp   Permutation example using zip method
+exmpl_14.inp   Shearfit example, A1-A3 specified, A4 fixed
+exmpl_15.inp   Shearfit example, A1-A4 specified,
+exmpl_16.inp   Permutation example using combination method
+exmpl_17.inp   Shearfit example, A1-A4 not specified, A4 fixed
+exmpl_18.inp   use named block
