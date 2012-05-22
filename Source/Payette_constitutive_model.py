@@ -168,8 +168,8 @@ class ConstitutiveModelPrototype(object):
                [ ["name", val], ["name2", val2], ... ]
         """
         table = []
-        for param in self.parameter_table.keys():
-            table.append([self.parameter_table[param], self.parameter_table[])
+        for param, param_dict in self.parameter_table.items():
+            table.append([param, param_dict["default value"]])
         return table
 
     def parse_parameters(self, *args):
