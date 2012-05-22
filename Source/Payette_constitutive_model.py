@@ -115,7 +115,7 @@ class ConstitutiveModelPrototype(object):
         return
 
     def register_parameter(self, param_name, param_idx,
-                           aliases=[], parseable=True):
+                           aliases=[], parseable=True, default=0.):
 
         iam = self.name + ".registerParameter"
         if not isinstance(param_name,str):
@@ -158,7 +158,8 @@ class ConstitutiveModelPrototype(object):
         self.parameter_table[full_name] = { "name": full_name,
                                             "names": param_names,
                                             "ui pos": param_idx,
-                                            "parseable": parseable}
+                                            "parseable": parseable,
+                                            "default value": default}
         self.parameter_table_idx_map[param_idx] = full_name
         return
 
@@ -177,6 +178,10 @@ class ConstitutiveModelPrototype(object):
         iam = self.name + ".parse_parameters"
 
         self.ui0 = np.zeros(self.nprop)
+        for param, param_dict in self.parameter_table.items():
+            idx = param_dict["ui pos"]
+            self.ui0[idx] = param_dict["default value"]
+            continue
 
         # we have the name and value, now we need to get its position in the
         # ui array
@@ -296,13 +301,20 @@ class ConstitutiveModelPrototype(object):
             J0 = np.zeros((6, 6))
             threek, twog = 3. * self.bulk_modulus, 2. * self.shear_modulus
             pr = (threek - twog) / (2. * threek + twog)
-            c1,c2 = (1-pr)/(1+pr), pr/(1+pr)
-            for i in range(3): J0[i,i] = threek*c1
-            for i in range(3, 6): J0[i,i] = twog
+            c1, c2 = (1 - pr) / (1 + pr), pr / (1 + pr)
+
+            # set diagonal
+            for i in range(3):
+                J0[i,i] = threek * c1
+            for i in range(3, 6):
+                J0[i,i] = twog
+
+            # off diagonal
             (          J0[0, 1], J0[0, 2],
              J0[1, 0],           J0[1, 2],
              J0[2, 0], J0[2, 1]           ) = [threek * c2] * 6
             self.J0 = np.array(J0)
+
             return
 
         else:
