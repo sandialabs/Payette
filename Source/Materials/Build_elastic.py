@@ -49,7 +49,8 @@ class Build(MaterialBuilder):
         srcs = ["elastic.f90"]
         self.source_files = [os.path.join(self.source_directory, x)
                              for x in srcs]
-        self.source_files.append(os.path.join(pc.PC_FORTRAN, "tensors.f90"))
+        self.source_files.append(os.path.join(pc.PC_FORTRAN,
+                                              "tensor_toolkit.f90"))
 
         self.build_extension_module_with_f2py()
 

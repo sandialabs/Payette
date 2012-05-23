@@ -47,7 +47,7 @@ class ConstitutiveModelPrototype(object):
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     '''
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self.registered_params = []
         self.registered_param_idxs = []
         self.registered_params_and_aliases = []
@@ -67,6 +67,12 @@ class ConstitutiveModelPrototype(object):
         self.electric_field_model = False
         self.errors = 0
         self.eos_model = False
+
+        try:
+            self.code = kwargs["code"]
+        except KeyError:
+            self.code = "python"
+
         pass
 
     def set_up(self, *args):

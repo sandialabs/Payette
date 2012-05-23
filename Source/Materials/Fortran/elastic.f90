@@ -89,7 +89,7 @@ subroutine elast_calc(nc, dt, ui, sigarg, darg)
   !          11, 22, 33, 12, 23, 13
   !
   !******************************************************************************
-  use tensors
+  use tensor_toolkit
   implicit none
   !....................................................................parameters
   integer, parameter :: dk=selected_real_kind(14)

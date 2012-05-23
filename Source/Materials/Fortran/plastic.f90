@@ -196,7 +196,7 @@ subroutine plast_calc(nc, nsv, dt, ui, sigarg, darg, svarg)
   !          11, 22, 33, 12, 23, 13
   !
   !*****************************************************************************!
-  use tensors
+  use tensor_toolkit
   implicit none
   !....................................................................parameters
   integer, parameter :: dk=selected_real_kind(14)

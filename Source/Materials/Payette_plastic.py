@@ -56,14 +56,10 @@ class Plastic(ConstitutiveModelPrototype):
     """
 
     def __init__(self, *args, **kwargs):
-        super(Plastic, self).__init__()
+        super(Plastic, self).__init__(*args, **kwargs)
         self.name = attributes["name"]
         self.aliases = attributes["aliases"]
 
-        try:
-            self.code = kwargs["code"]
-        except KeyError:
-            self.code = "python"
         self.imported = True if self.code == "python" else imported
 
         # register parameters

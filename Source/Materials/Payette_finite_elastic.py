@@ -59,15 +59,10 @@ class FiniteElastic(ConstitutiveModelPrototype):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FiniteElastic, self).__init__()
+        super(FiniteElastic, self).__init__(*args, **kwargs)
         self.name = attributes["name"]
         self.aliases = attributes["aliases"]
         self.imported = True
-
-        try:
-            self.code = kwargs["code"]
-        except KeyError:
-            self.code = "python"
 
         self.imported = True if self.code == "python" else imported
 

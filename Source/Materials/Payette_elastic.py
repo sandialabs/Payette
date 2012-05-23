@@ -53,14 +53,9 @@ class Elastic(ConstitutiveModelPrototype):
     """ Elasticity model. """
 
     def __init__(self, *args, **kwargs):
-        super(Elastic, self).__init__()
+        super(Elastic, self).__init__(*args, **kwargs)
         self.name = attributes["name"]
         self.aliases = attributes["aliases"]
-
-        try:
-            self.code = kwargs["code"]
-        except:
-            self.code = "python"
 
         self.imported = True if self.code == "python" else imported
 

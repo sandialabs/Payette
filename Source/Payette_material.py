@@ -76,9 +76,11 @@ Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
         self.extra_vars_registered = False
 
         # register default data
-        register_default_data = self.register_default_data
         if self.eos_model:
             register_default_data = self.register_default_eos_data
+        else:
+            register_default_data = self.register_default_data
+
         register_default_data()
 
         # set up the constitutive model

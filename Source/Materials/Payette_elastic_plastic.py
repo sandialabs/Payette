@@ -50,7 +50,7 @@ class ElasticPlastic(ConstitutiveModelPrototype):
 
     def __init__(self, *args, **kwargs):
 
-        super(ElasticPlastic, self).__init__()
+        super(ElasticPlastic, self).__init__(*args, **kwargs)
 
         self.name = attributes["name"]
         self.aliases = attributes["aliases"]

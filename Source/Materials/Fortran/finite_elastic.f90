@@ -95,7 +95,7 @@ subroutine finite_elast_calc(nc, ui, farg, earg, pk2arg, sigarg)
   !
   !******************************************************************************
 
-  use tensors
+  use tensor_toolkit
 
   implicit none
   !....................................................................parameters
