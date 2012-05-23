@@ -1,7 +1,7 @@
 module tensor_toolkit
 
   private delta, w, diag9, i6, i15, sk, dk
-  public ata, symleaf, dd66x6, push, pull, dp, ddp, mag, dev, iso, matinv
+  public ata, symleaf, dd66x6, push, pull, dp, ddp, mag, dev, tr, iso, matinv
 
   ! kind specifiers
   integer, parameter :: sk=selected_real_kind(6), dk=selected_real_kind(14)
@@ -468,9 +468,29 @@ contains
     !......................................................................passed
     real(kind=dk), dimension(6) :: iso, a
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~iso
-    iso = ddp(a, delta) / 3. * delta
+    iso = sum(a(1:3)) / 3. * delta
     return
   end function iso
+
+  function tr(a)
+    !---------------------------------------------------------------------------!
+    ! compute the trace of a
+    !
+    ! Parameters
+    ! ----------
+    ! a: 3x3 symmetric matrix stored as 6x1 array
+    !
+    ! Returns
+    ! -------
+    ! tr: trace of a
+    !---------------------------------------------------------------------------!
+    implicit none
+    !......................................................................passed
+    real(kind=dk), dimension(6) :: tr, a
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~iso
+    tr = sum(a(1:3))
+    return
+  end function tr
 
   function matinv(a, n)
     !---------------------------------------------------------------------------!
