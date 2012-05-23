@@ -23,6 +23,9 @@
 
 import numpy as np
 import math
+import os
+import imp
+import Payette_config as pc
 import Source.Payette_tensor as pt
 import Source.Payette_utils as pu
 
@@ -93,12 +96,12 @@ class ConstitutiveModelPrototype(object):
             pu.reportError(iam, ("requested code type {0} not supported by {1}"
                                  .format(self.code, self.name)))
 
-        # @mswan{
+        # @mswan{ -> this would be new
         # location of material data file - if any
-        self.matdat_f = init_data.get("material data file")
-        if self.matdat_f is not None and not os.path.isfile(self.matdat_f):
+        self.mtldat_f = init_data.get("material data file")
+        if self.mtldat_f is not None and not os.path.isfile(self.mtldat_f):
             pu.reportError(
-                iam, "material data file {0} not found".format(self.matdat_f))
+                iam, "material data file {0} not found".format(self.mtldat_f))
         # @mswan}
 
         # specialized models
@@ -261,9 +264,9 @@ class ConstitutiveModelPrototype(object):
 
         # we have the name and value, now we need to get its position in the
         # ui array
-        param_nam = None
         ignored, not_parseable = [], []
         for param, param_val in self.user_input_params.items():
+            param_nam = None
             if param in self.parameter_table:
                 param_nam = param
 
@@ -317,9 +320,29 @@ class ConstitutiveModelPrototype(object):
                 continue
             line = line.split()
 
-            # @mswan{
+            # look for user specified materials from the material and matlabel
+            # shortcuts
+
+            # @mswan{ -> the "material" part is what I had done before. The
+            #            "matlabel" stuff would be new, if implemented
+            if line[0] == "material":
+                try:
+                    material = line[1]
+                except IndexError:
+                    pu.reportError(iam, "empty material label encountered")
+
+                # material found, now parse the file for names and values
+                mtldat = self._parse_material_file(material)
+                for name, val in mtldat:
+                    self.user_input_params[name] = val
+                    continue
+
+                # disabled
+                pu.reportError(iam, "material spec. has been disabled")
+                continue
+
             if line[0] == "matlabel":
-                if self.matdat_f is None:
+                if self.mtldat_f is None:
                     msg = ("requested matlabel but "+ self.name +
                            " does not provide a material data file")
                     pu.reportError(iam, msg)
@@ -333,10 +356,11 @@ class ConstitutiveModelPrototype(object):
                 pu.reportError(iam, "matlabel not yet enabled")
 
                 # matlabel found, now parse the file for names and values
-                matdat = self._parse_matdat_file(matlabel)
-                for name, val in matdat:
+                mtldat = self._parse_matlabel_file(matlabel)
+                for name, val in mtldat:
                     self.user_input_params[name] = val
                     continue
+
                 continue
             # }@mswan
 
@@ -364,7 +388,43 @@ class ConstitutiveModelPrototype(object):
         return
 
     # @mswan{
-    def _parse_matdat_file(self, matlabel):
+    def _parse_material_file(self, material):
+        """Parse the material property .py data file
+
+        Parameters
+        ----------
+        material_f : str
+          path to material file
+
+        Returns
+        -------
+        mtldat : list
+          list of tuples of (name, val) pairs
+
+        """
+        iam = self.name + "._parse_material_file"
+
+        material_f = os.path.join(pc.PC_ROOT, "Aux/MaterialsDatabase",
+                                  material + ".py")
+        if not os.path.isfile(material_f):
+            pu.reportError(iam, "material file {0} not found".format(material_f))
+
+        py_mod, py_path = pu.get_module_name_and_path(material_f)
+        fobj, pathname, description = imp.find_module(py_mod, py_path)
+        py_module = imp.load_module(py_mod, fobj, pathname, description)
+        fobj.close()
+
+        params = getattr(py_module, "parameters")
+        if params is None or not isinstance(params, dict):
+            pu.reportError(iam,
+                           "cannot read in parameters from {0}".format(material_f))
+        mtldat = []
+        for key, val in params.items():
+            mtldat.append((key, float(val)))
+
+        return mtldat
+
+    def _parse_matlabel_file(self, matlabel):
         """Parse the material property xml data file associated with this material
 
         Parameters
@@ -374,22 +434,22 @@ class ConstitutiveModelPrototype(object):
 
         Returns
         -------
-        matdat : list
+        mtldat : list
           list of tuples of (name, val) pairs
 
         """
-        iam = self.name + "._parse_matdat_file"
-        reportError(iam, "matdat file parsing not enabled")
+        iam = self.name + "._parse_matlabel_file"
+        reportError(iam, "mtldat file parsing not enabled")
 
-        matdat = []
+        mtldat = []
 
-        return matdat
+        return mtldat
     # @mswan}
 
     def initialize_state(self, material_data):
         pass
 
-    def compute_init_jacobian(self,simdat=None,matdat=None,isotropic=True):
+    def compute_init_jacobian(self, simdat=None, matdat=None, isotropic=True):
         '''
         NAME
            compute_init_jacobian
