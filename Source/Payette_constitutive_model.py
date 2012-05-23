@@ -93,6 +93,14 @@ class ConstitutiveModelPrototype(object):
             pu.reportError(iam, ("requested code type {0} not supported by {1}"
                                  .format(self.code, self.name)))
 
+        # @mswan{
+        # location of material data file - if any
+        self.matdat_f = init_data.get("material data file")
+        if self.matdat_f is not None and not os.path.isfile(self.matdat_f):
+            pu.reportError(
+                iam, "material data file {0} not found".format(self.matdat_f))
+        # @mswan}
+
         # specialized models
         mat_typ = init_data["material type"]
         self.electric_field_model = "electromechanical" in mat_typ
@@ -309,6 +317,29 @@ class ConstitutiveModelPrototype(object):
                 continue
             line = line.split()
 
+            # @mswan{
+            if line[0] == "matlabel":
+                if self.matdat_f is None:
+                    msg = ("requested matlabel but "+ self.name +
+                           " does not provide a material data file")
+                    pu.reportError(iam, msg)
+
+                try:
+                    matlabel = line[1]
+                except IndexError:
+                    pu.reportError(iam, "empty matlabel encountered")
+
+                # disabled
+                pu.reportError(iam, "matlabel not yet enabled")
+
+                # matlabel found, now parse the file for names and values
+                matdat = self._parse_matdat_file(matlabel)
+                for name, val in matdat:
+                    self.user_input_params[name] = val
+                    continue
+                continue
+            # }@mswan
+
             # the line is now of form
             #     line = [string, string, ..., string]
             # we assume that the last string is the value and anything up
@@ -331,6 +362,29 @@ class ConstitutiveModelPrototype(object):
             pu.reportError(iam, "stopping due to previous errors")
 
         return
+
+    # @mswan{
+    def _parse_matdat_file(self, matlabel):
+        """Parse the material property xml data file associated with this material
+
+        Parameters
+        ----------
+        matlabel : str
+          material label
+
+        Returns
+        -------
+        matdat : list
+          list of tuples of (name, val) pairs
+
+        """
+        iam = self.name + "._parse_matdat_file"
+        reportError(iam, "matdat file parsing not enabled")
+
+        matdat = []
+
+        return matdat
+    # @mswan}
 
     def initialize_state(self, material_data):
         pass
