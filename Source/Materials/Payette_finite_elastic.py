@@ -43,8 +43,8 @@ attributes = {
     "payette material": True,
     "name": "finite_elastic",
     "aliases": [],
-    "fortran source": True,
-    "build script": os.path.join(THIS_DIR, "Build_finite_elastic.py"),
+    "code types": ("python", "fortran"),
+    "fortran build script": os.path.join(THIS_DIR, "Build_finite_elastic.py"),
     "material type": ["mechanical"],
     "default material": True,
     }
@@ -59,10 +59,7 @@ class FiniteElastic(ConstitutiveModelPrototype):
     """
 
     def __init__(self, *args, **kwargs):
-        super(FiniteElastic, self).__init__(*args, **kwargs)
-        self.name = attributes["name"]
-        self.aliases = attributes["aliases"]
-        self.imported = True
+        super(FiniteElastic, self).__init__(attributes, *args, **kwargs)
 
         self.imported = True if self.code == "python" else imported
 

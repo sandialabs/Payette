@@ -47,12 +47,61 @@ class ConstitutiveModelPrototype(object):
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     '''
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, init_data, *args, **kwargs):
+        """Initialize the ConstitutiveModelPrototype object.
+
+        The __init__ functions should be called by each constituve model that
+        derives from the ConstitutiveModelPrototype base class.
+
+        Parameters
+        ----------
+        init_data : dict
+          keys
+          name : str
+            name of constitutive model
+          aliases : list
+            list of aliases
+          code types : tuple
+            tuple of types of code in which the model is implemented
+          default code : tuple
+            tuple of types of code in which the model is implemented
+          material type : list
+            type of material
+        *args : list, optional
+        **kwargs : dict, optional
+          keys
+          code : string
+            code type specified by user
+
+        """
+
+        # pass init_data to class data
+        self.name = init_data["name"]
+        iam = self.name + "__init__"
+        self.aliases = init_data["aliases"]
+        if not isinstance(self.aliases, (list, tuple)):
+            self.aliases = [self.aliases]
+
+        # which code to use
+        code_types = init_data["code types"]
+        if not isinstance(code_types, (list, tuple)):
+            code_types = [code_types]
+        self.code = kwargs.get("code")
+        if self.code is None:
+            self.code = code_types[0]
+        elif self.code not in code_types:
+            pu.reportError(iam, ("requested code type {0} not supported by {1}"
+                                 .format(self.code, self.name)))
+
+        # specialized models
+        mat_typ = init_data["material type"]
+        self.electric_field_model = "electromechanical" in mat_typ
+        self.eos_model = "eos" in mat_typ
+
+        # data to be initialized later
         self.registered_params = []
         self.registered_param_idxs = []
         self.registered_params_and_aliases = []
-        self.name = None
-        self.aliases = []
         self.parameter_table = {}
         self.user_input_params = {}
         self.parameter_table_idx_map = {}
@@ -64,14 +113,7 @@ class ConstitutiveModelPrototype(object):
         self.dc = np.zeros(self.ndc)
         self.bulk_modulus = 0.
         self.shear_modulus = 0.
-        self.electric_field_model = False
         self.errors = 0
-        self.eos_model = False
-
-        try:
-            self.code = kwargs["code"]
-        except KeyError:
-            self.code = "python"
 
         pass
 
@@ -96,7 +138,7 @@ class ConstitutiveModelPrototype(object):
         if self.errors:
             pu.reportError(iam, "previously encountered parsing errors")
 
-        if not any( self.ui ):
+        if not any(self.ui):
             pu.reportError(iam, "empty ui array")
 
         if self.eos_model:
@@ -122,7 +164,7 @@ class ConstitutiveModelPrototype(object):
 
     def register_parameter(self, param_name, param_idx,
                            aliases=None, parseable=True, default=0.,
-                           description="No description"):
+                           description="No description available"):
 
         if aliases is None:
             aliases = []

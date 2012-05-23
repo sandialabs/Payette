@@ -93,7 +93,7 @@ class MaterialBuilder():
         pass
 
     def build_extension_module(self):
-        raise BuildError("build script must provide this function",1)
+        raise BuildError("fortran build script must provide this function",1)
 
     def build_extension_module_with_f2py(self):
         fcn = "build_extension_module_with_f2py"

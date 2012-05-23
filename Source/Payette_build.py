@@ -202,7 +202,7 @@ def build_payette(argv):
     if pc.PC_F2PYDBG:
         f2pyopts.append("--debug")
 
-    # compiler options to send to the build scripts
+    # compiler options to send to the fortran build scripts
     COMPILER_INFO = {"f2py": {"compiler": pc.PC_F2PY,
                               "options": f2pyopts}}
 
@@ -456,7 +456,7 @@ def _build_lib(material):
     # get attributes
     name = MATERIALS[material]["name"]
     libname = MATERIALS[material]["libname"]
-    build_script = MATERIALS[material]["build script"]
+    fort_build_script = MATERIALS[material]["fortran build script"]
     parse_err = MATERIALS[material]["parse error"]
     if VERBOSE:
         pu.begmes("building {0}".format(libname), pre=SPACE)
@@ -466,14 +466,14 @@ def _build_lib(material):
         if VERBOSE:
             pu.endmes("{0} skipped due to previous errors".format(libname))
 
-    elif build_script is None:
+    elif fort_build_script is None:
         MATERIALS[material]["build succeeded"] = True
         if VERBOSE:
             pu.endmes("{0} built ".format(libname))
 
     else:
-        # import build script
-        py_mod, py_path = pu.get_module_name_and_path(build_script)
+        # import fortran build script
+        py_mod, py_path = pu.get_module_name_and_path(fort_build_script)
         fobj, pathname, description = imp.find_module(py_mod, py_path)
         build = imp.load_module(py_mod, fobj, pathname, description)
         fobj.close()
@@ -491,7 +491,8 @@ def _build_lib(material):
             if build_error == 5 or build_error == 10 or build_error == 40:
                 pass
             elif build_error == 66:
-                pu.logwrn("{0}: missing attribute: build".format(build_script))
+                pu.logwrn("{0}: missing attribute: build"
+                          .format(fort_build_script))
             else:
                 msg = ("failed to build {0} extension module. see {1}"
                        .format(libname, "build.echo"))
@@ -504,7 +505,7 @@ def _build_lib(material):
 
         # remove bite compiled files
         try:
-            os.remove(build_script + "c")
+            os.remove(fort_build_script + "c")
         except OSError:
             pass
 
@@ -627,33 +628,55 @@ def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):
             aliases = [aliases]
         aliases = [x.replace(" ", "_").lower() for x in aliases]
 
+        # models can be in one or more languages
+        model_code_types = attributes.get("code types")
+        if model_code_types is None:
+            pu.logwrn("Attribute 'code types' not found in {0}.attributes"
+                      .format(py_module))
+        elif not isinstance(model_code_types, tuple):
+            model_code_types = (model_code_types, )
+
         # fortran model set up
-        fortran_source = attributes.get("fortran source", False)
-        build_script = attributes.get("build script")
+        if model_code_types is not None:
+            fortran_source = "fortran" in model_code_types
+        else:
+            # old way to be depricated
+            fortran_source = attributes.get("fortran source", False)
+            if fortran_source:
+                pu.logwrn("Using depricated 'fortran source' in {0}.attributes"
+                          .format(py_mod))
+
+        fort_build_script = attributes.get("build script")
+        if fort_build_script is not None:
+            pu.logwrn("Using depricated 'build script' in {0}.attributes"
+                      .format(py_mod))
+        else:
+            fort_build_script = attributes.get("fortran build script")
         depends = attributes.get("depends")
 
-        # all fortran models must give a build script
-        if fortran_source and not build_script:
+        # all fortran models must give a fortran build script
+        if fortran_source and fort_build_script is None:
             parse_err = True
-            pu.logerr("No build script given for fortran source in {0} for {1}"
-                      .format(py_file, libname), pre=SPACE)
+            pu.logerr("No fortran build script given for fortran source in "
+                      "{0} for {1}".format(py_file, libname), pre=SPACE)
 
         # unless it is not needed...
-        elif build_script == "Not_Needed":
-            build_script = None
+        elif fort_build_script == "Not_Needed":
+            fort_build_script = None
 
-        # and the build script must exist.
-        elif build_script is not None:
-            if not os.path.isfile(build_script):
+        # and the fortran build script must exist.
+        elif fort_build_script is not None:
+            if not os.path.isfile(fort_build_script):
                 parse_err = True
-                pu.logerr("build script {0} not found".format(build_script))
+                pu.logerr("fortran build script {0} not found"
+                          .format(fort_build_script))
 
         # collect all parts
         mtl_dict = {
             "name": name,
             "libname": libname,
             "fortran source": fortran_source,
-            "build script": build_script,
+            "fortran build script": fort_build_script,
             "aliases": aliases,
             "material type": material_type,
             "module": py_mod,
@@ -752,7 +775,7 @@ def write_summary_to_screen():
         return nlines
 
     all_dirs, all_files = [], []
-    code_exts = [".py", ".pyf", "", ".F", ".C", ".f"]
+    code_exts = [".py", ".pyf", "", ".F", ".C", ".f", ".f90"]
     all_exts = code_exts + [".inp", ".tex", ".pdf"]
     for dirnam, dirs, files in os.walk(pc.PC_ROOT):
         if ".git" in dirnam:

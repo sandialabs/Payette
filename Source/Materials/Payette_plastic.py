@@ -44,21 +44,17 @@ attributes = {
     "payette material": True,
     "name": "plastic",
     "aliases": ["elastic plastic", "von mises"],
-    "fortran source": True,
-    "build script": os.path.join(THIS_DIR, "Build_plastic.py"),
+    "code types": ("python", "fortran", ),
+    "fortran build script": os.path.join(THIS_DIR, "Build_plastic.py"),
     "material type": ["mechanical"],
     "default material": True,
     }
 
 class Plastic(ConstitutiveModelPrototype):
-    """ Plasticity model.
-
-    """
+    """ Plasticity model. """
 
     def __init__(self, *args, **kwargs):
-        super(Plastic, self).__init__(*args, **kwargs)
-        self.name = attributes["name"]
-        self.aliases = attributes["aliases"]
+        super(Plastic, self).__init__(attributes, *args, **kwargs)
 
         self.imported = True if self.code == "python" else imported
 

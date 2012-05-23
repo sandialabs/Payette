@@ -43,8 +43,8 @@ attributes = {
     "payette material": True,
     "name": "elastic",
     "aliases": ["hooke", "linear elastic"],
-    "fortran source": True,
-    "build script": os.path.join(THIS_DIR, "Build_elastic.py"),
+    "code types": ("python", "fortran"),
+    "fortran build script": os.path.join(THIS_DIR, "Build_elastic.py"),
     "material type": ["mechanical"],
     "default material": True,
     }
@@ -53,9 +53,7 @@ class Elastic(ConstitutiveModelPrototype):
     """ Elasticity model. """
 
     def __init__(self, *args, **kwargs):
-        super(Elastic, self).__init__(*args, **kwargs)
-        self.name = attributes["name"]
-        self.aliases = attributes["aliases"]
+        super(Elastic, self).__init__(attributes, *args, **kwargs)
 
         self.imported = True if self.code == "python" else imported
 

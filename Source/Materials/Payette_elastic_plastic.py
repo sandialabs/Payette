@@ -37,10 +37,10 @@ from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 attributes = {
-    "payette material": True,
+    "payette material": False, # deactivated for now
     "name": "elastic_plastic",
-    "fortran source": True,
-    "build script": os.path.join(THIS_DIR, "Build_elastic_plastic.py"),
+    "code types": ("fortran", ),
+    "fortran build script": os.path.join(THIS_DIR, "Build_elastic_plastic.py"),
     "aliases": ["inuced anisotropy"],
     "material type": ["mechanical"],
     "default material": True,
@@ -50,10 +50,8 @@ class ElasticPlastic(ConstitutiveModelPrototype):
 
     def __init__(self, *args, **kwargs):
 
-        super(ElasticPlastic, self).__init__(*args, **kwargs)
+        super(ElasticPlastic, self).__init__(attributes, *args, **kwargs)
 
-        self.name = attributes["name"]
-        self.aliases = attributes["aliases"]
         self.imported = imported
 
         self.register_parameter("B0",0,aliases=['BKMOD'])

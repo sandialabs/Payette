@@ -770,7 +770,7 @@ def _parse_mtl_block(material_inp=None):
 
     model_nam = None
     user_params = []
-    user_options = {"code": "python"}
+    user_options = {}
 
     # check for required input
     for item in material:
