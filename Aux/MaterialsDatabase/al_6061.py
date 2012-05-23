@@ -4,27 +4,29 @@
     UNITS:    Kg/m/s/K
 '''
 
-parameters = {'initial density':2700,
-              'brinell hardness':95,
-              'knoop hardness':120,
-              'rockwell a hardness':40,
-              'rockwell b hardness':60,
-              'vickers hardness':107,
-              'tensile strength':276e6,
-              'ultimate tensile strength':310e6,
-              'shear strength':207e6,
-              'ultimate bearing strength':607e6,
-              'bearing strength':386e6,
-              'hard power law coef':114e6,
-              'hard power law power':.42,
-              'shear modulus':26.0e9,
-              'deriv shear modulus wrt pressure':1.8,
-              'deriv shear modulus wrt temperature':.000170016,
-              'youngs modulus':68.9e9,
-              'poissons ratio':0.330,
-              'specific heat':896,
-              'melt temperature':855,
-              'coef thermal exp':167,
-              'gruneissen parameter':1.97,
-              'lin slope us up':1.4,
-              'bulk wave speed':5240}
+parameters = {
+    'RHO0':2700, # initial density
+    'HARDB':95, # brinell hardness
+    'HARDK':120, # knoop hardness
+    'HARDRWA':40, # rockwell a hardness
+    'HARDRWB':60, # rockwell b hardness
+    'HARDV':107, # vickers hardness
+    'Y':276e6, # tensile strength
+    'YULT':310e6, # ultimate tensile strength
+    'TAUY':207e6, # shear strength
+    'YBULT':607e6, # ultimate bearing strength
+    'YB':386e6, # bearing strength
+    'PLM':114e6, # power law hardeing modulus
+    'PLP':.42, # power law hardening power
+    'SMOD':26.0e9, # shear modulus
+    'DGDP':1.8, # derivative of shear modulus wrt pressure
+    'DGDT':.000170016, # derivative of shear modulus wrt temperature
+    'E':68.9e9, # young's modulus
+    'NU':0.330, # poisson's ratio
+    'CV':896, # specific heat
+    'TM':855, # melt temperature
+    'AL':167, # coef. of thermal expansion
+    'GRPAR':1.97, # gruneisen parameter
+    'S1':1.4, # linear slope us/up
+    'C0':5240, # bulk wave speed
+    }
