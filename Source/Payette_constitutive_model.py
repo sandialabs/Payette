@@ -273,7 +273,7 @@ class ConstitutiveModelPrototype(object):
             else:
                 # look for alias
                 for key, val in self.parameter_table.items():
-                    if param in val["names"]:
+                    if param.lower() in val["names"]:
                         param_nam = key
                         break
                     continue
@@ -383,7 +383,7 @@ class ConstitutiveModelPrototype(object):
           list of tuples of (name, val) pairs
 
         """
-        iam = self.name + "._parse_material_file"
+        iam = self.name + "._parse_mtldb_file"
 
         fnam, fext = os.path.splitext(self.mtldat_f)
         if fext == ".py":
