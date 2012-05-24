@@ -47,6 +47,7 @@ attributes = {
     "fortran build script": os.path.join(THIS_DIR, "Build_elastic.py"),
     "material type": ["mechanical"],
     "default material": True,
+    "material database": os.path.join(THIS_DIR, "elastic_mtl_database.py"),
     }
 
 class Elastic(ConstitutiveModelPrototype):

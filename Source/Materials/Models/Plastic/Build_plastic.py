@@ -32,11 +32,10 @@ class Build(MaterialBuilder):
 
     def __init__(self,name,libname,compiler_info):
 
-        fdir,fnam = os.path.split(os.path.realpath(__file__))
-        self.fdir, self.fnam = fdir, fnam
+        fdir, fnam = os.path.split(os.path.realpath(__file__))
 
         # initialize base class
-        srcd = os.path.join(fdir, "Fortran")
+        srcd = fdir
         sigf = os.path.join(fdir, "Payette_plastic.pyf")
         MaterialBuilder.__init__(
             self, name, libname, srcd, compiler_info, sigf=sigf)

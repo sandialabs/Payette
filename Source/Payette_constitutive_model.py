@@ -98,7 +98,7 @@ class ConstitutiveModelPrototype(object):
 
         # @mswan{ -> this would be new
         # location of material data file - if any
-        self.mtldat_f = init_data.get("material data file")
+        self.mtldat_f = init_data.get("material database")
         if self.mtldat_f is not None and not os.path.isfile(self.mtldat_f):
             pu.reportError(
                 iam, "material data file {0} not found".format(self.mtldat_f))
@@ -325,23 +325,7 @@ class ConstitutiveModelPrototype(object):
 
             # @mswan{ -> the "material" part is what I had done before. The
             #            "matlabel" stuff would be new, if implemented
-            if line[0] == "material":
-                try:
-                    material = line[1]
-                except IndexError:
-                    pu.reportError(iam, "empty material label encountered")
-
-                # material found, now parse the file for names and values
-                mtldat = self._parse_material_file(material)
-                for name, val in mtldat:
-                    self.user_input_params[name] = val
-                    continue
-
-                # disabled
-                pu.reportError(iam, "material spec. has been disabled")
-                continue
-
-            if line[0] == "matlabel":
+            if line[0] == "material" or line[0] == "matlabel":
                 if self.mtldat_f is None:
                     msg = ("requested matlabel but "+ self.name +
                            " does not provide a material data file")
@@ -352,11 +336,8 @@ class ConstitutiveModelPrototype(object):
                 except IndexError:
                     pu.reportError(iam, "empty matlabel encountered")
 
-                # disabled
-                pu.reportError(iam, "matlabel not yet enabled")
-
                 # matlabel found, now parse the file for names and values
-                mtldat = self._parse_matlabel_file(matlabel)
+                mtldat = self._parse_mtldb_file(matlabel)
                 for name, val in mtldat:
                     self.user_input_params[name] = val
                     continue
@@ -388,13 +369,13 @@ class ConstitutiveModelPrototype(object):
         return
 
     # @mswan{
-    def _parse_material_file(self, material):
-        """Parse the material property .py data file
+    def _parse_mtldb_file(self, material):
+        """Parse the material database file
 
         Parameters
         ----------
-        material_f : str
-          path to material file
+        material : str
+          name of material
 
         Returns
         -------
@@ -404,46 +385,45 @@ class ConstitutiveModelPrototype(object):
         """
         iam = self.name + "._parse_material_file"
 
-        material_f = os.path.join(pc.PC_ROOT, "Aux/MaterialsDatabase",
-                                  material + ".py")
-        if not os.path.isfile(material_f):
-            pu.reportError(iam, "material file {0} not found".format(material_f))
+        fnam, fext = os.path.splitext(self.mtldat_f)
+        if fext == ".py":
+            py_mod, py_path = pu.get_module_name_and_path(self.mtldat_f)
+            fobj, pathname, description = imp.find_module(py_mod, py_path)
+            py_module = imp.load_module(py_mod, fobj, pathname, description)
+            fobj.close()
 
-        py_mod, py_path = pu.get_module_name_and_path(material_f)
-        fobj, pathname, description = imp.find_module(py_mod, py_path)
-        py_module = imp.load_module(py_mod, fobj, pathname, description)
-        fobj.close()
+            __all__ = getattr(py_module, "__all__")
+            if __all__ is None or not isinstance(__all__, dict):
+                pu.reportError(iam,
+                               ("__all__ attribute in {0} not defined"
+                                .format(self.mtldat_f)))
 
-        params = getattr(py_module, "parameters")
-        if params is None or not isinstance(params, dict):
-            pu.reportError(iam,
-                           "cannot read in parameters from {0}".format(material_f))
-        mtldat = []
-        for key, val in params.items():
-            mtldat.append((key, float(val)))
+            # look for name of material in file
+            mtl_nam = None
+            if material in __all__:
+                mtl_nam = material
+            else:
+                for name, aliases in __all__.items():
+                    if material in aliases:
+                        mtl_nam = name
+                        break
+                    continue
+            if mtl_nam is None:
+                pu.reportError(iam, ("material {0} not found in {1}"
+                                     .format(material, self.mtldat_f)))
 
-        return mtldat
-
-    def _parse_matlabel_file(self, matlabel):
-        """Parse the material property xml data file associated with this material
-
-        Parameters
-        ----------
-        matlabel : str
-          material label
-
-        Returns
-        -------
-        mtldat : list
-          list of tuples of (name, val) pairs
-
-        """
-        iam = self.name + "._parse_matlabel_file"
-        reportError(iam, "mtldat file parsing not enabled")
-
-        mtldat = []
+            params = getattr(py_module, mtl_nam)
+            mtldat = []
+            for key, val in params.items():
+                if key.lower() == "units":
+                    continue
+                mtldat.append((key, float(val)))
+                continue
+        else:
+            reportError(iam, "mtldat file parsing not enabled for this file type")
 
         return mtldat
+
     # @mswan}
 
     def initialize_state(self, material_data):

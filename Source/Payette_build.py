@@ -548,9 +548,16 @@ def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):
 
     payette_materials = {}
     py_files = []
-    for dirnam in mtl_dirs:
-        py_files.extend([os.path.join(dirnam, x)
-                         for x in os.listdir(dirnam) if x.endswith(".py")])
+    for mtl_dir in mtl_dirs:
+        for dirnam, dirs, files in os.walk(mtl_dir):
+            py_files.extend([os.path.join(dirnam, x)
+                             for x in files
+                             if x.endswith(".py")
+                             and "__init__.py" not in x
+                             and "Build_" not in x
+                             ])
+            continue
+        continue
 
     # go through list of python files in
     for py_file in py_files:
