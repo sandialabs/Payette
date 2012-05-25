@@ -111,26 +111,29 @@ Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
 
         # plotable data
         self.matdat.register_data("stress", "SymTensor",
-                                 init_val=np.zeros(6),
-                                 plot_key="sig")
+                                  init_val=np.zeros(6),
+                                  plot_key="sig")
         self.matdat.register_data("stress rate", "SymTensor",
-                                 init_val=np.zeros(6),
-                                 plot_key="dsigdt")
+                                  init_val=np.zeros(6),
+                                  plot_key="dsigdt")
         self.matdat.register_data("strain","SymTensor",
-                                 init_val=np.zeros(6),
-                                 plot_key="strain")
+                                  init_val=np.zeros(6),
+                                  plot_key="strain")
         self.matdat.register_data("deformation gradient","Tensor",
-                                 init_val="Identity",
-                                 plot_key="F")
+                                  init_val="Identity",
+                                  plot_key="F")
         self.matdat.register_data("rate of deformation","SymTensor",
-                                 init_val=np.zeros(6),
-                                 plot_key="d")
+                                  init_val=np.zeros(6),
+                                  plot_key="d")
         self.matdat.register_data("vorticity","Tensor",
-                                 init_val=np.zeros(9),
-                                 plot_key="w")
+                                  init_val=np.zeros(9),
+                                  plot_key="w")
         self.matdat.register_data("equivalent strain","Scalar",
-                                 init_val=0.,
-                                 plot_key="eqveps")
+                                  init_val=0.,
+                                  plot_key="eqveps")
+        self.matdat.register_data("pressure","Scalar",
+                                  init_val=0.,
+                                  plot_key="pressure")
 
         if self.constitutive_model.electric_field_model:
             # electric field model data

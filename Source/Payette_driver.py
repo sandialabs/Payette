@@ -590,6 +590,9 @@ def solid_driver(the_model, **kwargs):
             matdat.store_data("stress rate",
                              (matdat.get_data("stress", cur=True) -
                               matdat.get_data("stress")) / dt)
+            sig = matdat.get_data("stress")
+            matdat.store_data("pressure", -(sig[0] + sig[1] + sig[2]) / 3.)
+
             matdat.advance_all_data()
 
             # --- write state to file
