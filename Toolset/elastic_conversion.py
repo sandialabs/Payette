@@ -453,10 +453,10 @@ def elastic_param_conversion(argv):
 
             break
 
-        nam3,dens,idx3 = ask_input("DENSITY","rho",dens)
+        nam3, dens, idx3 = ask_input("DENSITY", "rho", dens)
 
-        ui = [None]*12
-        ui[idx1],ui[idx2],ui[idx3] = val1, val2, dens
+        ui = [None] * 12
+        ui[idx1], ui[idx2], ui[idx3] = val1, val2, dens
         ret = compute_elastic_constants(*ui)
         if ret == -1:
             non_positive_definite()
@@ -469,32 +469,47 @@ def elastic_param_conversion(argv):
 
 def ask_input(query, defnam, defval):
 
+    rho = query.lower() == "density"
+    if rho:
+        defnam = "rho"
+
     while True:
-        if query.lower() == "density":
-            rho = True
-        else:
-            rho = False
-
-        try:
+        if defval is not None:
             defval = "{0:12.6E}".format(defval)
-        except ValueError:
-            pass
 
+        # get raw input from user
         if rho:
-            inp = raw_input(query + "? [default: {0}] ".format(defval))
+            inp = raw_input("{0}? [default: {1}] ".format(query, defval))
         else:
-            inp = raw_input(query + "? [default: {0} = {1}] ".format(defnam, defval))
+            inp = raw_input("{0}? [default: {1} = {2}] "
+                            .format(query, defnam, defval))
 
+        # quit if requested
         if inp == "q":
             sys.exit("done")
 
+        # interactive help
         if inp == "h":
             print(interactive_help)
             continue
 
+        # check user input
         if not inp:
-            nam = defnam
-            val = eval(defval)
+            if rho:
+                nam = defnam
+                if defval is not None:
+                    val = eval(defval)
+                else:
+                    val = defval
+
+            elif defval is not None:
+                # go with default
+                nam = defnam
+                val = eval(defval)
+
+            else:
+                bad_syntax()
+                continue
 
         else:
             for char in "=,":
@@ -502,7 +517,11 @@ def ask_input(query, defnam, defval):
             inp = inp.split()
 
             if len(inp) == 1:
-                inp.insert(0,defnam)
+                if defnam is None:
+                    bad_syntax()
+                    continue
+                else:
+                    inp.insert(0, defnam)
 
             try:
                 nam, val = inp[0].strip(), float(inp[1].strip())
@@ -539,6 +558,7 @@ def ask_input(query, defnam, defval):
         break
 
     idx = NAM_MAP[nam]
+
     return nam, val, idx
 
 def print_elastic_constants(econsts):
