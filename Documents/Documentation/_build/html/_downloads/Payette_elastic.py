@@ -24,12 +24,11 @@
 import sys
 import os
 import numpy as np
-from math import sqrt
 
-from Source.Payette_utils import *
+import Source.Payette_utils as pu
+from Source.Payette_tensor import iso, dev
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
-from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
-from Source.Payette_tensor import I6, sym_map
+from Payette_config import PC_F2PY_CALLBACK
 from Toolset.elastic_conversion import compute_elastic_constants
 
 try:
@@ -44,27 +43,19 @@ attributes = {
     "payette material": True,
     "name": "elastic",
     "aliases": ["hooke", "linear elastic"],
-    "fortran source": True,
-    "build script": os.path.join(THIS_DIR, "Build_elastic.py"),
+    "code types": ("python", "fortran"),
+    "fortran build script": os.path.join(THIS_DIR, "Build_elastic.py"),
     "material type": ["mechanical"],
     "default material": True,
+    "material database": os.path.join(THIS_DIR, "elastic_mtl_database.py"),
     }
 
-w = np.array([1., 1., 1., 2., 2., 2.])
-
 class Elastic(ConstitutiveModelPrototype):
-    """ Elasticity model.
-
-    Use MFLG = 0 for python implementation, MFLG = 1 for fortran
-
-    """
+    """ Elasticity model. """
 
     def __init__(self, *args, **kwargs):
-        super(Elastic, self).__init__()
-        self.name = attributes["name"]
-        self.aliases = attributes["aliases"]
+        super(Elastic, self).__init__(attributes, *args, **kwargs)
 
-        self.code = kwargs["code"]
         self.imported = True if self.code == "python" else imported
 
         # register parameters
@@ -84,11 +75,11 @@ class Elastic(ConstitutiveModelPrototype):
         pass
 
     # public methods
-    def set_up(self, matdat, user_params):
+    def set_up(self, matdat):
         iam = self.name + ".set_up"
 
         # parse parameters
-        self.parse_parameters(user_params)
+        self.parse_parameters()
 
         # the elastic model only needs the bulk and shear modulus, but the
         # user could have specified any one of the many elastic moduli.
@@ -132,9 +123,9 @@ class Elastic(ConstitutiveModelPrototype):
             sig = _py_update_state(self.mui, dt, d, sigold)
 
         else:
-            a = [1, dt, self.mui, sigold, d, migError, migMessage]
-            if not PC_F2PY_CALLBACK:
-                a = a[:-2]
+            a = [1, dt, self.mui, sigold, d]
+            if PC_F2PY_CALLBACK:
+                a += [pu.migError, pu.migMessage]
             sig = mtllib.elast_calc(*a)
 
         # store updated data
@@ -145,15 +136,15 @@ class Elastic(ConstitutiveModelPrototype):
         k, mu = mui
 
         if k <= 0.:
-            reportError(iam, "Bulk modulus K must be positive")
+            pu.reportError(iam, "Bulk modulus K must be positive")
 
         if mu <= 0.:
-            reportError(iam, "Shear modulus MU must be positive")
+            pu.reportError(iam, "Shear modulus MU must be positive")
 
         # poisson's ratio
         nu = (3. * k - 2 * mu) / (6 * k + 2 * mu)
         if nu < 0.:
-            reportWarning(iam, "negative Poisson's ratio")
+            pu.reportWarning(iam, "negative Poisson's ratio")
 
         ui = np.array([k, mu])
 
@@ -161,9 +152,9 @@ class Elastic(ConstitutiveModelPrototype):
 
     def _fort_set_up(self, mui):
         props = np.array(mui)
-        a = [props, migError, migMessage]
-        if not PC_F2PY_CALLBACK:
-            a = a[:-2]
+        a = [props]
+        if PC_F2PY_CALLBACK:
+            a += [pu.migError, pu.migMessage]
         ui = mtllib.elast_chk(*a)
         return ui
 
@@ -175,12 +166,8 @@ def _py_update_state(ui, dt, d, sigold):
 
     # user properties
     k, mu = ui
-
-    # useful constants
     twomu = 2. * mu
-    alam = k - twomu / 3.
+    threek = 3. * k
 
     # elastic stress update
-    trde = np.sum(de * I6)
-    sig = sigold + alam * trde * I6 + twomu * de
-    return sig
+    return sigold + threek * iso(de) + twomu * dev(de)

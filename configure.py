@@ -272,21 +272,28 @@ PC_INPUTS = os.path.join(PC_ROOT, "Aux/Inputs")
 ERRORS += check_exists("PC_INPUTS", PC_INPUTS)
 
 # --- subdirectories of PC_SOURCE
-PC_MTLS = [os.path.join(PC_SOURCE, "Materials")]
+# --- directories where to find materials
+PC_MTLS = [os.path.join(PC_SOURCE, "Materials/Models")]
 USER_MTLS = os.getenv("PAYETTE_MTLDIR", "")
 PC_MTLS.extend([x for x in USER_MTLS.split(os.pathsep) if x])
+for mtl_d in [x for x in PC_MTLS]:
+    if os.path.isdir(mtl_d):
+        for dirnam, dirs, files in os.walk(mtl_d):
+            if ".svn" not in dirnam and ".git" not in dirnam:
+                PC_MTLS.append(dirnam)
+            continue
+    continue
+
 PC_FORTRAN = os.path.join(PC_SOURCE, "Fortran")
 PC_MIG_UTILS = os.path.join(PC_FORTRAN, "migutils.F")
 ERRORS += check_exists("PC_MTLS", PC_MTLS)
 ERRORS += check_exists("PC_MIG_UTILS", PC_MIG_UTILS)
 
 # --- Subdirectories of PC_MTLS
-PC_MTLS_LIBRARY = os.path.join(PC_MTLS[0], "Library")
-PC_MTLS_FORTRAN = os.path.join(PC_MTLS[0], "Fortran")
-PC_MTLS_INCLUDES = os.path.join(PC_MTLS[0], "Includes")
+PC_MTLS_LIBRARY = os.path.join(PC_SOURCE, "Materials/Library")
+PC_MTLS_INCLUDES = os.path.join(PC_SOURCE, "Materials/Includes")
 PC_MTLS_FILE = os.path.join(PC_SOURCE, "installed_materials.pkl")
 ERRORS += check_exists("PC_MTLS_LIBRARY", PC_MTLS_LIBRARY)
-ERRORS += check_exists("PC_MTLS_FORTRAN", PC_MTLS_FORTRAN)
 ERRORS += check_exists("PC_MTLS_INCLUDES", PC_MTLS_INCLUDES)
 
 # --- extension module file extension
@@ -312,7 +319,6 @@ PAYETTE_CONFIG["PC_MTLS"] = PC_MTLS
 PAYETTE_CONFIG["PC_FORTRAN"] = PC_FORTRAN
 PAYETTE_CONFIG["PC_MIG_UTILS"] = PC_MIG_UTILS
 PAYETTE_CONFIG["PC_MTLS_LIBRARY"] = PC_MTLS_LIBRARY
-PAYETTE_CONFIG["PC_MTLS_FORTRAN"] = PC_MTLS_FORTRAN
 PAYETTE_CONFIG["PC_MTLS_INCLUDES"] = PC_MTLS_INCLUDES
 PAYETTE_CONFIG["PC_MTLS_FILE"] = PC_MTLS_FILE
 PAYETTE_CONFIG["PC_INPUTS"] = PC_INPUTS

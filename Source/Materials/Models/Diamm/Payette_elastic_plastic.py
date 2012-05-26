@@ -33,7 +33,7 @@ except:
     imported = False
     pass
 
-from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
+from Payette_config import PC_F2PY_CALLBACK
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 attributes = {

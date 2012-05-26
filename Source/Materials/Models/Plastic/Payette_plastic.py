@@ -29,7 +29,7 @@ from math import sqrt
 import Source.Payette_utils as pu
 from Source.Payette_tensor import sym_map, iso, dev, mag, ddp
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
-from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
+from Payette_config import PC_F2PY_CALLBACK
 from Toolset.elastic_conversion import compute_elastic_constants
 
 try:

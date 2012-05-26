@@ -192,8 +192,8 @@ Example: Elastic Material Model Interface File
 The required elements of the material's interface file described above are now
 demonstrated by an annotated version of the elastic material's interface.
 
-**View the source code:**
-:download:`Payette_elastic.py <../../../Source/Materials/Payette_elastic.py>`
+**View the source code:** :download:`Payette_elastic.py
+<../../../Source/Materials/Models/Elastic/Payette_elastic.py>`
 
 ::
 
@@ -354,7 +354,7 @@ The signature file can be modified even further. See the above links on how to
 specialize your signature file for maximum speed and efficiency.
 
 **View the Payette_elastic.pyf file:** :download:`Payette_elastic.pyf
-<../../../Source/Materials/Payette_elastic.pyf>`
+<../../../Source/Materials/Models/Elastic/Payette_elastic.pyf>`
 
 
 Elastic Material Build Script
@@ -366,7 +366,7 @@ each material derives its ``Build`` class. The ``Build`` class must provide a
 build script.
 
 **View the elastic material build script:** :download:`Build_elastic.py
-<../../../Source/Materials/Build_elastic.py>`
+<../../../Source/Materials/Models/Elastic/Build_elastic.py>`
 
 ::
 
