@@ -7,7 +7,7 @@ Obtaining *Payette*
 
 *Payette* is an open source project licensed under the MIT license. A copy of
 the source code may be obtained by downloading it
-:download:`here <../../../Aux/Distribution/payette_v-1.0.b.tar.gz>`.
+:download:`here <../../../Aux/Distribution/payette_v1.0.a.tar.gz>`.
 
 If you are interested in developing *Payette*, contact `Tim Fuller
 <tjfulle@sandia.gov>`_ about obtaining access to the *Payette* source
