@@ -225,9 +225,7 @@ def build_payette(argv):
         errors = 0
         search_dirs = []
         for dirnam in mtl_dirs:
-            if (os.path.dirname(dirnam) not in
-                [os.path.dirname(x) for x in search_dirs] and
-                (os.path.dirname(dirnam) not in search_dirs)):
+            if not any(x in dirnam for x in search_dirs):
                 search_dirs.append(dirnam)
         pu.loginf("finding Payette materials from:\n{0}"
                   .format("\n".join([SPACE + x for x in search_dirs])))
