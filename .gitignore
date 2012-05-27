@@ -1,4 +1,4 @@
-# Payette executables that are built by Payette 
+# Payette executables that are built by Payette
 buildPayette
 cleanPayette
 extractPayette
@@ -12,6 +12,7 @@ pconfigure
 
 # documentation auxilary
 Documents/Documentation/_build/html/_downloads/payette_v-*.tar.gz
+Payette*.tar.gz
 
 # Payette files
 Toolset/__found_tests__.py

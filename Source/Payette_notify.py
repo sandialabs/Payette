@@ -1,4 +1,3 @@
-#!/usr/bin/env python2
 # The MIT License
 
 # Copyright (c) 2011 Tim Fuller

@@ -21,19 +21,14 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-"""
-NAME
-   configure.py
-
-PURPOSE
-   Configure Payette and write Payette_config.py
-"""
-
 from __future__ import print_function
 import os
 import sys
 import optparse
 from distutils import sysconfig
+
+__version__ = "1.0.a"
+__author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
 
 ERRORS = 0
 
@@ -208,7 +203,8 @@ PC_INTRO = """
   P        A           A  Y  EEEEEEEE     T            T      EEEEEEEE
 
                               An Object Oriented Material Model Driver
-"""
+                                                         version {0}
+""".format(__version__)
 
 # --- spacing used for logs to console
 SPACE = "      "
@@ -667,6 +663,7 @@ def clean_payette():
 
     return
 
+
 if __name__ == "__main__":
 
     if "clean" in sys.argv:
@@ -693,3 +690,4 @@ if __name__ == "__main__":
 
     # all done
     loginf("configuration complete")
+
