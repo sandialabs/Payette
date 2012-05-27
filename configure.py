@@ -27,7 +27,7 @@ import sys
 import optparse
 from distutils import sysconfig
 
-__version__ = "1.0.a"
+__version__ = "1.0.dev"
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
 
 ERRORS = 0
@@ -203,8 +203,8 @@ PC_INTRO = """
   P        A           A  Y  EEEEEEEE     T            T      EEEEEEEE
 
                               An Object Oriented Material Model Driver
-                                                         version {0}
-""".format(__version__)
+{0}
+""".format(" "*(62 - len(__version__)) + "version " + __version__)
 
 # --- spacing used for logs to console
 SPACE = "      "
@@ -671,6 +671,9 @@ if __name__ == "__main__":
         clean_payette()
         loginf("Payette cleaned")
         sys.exit(0)
+
+    elif any("vers" in x for x in sys.argv):
+        sys.exit("Payette, version " + __version__)
 
     if sys.argv[0] != os.path.basename(__file__):
         sys.exit("configure.py must be executed from {0}".format(PC_ROOT))
