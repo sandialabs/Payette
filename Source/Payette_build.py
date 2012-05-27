@@ -203,7 +203,7 @@ def build_payette(argv):
         f2pyopts.append("--debug")
 
     # compiler options to send to the fortran build scripts
-    COMPILER_INFO = {"f2py": {"compiler": pc.PC_F2PY,
+    COMPILER_INFO = {"f2py": {"compiler": pc.PC_F2PY[0],
                               "options": f2pyopts}}
 
     # check material directories
@@ -251,10 +251,6 @@ def build_payette(argv):
 
     else:
         errors = 0
-
-    if not errors:
-        # write the Payette executables
-        pu.write_payette_executables()
 
     # if the user wanted only to build certain libraries, return when built
     if opts.mtllib:
@@ -488,12 +484,12 @@ def _build_lib(material):
         build = imp.load_module(py_mod, fobj, pathname, description)
         fobj.close()
 
-        try:
-            build = build.Build(name, libname, COMPILER_INFO)
-            build_error = build.build_extension_module()
+#        try:
+        build = build.Build(name, libname, COMPILER_INFO)
+        build_error = build.build_extension_module()
 
-        except BuildError as error:
-            build_error = error.errno
+#        except BuildError as error:
+#            build_error = error.errno
 
         if build_error:
             BUILD_ERRORS += 1

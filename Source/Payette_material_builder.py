@@ -165,7 +165,7 @@ class MaterialBuilder():
 
         if not built:
             raise BuildError("failed to build {0} with f2py, see {1}"
-                             .format(self.libname,echo),2)
+                             .format(self.libname,echo), 2)
 
         # make sure the module is loadable
         try:

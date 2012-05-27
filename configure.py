@@ -136,6 +136,7 @@ def dictfrmt(key, val):
 
 
 def get_exe_path(exe):
+
     """ return the absolute path to the executable exe """
 
     if os.path.isfile(exe):
@@ -152,6 +153,49 @@ def get_exe_path(exe):
 
     sys.exit("ERROR: executable {0} not found".format(exe))
 
+
+def write_f2py(pyint, destdir):
+
+    """
+    write out f2py. we write out our own to ensure that we use the right python
+    interpreter. I just copied this verbatim from my installation of f2py,
+    replacing the interpreter on the shebang line with PC_PYINT
+
+    HOWEVER, after writing this, I remembered that we never use f2py from the
+    command line, but import it directly from numpy, so this is unnecessary...
+    """
+
+    f2py_file = """#!{0}
+# See http://cens.ioc.ee/projects/f2py2e/
+import os, sys
+for mode in ["g3-numpy", "2e-numeric", "2e-numarray", "2e-numpy"]:
+    try:
+        i=sys.argv.index("--"+mode)
+        del sys.argv[i]
+        break
+    except ValueError: pass
+os.environ["NO_SCIPY_IMPORT"]="f2py"
+if mode=="g3-numpy":
+    sys.stderr.write("G3 f2py support is not implemented, yet.\\n")
+    sys.exit(1)
+elif mode=="2e-numeric":
+    from f2py2e import main
+elif mode=="2e-numarray":
+    sys.argv.append("-DNUMARRAY")
+    from f2py2e import main
+elif mode=="2e-numpy":
+    from numpy.f2py import main
+else:
+    sys.stderr.write("Unknown mode: " + repr(mode) + "\\n")
+    sys.exit(1)
+main()
+""".format(pyint)
+    f2py = os.path.join(destdir, "f2py")
+    with open(f2py, "w") as fnew:
+        for line in f2py_file:
+            fnew.write(line)
+    os.chmod(f2py, 0o750)
+    return
 
 # --- intro message
 PC_INTRO = """
@@ -170,8 +214,8 @@ PC_INTRO = """
 SPACE = "      "
 
 # --- base level directories
-PC_CONFIGURE = os.path.realpath(__file__)
-PC_ROOT = os.path.dirname(PC_CONFIGURE)
+THIS_FILE = os.path.realpath(__file__)
+PC_ROOT = os.path.dirname(THIS_FILE)
 PC_AUX = os.path.join(PC_ROOT, "Aux")
 PC_DOCS = os.path.join(PC_ROOT, "Documents")
 PC_SOURCE = os.path.join(PC_ROOT, "Source")
@@ -199,16 +243,21 @@ PC_PYVER = "python" if not SAGE else "sage -python"
 PC_PYVER = "{0} {1}.{2}.{3}".format(PC_PYVER,MAJOR,MINOR,MICRO)
 
 # --- Payette executable files
-PC_RUNTEST = os.path.join(PC_SOURCE, "Payette_runtest.py")
-PC_RUN = os.path.join(PC_SOURCE, "Payette_run.py")
-PC_BUILD = os.path.join(PC_SOURCE, "Payette_build.py")
+PC_CLEANPAYETTE = (os.path.join(PC_TOOLS, "cleanPayette"), THIS_FILE)
+
 PC_EXTRACT = os.path.join(PC_SOURCE, "Payette_extract.py")
-PC_RUNPAYETTE = os.path.join(PC_TOOLS, "runPayette")
-PC_BUILDPAYETTE = os.path.join(PC_TOOLS, "buildPayette")
-PC_CLEANPAYETTE = os.path.join(PC_TOOLS, "cleanPayette")
-PC_EXTRACTPAYETTE = os.path.join(PC_TOOLS, "extractPayette")
-PC_TESTPAYETTE = os.path.join(PC_TOOLS, "testPayette")
-PC_F2PY = os.path.join(PC_TOOLS,"f2py")
+PC_EXTRACTPAYETTE = (os.path.join(PC_TOOLS, "extractPayette"), PC_EXTRACT)
+
+PC_RUN = os.path.join(PC_SOURCE, "Payette_run.py")
+PC_RUNPAYETTE = (os.path.join(PC_TOOLS, "runPayette"), PC_RUN)
+
+PC_BUILD = os.path.join(PC_SOURCE, "Payette_build.py")
+PC_BUILDPAYETTE = (os.path.join(PC_TOOLS, "buildPayette"), PC_BUILD)
+
+PC_RUNTEST = os.path.join(PC_SOURCE, "Payette_runtest.py")
+PC_TESTPAYETTE = (os.path.join(PC_TOOLS, "testPayette"), PC_RUNTEST)
+
+PC_F2PY = (os.path.join(PC_TOOLS,"f2py"), None)
 PC_BUILT_EXES = {"runPayette": PC_RUNPAYETTE,
                  "testPayette": PC_TESTPAYETTE,
                  "buildPayette": PC_BUILDPAYETTE,
@@ -216,7 +265,8 @@ PC_BUILT_EXES = {"runPayette": PC_RUNPAYETTE,
                  "extractPayette": PC_EXTRACTPAYETTE,
                  "f2py": PC_F2PY}
 PC_EXES = {}
-for exe_nam, exe_path in PC_BUILT_EXES.items():
+for exe_nam, exe_info in PC_BUILT_EXES.items():
+    exe_path, py_path = exe_info
     PC_EXES[exe_nam] = exe_path
     continue
 
@@ -228,8 +278,7 @@ PC_INPUTS = os.path.join(PC_ROOT, "Aux/Inputs")
 ERRORS += check_exists("PC_INPUTS", PC_INPUTS)
 
 # --- subdirectories of PC_SOURCE
-# --- directories where to find materials
-PC_MTLS = [os.path.join(PC_SOURCE, "Materials/Models")]
+PC_MTLS = [os.path.join(PC_SOURCE, "Materials")]
 USER_MTLS = os.getenv("PAYETTE_MTLDIR", "")
 PC_MTLS.extend([x for x in USER_MTLS.split(os.pathsep) if x])
 for mtl_d in [x for x in PC_MTLS]:
@@ -239,15 +288,14 @@ for mtl_d in [x for x in PC_MTLS]:
                 PC_MTLS.append(dirnam)
             continue
     continue
-
 PC_FORTRAN = os.path.join(PC_SOURCE, "Fortran")
 PC_MIG_UTILS = os.path.join(PC_FORTRAN, "migutils.F")
 ERRORS += check_exists("PC_MTLS", PC_MTLS)
 ERRORS += check_exists("PC_MIG_UTILS", PC_MIG_UTILS)
 
 # --- Subdirectories of PC_MTLS
-PC_MTLS_LIBRARY = os.path.join(PC_SOURCE, "Materials/Library")
-PC_MTLS_INCLUDES = os.path.join(PC_SOURCE, "Materials/Includes")
+PC_MTLS_LIBRARY = os.path.join(PC_MTLS[0], "Library")
+PC_MTLS_INCLUDES = os.path.join(PC_MTLS[0], "Includes")
 PC_MTLS_FILE = os.path.join(PC_SOURCE, "installed_materials.pkl")
 ERRORS += check_exists("PC_MTLS_LIBRARY", PC_MTLS_LIBRARY)
 ERRORS += check_exists("PC_MTLS_INCLUDES", PC_MTLS_INCLUDES)
@@ -262,7 +310,6 @@ PC_OSTYPE = sys.platform
 # waited to write it til now so that we would only write it if everything was
 # configured correctly.
 PAYETTE_CONFIG = {}
-PAYETTE_CONFIG["PC_CONFIGURE"] = PC_CONFIGURE
 PAYETTE_CONFIG["PC_PYINT"] = PC_PYINT
 PAYETTE_CONFIG["PC_PYVER"] = PC_PYVER
 PAYETTE_CONFIG["PC_ROOT"] = PC_ROOT
@@ -325,6 +372,7 @@ if ERRORS:
 
 
 def configure_payette(argv):
+
     """ create and write configuration file """
 
     # *************************************************************************
@@ -465,7 +513,6 @@ def configure_payette(argv):
                    os.pathsep.join([x for x in ENV["PYTHONPATH"].split(os.pathsep)
                                     if x not in pypath.split(os.pathsep)]))
     ENV["PYTHONPATH"] = pypath
-    PAYETTE_CONFIG["PC_ENV"] = ENV
 
     # write the the configuration file
     begmes("writing Payette_config.py", pre=SPACE)
@@ -498,34 +545,62 @@ def configure_payette(argv):
     return ERRORS
 
 
-def write_buildPayette():
-    """ create the buildPayette executables """
+def create_payette_exececutables():
 
-    name = "buildPayette"
-    path = PC_BUILT_EXES[name]
-
-    # remove the executable first
-    try:
-        os.remove(path)
-    except OSError:
-        pass
+    """ create the Payette executables """
 
     loginf("writing executable scripts")
-    begmes("writing {0}".format(name), pre=SPACE)
 
-    with open(path, "w") as fnew:
-        fnew.write("#!/bin/sh -f\n")
-        for key, val in ENV.items():
-            fnew.write("export {0}={1}\n".format(key, val))
+    # message for executables that require Payette be built
+    exit_msg = """if [ ! -f {0} ]; then
+   echo "buildPayette must be executed to create {0}"
+   exit
+fi
+""".format(PC_MTLS_FILE)
+
+    for name, files in PC_BUILT_EXES.items():
+
+        exe_path, py_file = files
+
+        # remove the executable first
+        try:
+            os.remove(exe_path)
+        except OSError:
+            pass
+
+        begmes("writing {0}".format(name), pre=SPACE)
+
+        if name == "f2py":
+            write_f2py(PC_PYINT, PC_TOOLS)
+            endmes("{0} script written".format(name))
             continue
 
-        fnew.write("{0} {1} $* 2>&1\n".format(PC_PYINT, PC_BUILD))
+        with open(exe_path, "w") as fnew:
+            fnew.write("#!/bin/sh -f\n")
+            for key, val in ENV.items():
+                fnew.write("export {0}={1}\n".format(key, val))
+                continue
 
-        os.chmod(path, 0o750)
+            if name == "cleanPayette":
+                fnew.write("{0} {1} {2} $* 2>&1\n"
+                           .format(PC_PYINT, py_file, "clean"))
+
+            elif name in ("buildPayette", "extractPayette",):
+                fnew.write("{0} {1} $* 2>&1\n"
+                           .format(PC_PYINT, py_file))
+
+            else:
+                fnew.write(exit_msg)
+                fnew.write("{0} {1} $* 2>&1\n"
+                           .format(PC_PYINT, py_file))
+
+
+        os.chmod(exe_path, 0o750)
         endmes("{0} script written".format(name))
+        continue
 
     path = os.path.join(PC_TOOLS, "pconfigure")
-    begmes("writing pconfigure", pre=SPACE)
+    begmes("writing pcnfigure", pre=SPACE)
     with open(path, "w") as fnew:
         fnew.write("#!/bin/sh -f\n")
         fnew.write("cd {0}\n".format(PC_ROOT))
@@ -561,18 +636,19 @@ import os
 """
 
 
-def clean_payette(cleanall=False):
+def clean_payette():
+
     """ clean Payette of any automatically generated files """
 
     from fnmatch import fnmatch
 
     soext = sysconfig.get_config_var("SO")
 
-    pats_to_remove = ["*.pyc", "*.pyo", "*.log", "*.echo", "*.prf", "*.diff",
-                      "*.xout", "*.out", "*.math1", "*.math2", "*.props",
-                      "*.vtable", "*.dtable"]
-    pats_to_remove.extend(["*{0}".format(soext), "Payette_config.py",
-                           "installed_materials.pkl", "__found_tests__.py",])
+    pats_to_remove = ["*.pyc", "*.pyo", "Payette_config.py",
+                      "*{0}".format(soext),
+                      "installed_materials.pkl", "__found_tests__.py",
+                      "*.log", "*.echo", "*.prf", "*.diff", "*.xout", "*.out",
+                      "*.math1", "*.math2", "*.props", "*.vtable", "*.dtable"]
     pats_to_remove.extend(PC_BUILT_EXES.keys())
 
     for item in os.walk(PC_ROOT):
@@ -610,10 +686,10 @@ if __name__ == "__main__":
     if CONFIGURE > 0:
         sys.exit("ERROR: configure failed\n")
 
-    # and write the build script
-    WRITE_EXE = write_buildPayette()
+    # and write the executables
+    WRITE_EXE = create_payette_exececutables()
     if WRITE_EXE > 0:
-        sys.exit("ERROR: failed to write buildPayette\n")
+        sys.exit("ERROR: failed to write executables\n")
 
     # all done
     loginf("configuration complete")
