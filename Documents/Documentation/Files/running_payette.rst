@@ -29,3 +29,12 @@ For a simulation titled ``simnam``, the following output is created by
   simnam.prf      (binary restart file)
   simnam.props    (ascii list of checked material parameters)
 
+
+Examples Directory
+==================
+
+``PAYETTE_ROOT/Examples`` input files, many of which are heavily commented,
+that exercise the basic capabilties of *Payette*. If you are just getting
+acquainted with *Payette*, it is recommended to read and run each input file.
+
+

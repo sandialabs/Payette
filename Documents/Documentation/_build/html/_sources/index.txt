@@ -10,8 +10,8 @@ Payette Material Model Driver - Official Documentation
    :maxdepth: 2
 
    Files/introduction
-   Files/layout
    Files/obtaining
+   Files/layout
    Files/building
    Files/running_payette
    Files/input_file_formatting
