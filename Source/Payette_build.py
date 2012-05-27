@@ -252,6 +252,10 @@ def build_payette(argv):
     else:
         errors = 0
 
+    if not errors:
+        # write the Payette executables
+        pu.write_payette_executables()
+
     # if the user wanted only to build certain libraries, return when built
     if opts.mtllib:
         return errors
