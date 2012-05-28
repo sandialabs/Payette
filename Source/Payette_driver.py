@@ -334,23 +334,28 @@ def eos_driver(the_model, **kwargs):
 
 
 def solid_driver(the_model, **kwargs):
-    """
-    NAME
-       solid_driver:
+    """Run the single element simulation for an instance of the main Payette
+    class the_model
 
-    PURPOSE
-       Run the single element simulation for an instance of the main Payette class
-       the_model
+    Parameters
+    ----------
+    the_model : object
+      Payette class instance
 
-    INPUT
-       the_model: Payette container class instance
+    Returns
+    -------
+    None
 
-    OUTPUT
-       outfile: the_model.getOutputFile()
+    Updates
+    -------
+    the_model : object
+      Payette class instance
+    outfile : file object
+      simulation output file
 
-    PASSED AND LOCAL VARIABLES
-    AUTHORS
-       Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
+    Strategy
+    --------
+
     """
     cons_msg = "leg {0:{1}d}, step {2:{3}d}, time {4:.4E}, dt {5:.4E}"
 
@@ -548,18 +553,18 @@ def solid_driver(the_model, **kwargs):
                 if dflg[0] == 5:
                     # --- deformation gradient prescribed
                     matdat.advance_data("prescribed deformation gradient", F_int)
-                    pk.velGradCompFromF(simdat, matdat)
+                    pk.velgrad_from_defgrad(simdat, matdat)
 
                 else:
                     # --- strain or strain rate prescribed
                     matdat.advance_data("prescribed strain", eps_int)
-                    pk.velGradCompFromE(simdat, matdat)
+                    pk.velgrad_from_strain(simdat, matdat)
 
             else:
                 # --- One or more stresses prescribed
                 matdat.advance_data("strain rate", depsdt)
                 matdat.advance_data("prescribed stress", prsig_int)
-                pk.velGradCompFromP(simdat, matdat)
+                pk.velgrad_from_stress(simdat, matdat)
                 matdat.advance_data("strain rate")
                 depsdt = matdat.get_data("strain rate")
                 matdat.store_data("rate of deformation", depsdt)
@@ -571,7 +576,7 @@ def solid_driver(the_model, **kwargs):
             matdat.advance_data("vorticity")
 
             # find the current {deformation gradient,strain} and advance them
-            pk.updateDeformation(simdat, matdat)
+            pk.update_deformation(simdat, matdat)
             matdat.advance_data("deformation gradient")
             matdat.advance_data("strain")
             matdat.advance_data("equivalent strain")

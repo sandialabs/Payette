@@ -596,7 +596,7 @@ fi
         continue
 
     path = os.path.join(PC_TOOLS, "pconfigure")
-    begmes("writing pcnfigure", pre=SPACE)
+    begmes("writing pconfigure", pre=SPACE)
     with open(path, "w") as fnew:
         fnew.write("#!/bin/sh -f\n")
         fnew.write("cd {0}\n".format(PC_ROOT))

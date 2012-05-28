@@ -27,7 +27,7 @@ import numpy as np
 from math import sqrt
 
 import Source.Payette_utils as pu
-from Source.Payette_tensor import sym_map, iso, dev, mag, ddp
+from Source.Payette_tensor import SYM_MAP, iso, dev, mag, ddp
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_F2PY_CALLBACK
 from Toolset.elastic_conversion import compute_elastic_constants
@@ -188,8 +188,8 @@ class Plastic(ConstitutiveModelPrototype):
 
         # back stress
         for i in range(6):
-            names.append("{0} component of back stress".format(sym_map[i]))
-            keys.append("BSIG{0}".format(sym_map[i]))
+            names.append("{0} component of back stress".format(SYM_MAP[i]))
+            keys.append("BSIG{0}".format(SYM_MAP[i]))
             continue
         nxtra = len(keys)
         xtra = np.zeros(nxtra)

@@ -21,34 +21,35 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+"""Main constitutive model class file."""
+
 import numpy as np
 import math
 import os
 import imp
-import Payette_config as pc
 import Source.Payette_tensor as pt
 import Source.Payette_utils as pu
 
-material_idx = 0
 
 class ConstitutiveModelPrototype(object):
-    '''
-    CLASS NAME
-       ConstitutiveModelPrototype
+    """Prototype class from which constutive models are derived
 
-    PURPOSE
-       Prototype class from which constutive models are derived
+    Public Methods
+    --------------
+    __init__
+    set_up
+    update_state
+    finish_setup
+    register_parameter
+    get_parameter_names_and_values
+    get_parameter_names
+    parse_parameters
+    parse_user_params
+    initialize_state
+    compute_init_jacobian
+    jacobian
 
-    METHODS
-       setField
-       checkProperties
-       update_state
-       derivedConstants
-       isvKeys
-
-    AUTHORS
-       Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
-    '''
+    """
 
     def __init__(self, init_data, *args, **kwargs):
         """Initialize the ConstitutiveModelPrototype object.
@@ -120,6 +121,7 @@ class ConstitutiveModelPrototype(object):
         self.ndc = 0
         self.nxtra = 0
         self.J0 = None
+        self.ui0 = np.zeros(self.nprop)
         self.ui = np.zeros(self.nprop)
         self.dc = np.zeros(self.ndc)
         self.bulk_modulus = 0.
@@ -130,14 +132,16 @@ class ConstitutiveModelPrototype(object):
 
     def set_up(self, *args):
         """ set up model """
-        pu.reportError(__file__,
-                       'Constitutive model must provide set_up method')
+        iam = "ConstitutiveModelPrototype.set_up"
+        pu.reportError(
+            iam, 'Constitutive model must provide set_up method')
         return
 
     def update_state(self, *args):
         """ update state """
-        pu.reportError(__file__,
-                       'Constitutive model must provide update_state method')
+        iam = "ConstitutiveModelPrototype.update_state"
+        pu.reportError(
+            iam, 'Constitutive model must provide update_state method')
         return
 
     def finish_setup(self, matdat):
@@ -176,11 +180,31 @@ class ConstitutiveModelPrototype(object):
     def register_parameter(self, param_name, param_idx,
                            aliases=None, parseable=True, default=0.,
                            description="No description available"):
+        """Register parameters from the material model to the consitutive
+        model base class
+
+        Parameters
+        ----------
+        param_name : str
+          paramter name
+        param_idx : int
+          index of where the parameter is located in the material user input
+          array
+        aliases : list
+          list of aliases
+        parseable : bool
+          Boolean of whether the user input is read in from the input file
+        default : float
+          default value
+        description : str
+          long description of parameter
+
+        """
 
         if aliases is None:
             aliases = []
 
-        iam = self.name + ".registerParameter"
+        iam = self.name + ".register_parameter"
         if not isinstance(param_name, str):
             pu.reportError(iam,"parameter name must be a string, got {0}"
                         .format(param_name))
@@ -190,8 +214,8 @@ class ConstitutiveModelPrototype(object):
                         .format(param_idx))
 
         if not isinstance(aliases, list):
-            pu.reportError(iam,"aliases must be a list, got {0}".format(aliases))
-            pass
+            pu.reportError(
+                iam, "aliases must be a list, got {0}".format(aliases))
 
         # register full name, low case name, and aliases
         full_name = param_name
@@ -208,8 +232,9 @@ class ConstitutiveModelPrototype(object):
             self.errors += 1
 
         if param_idx in self.registered_param_idxs:
-            pu.reportWarning(iam,"duplicate ui location [{0}] in parameter table"
-                          .format(", ".join(param_names)))
+            pu.reportWarning(
+                iam, ("duplicate ui location [{0}] in parameter table"
+                      .format(", ".join(param_names))))
             self.errors += 1
 
         self.registered_params.append(full_name)
@@ -235,18 +260,17 @@ class ConstitutiveModelPrototype(object):
         table = [None] * self.nprop
         for param, param_dict in self.parameter_table.items():
             idx = param_dict["ui pos"]
-            name = param_dict["name"]
             val = param_dict["default value"] if default else self.ui[idx]
             desc = param_dict["description"]
-            table[idx] = [name, desc, val]
+            table[idx] = [param, desc, val]
         return table
 
     def get_parameter_names(self, aliases=False):
         """Returns a list of parameter names, and optionally aliases"""
         param_names = [None] * self.nprop
-        for p, pdict in self.parameter_table.items():
+        for param, pdict in self.parameter_table.items():
             idx = pdict["ui pos"]
-            param_names[idx] = pdict["names"] if aliases else pdict["name"]
+            param_names[idx] = pdict["names"] if aliases else param
         return param_names
 
     def parse_parameters(self, *args):
@@ -301,9 +325,9 @@ class ConstitutiveModelPrototype(object):
 
         return
 
-    def _parse_user_params(self, user_params):
+    def parse_user_params(self, user_params):
         """ read the user params and populate user_input_params """
-        iam = self.name + "._parse_user_params"
+        iam = self.name + ".parse_user_params"
 
         if not user_params:
             pu.reportError(iam, "no parameters found")
@@ -353,7 +377,7 @@ class ConstitutiveModelPrototype(object):
             val = line[-1]
             try:
                 val = float(val)
-            except:
+            except ValueError:
                 errors += 1
                 msg = ("could not convert {0} for parameter {1} to float"
                        .format(val, name))
@@ -385,48 +409,71 @@ class ConstitutiveModelPrototype(object):
         """
         iam = self.name + "._parse_mtldb_file"
 
-        fnam, fext = os.path.splitext(self.mtldat_f)
+        fext = os.path.splitext(self.mtldat_f)[1]
         if fext == ".py":
-            py_mod, py_path = pu.get_module_name_and_path(self.mtldat_f)
-            fobj, pathname, description = imp.find_module(py_mod, py_path)
-            py_module = imp.load_module(py_mod, fobj, pathname, description)
-            fobj.close()
+            mtldat = self._parse_py_mtldb_file(material)
 
-            __all__ = getattr(py_module, "__all__")
-            if __all__ is None or not isinstance(__all__, dict):
-                pu.reportError(iam,
-                               ("__all__ attribute in {0} not defined"
-                                .format(self.mtldat_f)))
-
-            # look for name of material in file
-            mtl_nam = None
-            if material in __all__:
-                mtl_nam = material
-            else:
-                for name, aliases in __all__.items():
-                    if material in aliases:
-                        mtl_nam = name
-                        break
-                    continue
-            if mtl_nam is None:
-                pu.reportError(iam, ("material {0} not found in {1}"
-                                     .format(material, self.mtldat_f)))
-
-            params = getattr(py_module, mtl_nam)
-            mtldat = []
-            for key, val in params.items():
-                if key.lower() == "units":
-                    continue
-                mtldat.append((key, float(val)))
-                continue
         else:
-            reportError(iam, "mtldat file parsing not enabled for this file type")
+            pu.reportError(
+                iam, "mtldat file parsing not enabled for this file type")
 
         return mtldat
 
-    # @mswan}
+    def _parse_py_mtldb_file(self, material):
+        """Parse the python material database file
+
+        Parameters
+        ----------
+        material : str
+          name of material
+
+        Returns
+        -------
+        mtldat : list
+          list of tuples of (name, val) pairs
+
+        """
+        iam = self.name + "._parse_py_mtldb_file"
+
+        py_mod, py_path = pu.get_module_name_and_path(self.mtldat_f)
+        fobj, pathname, description = imp.find_module(py_mod, py_path)
+        py_module = imp.load_module(py_mod, fobj, pathname, description)
+        fobj.close()
+
+        __all__ = getattr(py_module, "__all__")
+        if __all__ is None or not isinstance(__all__, dict):
+            pu.reportError(iam, ("__all__ attribute in {0} not defined"
+                                 .format(self.mtldat_f)))
+
+        # look for name of material in file
+        mtl_nam = None
+        if material in __all__:
+            mtl_nam = material
+
+        else:
+            for name, aliases in __all__.items():
+                if material in aliases:
+                    mtl_nam = name
+                    break
+                continue
+
+        if mtl_nam is None:
+            pu.reportError(iam, ("material {0} not found in {1}"
+                                 .format(material, self.mtldat_f)))
+
+        params = getattr(py_module, mtl_nam)
+        mtldat = []
+        for key, val in params.items():
+            if key.lower() == "units":
+                continue
+            mtldat.append((key, float(val)))
+            continue
+
+        return mtldat
+# @mswan}
 
     def initialize_state(self, material_data):
+        """initialize the material state"""
         pass
 
     def compute_init_jacobian(self, simdat=None, matdat=None, isotropic=True):
@@ -435,33 +482,35 @@ class ConstitutiveModelPrototype(object):
            compute_init_jacobian
 
         PURPOSE
-           compute the initial material Jacobian J = dsig/deps, assuming
+           compute the initial material Jacobian J = dsig / deps, assuming
            isotropy
         '''
         if isotropic:
-            J0 = np.zeros((6, 6))
+            j_0 = np.zeros((6, 6))
             threek, twog = 3. * self.bulk_modulus, 2. * self.shear_modulus
-            pr = (threek - twog) / (2. * threek + twog)
-            c1, c2 = (1 - pr) / (1 + pr), pr / (1 + pr)
+            poissons = (threek - twog) / (2. * threek + twog)
+            const_1 = (1 - poissons) / (1 + poissons)
+            const_2 = poissons / (1 + poissons)
 
             # set diagonal
             for i in range(3):
-                J0[i,i] = threek * c1
+                j_0[i, i] = threek * const_1
             for i in range(3, 6):
-                J0[i,i] = twog
+                j_0[i, i] = twog
 
             # off diagonal
-            (          J0[0, 1], J0[0, 2],
-             J0[1, 0],           J0[1, 2],
-             J0[2, 0], J0[2, 1]           ) = [threek * c2] * 6
-            self.J0 = np.array(J0)
+            (          j_0[0, 1], j_0[0, 2],
+             j_0[1, 0],           j_0[1, 2],
+             j_0[2, 0], j_0[2, 1]           ) = [threek * const_2] * 6
+            self.J0 = np.array(j_0)
 
             return
 
         else:
             # material is not isotropic, numerically compute the jacobian
             matdat.stash_data("prescribed stress components")
-            matdat.store_data("prescribed stress components",[0,1,2,3,4,5])
+            matdat.store_data("prescribed stress components",
+                              [0, 1, 2, 3, 4, 5])
             self.J0 = self.jacobian(simdat, matdat)
             matdat.unstash_data("prescribed stress components")
             return
@@ -470,81 +519,82 @@ class ConstitutiveModelPrototype(object):
 
 
     def jacobian(self, simdat, matdat):
-        '''
-        NAME
-           jacobian
+        """Numerically compute and return a specified submatrix, j_sub, of the
+        Jacobian matrix J = J_ij = dsigi / depsj.
 
-        PURPOSE:
-           Numerically compute and return a specified submatrix, Jsub, of the
-           Jacobian matrix J = J_ij = dsigi/depsj. The submatrix returned is the
-           one formed by the intersections of the rows and columns specified in
-           the vector subscript array, v. That is, Jsub = J[v,v]. The physical
-           array containing this submatrix is assumed to be dimensioned
-           Jsub[nv,nv], where nv is the number of elements in v. Note that in the
-           special case v = [1,2,3,4,5,6], with nv = 6, the matrix that is
-           returned is the full Jacobian matrix, J.
+        Parameters
+        simdat : object
+          simulation data container
+        matdat : object
+          material data container
 
-           The components of Jsub are computed numerically using a centered
-           differencing scheme which requires two calls to the material model
-           subroutine for each element of v. The centering is about the point eps
-           = epsold + d * dt, where d is the rate-of-strain array.
+        Returns
+        -------
+        j_sub : array_like
+          Jacobian of the deformation J = dsig / deps
 
-        INPUT:
-           dt:   timestep
-           d:    symmetric part of velocity gradient
-           sig:  stress
-           sv:   state variables
-           v:     v
-           args: not used
-           kwargs: not used
+        Notes ----- The submatrix returned is the one formed by the
+        intersections of the rows and columns specified in the vector
+        subscript array, v. That is, j_sub = J[v, v]. The physical array
+        containing this submatrix is assumed to be dimensioned j_sub[nv,
+        nv], where nv is the number of elements in v. Note that in the special
+        case v = [1,2,3,4,5,6], with nv = 6, the matrix that is returned is
+        the full Jacobian matrix, J.
 
-        OUTPUT
-           J: Jacobian of the deformation J = dsig/deps
+        The components of j_sub are computed numerically using a centered
+        differencing scheme which requires two calls to the material model
+        subroutine for each element of v. The centering is about the point eps
+        = epsold + d * dt, where d is the rate-of-strain array.
 
-        HISTORY
-           This subroutine is a python implementation of a routine by the same name
-           in Tom Pucick's MMD driver.
+        History
+        -------
+        This subroutine is a python implementation of a routine by the same
+        name in Tom Pucick's MMD driver.
 
-        AUTHORS
-           Tom Pucick, original fortran implementation in the MMD driver
-           Tim Fuller, Sandial National Laboratories, tjfulle@sandia.gov
-        '''
-    # local variables
+        Authors
+        -------
+        Tom Pucick, original fortran implementation in the MMD driver
+        Tim Fuller, Sandial National Laboratories, tjfulle@sandia.gov
+        """
+
+        # local variables
         epsilon = 2.2e-16
-        v = matdat.get_data("prescribed stress components")
-        nv = len(v)
-        deps,Jsub = math.sqrt(epsilon),np.zeros((nv,nv))
+        nzc = matdat.get_data("prescribed stress components")
+        l_nzc = len(nzc)
+        deps, j_sub = math.sqrt(epsilon), np.zeros((l_nzc, l_nzc))
 
-        dt = simdat.get_data("time step")
-        d = matdat.get_data("rate of deformation")
-        Fold = matdat.get_data("deformation gradient",form="Matrix")
-        dtime = 1 if dt == 0. else dt
+        delt = simdat.get_data("time step")
+        delt = 1 if delt == 0. else delt
+        sym_velgrad = matdat.get_data("rate of deformation")
+        f_old = matdat.get_data("deformation gradient", form="Matrix")
 
         # stash the data
         simdat.stash_data("time step")
         matdat.stash_data("rate of deformation")
         matdat.stash_data("deformation gradient")
 
-        for n in range(nv):
+        for inum in range(l_nzc):
             # perturb forward
-            dp = np.array(d)
-            dp[v[n]] = d[v[n]] + (deps/dtime)/2.
-            fp = Fold + np.dot(pt.to_matrix(dp),Fold)*dtime
-            matdat.store_data("rate of deformation",dp,old=True)
-            matdat.store_data("deformation gradient",fp,old=True)
+            sym_velgrad_p = np.array(sym_velgrad)
+            sym_velgrad_p[nzc[inum]] = sym_velgrad[nzc[inum]] + (deps / delt) / 2.
+            defgrad_p = (f_old +
+                         np.dot(pt.to_matrix(sym_velgrad_p), f_old) * delt)
+            matdat.store_data("rate of deformation", sym_velgrad_p, old=True)
+            matdat.store_data("deformation gradient", defgrad_p, old=True)
             self.update_state(simdat, matdat)
-            sigp = matdat.get_data("stress",cur=True)
+            sigp = matdat.get_data("stress", cur=True)
 
             # perturb backward
-            dm = np.array(d)
-            dm[v[n]] = d[v[n]] - (deps/dtime)/2.
-            fm = Fold + np.dot(pt.to_matrix(dm),Fold)*dtime
-            matdat.store_data("rate of deformation",dm,old=True)
-            matdat.store_data("deformation gradient",fm,old=True)
+            sym_velgrad_m = np.array(sym_velgrad)
+            sym_velgrad_m[nzc[inum]] = sym_velgrad[nzc[inum]] - (deps / delt) / 2.
+            defgrad_m = (f_old +
+                         np.dot(pt.to_matrix(sym_velgrad_m), f_old) * delt)
+            matdat.store_data("rate of deformation", sym_velgrad_m, old=True)
+            matdat.store_data("deformation gradient", defgrad_m, old=True)
             self.update_state(simdat, matdat)
-            sigm = matdat.get_data("stress",cur=True)
+            sigm = matdat.get_data("stress", cur=True)
 
-            Jsub[n,:] = (sigp[v] - sigm[v])/deps
+            j_sub[inum, :] = (sigp[nzc] - sigm[nzc]) / deps
             continue
 
         # restore data
@@ -552,21 +602,24 @@ class ConstitutiveModelPrototype(object):
         matdat.unstash_data("deformation gradient")
         matdat.unstash_data("rate of deformation")
 
-        return Jsub
+        return j_sub
 
     # The methods below are going to be depricated in favor of
     # under_score_separated names. We keep them here for compatibility.
     def parseParameters(self, *args):
+        """docstring"""
         self.parse_parameters(*args)
         return
     def setUp(self, *args, **kwargs):
-        """ set up model """
+        """docstring"""
         self.set_up(*args, **kwargs)
         return
     def updateState(self, *args):
+        """docstring"""
         self.update_state(*args)
         return
     def registerParameter(self, *args):
+        """docstring"""
         self.register_parameter(*args)
         return
 

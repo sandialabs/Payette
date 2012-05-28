@@ -1,0 +1,33 @@
+# Example 19
+# Title: exmpl_19
+# Author: Tim Fuller, tjfulle@sandia.gov
+# Keywords: table, insert, strain control
+# Comments: In this example, material properties are inserted from a database
+#           file using the matlabel keyword.
+
+begin simulation exmpl_19
+  nowriteprops
+  norestart
+  begin boundary
+    kappa = 0
+    tstar = 1.
+    ampl = 1
+    begin legs
+      using dt, strain, from columns 2, 3:8
+      insert exmpls.tbl
+    end legs
+  end boundary
+
+  begin material
+    constitutive model hooke
+
+    # below we specify to use the "example_material" with the matlabel
+    # keyword. With this keyword, Payette will search for this material's
+    # material database file and read in the properties. Each material model
+    # must provide its own database file, so "example_material" may not be
+    # available for other material models.
+
+    matlabel = example_material
+  end material
+
+end simulation

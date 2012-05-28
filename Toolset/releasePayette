@@ -1,10 +1,35 @@
 #!/usr/bin/env python
 
+# The MIT License
+
+# Copyright (c) 2011 Tim Fuller
+
+# License for the specific language governing rights and limitations under
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
 import sys
 import os
 from subprocess import Popen
 from os.path import join, realpath, split, splitext
 import tarfile
+
+"""Clean Payette and creat an archive file of the Payette root directory"""
 
 _file = realpath(__file__)
 fdir, exe = split(_file)
@@ -57,9 +82,9 @@ def exclude(fnam):
     return False
 
 # create archive of Payette
-arcnam = "Payette_v" + __version__
-print "Creating " + arcnam + "tar.gz archive"
-tar = tarfile.open(os.path.join(fdir, "../",arcnam + ".tar.gz"), "w:gz")
-tar.add(payette_dir, arcnam, exclude=exclude)
+arcname = "Payette_v" + __version__
+print "Creating " + arcname + "tar.gz archive"
+tar = tarfile.open(os.path.join(fdir, "../",arcname + ".tar.gz"), "w:gz")
+tar.add(name=payette_dir, arcname=arcname, exclude=exclude)
 tar.close()
-print arcnam + "tar.gz archive created"
+print arcname + "tar.gz archive created"

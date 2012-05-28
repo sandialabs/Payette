@@ -27,14 +27,10 @@ parameters using Payette.
 
 import os
 import sys
-import shutil
 import numpy as np
-import math
 import multiprocessing as mp
 from copy import deepcopy
 from itertools import izip, product
-import random
-import string
 
 import Source.Payette_utils as pu
 import Source.Payette_container as pc
@@ -96,7 +92,6 @@ class Permutate(object):
             pu.loginf("Permutated variables: {0}"
                       .format(", ".join(self.param_nams)))
             pu.loginf("Permutation method: {0}".format(self.method))
-        pass
 
     def run_job(self, *args, **kwargs):
         r"""Run the permutation job

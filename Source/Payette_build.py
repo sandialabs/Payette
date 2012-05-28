@@ -394,7 +394,7 @@ def build_payette_mtls(nproc=1):
 
     """
 
-    global VERBOSE, MATERIALS
+    global VERBOSE
 
     pu.loginf("building Payette material libraries")
 
@@ -432,7 +432,7 @@ def build_payette_mtls(nproc=1):
                        and MATERIALS[x]["build succeeded"]]
 
     if failed_materials:
-        errors = 55
+        # errors = 55
         pu.logwrn("The following materials WERE NOT built:\n{0}\n"
                   .format("\n".join([SPACE + x for x in failed_materials])))
 
@@ -453,7 +453,7 @@ def _build_lib(material):
 
     """ build the material library for payette_material """
 
-    global MATERIALS, BUILD_ERRORS
+    global BUILD_ERRORS
 
     # get attributes
     name = MATERIALS[material]["name"]
@@ -511,7 +511,7 @@ def _build_lib(material):
         except OSError:
             pass
 
-    return [material,MATERIALS[material]] # end of _build_lib
+    return [material, MATERIALS[material]] # end of _build_lib
 
 
 def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):

@@ -20,30 +20,24 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-import sys
-import os
-import imp
+
+"""Main Payette class """
+
 import numpy as np
 
 import Payette_config as pc
 import Source.Payette_utils as pu
 from Source.Payette_data_container import DataContainer
 
+
 class Material:
-    '''
-    CLASS NAME
-       Material
+    """Material is the container for material related data for a Payette
+    object. It is instantiated by the Payette object.
 
-    PURPOSE
-       Material is the container for material related data for a Payette object. It
-       is instantiated by the Payette object.
+    Notes
+    -----
 
-    DATA
-       ConstitutiveModel: Material's constitutive model
-
-    AUTHORS
-       Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
-    '''
+    """
 
     def __init__(self, model_name, user_params, *args, **kwargs):
 
@@ -84,7 +78,7 @@ Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
         register_default_data()
 
         # set up the constitutive model
-        self.constitutive_model._parse_user_params(user_params)
+        self.constitutive_model.parse_user_params(user_params)
         self.constitutive_model.set_up(self.matdat)
         self.constitutive_model.finish_setup(self.matdat)
         self.constitutive_model.initialize_state(self.matdat)
@@ -94,15 +88,13 @@ Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
             idx = dic['ui pos']
             val1 = self.constitutive_model.ui0[idx]
             val2 = self.constitutive_model.ui[idx]
-            param_table[idx] = {"name":key,
-                                "initial value":val1,
-                                "adjusted value":val2}
+            param_table[idx] = {"name": key,
+                                "initial value": val1,
+                                "adjusted value": val2}
             continue
 
         # register param table
         self.matdat.register_option("parameter table", param_table)
-
-        pass
 
     def register_default_data(self):
         """Register the default data for the material """
@@ -137,10 +129,10 @@ Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
 
         if self.constitutive_model.electric_field_model:
             # electric field model data
-            self.matdat.register_data("permittivity","SymTensor",
+            self.matdat.register_data("permittivity", "SymTensor",
                                      init_val=np.zeros(6),
                                      plot_key="permtv")
-            self.matdat.register_data("electric field","Vector",
+            self.matdat.register_data("electric field", "Vector",
                                      init_val=np.zeros(3),
                                      plot_key="efield")
 
@@ -149,22 +141,24 @@ Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
                                  init_val=np.zeros(6))
         self.matdat.register_data("prescribed stress components",
                                  "Integer Array",
-                                 init_val=np.zeros(6,dtype=int))
-        self.matdat.register_data("prescribed strain","SymTensor",
+                                 init_val=np.zeros(6, dtype=int))
+        self.matdat.register_data("prescribed strain", "SymTensor",
                                  init_val=np.zeros(6))
-        self.matdat.register_data("strain rate","SymTensor",
+        self.matdat.register_data("strain rate", "SymTensor",
                                  init_val=np.zeros(6))
-        self.matdat.register_data("prescribed deformation gradient","Tensor",
+        self.matdat.register_data("prescribed deformation gradient", "Tensor",
                                  init_val=np.zeros(9))
-        self.matdat.register_data("deformation gradient rate","Tensor",
+        self.matdat.register_data("deformation gradient rate", "Tensor",
                                  init_val=np.zeros(9))
-        self.matdat.register_data("rotation","Tensor",
+        self.matdat.register_data("rotation", "Tensor",
                                  init_val="Identity")
-        self.matdat.register_data("rotation rate","Tensor",
+        self.matdat.register_data("rotation rate", "Tensor",
                                  init_val=np.zeros(9))
         return
 
     def register_default_eos_data(self):
+        """Register default data to the matdat data container for eos jobs"""
+
         self.matdat.register_data("density", "Scalar",
                                  init_val=0.,
                                  plot_key="rho")
@@ -180,11 +174,13 @@ Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
         return
 
     def material_data(self):
+        """return the material data container"""
         return self.matdat
 
     def update_state(self, simdat, matdat):
+        """update the material state"""
         return self.constitutive_model.update_state(simdat, matdat)
 
     def jacobian(self, simdat, matdat):
+        """return the material Jacobian matrix"""
         return self.constitutive_model.jacobian(simdat, matdat)
-

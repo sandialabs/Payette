@@ -26,7 +26,7 @@ import os
 import numpy as np
 
 import Source.Payette_utils as pu
-from Source.Payette_tensor import ata, delta, push
+from Source.Payette_tensor import ata, push, I6
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_F2PY_CALLBACK
 from Toolset.elastic_conversion import compute_elastic_constants
@@ -182,7 +182,7 @@ def _py_update_state(ui, F):
     c11, c12, c44 = ui
 
     # green lagrange strain
-    E = 0.5 * (ata(F) - delta)
+    E = 0.5 * (ata(F) - I6)
 
     # PK2 stress
     pk2 = np.zeros(6)

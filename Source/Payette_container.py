@@ -20,6 +20,9 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+
+"""Main Payette class definition"""
+
 #from __future__ import print_function
 import os
 import sys
@@ -27,7 +30,6 @@ import math
 import numpy as np
 from copy import deepcopy
 
-import Payette_config as pc
 import Source.Payette_driver as pd
 import Source.Payette_utils as pu
 import Source.Payette_extract as pe
@@ -38,6 +40,7 @@ from Source.Payette_data_container import DataContainer
 
 @CountCalls
 def parser_error(msg):
+    """Print error message and quit"""
     print("ERROR: {0:s}".format(msg))
     sys.exit(101)
     return
@@ -75,6 +78,11 @@ class Payette:
         self.disp = opts.disp
         self.write_vandd_table = opts.write_vandd_table
         self._open_files = {}
+
+        # default variables
+        self.dtable_fobj = None
+        self.outfile_obj = None
+        self.vtable_fobj = None
 
         # check user input for required blocks
         req_blocks = ("material", )
@@ -139,13 +147,14 @@ class Payette:
         self.simdat = DataContainer(simname)
         self.simdat.register_data("time", "Scalar",
                                  init_val=0., plot_key="time")
-        self.simdat.register_data("time step","Scalar",
+        self.simdat.register_data("time step", "Scalar",
                                  init_val=0., plot_key="timestep")
-        self.simdat.register_data("number of steps","Scalar", init_val=0)
-        self.simdat.register_data("leg number","Scalar", init_val=0 )
+        self.simdat.register_data("number of steps", "Scalar", init_val=0)
+        self.simdat.register_data("leg number", "Scalar", init_val=0 )
         self.simdat.register_data("leg data", "List", init_val=lcontrol)
 
-        # check if user has specified simulation options directly in the input file
+        # check if user has specified simulation options directly in the input
+        # file
         for item in user_input["content"]:
             for pat, repl in ((",", " "), (";", " "), (":", " "), ):
                 item = item.replace(pat, repl)
@@ -157,7 +166,9 @@ class Payette:
 
             try:
                 val = eval(item[-1])
-            except:
+            except NameError:
+                val = str(item[-1])
+            except TypeError:
                 val = str(item[-1])
 
 
@@ -211,7 +222,7 @@ class Payette:
             # Below are obligatory options that may have been specified in the
             # input file.
             if "proportional" not in self.simdat.get_all_options():
-                self.simdat.register_option("proportional",False)
+                self.simdat.register_option("proportional", False)
         else:
             # register data that is needed by the EOS models
             for dict_key in bcontrol:
@@ -245,13 +256,11 @@ class Payette:
     def _write_extraction(self):
         """ write out the requested extraction """
         exargs = [self.outfile, "--silent", "--xout"] + self.extraction_vars
-        error = pe.extract(exargs)
+        pe.extract(exargs)
         return
 
     def _write_mathplot(self):
         """ Write the $SIMNAME.math1 file for mathematica post processing """
-
-        iam = "_write_mathplot"
 
         math1 = os.path.join(self.simdir, self.name + ".math1")
         math2 = os.path.join(self.simdir, self.name + ".math2")
@@ -259,54 +268,56 @@ class Payette:
         # math1 is a file containing user inputs, and locations of simulation
         # output for mathematica to use
         param_table = self.material.constitutive_model.parameter_table_idx_map
-        with open( math1, "w" ) as f:
+        with open( math1, "w" ) as fobj:
             # write out user given input
             for idx, nam in sorted(param_table.iteritems()):
                 val = self.material.constitutive_model.ui0[idx]
-                val = "{0:12.5E}".format(val).replace("E","*^")
-                f.write("{0:s}U={1:s}\n".format(nam, val))
+                val = "{0:12.5E}".format(val).replace("E", "*^")
+                fobj.write("{0:s}U={1:s}\n".format(nam, val))
                 continue
 
             # write out checked, possibly modified, input
             for idx, nam in sorted(param_table.iteritems()):
                 val = self.material.constitutive_model.ui[idx]
-                val = "{0:12.5E}".format(val).replace("E","*^")
-                f.write("{0:s}M={1:s}\n".format(nam, val))
+                val = "{0:12.5E}".format(val).replace("E", "*^")
+                fobj.write("{0:s}M={1:s}\n".format(nam, val))
 
             # write out user requested plotable output
-            f.write('simdat = Delete[Import["{0:s}", "Table"],-1];\n'
+            fobj.write('simdat = Delete[Import["{0:s}", "Table"],-1];\n'
                     .format(self.outfile))
             sig_idx = None
 
             for i, item in enumerate(self.out_vars):
-                if item == "SIG11": sig_idx = i + 1
-                f.write('{0:s}=simdat[[2;;,{1:d}]];\n'.format(item,i+1))
+                if item == "SIG11":
+                    sig_idx = i + 1
+                fobj.write('{0:s}=simdat[[2;;,{1:d}]];\n'.format(item, i + 1))
                 continue
 
             # a few last ones...
             if sig_idx != None:
-                pres=("-(simdat[[2;;,{0:d}]]".format(sig_idx) +
-                      "+simdat[[2;;,{0:d}]]".format(sig_idx + 1) +
-                      "+simdat[[2;;,{0:d}]])/3;".format(sig_idx+2))
-                f.write('PRES={0}\n'.format(pres))
-            f.write("lastep=Length[{0}]\n".format(self.simdat.get_plot_key("time")))
+                pres = ("-(simdat[[2;;,{0:d}]]".format(sig_idx) +
+                        "+simdat[[2;;,{0:d}]]".format(sig_idx + 1) +
+                        "+simdat[[2;;,{0:d}]])/3;".format(sig_idx+2))
+                fobj.write('PRES={0}\n'.format(pres))
+            fobj.write(
+                "lastep=Length[{0}]\n".format(self.simdat.get_plot_key("time")))
 
         # math2 is a file containing mathematica directives to setup default
         # plots that the user requested
         lowhead = [x.lower() for x in self.out_vars]
-        lowplotable = [x.lower() for x in self.mathplot_vars]
-        with open( math2, "w" ) as f:
-            f.write('showcy[{0},{{"cycle","time"}}]\n'
+        with open( math2, "w" ) as fobj:
+            fobj.write('showcy[{0},{{"cycle", "time"}}]\n'
                     .format(self.simdat.get_plot_key("time")))
 
             for item in self.mathplot_vars:
                 name = self.plot_keys[lowhead.index(item.lower())]
-                f.write('grafhis[{0:s},"{0:s}"]\n'.format(name))
+                fobj.write('grafhis[{0:s}, "{0:s}"]\n'.format(name))
                 continue
 
         return
 
     def _close_open_files(self):
+        """close files opened by Payette"""
         for fnam, fobj in self._open_files.items():
             fobj.flush()
             fobj.close()
@@ -314,17 +325,18 @@ class Payette:
         return
 
     def _write_mtl_params(self):
-        with open(self.name + ".props", "w" ) as f:
+        """write the material parameters to a file"""
+        with open(self.name + ".props", "w" ) as fobj:
             for item in self.matdat.PARAMETER_TABLE:
                 key = item["name"]
                 val = item["adjusted value"]
-                f.write("{0:s} = {1:12.5E}\n".format(key,val))
+                fobj.write("{0:s} = {1:12.5E}\n".format(key, val))
                 continue
         return
 
 
     def _setup_out_file(self, file_name):
-
+        """set up the ouput files"""
         if self._open_files.get(file_name) is not None:
             self._open_files[file_name].close()
             del self._open_files[file_name]
@@ -345,7 +357,7 @@ class Payette:
         return
 
     def _setup_files(self):
-
+        """set up files"""
         self._setup_out_file(self.outfile)
 
         self._write_avail_dat_to_log()
@@ -391,8 +403,9 @@ class Payette:
         def _write_plotable(idx, key, name, val):
             """ write to the logfile the available variables """
             tok = "plotable" if key in self.out_vars else "no request"
-            pu.write_to_simlog("{0:<3d} {1:<10s}: {2:<10s} = {3:<50s} = {4:12.5E}"
-                               .format(idx, tok, key, name, val))
+            pu.write_to_simlog(
+                "{0:<3d} {1:<10s}: {2:<10s} = {3:<50s} = {4:12.5E}"
+                .format(idx, tok, key, name, val))
             return
 
         # write to the log file what is plotable and not requested, along with
@@ -429,6 +442,7 @@ class Payette:
         return
 
     def setup_restart(self):
+        """set up the restart files"""
         iam = self.name + "setup_restart"
         self.is_restart = True
         pu.setup_logger(self.logfile, self.loglevel, mode="a")
@@ -462,7 +476,7 @@ class Payette:
         if not self.write_vandd_table:
             return
 
-        dt = tend - tbeg
+        delt = tend - tbeg
         disp, vlcty = np.zeros(3), np.zeros(3)
 
 
@@ -470,8 +484,9 @@ class Payette:
 
         # determine average velocities that will ensure passing through the
         # exact stretches at each interval boundary.
+        kappa = self.simdat.KAPPA
         for j in range(3):
-            if self.simdat.KAPPA != 0.:
+            if kappa != 0.:
                 # Seth-Hill generalized strain is defined
                 # strain = (1/kappa)*[(stretch)^kappa - 1]
                 lam0 = (psbeg[j] * kappa + 1.) ** (1. / kappa)
@@ -489,7 +504,7 @@ class Payette:
             # imply a constant boundary velocity. We will here determine a
             # constant boundary velocity that will lead to the correct value of
             # stretch at the beginning and end of the interval.
-            vlcty[j] = (lam - lam0) / dt
+            vlcty[j] = (lam - lam0) / delt
             continue
 
         # displacement
@@ -499,8 +514,8 @@ class Payette:
             self.dtable_fobj.write(pu.textformat(item))
         self.dtable_fobj.write("\n")
 
-        # jump discontinuity in velocity will be specified by a VERY sharp change
-        # occuring from time = tjump - delt to time = tjump + delt
+        # jump discontinuity in velocity will be specified by a VERY sharp
+        # change occuring from time = tjump - delt to time = tjump + delt
         delt = self.tf * 1.e-9
         if tbeg > self.t0:
             tbeg += delt
@@ -520,6 +535,7 @@ class Payette:
 
     # public methods
     def run_job(self, *args, **kwargs):
+        """run the job"""
         if not self.material.eos_model:
             retcode = pd.solid_driver(self, restart=self.is_restart)
 
@@ -536,7 +552,7 @@ class Payette:
             return {"retcode": retcode}
 
     def finish(self):
-
+        """finish up"""
         # close the files
         pu.close_aux_files()
         self._close_open_files()
@@ -557,6 +573,7 @@ class Payette:
         return
 
     def simulation_data(self):
+        """return the simulation simdat object"""
         return self.simdat
 
 
@@ -623,9 +640,6 @@ def _parse_first_leg(leg):
 
     """
 
-    iam = "_parse_first_leg"
-
-    errors = 0
     allowed_legs = {
         "strain rate": {"num": 1, "len": 6},
         "strain": {"num": 2, "len": 6},
@@ -643,12 +657,11 @@ def _parse_first_leg(leg):
     t_typ = leg[1]
 
     if t_typ not in allowed_t:
-        errors += 1
         msg = ("requested bad time type {0} in {1}, expected one of [{2}]"
                .format(t_typ, leg, ", ".join(allowed_t)))
         parser_error(msg)
 
-    col_spec =[x for x in leg[2:] if "from" in x or "column" in x]
+    col_spec = [x for x in leg[2:] if "from" in x or "column" in x]
 
     if not col_spec:
         # default value for col_idxs
@@ -660,9 +673,9 @@ def _parse_first_leg(leg):
 
     elif col_spec and len(col_spec) != 2:
         # user specified a line of the form
-        # using <dt,time> <deftyp> from ...
+        # using <dt, time> <deftyp> from ...
         # or
-        # using <dt,time> <deftyp> columns ...
+        # using <dt, time> <deftyp> columns ...
         msg = ("expected {0} <deftyp> from columns ..., got {1}"
                .format(t_typ, leg))
         parser_error(msg)
@@ -795,7 +808,7 @@ def _parse_mtl_block(material_inp=None):
 
     # constitutive model given, now see if it is available, here we replace
     # spaces with _ in all model names and convert to lower case
-    model_nam = model_nam.lower().replace(" ","_")
+    model_nam = model_nam.lower().replace(" ", "_")
 
     # instantiate the material object
     material = Material(model_nam, user_params, **user_options)
@@ -845,20 +858,22 @@ def _parse_boundary_block(*args, **kwargs):
     legs = legs_inp["content"]
 
     # parse boundary
-    bcontrol = {"kappa":0.,"estar":1.,"tstar":1.,"ampl":1.,"efstar":1.,
-                "ratfac":1.,"sstar":1.,"fstar":1.,"dstar":1.,
-                "emit":"all","nprints":0,"stepstar":1,"screenout":False}
+    bcontrol = {"kappa":0., "estar":1., "tstar":1., "ampl":1., "efstar":1.,
+                "ratfac":1., "sstar":1., "fstar":1., "dstar":1.,
+                "emit":"all", "nprints":0, "stepstar":1, "screenout":False}
     for item in boundary:
-        item = item.replace("="," ")
+        item = item.replace("=", " ")
         try:
             kwd, val = item.split()
-        except:
+        except ValueError:
             parser_error("boundary control items must be key = val pairs")
 
         try:
-            kwd, val = kwd.strip(),float(eval(val))
-        except:
-            kwd, val = kwd.strip(),str(val)
+            kwd, val = kwd.strip(), float(eval(val))
+        except TypeError:
+            kwd, val = kwd.strip(), str(val)
+        except ValueError:
+            kwd, val = kwd.strip(), str(val)
 
         if kwd in bcontrol.keys():
             bcontrol[kwd] = val
@@ -869,7 +884,7 @@ def _parse_boundary_block(*args, **kwargs):
         continue
 
     if bcontrol["emit"] not in ("all", "sparse"):
-        parser_error("emit must be one of [all,sparse]")
+        parser_error("emit must be one of [all, sparse]")
 
     if bcontrol["screenout"]:
         bcontrol["screenout"] = True
@@ -877,8 +892,8 @@ def _parse_boundary_block(*args, **kwargs):
     if not isinstance(bcontrol["nprints"], int):
         bcontrol["nprints"] = int(bcontrol["nprints"])
 
-    if not isinstance(bcontrol["stepstar"], (float,int)):
-        bcontrol["stepstar"] = max(0.,float(bcontrol["stepstar"]))
+    if not isinstance(bcontrol["stepstar"], (float, int)):
+        bcontrol["stepstar"] = max(0., float(bcontrol["stepstar"]))
 
     if bcontrol["stepstar"] <= 0:
         parser_error("stepstar must be > 0.")
@@ -923,7 +938,7 @@ def _parse_boundary_block(*args, **kwargs):
     #  8: displacement
     for ileg, leg in enumerate(legs):
 
-        leg = [x.strip() for x in leg.replace(","," ").split() if x]
+        leg = [x.strip() for x in leg.replace(",", " ").split() if x]
 
         if ileg == 0:
             g_inf = _parse_first_leg(leg)
@@ -952,7 +967,7 @@ def _parse_boundary_block(*args, **kwargs):
             leg_t = bcontrol["tfac"] * g_time
             try:
                 cij = [float(eval(leg[x])) for x in g_inf["col_idxs"][1:]]
-            except:
+            except ValueError:
                 parser_error("syntax error in leg {0}".format(leg[0]))
 
         else:
@@ -969,7 +984,7 @@ def _parse_boundary_block(*args, **kwargs):
             control = leg[3].strip()
             try:
                 cij = [float(eval(y)) for y in leg[4:]]
-            except:
+            except ValueError:
                 parser_error("syntax error in leg {0}".format(leg[0]))
 
         # control should be a group of letters describing what type of
@@ -998,11 +1013,11 @@ def _parse_boundary_block(*args, **kwargs):
 
         # separate out electric fields from deformations
         ef, hold, efcntrl = [], [], []
-        for i, j in enumerate(lcntrl):
-            if j == 6:
-                ef.append(cij[i])
-                hold.append(i)
-                efcntrl.append(j)
+        for idx, jdx in enumerate(lcntrl):
+            if jdx == 6:
+                ef.append(cij[idx])
+                hold.append(idx)
+                efcntrl.append(jdx)
             continue
 
         ef.extend([0.] * (3 - len(ef)))
@@ -1030,20 +1045,20 @@ def _parse_boundary_block(*args, **kwargs):
 
             else:
                 # check for valid deformation
-                F = np.array([[cij[0], cij[1], cij[2]],
-                              [cij[3], cij[4], cij[5]],
-                              [cij[6], cij[7], cij[8]]])
-                J = np.linalg.det(F)
-                if J <= 0:
+                defgrad = np.array([[cij[0], cij[1], cij[2]],
+                                    [cij[3], cij[4], cij[5]],
+                                    [cij[6], cij[7], cij[8]]])
+                jac = np.linalg.det(defgrad)
+                if jac <= 0:
                     parser_error("inadmissible deformation gradient in leg "
                                  "{0:d} gave a Jacobian of {1:f}"
-                                 .format(leg_no, J))
+                                 .format(leg_no, jac))
 
-                # convert F to strain E with associated rotation given by axis
-                # of rotation x and angle of rotation theta
-                R,V = np.linalg.qr(F)
-                U = np.dot(R.T,F)
-                if np.max(np.abs(R - np.eye(3))) > pu.EPSILON:
+                # convert defgrad to strain E with associated rotation given
+                # by axis of rotation x and angle of rotation theta
+                rot, lstretch = np.linalg.qr(defgrad)
+                rstretch = np.dot(rot.T, defgrad)
+                if np.max(np.abs(rot - np.eye(3))) > pu.EPSILON:
                     parser_error(
                         "rotation encountered in leg {0}. ".format(leg_no) +
                         "rotations are not yet supported")
@@ -1090,7 +1105,7 @@ def _parse_boundary_block(*args, **kwargs):
                 ev = ev / 3.
 
             else:
-               ev = ((kappa * ev + 1.) ** (1. / 3.) - 1.) / kappa
+                ev = ((kappa * ev + 1.) ** (1. / 3.) - 1.) / kappa
 
             lcntrl = [2, 2, 2]
             cij = [ev, ev, ev]
@@ -1149,25 +1164,26 @@ def _parse_boundary_block(*args, **kwargs):
 
     # check that time is monotonic in lcontrol
     i = -0.001
-    t0 = None
+    time_0 = None
     for leg in lcontrol:
-        if t0 is None:
-            t0 = leg[1]
+        if time_0 is None:
+            time_0 = leg[1]
         if leg[1] < i:
-            print(leg[1],i)
+            print(leg[1], i)
             print(leg)
             parser_error("time must be monotonic in from {0:d} to {1:d}"
                          .format(int(leg[0] - 1), int(leg[0])))
 
         i = leg[1]
-        tf = leg[1]
+        time_f = leg[1]
         continue
 
-    return {"initial time": t0, "termination time": tf,
+    return {"initial time": time_0, "termination time": time_f,
             "bcontrol": bcontrol, "lcontrol": lcontrol}
 
 
 def _parse_eos_boundary_block(*args, **kwargs):
+    """parse the eos boundary block"""
     # @msw: I have put None for all of the entries, but that might break
     # something down stream?
     boundary_inp, legs_inp = args[:2]
@@ -1201,7 +1217,7 @@ def _parse_eos_boundary_block(*args, **kwargs):
             bcontrol["nprints"] = nprints
 
     bcontrol["input units"] = None
-    recognized_unit_systems = ["MKSK","CGSEV"]
+    recognized_unit_systems = ["MKSK", "CGSEV"]
     for tok in boundary_inp["content"]:
         if tok.startswith("input units"):
             input_units = tok.split()[2]
@@ -1238,7 +1254,8 @@ def _parse_eos_boundary_block(*args, **kwargs):
         if tok.startswith("temperature range"):
             bounds = [float(x) for x in tok.split()[2:4]]
             if len(bounds) != 2 or bounds[0] == bounds[1]:
-                parser_error("Unacceptable temperature range in boundary block.")
+                parser_error(
+                    "Unacceptable temperature range in boundary block.")
             bcontrol["temperature range"] = sorted(bounds)
 
     bcontrol["surface increments"] = 10
@@ -1246,7 +1263,8 @@ def _parse_eos_boundary_block(*args, **kwargs):
         if tok.startswith("surface increments"):
             n_incr = int("".join(tok.split()[2:3]))
             if n_incr <= 0:
-                parser_error("Number of surface increments must be positive non-zero.")
+                parser_error(
+                    "Number of surface increments must be positive non-zero.")
             bcontrol["surface increments"] = int("".join(tok.split()[2:]))
 
     bcontrol["path increments"] = 100
@@ -1290,7 +1308,7 @@ def _parse_eos_boundary_block(*args, **kwargs):
 
 
 def _parse_extraction_block(extraction, avail_keys):
-
+    """parse the extraction block of the input file"""
     iam = "_parse_extraction_block"
 
     extraction_vars = []
@@ -1321,6 +1339,7 @@ def _parse_extraction_block(extraction, avail_keys):
     return [x.upper() for x in extraction_vars]
 
 def _parse_mathplot_block(mathplot, avail_keys):
+    """parse the mathplot block of the input file"""
 
     iam = "_parse_mathplot_block"
 
@@ -1347,6 +1366,7 @@ def _parse_mathplot_block(mathplot, avail_keys):
 
 
 def _parse_output_block(output, avail_keys):
+    """parse the output block of the input file"""
 
     iam = "_parse_output_block"
 
@@ -1367,7 +1387,8 @@ def _parse_output_block(output, avail_keys):
                 idx = _vars.index("FORMAT")
                 out_format = _vars[idx+1].lower()
             except IndexError:
-                pu.reportWarning(iam, "format keyword found, but no format given")
+                pu.reportWarning(
+                    iam, "format keyword found, but no format given")
             continue
 
         out_vars.extend(_vars)
