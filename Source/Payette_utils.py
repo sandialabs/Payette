@@ -1168,6 +1168,8 @@ def get_constitutive_model(model_name):
 def get_constitutive_model_object(model_name):
     """ get the actual model object """
     constitutive_model = get_constitutive_model(model_name)
+    if constitutive_model is None:
+        sys.exit("stopping due to previous errors")
     py_mod = constitutive_model["module"]
     py_path = [os.path.dirname(constitutive_model["file"])]
     cls_nam = constitutive_model["class name"]
