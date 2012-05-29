@@ -545,28 +545,36 @@ def get_module_name(py_file):
     return get_module_name_and_path(py_file)[0]
 
 
-def begmes(msg, pre="", end="  "):
+def begmes(msg, pre="", end="  ", verbose=True):
     """ begin a message to stdout """
+    if not verbose:
+        return
     print("{0}{1}...".format(pre, msg), end=end)
     return
 
 
-def endmes(msg, pre="", end="\n"):
+def endmes(msg, pre="", end="\n", verbose=True):
     """ end message to stdout """
+    if not verbose:
+        return
     print("{0}{1}".format(pre, msg), end=end)
     return
 
 
-def loginf(msg, pre="", end="\n", caller=None):
+def loginf(msg, pre="", end="\n", caller=None, verbose=True):
     """ log an info message to stdout """
+    if not verbose:
+        return
     if caller is not None:
         msg = "{0} [reported by {1}]".format(msg, caller)
     print("{0}INFO: {1}".format(pre, msg), end=end)
     return
 
 
-def logmes(msg, pre="", end="\n", caller=None):
+def logmes(msg, pre="", end="\n", caller=None, verbose=True):
     """ log a message to stdout """
+    if not verbose:
+        return
     if caller is not None:
         msg = "{0} [reported by {1}]".format(msg, caller)
     print("{0}{1}".format(pre, msg), end=end)

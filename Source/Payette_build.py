@@ -63,7 +63,7 @@ def build_payette(argv):
 
     """ create/build: material library files """
 
-    global COMPILER_INFO, MATERIALS
+    global COMPILER_INFO, MATERIALS, VERBOSE
 
     # *************************************************************************
     # -- command line option parsing
@@ -100,6 +100,13 @@ def build_payette(argv):
         action="store_true",
         default=False,
         help="Rebuild Payette_materials.py [default:%default]")
+    parser.add_option(
+        "-v",
+        dest="VERBOSITY",
+        action="store",
+        default=1,
+        type=int,
+        help="Verbosity [default: %default]")
 
     # the following options are shortcuts for building specific materials
     parser.add_option(
@@ -156,7 +163,10 @@ def build_payette(argv):
         write_summary_to_screen()
         sys.exit(0)
 
-    pu.logmes(pc.PC_INTRO)
+    if not opts.VERBOSITY:
+        VERBOSE = False
+
+    pu.logmes(pc.PC_INTRO, verbose=VERBOSE)
 
     # determine if we build all materials, or just a selection
     if opts.DSC:
@@ -189,7 +199,7 @@ def build_payette(argv):
         options.append("buildall")
 
     # intro message
-    pu.loginf("Building Payette\n")
+    pu.loginf("Building Payette\n", verbose=VERBOSE)
 
     # prepare compiler options
     if pc.PC_FCOMPILER:
@@ -228,10 +238,12 @@ def build_payette(argv):
             if not any(x in dirnam for x in search_dirs):
                 search_dirs.append(dirnam)
         pu.loginf("finding Payette materials from:\n{0}"
-                  .format("\n".join([SPACE + x for x in search_dirs])))
+                  .format("\n".join([SPACE + x for x in search_dirs])),
+                  verbose=VERBOSE)
         MATERIALS = get_payette_mtls(mtl_dirs, opts.mtllib, options)
         pu.loginf("Payette materials found:\n{0}"
-                  .format("\n".join([SPACE + x for x in MATERIALS.keys()])))
+                  .format("\n".join([SPACE + x for x in MATERIALS.keys()])),
+                  verbose=VERBOSE)
         non_existent = MATERIALS.get("non existent", False)
         if non_existent:
             errors += 1
@@ -293,7 +305,7 @@ def test_run_payette(test):
 
         pu.logmes("<<< IF >>> no other build errors were encountered, "
                   "please let the Payette developers know so a fix "
-                  "can be found")
+                  "can be found", verbose=VERBOSE)
         return 1
     else:
         pu.endmes("runPayette [-h] executed normally\n")
@@ -317,7 +329,7 @@ def test_run_payette(test):
         build_fail(message)
         message = ("please let the Payette developers know so a "
                    "fix can be found")
-        pu.logmes(message)
+        pu.logmes(message, verbose=VERBOSE)
         return 1
     else:
         pu.endmes("testPayette [-k elastic -K kayenta] executed normally\n")
@@ -333,7 +345,8 @@ def write_payette_materials(payette_materials):
     """
 
     pu.loginf("writing {0}".format("PAYETTE_ROOT" +
-                                   pc.PC_MTLS_FILE.split(pc.PC_ROOT)[1]))
+                                   pc.PC_MTLS_FILE.split(pc.PC_ROOT)[1]),
+              verbose=VERBOSE)
 
     # get list of previously installed materials
     try:
@@ -376,13 +389,15 @@ def write_payette_materials(payette_materials):
             constitutive_models[key] = val
         continue
 
-    pu.begmes("writing constitutive model declarations", pre=SPACE)
+    pu.begmes("writing constitutive model declarations", pre=SPACE,
+              verbose=VERBOSE)
     with open(pc.PC_MTLS_FILE, "wb") as fobj:
         pickle.dump(constitutive_models, fobj)
-    pu.endmes("constitutive model declarations written")
+    pu.endmes("constitutive model declarations written", verbose=VERBOSE)
 
     pu.loginf("{0} written\n".format("PAYETTE_ROOT" +
-                                     pc.PC_MTLS_FILE.split(pc.PC_ROOT)[1]))
+                                     pc.PC_MTLS_FILE.split(pc.PC_ROOT)[1]),
+              verbose=VERBOSE)
     return
 
 
@@ -396,13 +411,13 @@ def build_payette_mtls(nproc=1):
 
     global VERBOSE
 
-    pu.loginf("building Payette material libraries")
+    pu.loginf("building Payette material libraries", verbose=VERBOSE)
 
     # now build the materials
     requested_builds = [x for x in MATERIALS
                         if MATERIALS[x]["build requested"]]
     if not requested_builds:
-        pu.logmes("no material libraries to build", pre=SPACE)
+        pu.logmes("no material libraries to build", pre=SPACE, verbose=VERBOSE)
 
     # build the libraries
     nproc = min(nproc, len(requested_builds))
@@ -420,7 +435,7 @@ def build_payette_mtls(nproc=1):
     for item in build_results:
         MATERIALS[item[0]] = item[1]
 
-    pu.loginf("Payette material libraries built\n")
+    pu.loginf("Payette material libraries built\n", verbose=VERBOSE)
 
     failed_materials = [MATERIALS[x]["libname"]
                         for x in MATERIALS
@@ -757,10 +772,10 @@ def build_fail(msg):
     msg = msg.split("\n")
     err = "BUILD FAILED"
     sss = r"*" * int((80 - len(err)) / 2)
-    pu.logmes("\n\n{0} {1} {2}\n".format(sss, err, sss))
+    pu.logmes("\n\n{0} {1} {2}\n".format(sss, err, sss), verbose=VERBOSE)
     for line in msg:
-        pu.logmes("BUILD FAIL: {0}".format(line))
-    pu.logmes("\n\n")
+        pu.logmes("BUILD FAIL: {0}".format(line), verbose=VERBOSE)
+    pu.logmes("\n\n", verbose=VERBOSE)
     return
 
 
@@ -800,18 +815,18 @@ def write_summary_to_screen():
     num_infiles = len([x for x in all_files if x.endswith(".inp")])
     num_pyfiles = len([x for x in all_files
                        if x.endswith(".py") or x.endswith(".pyf")])
-    pu.logmes(pc.PC_INTRO)
-    pu.logmes("Summary of Project:")
+    pu.logmes(pc.PC_INTRO, verbose=VERBOSE)
+    pu.logmes("Summary of Project:", verbose=VERBOSE)
     pu.logmes("\tNumber of files in project:         {0:d}"
-              .format(num_files))
+              .format(num_files), verbose=VERBOSE)
     pu.logmes("\tNumber of directories in project:   {0:d}"
-              .format(num_dirs))
+              .format(num_dirs), verbose=VERBOSE)
     pu.logmes("\tNumber of input files in project:   {0:d}"
-              .format(num_infiles))
+              .format(num_infiles), verbose=VERBOSE)
     pu.logmes("\tNumber of python files in project:  {0:d}"
-              .format(num_pyfiles))
+              .format(num_pyfiles), verbose=VERBOSE)
     pu.logmes("\tNumber of lines of code in project: {0:d}"
-              .format(num_lines))
+              .format(num_lines), verbose=VERBOSE)
     return
 
 
