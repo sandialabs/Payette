@@ -216,7 +216,7 @@ def build_payette(argv):
 
     # check material directories
     errors = 0
-    mtl_dirs = pc.PC_MTLS
+    mtl_dirs = pc.PC_MTLDIRS
     for dirnam in opts.MTLDIRS:
         dirnam = os.path.expanduser(dirnam)
         if not os.path.isdir(dirnam):
