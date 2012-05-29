@@ -274,14 +274,19 @@ PC_INPUTS = os.path.join(PC_ROOT, "Aux/Inputs")
 ERRORS += check_exists("PC_INPUTS", PC_INPUTS)
 
 # --- subdirectories of PC_SOURCE
-PC_MTLS = [os.path.join(PC_SOURCE, "Materials")]
+
+# PC_MTLDIRS is the directory where we search for Payette material models
+PC_MTLS = os.path.join(PC_SOURCE, "Materials")
+PC_MTLDIRS = [os.path.join(PC_MTLS, "Models")]
 USER_MTLS = os.getenv("PAYETTE_MTLDIR", "")
-PC_MTLS.extend([x for x in USER_MTLS.split(os.pathsep) if x])
-for mtl_d in [x for x in PC_MTLS]:
+PC_MTLDIRS.extend([x for x in USER_MTLS.split(os.pathsep) if x])
+for mtl_d in [x for x in PC_MTLDIRS]:
     if os.path.isdir(mtl_d):
         for dirnam, dirs, files in os.walk(mtl_d):
-            if ".svn" not in dirnam and ".git" not in dirnam:
-                PC_MTLS.append(dirnam)
+            if (".svn" not in dirnam and ".git" not in dirnam and
+                dirnam not in PC_MTLS and
+                any(y.endswith(".py") for y in files if y != "__init__.py")):
+                PC_MTLDIRS.append(dirnam)
             continue
     continue
 PC_FORTRAN = os.path.join(PC_SOURCE, "Fortran")
@@ -290,8 +295,8 @@ ERRORS += check_exists("PC_MTLS", PC_MTLS)
 ERRORS += check_exists("PC_MIG_UTILS", PC_MIG_UTILS)
 
 # --- Subdirectories of PC_MTLS
-PC_MTLS_LIBRARY = os.path.join(PC_MTLS[0], "Library")
-PC_MTLS_INCLUDES = os.path.join(PC_MTLS[0], "Includes")
+PC_MTLS_LIBRARY = os.path.join(PC_MTLS, "Library")
+PC_MTLS_INCLUDES = os.path.join(PC_MTLS, "Includes")
 PC_MTLS_FILE = os.path.join(PC_SOURCE, "installed_materials.pkl")
 ERRORS += check_exists("PC_MTLS_LIBRARY", PC_MTLS_LIBRARY)
 ERRORS += check_exists("PC_MTLS_INCLUDES", PC_MTLS_INCLUDES)
@@ -316,6 +321,7 @@ PAYETTE_CONFIG["PC_TESTS"] = PC_TESTS
 PAYETTE_CONFIG["PC_TOOLS"] = PC_TOOLS
 PAYETTE_CONFIG["PC_FOUND_TESTS"] = PC_FOUND_TESTS
 PAYETTE_CONFIG["PC_MTLS"] = PC_MTLS
+PAYETTE_CONFIG["PC_MTLDIRS"] = PC_MTLDIRS
 PAYETTE_CONFIG["PC_FORTRAN"] = PC_FORTRAN
 PAYETTE_CONFIG["PC_MIG_UTILS"] = PC_MIG_UTILS
 PAYETTE_CONFIG["PC_MTLS_LIBRARY"] = PC_MTLS_LIBRARY
@@ -486,12 +492,12 @@ def configure_payette(argv):
     for dirnam in opts.MTLDIRS:
         dirnam = os.path.expanduser(dirnam)
         if os.path.isdir(dirnam):
-            PC_MTLS.append(dirnam)
+            PC_MTLDIRS.append(dirnam)
         else:
             errors += 1
             logerr("material directory {0} not found".format(dirnam))
         continue
-    sys.path.extend(PC_MTLS)
+    sys.path.extend(PC_MTLDIRS)
 
     if errors:
         sys.exit("ERROR: stopping due to previous errors")
@@ -503,7 +509,7 @@ def configure_payette(argv):
         continue
 
     # make sure PC_ROOT is first on PYTHONPATH
-    pypath = os.pathsep.join([PC_ROOT, PC_TOOLS] + PC_MTLS)
+    pypath = os.pathsep.join([PC_ROOT, PC_TOOLS] + PC_MTLDIRS)
     if "PYTHONPATH" in ENV:
         pypath += (os.pathsep +
                    os.pathsep.join([x for x in ENV["PYTHONPATH"].split(os.pathsep)
@@ -520,7 +526,7 @@ def configure_payette(argv):
             continue
         fnew.write("if PC_ROOT not in sys.path: "
                    "sys.path.insert(0, PC_ROOT)\n")
-        fnew.write("sys.path.extend(PC_MTLS)\n")
+        fnew.write("sys.path.extend(PC_MTLDIRS)\n")
         for key, val in ENV.items():
             fnew.write('os.environ["{0}"] = "{1}"\n'.format(key, val))
             continue

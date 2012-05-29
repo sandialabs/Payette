@@ -21,8 +21,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import sys
-import os
+from os.path import dirname, join, realpath
 import numpy as np
 
 import Source.Payette_utils as pu
@@ -38,15 +37,16 @@ except:
     imported = False
     pass
 
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+THIS_DIR = dirname(realpath(__file__))
 attributes = {
     "payette material": True,
     "name": "finite_elastic",
     "aliases": [],
     "code types": ("python", "fortran"),
-    "fortran build script": os.path.join(THIS_DIR, "Build_finite_elastic.py"),
+    "fortran build script": join(THIS_DIR, "Build_finite_elastic.py"),
     "material type": ["mechanical"],
     "default material": True,
+    "material database": join(THIS_DIR, "finite_elastic_mtl_database.py"),
     }
 
 

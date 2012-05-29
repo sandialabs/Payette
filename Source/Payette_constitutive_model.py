@@ -356,12 +356,12 @@ class ConstitutiveModelPrototype(object):
                     pu.reportError(iam, msg)
 
                 try:
-                    matlabel = line[1]
+                    matlabel = " ".join(line[1:])
                 except IndexError:
                     pu.reportError(iam, "empty matlabel encountered")
 
                 # matlabel found, now parse the file for names and values
-                mtldat = pu.parse_mtldb_file(self.mtldat_f, matlabel=matlabel)
+                mtldat = pu.parse_mtldb_file(self.mtldat_f, material=matlabel)
                 for name, val in mtldat:
                     self.user_input_params[name] = val
                     continue

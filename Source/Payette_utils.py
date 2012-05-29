@@ -264,20 +264,23 @@ def read_input(user_input, user_cchar=None):
 
     user_dict = {}
     errors = 0
+    warnings = 0
 
     for input_set in input_sets:
 
         if "simulation" not in input_set:
-            errors += 1
-            logerr("no simulation block found")
+            warnings += 1
+            keys = ", ".join(input_set.keys())
+            logwrn("expected to find a simulation block but found: {0}"
+                   .format(keys))
             continue
 
         simkey = input_set["simulation"]["name"]
         if not simkey:
             errors += 1
             logerr('did not find simulation name.  Simulation block '
-                   'must be for form:\n'
-                   '\tbegin simulation simulation name ... end simulation')
+                   'must be of form:\n'
+                   '\tbegin simulation <simulation name> ... end simulation')
             continue
 
         # check for incompatibilities
@@ -1186,8 +1189,7 @@ def get_installed_models():
         constitutive_models = pickle.load(fobj)
     return constitutive_models
 
-
-def parse_mtldb_file(mtldat_f, matlabel=None):
+def parse_mtldb_file(mtldat_f, material=None):
     """Parse the material database file
 
     Parameters
@@ -1205,7 +1207,7 @@ def parse_mtldb_file(mtldat_f, matlabel=None):
 
     fext = os.path.splitext(mtldat_f)[1]
     if fext == ".py":
-        mtldat = parse_py_mtldb_file(mtldat_f, matlabel=matlabel)
+        mtldat = parse_py_mtldb_file(mtldat_f, material=material)
 
     else:
         reportError(
@@ -1213,7 +1215,7 @@ def parse_mtldb_file(mtldat_f, matlabel=None):
 
     return mtldat
 
-def parse_py_mtldb_file(mtldat_f, matlabel=None):
+def parse_py_mtldb_file(mtldat_f, material=None):
     """Parse the python material database file
 
     Parameters
@@ -1242,25 +1244,39 @@ def parse_py_mtldb_file(mtldat_f, matlabel=None):
         reportError(iam, ("__all__ attribute in {0} not defined"
                              .format(mtldat_f)))
 
-
-    if matlabel == None:
-        return [(x, __all__[x]) for x in __all__]
+    if material is None:
+        materials = []
+        for mtl_nam in __all__:
+            names = [mtl_nam]
+            names.extend(__all__[mtl_nam])
+            try:
+                params = getattr(py_module, mtl_nam)
+            except AttributeError:
+                continue
+            mtldat = []
+            for key, val in params.items():
+                if key.lower() == "units":
+                    continue
+                mtldat.append((key, float(val)))
+            materials.append((names, mtldat))
+            
+        return materials
 
     # look for name of material in file
     mtl_nam = None
-    if matlabel in __all__:
-        mtl_nam = matlabel
+    if material in __all__:
+        mtl_nam = material
 
     else:
         for name, aliases in __all__.items():
-            if matlabel in aliases:
+            if material in aliases:
                 mtl_nam = name
                 break
             continue
 
     if mtl_nam is None:
         reportError(iam, ("material {0} not found in {1}"
-                             .format(matlabel, mtldat_f)))
+                             .format(material, mtldat_f)))
 
     params = getattr(py_module, mtl_nam)
     mtldat = []
