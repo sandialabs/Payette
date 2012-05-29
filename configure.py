@@ -30,32 +30,6 @@ from distutils import sysconfig
 __version__ = "1.0.dev"
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
 
-ERRORS = 0
-
-# --- compatibility checks
-(MAJOR, MINOR, MICRO, RELEASELEVEL, SERIAL) = sys.version_info
-if (MAJOR != 3 and MAJOR != 2) or (MAJOR == 2 and MINOR < 6):
-    raise SystemExit("Payette requires Python >= 2.6\n")
-
-# --- numpy check
-try:
-    import numpy
-    PC_NUMPY_VER = numpy.__version__
-except ImportError:
-    logerr("numpy not importable")
-    ERRORS += 1
-
-# --- scipy check
-try:
-    import scipy
-    PC_SCIPY_VER = scipy.__version__
-except ImportError:
-    logerr("scipy not importable")
-    ERRORS += 1
-
-if ERRORS:
-    sys.exit("configure.py: ERROR: fix previously trapped errors")
-
 
 def check_exists(itemnam, item):
 
@@ -191,6 +165,35 @@ main()
             fnew.write(line)
     os.chmod(f2py, 0o750)
     return
+
+
+ERRORS = 0
+
+
+# --- compatibility checks
+(MAJOR, MINOR, MICRO, RELEASELEVEL, SERIAL) = sys.version_info
+if (MAJOR != 3 and MAJOR != 2) or (MAJOR == 2 and MINOR < 6):
+    raise SystemExit("Payette requires Python >= 2.6\n")
+
+# --- numpy check
+try:
+    import numpy
+    PC_NUMPY_VER = numpy.__version__
+except ImportError:
+    logerr("numpy not importable")
+    ERRORS += 1
+
+# --- scipy check
+try:
+    import scipy
+    PC_SCIPY_VER = scipy.__version__
+except ImportError:
+    logerr("scipy not importable")
+    ERRORS += 1
+
+if ERRORS:
+    sys.exit("configure.py: ERROR: fix previously trapped errors")
+
 
 # --- intro message
 PC_INTRO = """
