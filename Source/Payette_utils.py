@@ -1186,8 +1186,9 @@ def get_installed_models():
         constitutive_models = pickle.load(fobj)
     return constitutive_models
 
-def parse_py_mtldb_file(mtldat_f, material):
-    """Parse the python material database file
+
+def parse_mtldb_file(mtldat_f, matlabel=None):
+    """Parse the material database file
 
     Parameters
     ----------
@@ -1199,6 +1200,35 @@ def parse_py_mtldb_file(mtldat_f, material):
     mtldat : list
       list of tuples of (name, val) pairs
 
+    """
+    iam = "Payette_utils" + "._parse_mtldb_file"
+
+    fext = os.path.splitext(mtldat_f)[1]
+    if fext == ".py":
+        mtldat = parse_py_mtldb_file(mtldat_f, matlabel=matlabel)
+
+    else:
+        reportError(
+            iam, "mtldat file parsing not enabled for this file type")
+
+    return mtldat
+
+def parse_py_mtldb_file(mtldat_f, matlabel=None):
+    """Parse the python material database file
+
+    Parameters
+    ----------
+    matlabel : str
+      name of material
+
+    Returns
+    -------
+    mtldat : list
+      if matlabel not None:
+          list of tuples of (name, val) pairs for material parameter values
+      else:
+          list of tuples of (name, [aliase1, alias2,...]) pairs for valid
+          materials
     """
     iam = "parse_py_mtldb_file"
 
@@ -1212,21 +1242,25 @@ def parse_py_mtldb_file(mtldat_f, material):
         reportError(iam, ("__all__ attribute in {0} not defined"
                              .format(mtldat_f)))
 
+
+    if matlabel == None:
+        return [(x, __all__[x]) for x in __all__]
+
     # look for name of material in file
     mtl_nam = None
-    if material in __all__:
-        mtl_nam = material
+    if matlabel in __all__:
+        mtl_nam = matlabel
 
     else:
         for name, aliases in __all__.items():
-            if material in aliases:
+            if matlabel in aliases:
                 mtl_nam = name
                 break
             continue
 
     if mtl_nam is None:
         reportError(iam, ("material {0} not found in {1}"
-                             .format(material, mtldat_f)))
+                             .format(matlabel, mtldat_f)))
 
     params = getattr(py_module, mtl_nam)
     mtldat = []

@@ -696,6 +696,9 @@ def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):
                           .format(fort_build_script))
 
         # collect all parts
+        #print("="*70)
+        #print(attributes)
+        #print("="*70)
         mtl_dict = {
             "name": name,
             "libname": libname,
@@ -703,6 +706,7 @@ def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):
             "fortran build script": fort_build_script,
             "aliases": aliases,
             "material type": material_type,
+            "material database": attributes.get('material database'),
             "module": py_mod,
             "file": py_file,
             "class name": class_name,

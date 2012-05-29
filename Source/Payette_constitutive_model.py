@@ -361,7 +361,7 @@ class ConstitutiveModelPrototype(object):
                     pu.reportError(iam, "empty matlabel encountered")
 
                 # matlabel found, now parse the file for names and values
-                mtldat = self._parse_mtldb_file(matlabel)
+                mtldat = pu.parse_mtldb_file(self.mtldat_f, matlabel=matlabel)
                 for name, val in mtldat:
                     self.user_input_params[name] = val
                     continue
@@ -391,32 +391,6 @@ class ConstitutiveModelPrototype(object):
             pu.reportError(iam, "stopping due to previous errors")
 
         return
-
-    def _parse_mtldb_file(self, material):
-        """Parse the material database file
-
-        Parameters
-        ----------
-        material : str
-          name of material
-
-        Returns
-        -------
-        mtldat : list
-          list of tuples of (name, val) pairs
-
-        """
-        iam = self.name + "._parse_mtldb_file"
-
-        fext = os.path.splitext(self.mtldat_f)[1]
-        if fext == ".py":
-            mtldat = pu.parse_py_mtldb_file(self.mtldat_f, material)
-
-        else:
-            pu.reportError(
-                iam, "mtldat file parsing not enabled for this file type")
-
-        return mtldat
 
     def initialize_state(self, material_data):
         """initialize the material state"""
