@@ -356,7 +356,7 @@ class ConstitutiveModelPrototype(object):
                     pu.reportError(iam, msg)
 
                 try:
-                    matlabel = line[1]
+                    matlabel = " ".join(line[1:])
                 except IndexError:
                     pu.reportError(iam, "empty matlabel encountered")
 

@@ -232,6 +232,9 @@ def run_payette(argv, disp=0):
         sys.exit(msg)
 
     # ----------------------------------------------- start: get the user input
+    if opts.verbosity:
+        pu.logmes(pc.PC_INTRO)
+
     input_lines = []
     if opts.inputstr:
         # user gave input directly
@@ -258,9 +261,6 @@ def run_payette(argv, disp=0):
             barf_file = os.path.realpath(barf_files[0])
             if not os.path.isfile(barf_file):
                 parser.error("barf file {0} not found".format(barf_file))
-
-            if opts.verbosity:
-                pu.logmes(pc.PC_INTRO)
 
             PayetteBarf(barf_file, opts)
 
@@ -380,9 +380,6 @@ def run_payette(argv, disp=0):
              has been turned off.  If a job hangs, [ctrl-c] at the
              console will not shut down Payette.  Instead, put the job
              in the background with [ctrl-z] and then kill it""")
-
-    if opts.verbosity:
-        pu.logmes(pc.PC_INTRO)
 
     # loop through simulations and run them
     if timing:

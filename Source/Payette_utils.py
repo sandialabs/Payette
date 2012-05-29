@@ -264,20 +264,23 @@ def read_input(user_input, user_cchar=None):
 
     user_dict = {}
     errors = 0
+    warnings = 0
 
     for input_set in input_sets:
 
         if "simulation" not in input_set:
-            errors += 1
-            logerr("no simulation block found")
+            warnings += 1
+            keys = ", ".join(input_set.keys())
+            logwrn("expected to find a simulation block but found: {0}"
+                   .format(keys))
             continue
 
         simkey = input_set["simulation"]["name"]
         if not simkey:
             errors += 1
             logerr('did not find simulation name.  Simulation block '
-                   'must be for form:\n'
-                   '\tbegin simulation simulation name ... end simulation')
+                   'must be of form:\n'
+                   '\tbegin simulation <simulation name> ... end simulation')
             continue
 
         # check for incompatibilities
