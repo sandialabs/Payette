@@ -280,7 +280,9 @@ PC_MTLS.extend([x for x in USER_MTLS.split(os.pathsep) if x])
 for mtl_d in [x for x in PC_MTLS]:
     if os.path.isdir(mtl_d):
         for dirnam, dirs, files in os.walk(mtl_d):
-            if ".svn" not in dirnam and ".git" not in dirnam:
+            if (".svn" not in dirnam and ".git" not in dirnam and 
+                dirnam not in PC_MTLS and 
+                any(y.endswith(".py") for y in files if y != "__init__.py")):
                 PC_MTLS.append(dirnam)
             continue
     continue
