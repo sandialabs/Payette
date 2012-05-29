@@ -1189,7 +1189,7 @@ def get_installed_models():
         constitutive_models = pickle.load(fobj)
     return constitutive_models
 
-def parse_py_mtldb_file(mtldat_f, material):
+def parse_py_mtldb_file(mtldat_f, material=None):
     """Parse the python material database file
 
     Parameters
@@ -1214,6 +1214,21 @@ def parse_py_mtldb_file(mtldat_f, material):
     if __all__ is None or not isinstance(__all__, dict):
         reportError(iam, ("__all__ attribute in {0} not defined"
                              .format(mtldat_f)))
+
+    if material is None:
+        materials = []
+        for mtl_nam in __all__:
+            names = [mtl_nam]
+            names.extend(__all__[mtl_nam])
+            params = getattr(py_module, mtl_nam)
+            mtldat = []
+            for key, val in params.items():
+                if key.lower() == "units":
+                    continue
+                mtldat.append((key, float(val)))
+            materials.append((names, mtldat))
+            
+        return materials
 
     # look for name of material in file
     mtl_nam = None
