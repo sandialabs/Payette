@@ -1186,6 +1186,58 @@ def get_installed_models():
         constitutive_models = pickle.load(fobj)
     return constitutive_models
 
+def parse_py_mtldb_file(mtldat_f, material):
+    """Parse the python material database file
+
+    Parameters
+    ----------
+    material : str
+      name of material
+
+    Returns
+    -------
+    mtldat : list
+      list of tuples of (name, val) pairs
+
+    """
+    iam = "parse_py_mtldb_file"
+
+    py_mod, py_path = get_module_name_and_path(mtldat_f)
+    fobj, pathname, description = imp.find_module(py_mod, py_path)
+    py_module = imp.load_module(py_mod, fobj, pathname, description)
+    fobj.close()
+
+    __all__ = getattr(py_module, "__all__")
+    if __all__ is None or not isinstance(__all__, dict):
+        reportError(iam, ("__all__ attribute in {0} not defined"
+                             .format(mtldat_f)))
+
+    # look for name of material in file
+    mtl_nam = None
+    if material in __all__:
+        mtl_nam = material
+
+    else:
+        for name, aliases in __all__.items():
+            if material in aliases:
+                mtl_nam = name
+                break
+            continue
+
+    if mtl_nam is None:
+        reportError(iam, ("material {0} not found in {1}"
+                             .format(material, mtldat_f)))
+
+    params = getattr(py_module, mtl_nam)
+    mtldat = []
+    for key, val in params.items():
+        if key.lower() == "units":
+            continue
+        mtldat.append((key, float(val)))
+        continue
+
+    return mtldat
+
 
 # the following are being kept around for back compatibiltiy
 def parseToken(*args, **kwargs):

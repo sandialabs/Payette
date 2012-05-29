@@ -392,7 +392,6 @@ class ConstitutiveModelPrototype(object):
 
         return
 
-    # @mswan{
     def _parse_mtldb_file(self, material):
         """Parse the material database file
 
@@ -411,66 +410,13 @@ class ConstitutiveModelPrototype(object):
 
         fext = os.path.splitext(self.mtldat_f)[1]
         if fext == ".py":
-            mtldat = self._parse_py_mtldb_file(material)
+            mtldat = pu.parse_py_mtldb_file(self.mtldat_f, material)
 
         else:
             pu.reportError(
                 iam, "mtldat file parsing not enabled for this file type")
 
         return mtldat
-
-    def _parse_py_mtldb_file(self, material):
-        """Parse the python material database file
-
-        Parameters
-        ----------
-        material : str
-          name of material
-
-        Returns
-        -------
-        mtldat : list
-          list of tuples of (name, val) pairs
-
-        """
-        iam = self.name + "._parse_py_mtldb_file"
-
-        py_mod, py_path = pu.get_module_name_and_path(self.mtldat_f)
-        fobj, pathname, description = imp.find_module(py_mod, py_path)
-        py_module = imp.load_module(py_mod, fobj, pathname, description)
-        fobj.close()
-
-        __all__ = getattr(py_module, "__all__")
-        if __all__ is None or not isinstance(__all__, dict):
-            pu.reportError(iam, ("__all__ attribute in {0} not defined"
-                                 .format(self.mtldat_f)))
-
-        # look for name of material in file
-        mtl_nam = None
-        if material in __all__:
-            mtl_nam = material
-
-        else:
-            for name, aliases in __all__.items():
-                if material in aliases:
-                    mtl_nam = name
-                    break
-                continue
-
-        if mtl_nam is None:
-            pu.reportError(iam, ("material {0} not found in {1}"
-                                 .format(material, self.mtldat_f)))
-
-        params = getattr(py_module, mtl_nam)
-        mtldat = []
-        for key, val in params.items():
-            if key.lower() == "units":
-                continue
-            mtldat.append((key, float(val)))
-            continue
-
-        return mtldat
-# @mswan}
 
     def initialize_state(self, material_data):
         """initialize the material state"""
@@ -622,6 +568,4 @@ class ConstitutiveModelPrototype(object):
         """docstring"""
         self.register_parameter(*args)
         return
-
-
 
