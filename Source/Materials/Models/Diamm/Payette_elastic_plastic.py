@@ -21,7 +21,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from os import dirname, join, realpath
+from os.path import dirname, join, realpath
 from numpy import array
 
 from Source.Payette_utils import parse_token, reportError, migError, migMessage
