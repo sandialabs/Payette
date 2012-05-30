@@ -101,7 +101,7 @@ class MaterialBuilder():
         if not self.source_files:
             BuildError("no source files sent to {0}".format(fcn),1)
 
-        elif not isinstance(self.source_files,list):
+        elif not isinstance(self.source_files, list):
             self.source_files = [self.source_files]
 
         for srcf in self.source_files:
