@@ -28,6 +28,7 @@ import sys
 import optparse
 from distutils import sysconfig
 
+
 __version__ = "1.0.dev"
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
 
