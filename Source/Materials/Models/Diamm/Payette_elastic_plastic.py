@@ -21,10 +21,10 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import os
-import numpy as np
+from os import dirname, join, realpath
+from numpy import array
 
-import Source.Payette_utils as pu
+from Source.Payette_utils import parse_token, reportError, migError, migMessage
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 try:
     import Source.Materials.Library.elastic_plastic as mtllib
@@ -35,12 +35,12 @@ except:
 
 from Payette_config import PC_F2PY_CALLBACK
 
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+THIS_DIR = dirname(realpath(__file__))
 attributes = {
     "payette material": False, # deactivated for now
     "name": "elastic_plastic",
     "code types": ("fortran", ),
-    "fortran build script": os.path.join(THIS_DIR, "Build_elastic_plastic.py"),
+    "fortran build script": join(THIS_DIR, "Build_elastic_plastic.py"),
     "aliases": ["inuced anisotropy"],
     "material type": ["mechanical"],
     "default material": True,
@@ -114,8 +114,8 @@ class ElasticPlastic(ConstitutiveModelPrototype):
 
         self.ui = self._check_props()
         (self.nsv,namea,keya,sv,rdim,iadvct,itype) = self._set_field()
-        namea = pu.parseToken(self.nsv,namea)
-        keya = pu.parseToken(self.nsv,keya)
+        namea = parse_token(self.nsv,namea)
+        keya = parse_token(self.nsv,keya)
 
         # register the extra variables with the payette object
         matdat.register_xtra_vars(self.nsv,namea,keya,sv)
@@ -132,10 +132,11 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         d = matdat.get_data("rate of deformation")
         sigold = matdat.get_data("stress")
         svold = matdat.get_data("extra variables")
-        a = [1, dt, self.ui, sigold, d, svold, pu.migError, pu.migMessage]
-        if not PC_F2PY_CALLBACK: a = a[:-2]
+        a = [1, dt, self.ui, sigold, d, svold]
+        if PC_F2PY_CALLBACK:
+            a.extend([migError, migMessage])
         a.append(self.nsv)
-        signew,svnew,usm = mtllib.diamm_calc(*a)
+        signew, svnew, usm = mtllib.diamm_calc(*a)
 
         # update data
         matdat.store_data("stress",signew)
@@ -146,14 +147,16 @@ class ElasticPlastic(ConstitutiveModelPrototype):
 
     # Private method
     def _check_props(self,**kwargs):
-        props = np.array(self.ui0)
-        a = [props, pu.migError, pu.migMessage]
-        if not PC_F2PY_CALLBACK: a = a[:-2]
+        props = array(self.ui0)
+        a = [props]
+        if PC_F2PY_CALLBACK:
+            a.extend([migError, migMessage])
         ui = mtllib.dmmchk(*a)
         return ui
 
     def _set_field(self,*args,**kwargs):
-        a = [self.ui, pu.migError, pu.migMessage]
-        if not PC_F2PY_CALLBACK: a = a[:-2]
+        a = [self.ui]
+        if PC_F2PY_CALLBACK:
+            a.extend([migError, migMessage])
         return mtllib.dmmrxv(*a)
 
