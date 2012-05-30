@@ -23,6 +23,7 @@
 
 from __future__ import print_function
 import os
+from os.path import isfile, isdir, join, realpath, dirname, expanduser, basename
 import sys
 import optparse
 from distutils import sysconfig
@@ -40,7 +41,7 @@ def check_exists(itemnam, item):
 
     errors = 0
     for tmp in item:
-        if not os.path.isdir(tmp) and not os.path.isfile(tmp):
+        if not isdir(tmp) and not isfile(tmp):
             errors += 1
             logerr("{0} not found [name: {1}]".format(tmp, itemnam))
 
@@ -108,7 +109,7 @@ def get_exe_path(exe):
 
     """ return the absolute path to the executable exe """
 
-    if os.path.isfile(exe):
+    if isfile(exe):
         return exe
 
     try:
@@ -117,8 +118,8 @@ def get_exe_path(exe):
         path = []
 
     for dirname in path:
-        if os.path.isfile(os.path.join(dirname, exe)):
-            return os.path.join(dirname, exe)
+        if isfile(join(dirname, exe)):
+            return join(dirname, exe)
 
     sys.exit("ERROR: executable {0} not found".format(exe))
 
@@ -159,7 +160,7 @@ else:
     sys.exit(1)
 main()
 """.format(pyint)
-    f2py = os.path.join(destdir, "f2py")
+    f2py = join(destdir, "f2py")
     with open(f2py, "w") as fnew:
         for line in f2py_file:
             fnew.write(line)
@@ -213,16 +214,16 @@ PC_INTRO = """
 SPACE = "      "
 
 # --- base level directories
-THIS_FILE = os.path.realpath(__file__)
-PC_ROOT = os.path.dirname(THIS_FILE)
-PC_AUX = os.path.join(PC_ROOT, "Aux")
-PC_DOCS = os.path.join(PC_ROOT, "Documents")
-PC_SOURCE = os.path.join(PC_ROOT, "Source")
-PC_TESTS = [os.path.join(PC_ROOT, "Benchmarks")]
+THIS_FILE = realpath(__file__)
+PC_ROOT = dirname(THIS_FILE)
+PC_AUX = join(PC_ROOT, "Aux")
+PC_DOCS = join(PC_ROOT, "Documents")
+PC_SOURCE = join(PC_ROOT, "Source")
+PC_TESTS = [join(PC_ROOT, "Benchmarks")]
 USER_TESTS = os.getenv("PAYETTE_BENCHDIR", "")
 PC_TESTS.extend([x for x in USER_TESTS.split(os.pathsep) if x])
-PC_TOOLS = os.path.join(PC_ROOT, "Toolset")
-PC_FOUND_TESTS = os.path.join(PC_TOOLS, "__found_tests__.py")
+PC_TOOLS = join(PC_ROOT, "Toolset")
+PC_FOUND_TESTS = join(PC_TOOLS, "__found_tests__.py")
 
 # modify sys.path
 if PC_ROOT not in sys.path:
@@ -236,27 +237,27 @@ ERRORS += check_exists("PC_TESTS", PC_TESTS)
 ERRORS += check_exists("PC_TOOLS", PC_TOOLS)
 
 # --- python interpreter info
-PC_PYINT = os.path.realpath(sys.executable)
+PC_PYINT = realpath(sys.executable)
 SAGE = True if "sage" in PC_PYINT.lower() else False
 PC_PYVER = "python" if not SAGE else "sage -python"
 PC_PYVER = "{0} {1}.{2}.{3}".format(PC_PYVER,MAJOR,MINOR,MICRO)
 
 # --- Payette executable files
-PC_CLEANPAYETTE = (os.path.join(PC_TOOLS, "cleanPayette"), THIS_FILE)
+PC_CLEANPAYETTE = (join(PC_TOOLS, "cleanPayette"), THIS_FILE)
 
-PC_EXTRACT = os.path.join(PC_SOURCE, "Payette_extract.py")
-PC_EXTRACTPAYETTE = (os.path.join(PC_TOOLS, "extractPayette"), PC_EXTRACT)
+PC_EXTRACT = join(PC_SOURCE, "Payette_extract.py")
+PC_EXTRACTPAYETTE = (join(PC_TOOLS, "extractPayette"), PC_EXTRACT)
 
-PC_RUN = os.path.join(PC_SOURCE, "Payette_run.py")
-PC_RUNPAYETTE = (os.path.join(PC_TOOLS, "runPayette"), PC_RUN)
+PC_RUN = join(PC_SOURCE, "Payette_run.py")
+PC_RUNPAYETTE = (join(PC_TOOLS, "runPayette"), PC_RUN)
 
-PC_BUILD = os.path.join(PC_SOURCE, "Payette_build.py")
-PC_BUILDPAYETTE = (os.path.join(PC_TOOLS, "buildPayette"), PC_BUILD)
+PC_BUILD = join(PC_SOURCE, "Payette_build.py")
+PC_BUILDPAYETTE = (join(PC_TOOLS, "buildPayette"), PC_BUILD)
 
-PC_RUNTEST = os.path.join(PC_SOURCE, "Payette_runtest.py")
-PC_TESTPAYETTE = (os.path.join(PC_TOOLS, "testPayette"), PC_RUNTEST)
+PC_RUNTEST = join(PC_SOURCE, "Payette_runtest.py")
+PC_TESTPAYETTE = (join(PC_TOOLS, "testPayette"), PC_RUNTEST)
 
-PC_F2PY = (os.path.join(PC_TOOLS,"f2py"), None)
+PC_F2PY = (join(PC_TOOLS,"f2py"), None)
 PC_BUILT_EXES = {"runPayette": PC_RUNPAYETTE,
                  "testPayette": PC_TESTPAYETTE,
                  "buildPayette": PC_BUILDPAYETTE,
@@ -270,21 +271,21 @@ for exe_nam, exe_info in PC_BUILT_EXES.items():
     continue
 
 # --- configuration files
-PC_CONFIG_FILE = os.path.join(PC_ROOT, "Payette_config.py")
+PC_CONFIG_FILE = join(PC_ROOT, "Payette_config.py")
 
 # --- subdirectories of PC_AUX
-PC_INPUTS = os.path.join(PC_ROOT, "Aux/Inputs")
+PC_INPUTS = join(PC_ROOT, "Aux/Inputs")
 ERRORS += check_exists("PC_INPUTS", PC_INPUTS)
 
 # --- subdirectories of PC_SOURCE
 
 # PC_MTLDIRS is the directory where we search for Payette material models
-PC_MTLS = os.path.join(PC_SOURCE, "Materials")
-PC_MTLDIRS = [os.path.join(PC_MTLS, "Models")]
+PC_MTLS = join(PC_SOURCE, "Materials")
+PC_MTLDIRS = [join(PC_MTLS, "Models")]
 USER_MTLS = os.getenv("PAYETTE_MTLDIR", "")
 PC_MTLDIRS.extend([x for x in USER_MTLS.split(os.pathsep) if x])
 for mtl_d in [x for x in PC_MTLDIRS]:
-    if os.path.isdir(mtl_d):
+    if isdir(mtl_d):
         for dirnam, dirs, files in os.walk(mtl_d):
             if (".svn" not in dirnam and ".git" not in dirnam and
                 dirnam not in PC_MTLS and
@@ -292,15 +293,15 @@ for mtl_d in [x for x in PC_MTLDIRS]:
                 PC_MTLDIRS.append(dirnam)
             continue
     continue
-PC_FORTRAN = os.path.join(PC_SOURCE, "Fortran")
-PC_MIG_UTILS = os.path.join(PC_FORTRAN, "migutils.F")
+PC_FORTRAN = join(PC_SOURCE, "Fortran")
+PC_MIG_UTILS = join(PC_FORTRAN, "migutils.F")
 ERRORS += check_exists("PC_MTLS", PC_MTLS)
 ERRORS += check_exists("PC_MIG_UTILS", PC_MIG_UTILS)
 
 # --- Subdirectories of PC_MTLS
-PC_MTLS_LIBRARY = os.path.join(PC_MTLS, "Library")
-PC_MTLS_INCLUDES = os.path.join(PC_MTLS, "Includes")
-PC_MTLS_FILE = os.path.join(PC_SOURCE, "installed_materials.pkl")
+PC_MTLS_LIBRARY = join(PC_MTLS, "Library")
+PC_MTLS_INCLUDES = join(PC_MTLS, "Includes")
+PC_MTLS_FILE = join(PC_SOURCE, "installed_materials.pkl")
 ERRORS += check_exists("PC_MTLS_LIBRARY", PC_MTLS_LIBRARY)
 ERRORS += check_exists("PC_MTLS_INCLUDES", PC_MTLS_INCLUDES)
 
@@ -368,8 +369,8 @@ if SAGE:
             continue
         sage_local = os.environ.get("SAGE_LOCAL")
         if sage_local is not None:
-            FORT = (os.path.join(sage_local, "gfortran") if
-                    os.path.isfile(os.path.join(sage_local, "gfortran")) else
+            FORT = (join(sage_local, "gfortran") if
+                    isfile(join(sage_local, "gfortran")) else
                     FORT)
 
 if ERRORS:
@@ -474,8 +475,8 @@ def configure_payette(argv):
 
     # add to benchmark dir
     for dirnam in opts.BENCHDIRS:
-        dirnam = os.path.expanduser(dirnam)
-        if os.path.isdir(dirnam):
+        dirnam = expanduser(dirnam)
+        if isdir(dirnam):
             is_test_dir = False
             for item in os.walk(dirnam):
                 if "__test_dir__.py" in item[-1]:
@@ -493,8 +494,8 @@ def configure_payette(argv):
 
     # add to materials dir
     for dirnam in opts.MTLDIRS:
-        dirnam = os.path.expanduser(dirnam)
-        if os.path.isdir(dirnam):
+        dirnam = expanduser(dirnam)
+        if isdir(dirnam):
             PC_MTLDIRS.append(dirnam)
         else:
             errors += 1
@@ -604,7 +605,7 @@ fi
         endmes("{0} script written".format(name))
         continue
 
-    path = os.path.join(PC_TOOLS, "pconfigure")
+    path = join(PC_TOOLS, "pconfigure")
     begmes("writing pconfigure", pre=SPACE)
     with open(path, "w") as fnew:
         fnew.write("#!/bin/sh -f\n")
@@ -664,7 +665,7 @@ def clean_payette():
 
         for fnam in files:
             if any(fnmatch(fnam, pat) for pat in pats_to_remove):
-                os.remove(os.path.join(dirnam, fnam))
+                os.remove(join(dirnam, fnam))
 
             continue
 
@@ -684,7 +685,7 @@ if __name__ == "__main__":
     elif any("vers" in x for x in sys.argv):
         sys.exit("Payette, version " + __version__)
 
-    if sys.argv[0] != os.path.basename(__file__):
+    if sys.argv[0] != basename(__file__):
         sys.exit("configure.py must be executed from {0}".format(PC_ROOT))
 
     # introduce yourself
