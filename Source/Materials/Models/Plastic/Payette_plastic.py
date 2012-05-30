@@ -21,12 +21,12 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import os
-import sys
-import numpy as np
+from os.path import dirname, realpath, join
+from numpy import concatenate, array, zeros
 from math import sqrt
 
-import Source.Payette_utils as pu
+from Source.Payette_utils import (
+    reportError, reportWarning, migError, migMessage, parse_token)
 from Source.Payette_tensor import SYM_MAP, iso, dev, mag, ddp
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_F2PY_CALLBACK
@@ -39,13 +39,13 @@ except:
     imported = False
 
 
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+THIS_DIR = dirname(realpath(__file__))
 attributes = {
     "payette material": True,
     "name": "plastic",
     "aliases": ["elastic plastic", "von mises"],
     "code types": ("python", "fortran", ),
-    "fortran build script": os.path.join(THIS_DIR, "Build_plastic.py"),
+    "fortran build script": join(THIS_DIR, "Build_plastic.py"),
     "material type": ["mechanical"],
     "default material": True,
     }
@@ -99,7 +99,7 @@ class Plastic(ConstitutiveModelPrototype):
         # work with the entire ui, so we only pick out what we want
         mu, k = self.ui0[1], self.ui0[4]
         self.ui = self.ui0
-        mui = np.array([k, mu] + self.ui0[12:].tolist())
+        mui = array([k, mu] + self.ui0[12:].tolist())
 
         if self.code == "python":
             self.mui, nxtra, xtra, names, keys = self._py_set_up(mui)
@@ -130,7 +130,7 @@ class Plastic(ConstitutiveModelPrototype):
         else:
             a = [1, self.nsv, dt, self.mui, sigold, d, xtra]
             if PC_F2PY_CALLBACK:
-                a += [pu.migError, pu.migMessage]
+                a += [migError, migMessage]
             sig, xtra = mtllib.plast_calc(*a)
 
         # store updated data
@@ -143,31 +143,31 @@ class Plastic(ConstitutiveModelPrototype):
         k, mu, y, a, c, m = mui
 
         if k <= 0.:
-            pu.reportError(iam, "Bulk modulus K must be positive")
+            reportError(iam, "Bulk modulus K must be positive")
 
         if mu <= 0.:
-            pu.reportError(iam, "Shear modulus MU must be positive")
+            reportError(iam, "Shear modulus MU must be positive")
 
         if y < 0.:
-            pu.reportError(iam, "Yield strength Y must be positive")
+            reportError(iam, "Yield strength Y must be positive")
 
         if y == 0:
             y = 1.e99
 
         if a < 0.:
-            pu.reportError(iam,
+            reportError(iam,
                         "Kinematic hardening modulus A must be non-negative")
 
         if c < 0.:
-            pu.reportError(iam,
+            reportError(iam,
                         "Isotropic hardening modulus C must be non-negative")
 
         if m < 0:
-            pu.reportError(iam,
+            reportError(iam,
                         "Isotropic hardening power M must be non-negative")
         elif m == 0:
             if c != 0:
-                pu.reportWarning(
+                reportWarning(
                     iam,
                     "Isotropic hardening modulus C being set 0 because M = 0")
             c = 0.
@@ -175,9 +175,9 @@ class Plastic(ConstitutiveModelPrototype):
         # poisson's ratio
         nu = (3. * k - 2 * mu) / (6 * k + 2 * mu)
         if nu < 0.:
-            pu.reportWarning(iam, "negative Poisson's ratio")
+            reportWarning(iam, "negative Poisson's ratio")
 
-        ui = np.array([k, mu, y, a, c, m])
+        ui = array([k, mu, y, a, c, m])
 
         # register state variables
         names, keys = [], []
@@ -192,28 +192,28 @@ class Plastic(ConstitutiveModelPrototype):
             keys.append("BSIG{0}".format(SYM_MAP[i]))
             continue
         nxtra = len(keys)
-        xtra = np.zeros(nxtra)
+        xtra = zeros(nxtra)
         return ui, nxtra, xtra, names, keys
 
     def _fort_set_up(self, mui):
         ui = self._check_props(mui)
         nxtra, namea, keya, xtra, iadvct = self._set_field(ui)
-        names = pu.parseToken(nxtra, namea)
-        keys = pu.parseToken(nxtra, keya)
+        names = parse_token(nxtra, namea)
+        keys = parse_token(nxtra, keya)
         return ui, nxtra, xtra, names, keys
 
     def _check_props(self, mui):
-        props = np.array(mui)
+        props = array(mui)
         a = [props]
         if PC_F2PY_CALLBACK:
-            a += [pu.migError, pu.migMessage]
+            a += [migError, migMessage]
         ui = mtllib.plast_chk(*a)
         return ui
 
     def _set_field(self, ui):
         a = []
         if PC_F2PY_CALLBACK:
-            a += [pu.migError, pu.migMessage]
+            a += [migError, migMessage]
         return mtllib.plast_rxv(*a)
 
 def _py_update_state(ui, dt, d, sigold, xtra):
@@ -275,7 +275,7 @@ def _py_update_state(ui, dt, d, sigold, xtra):
 
     dlam = facyld * num / dnom
     if dlam < 0.:
-        pu.reportError(iam, "negative dlam")
+        reportError(iam, "negative dlam")
 
     # equivalet plastic strain
     gam += dlam * mag(dev(n))
@@ -287,7 +287,7 @@ def _py_update_state(ui, dt, d, sigold, xtra):
     sig = sig - dlam * p
 
     # store data
-    xtra = np.concatenate((np.array([gam]), bstress))
+    xtra = concatenate((array([gam]), bstress))
 
     return sig, xtra
 
