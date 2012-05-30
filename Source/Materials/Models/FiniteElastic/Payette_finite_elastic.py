@@ -22,9 +22,9 @@
 # DEALINGS IN THE SOFTWARE.
 
 from os.path import dirname, join, realpath
-import numpy as np
+from numpy import array, zeros
 
-import Source.Payette_utils as pu
+from Source.Payette_utils import reportError, reportWarning, migError, migMessage
 from Source.Payette_tensor import ata, push, I6
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_F2PY_CALLBACK
@@ -105,7 +105,7 @@ class FiniteElastic(ConstitutiveModelPrototype):
         # work with the entire ui, so we only pick out what we want
         mu, nu, k = self.ui0[1], self.ui0[3], self.ui0[4]
         self.ui = self.ui0
-        mui = np.array([mu, nu, k])
+        mui = array([mu, nu, k])
         self.bulk_modulus, self.shear_modulus = k, mu
 
         if self.code == "python":
@@ -117,10 +117,10 @@ class FiniteElastic(ConstitutiveModelPrototype):
 
         # register the green lagrange strain and second Piola-Kirchhoff stress
         matdat.register_data("green strain","SymTensor",
-                             init_val = np.zeros(6),
+                             init_val = zeros(6),
                              plot_key = "GREEN_STRAIN")
         matdat.register_data("pk2 stress","SymTensor",
-                             init_val = np.zeros(6),
+                             init_val = zeros(6),
                              plot_key = "PK2")
 
         return
@@ -142,7 +142,7 @@ class FiniteElastic(ConstitutiveModelPrototype):
         else:
             a = [1, self.mui, F]
             if PC_F2PY_CALLBACK:
-                a += [pu.migError, pu.migMessage]
+                a += [migError, migMessage]
             E, pk2, sig = mtllib.finite_elast_calc(*a)
 
         matdat.store_data("stress", sig)
@@ -155,23 +155,23 @@ class FiniteElastic(ConstitutiveModelPrototype):
 
         mu, nu, k = mui
         if nu < 0.:
-            pu.reportWarning(iam, "neg Poisson")
+            reportWarning(iam, "neg Poisson")
 
         if mu <= 0.:
-            pu.reportError(iam, "Shear modulus G must be positive")
+            reportError(iam, "Shear modulus G must be positive")
 
         # compute c11, c12, and c44
         c11 = k + 4. / 3. * mu
         c12 = k - 2. / 3. * mu
         c44 = mu
 
-        return np.array([c11, c12, c44])
+        return array([c11, c12, c44])
 
     def _fort_set_up(self, mui):
-        props = np.array(mui)
+        props = array(mui)
         a = [props]
         if PC_F2PY_CALLBACK:
-            a += [pu.migError, pu.migMessage]
+            a += [migError, migMessage]
         ui = mtllib.finite_elast_chk(*a)
         return ui
 
@@ -185,7 +185,7 @@ def _py_update_state(ui, F):
     E = 0.5 * (ata(F) - I6)
 
     # PK2 stress
-    pk2 = np.zeros(6)
+    pk2 = zeros(6)
     pk2[0] = c11 * E[0] + c12 * E[1] + c12 * E[2]
     pk2[1] = c12 * E[0] + c11 * E[1] + c12 * E[2]
     pk2[2] = c12 * E[0] + c12 * E[1] + c11 * E[2]
