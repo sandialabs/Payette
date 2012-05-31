@@ -510,10 +510,13 @@ def _build_lib(material):
             elif build_error == 66:
                 pu.logwrn("{0}: missing attribute: build"
                           .format(fort_build_script))
+            elif build_error == 20:
+                pu.logwrn("{0} extension module built, but not importable"
+                          .format(libname))
             else:
                 msg = ("failed to build {0} extension module. see {1}"
                        .format(libname, "build.echo"))
-                pu.logwrn(msg, pre="\t\t")
+                pu.logwrn(msg)
 
         else:
             MATERIALS[material]["build succeeded"] = True

@@ -28,7 +28,7 @@ from copy import deepcopy
 from numpy.f2py import main as f2py
 
 import Payette_config as pc
-from Source.Payette_utils import BuildError, get_module_name_and_path
+from Source.Payette_utils import get_module_name_and_path, BuildError
 
 class MaterialBuilder():
 
@@ -174,9 +174,12 @@ class MaterialBuilder():
             build = imp.load_module(py_mod, fp, pathname, description)
             fp.close()
         except ImportError:
-            print("{0} not imported".format(py_mod))
-            return 1
-
+            new_name = os.path.join(pc.PC_AUX, self.libname)
+            shutil.move(self.libname, new_name)
+            msg = ("\n\tWARNING: {0} failed to import.  ".format(self.libname) +
+                   "\n\tTo diagnose, go to: {0}".format(new_name) +
+                   "\n\tand manually import the file in a python interpreter")
+            raise BuildError(msg, 20)
 
         # copy the extension module file to the library directory
         shutil.move(self.libname,
