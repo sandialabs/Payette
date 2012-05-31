@@ -1,32 +1,29 @@
 module tensor_toolkit
 
-  private delta, w, diag9, i6, i15, sk, dk, &
-       zero, one, two, three, half, third, root2, root3, root6, &
-       toor2, toor3, toor6, root23, root32, pi, piover6, &
-       proj2evec, affinity
-  public ata, symleaf, dd66x6, push, pull, dp, ddp, mag, dev, tr, iso, &
-       matinv, eigen3x3
+  private :: delta, w, diag9, i6, i15, sk, dk
+  private :: zero, one, two, three, half, third, root2, root3, root6
+  private :: toor2, toor3, toor6, root23, root32, pi, piover6
+  private :: proj2evec, affinity
+  public :: ata, symleaf, dd66x6, push, pull, dp, ddp, mag, dev, tr, iso
+  public :: matinv, eigen3x3
 
   ! kind specifiers
   integer, parameter :: sk=selected_real_kind(6), dk=selected_real_kind(14)
+  integer, parameter :: fp=dk
 
-  real(kind=dk), parameter, dimension(6) :: &
-       delta = (/1., 1., 1., 0., 0., 0./), &
-       w = (/1., 1., 1., 2., 2., 2./)
+  ! numbers
+  real(kind=fp), parameter :: zero= 0._dk, one=1._dk, two=2._dk, three=3._dk
+  real(kind=fp), parameter :: four=4._dk, five=5._dk, six= 6._dk
+  real(kind=fp), parameter :: third=one/three, half=one/two
+  real(kind=fp), parameter :: root2=sqrt(two),root3=sqrt(three),root6=sqrt(six)
+  real(kind=fp), parameter :: toor2=one/root2,toor3=one/root3,toor6=one/root6
+  real(kind=fp), parameter :: root23=sqrt(two/three), root32=sqrt(three/two)
+  real(kind=fp), parameter :: pi=acos(-one), piover6=pi/six
+
+  real(kind=fp), parameter, dimension(6) :: &
+       delta = (/one, one, one, zero, zero, zero/), &
+       w = (/one, one, one, two, two, two/)
   integer, parameter, dimension(3) :: diag9 = (/1, 5, 9/)
-  real(kind=dk), parameter :: zero= 0.d0, one=1.d0, two=2.d0, three=3.d0
-  real(kind=dk), parameter :: half=.5d0
-  real(kind=dk), parameter :: third=0.33333333333333333333333333333333333333333d0
-  real(kind=dk), parameter :: root2=0.14142135623730950488016887242096980785696d1
-  real(kind=dk), parameter :: root3=0.17320508075688772935274463415058723669428d1
-  real(kind=dk), parameter :: root6=0.24494897427831780981972840747058913919659d1
-  real(kind=dk), parameter :: toor2=0.70710678118654752440084436210484903928483d0
-  real(kind=dk), parameter :: toor3=0.57735026918962576450914878050195745564760d0
-  real(kind=dk), parameter :: toor6=0.40824829046386301636621401245098189866099d0
-  real(kind=dk), parameter :: root23=0.8164965809277260327324280249019637973219d0
-  real(kind=dk), parameter :: root32=0.1224744871391589049098642037352945695982d1
-  real(kind=dk), parameter :: pi=0.314159265358979323846264338327950288419717d1
-  real(kind=dk), parameter :: piover6=0.523598775598298873077107230546583814032d0
 
 
 contains
@@ -46,8 +43,8 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk), dimension(6) :: ata
-    real(kind=dk), dimension(9) :: a
+    real(kind=fp), dimension(6) :: ata
+    real(kind=fp), dimension(9) :: a
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ata
     ata(1) = a(1) * a(1) + a(4) * a(4) + a(7) * a(7)
     ata(2) = a(2) * a(2) + a(5) * a(5) + a(8) * a(8)
@@ -98,8 +95,8 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk), dimension(3, 3) :: f
-    real(kind=dk), dimension(6, 6) :: symleaf
+    real(kind=fp), dimension(3, 3) :: f
+    real(kind=fp), dimension(6, 6) :: symleaf
     !.......................................................................local
     integer i, j
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~symleaf
@@ -107,12 +104,12 @@ contains
        do j = 1, 3
           symleaf(i, j) = f(i, j) ** 2
        end do
-       symleaf(i, 4) = sqrt(2.) * f(i, 1) * f(i, 2)
-       symleaf(i, 5) = sqrt(2.) * f(i, 2) * f(i, 3)
-       symleaf(i, 6) = sqrt(2.) * f(i, 3) * f(i, 1)
-       symleaf(4, i) = sqrt(2.) * f(1, i) * f(2, i)
-       symleaf(5, i) = sqrt(2.) * f(2, i) * f(3, i)
-       symleaf(6, i) = sqrt(2.) * f(3, i) * f(1, i)
+       symleaf(i, 4) = root2 * f(i, 1) * f(i, 2)
+       symleaf(i, 5) = root2 * f(i, 2) * f(i, 3)
+       symleaf(i, 6) = root2 * f(i, 3) * f(i, 1)
+       symleaf(4, i) = root2 * f(1, i) * f(2, i)
+       symleaf(5, i) = root2 * f(2, i) * f(3, i)
+       symleaf(6, i) = root2 * f(3, i) * f(1, i)
     enddo
     symleaf(4, 4) = f(1, 2) * f(2, 1) + f(1, 1) * f(2, 2)
     symleaf(5, 4) = f(2, 2) * f(3, 1) + f(2, 1) * f(3, 2)
@@ -160,12 +157,12 @@ contains
     implicit none
     !......................................................................passed
     integer job
-    real(kind=dk), dimension(6) :: x, dd66x6
-    real(kind=dk), dimension(6, 6) :: a
+    real(kind=fp), dimension(6) :: x, dd66x6
+    real(kind=fp), dimension(6, 6) :: a
     !.......................................................................local
-    real(kind=dk), parameter, dimension(6) :: &
-         mandel=(/1.,1.,1.,sqrt(2.),sqrt(2.),sqrt(2.)/)
-    real(kind=dk), dimension(6) :: t
+    real(kind=fp), parameter, dimension(6) :: &
+         mandel=(/one,one,one,root2,root2,root2/)
+    real(kind=fp), dimension(6) :: t
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~dd66x6
 
     !  Construct the Mandel version of x
@@ -219,16 +216,16 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk), dimension(6) :: a, push
-    real(kind=dk), dimension(9) :: f
+    real(kind=fp), dimension(6) :: a, push
+    real(kind=fp), dimension(9) :: f
     !.......................................................................local
-    real(kind=dk) :: detf
-    real(kind=dk), dimension(3, 3) :: ff
+    real(kind=fp) :: detf
+    real(kind=fp), dimension(3, 3) :: ff
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~push
     detf = f(1) * f(5) * f(9) + f(2) * f(6) * f(7) + f(3) * f(4) * f(8) &
          -(f(1) * f(6) * f(8) + f(2) * f(4) * f(9) + f(3) * f(5) * f(7))
     ff = reshape(f, shape(ff))
-    push = 1. / detf * dd66x6(1, symleaf(ff), a)
+    push = one / detf * dd66x6(1, symleaf(ff), a)
     return
   end function push
 
@@ -258,11 +255,11 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk), dimension(6) :: a, pull
-    real(kind=dk), dimension(9) :: f
+    real(kind=fp), dimension(6) :: a, pull
+    real(kind=fp), dimension(9) :: f
     !.......................................................................local
-    real(kind=dk) :: detf
-    real(kind=dk), dimension(3, 3) :: ff
+    real(kind=fp) :: detf
+    real(kind=fp), dimension(3, 3) :: ff
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~pull
     detf = f(1) * f(5) * f(9) + f(2) * f(6) * f(7) + f(3) * f(4) * f(8) &
          -(f(1) * f(6) * f(8) + f(2) * f(4) * f(9) + f(3) * f(5) * f(7))
@@ -275,9 +272,9 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk), dimension(6) :: a, unrot
-    real(kind=dk), dimension(9) :: r
-    real(kind=dk), dimension(3, 3) :: rt
+    real(kind=fp), dimension(6) :: a, unrot
+    real(kind=fp), dimension(9) :: r
+    real(kind=fp), dimension(3, 3) :: rt
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~unrot
     rt = transpose(reshape(r, shape(rt)))
     unrot = dd66x6(1, symleaf(rt), a)
@@ -288,9 +285,9 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk), dimension(6) :: a, rot
-    real(kind=dk), dimension(9) :: r
-    real(kind=dk), dimension(3, 3) :: rr
+    real(kind=fp), dimension(6) :: a, rot
+    real(kind=fp), dimension(9) :: r
+    real(kind=fp), dimension(3, 3) :: rr
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~rot
     rr = reshape(r, shape(rr))
     rot = dd66x6(1, symleaf(rr), a)
@@ -311,8 +308,8 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk) :: det
-    real(kind=dk), dimension(9) :: a, inv
+    real(kind=fp) :: det
+    real(kind=fp), dimension(9) :: a, inv
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~rot
     det = a(1) * a(5) * a(9) + a(2) * a(6) * a(7) + a(3) * a(4) * a(8) &
         -(a(1) * a(6) * a(8) + a(2) * a(4) * a(9) + a(3) * a(5) * a(7))
@@ -344,8 +341,8 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk), dimension(9) :: a, dp9x6
-    real(kind=dk), dimension(6) :: b
+    real(kind=fp), dimension(9) :: a, dp9x6
+    real(kind=fp), dimension(6) :: b
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~dp9x6
     dp9x6 = (/a(1) * b(1) + a(4) * b(4) + a(7) * b(6), &
               a(4) * b(2) + a(1) * b(4) + a(7) * b(5), &
@@ -374,8 +371,8 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk) :: ddp
-    real(kind=dk), dimension(6) :: a, b
+    real(kind=fp) :: ddp
+    real(kind=fp), dimension(6) :: a, b
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ddp
     ddp = sum(w * a * b)
     return
@@ -396,8 +393,8 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk), dimension(6) :: a
-    real(kind=dk), dimension(3) :: b, dp6x3
+    real(kind=fp), dimension(6) :: a
+    real(kind=fp), dimension(3) :: b, dp6x3
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~dp6x3
     dp6x3 = (/a(1) * b(1) + a(4) * b(2) + a(6) * b(3), &
               a(4) * b(1) + a(2) * b(2) + a(5) * b(3), &
@@ -420,8 +417,8 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk), dimension(3) :: a, b
-    real(kind=dk), dimension(6) :: dyad
+    real(kind=fp), dimension(3) :: a, b
+    real(kind=fp), dimension(6) :: dyad
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~dp6x3
     dyad = (/a(1) * b(1), a(2) * b(2), a(3) * b(3), &
              a(1) * b(2), a(2) * b(3), a(1) * b(3)/)
@@ -442,8 +439,8 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk) mag
-    real(kind=dk), dimension(6) :: a
+    real(kind=fp) mag
+    real(kind=fp), dimension(6) :: a
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~mag
     mag = sqrt(ddp(a, a))
     return
@@ -463,11 +460,11 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk), dimension(6) :: dev, a
-    real(kind=dk) :: trdev
+    real(kind=fp), dimension(6) :: dev, a
+    real(kind=fp) :: trdev
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~dev
     dev = a - iso(a)
-    trdev = -sum(dev(1:3)) / 3.
+    trdev = -sum(dev(1:3)) / three
     dev(1) = dev(1) + trdev
     dev(2) = dev(2) + trdev
     dev(3) = -(dev(1) + dev(2))
@@ -488,9 +485,9 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk), dimension(6) :: iso, a
+    real(kind=fp), dimension(6) :: iso, a
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~iso
-    iso = sum(a(1:3)) / 3. * delta
+    iso = sum(a(1:3)) / three * delta
     return
   end function iso
 
@@ -508,7 +505,7 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=dk), dimension(6) :: tr, a
+    real(kind=fp), dimension(6) :: tr, a
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~iso
     tr = sum(a(1:3))
     return
@@ -540,21 +537,21 @@ contains
     implicit none
     !......................................................................passed
     integer :: n
-    real(kind=dk), dimension(n, n) :: a, matinv
+    real(kind=fp), dimension(n, n) :: a, matinv
     !.......................................................................local
     integer :: row, col, icond
     integer, dimension(1) :: v
-    real(kind=dk) :: wmax, fac, wcond=1.d-13
-    real(kind=dk), dimension(n) :: dum
-    real(kind=dk), dimension(n, n) :: w
+    real(kind=fp) :: wmax, fac, wcond=1.d-13
+    real(kind=fp), dimension(n) :: dum
+    real(kind=fp), dimension(n, n) :: w
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~matinv
 
     ! Initialize
 
-    icond = 0.
-    matinv  = 0.
+    icond = zero
+    matinv  = zero
     do row = 1, n
-       matinv(row, row) = 1.
+       matinv(row, row) = one
     end do
     w = a
     do row = 1, n
@@ -720,39 +717,32 @@ contains
     !
     !---------------------------------------------------------------------------!
     implicit none
-    !..................................................................parameters
-    ! Define a parameter "PUNY" to equal a small number (i.e., the value below
-    ! which a quantity is considered zero). The PUNY parameter is used to
-    ! manage round-off errors. You may, if you wish, set puny identically
-    ! equal to zero, but then this routine might not be able to recognize
-    ! triaxial LMM and MMH matrices.
-    real(kind=dk), parameter :: puny=1.0d-14
     !......................................................................passed
     integer :: n, job
-    real(kind=dk) :: p, ri1, rj2, rj3, r, t, z
-    real(kind=dk), dimension(6) :: a
-    real(kind=dk), dimension(3) :: eval
-    real(kind=dk), dimension(6,3) :: proj
+    real(kind=fp) :: p, ri1, rj2, rj3, r, t, z
+    real(kind=fp), dimension(6) :: a
+    real(kind=fp), dimension(3) :: eval
+    real(kind=fp), dimension(6,3) :: proj
     !.......................................................................local
     integer :: i, j, k
-    real(kind=dk) sint,sin2t,sin3t
-    real(kind=dk) cost,cos2t,cos3t
-    real(kind=dk) amag,sss
-    real(kind=dk) dum,rrr
-    real(kind=dk), dimension(3) :: uval
-    real(kind=dk), dimension(6) ::u, v, x, y
+    real(kind=fp) sint,sin2t,sin3t
+    real(kind=fp) cost,cos2t,cos3t
+    real(kind=fp) amag,sss
+    real(kind=fp) dum,rrr
+    real(kind=fp), dimension(3) :: uval
+    real(kind=fp), dimension(6) ::u, v, x, y
     !..........................................................statement function
     ! Define a statement function zerro(realnum) that returns "TRUE" if
     ! realnum equals zero to within machine precision and allowable round-off.
     ! Typically, machine precision is around 1.e-20 and calculations -- even
     ! analytical -- tend to be accurate to within 1.e-16. Thus, the allowable
     ! round-off allowance is roa=1.e-4.
-    real(kind=dk), parameter :: roa=1.d-4
-    real(kind=dk) :: realnum
+    real(kind=fp), parameter :: roa=1.d-4
+    real(kind=fp) :: realnum
     logical*8 :: zerro
-    zerro(realnum) = ((abs(realnum) * roa + 1.) -1. == 0.)
+    zerro(realnum) = ((abs(realnum) * roa + one) - one == zero)
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~eigen3x3
-    proj = 0.
+    proj = zero
 
     ! first invariant, mean of diagonals,  and Lode axial coordinate
     ri1 = a(1)+a(2)+a(3)
@@ -1069,10 +1059,10 @@ contains
     implicit none
     !......................................................................passed
     integer :: n
-    real(kind=dk), dimension(6,3) :: proj
-    real(kind=dk), dimension(3,3) :: evec
+    real(kind=fp), dimension(6,3) :: proj
+    real(kind=fp), dimension(3,3) :: evec
     !.......................................................................local
-    real(kind=dk), dimension(3) :: duma
+    real(kind=fp), dimension(3) :: duma
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~proj2evec
     if(n.eq.1)then     ! MMM
        call affinity(3,proj(1,2),evec(1,1),evec(1,2),evec(1,3))
@@ -1129,11 +1119,11 @@ contains
     implicit none
     !......................................................................passed
     integer :: m
-    real(kind=dk), dimension(6) :: p
-    real(kind=dk), dimension(3) :: evec1, evec2, evec3
+    real(kind=fp), dimension(6) :: p
+    real(kind=fp), dimension(3) :: evec1, evec2, evec3
     !.......................................................................local
     integer :: i, j, k, n
-    real(kind=dk) :: dum, fac
+    real(kind=fp) :: dum, fac
     ! The 3x3 map matrix gives the Voigt ID. map(i,j) equals the 6x1 Voigt ID
     ! of the ij component of the 3x3 projector. Thus, if you desire P(i,j),
     ! you should refer to it as P(map(i,j)). Note that P(map(i,i)) equals
