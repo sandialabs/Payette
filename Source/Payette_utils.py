@@ -516,7 +516,7 @@ def flatten(x):
     return result
 
 class BuildError(Exception):
-    def __init__(self, message, errno):
+    def __init__(self, message, errno=0):
         # errno:
         # 1: bad input files
         # 2: f2py failed
@@ -527,14 +527,14 @@ class BuildError(Exception):
         # 66 = No build attribute
         self.message = message
         self.errno = errno
-        logwrn(message)
+        sys.stderr.write(message + "\n")
         pass
 
     def __repr__(self):
         return self.__name__
 
     def __str__(self):
-        return repr(self.errno)
+        return self.message
 
 
 def get_module_name_and_path(py_file):
@@ -1160,6 +1160,7 @@ def get_constitutive_model(model_name):
     for key, val in constitutive_models.items():
         if model_name == key or model_name in val["aliases"]:
             constitutive_model = val
+            break
         continue
 
     if constitutive_model is None:
@@ -1180,6 +1181,7 @@ def get_constitutive_model_object(model_name):
     py_module = imp.load_module(py_mod, fobj, pathname, description)
     fobj.close()
     cmod = getattr(py_module, cls_nam)
+    del py_module
     return cmod
 
 
@@ -1189,12 +1191,13 @@ def get_installed_models():
         constitutive_models = pickle.load(fobj)
     return constitutive_models
 
+
 def parse_mtldb_file(mtldat_f, material=None):
     """Parse the material database file
 
     Parameters
     ----------
-    material : str
+    material : str, optional
       name of material
 
     Returns
@@ -1203,7 +1206,7 @@ def parse_mtldb_file(mtldat_f, material=None):
       list of tuples of (name, val) pairs
 
     """
-    iam = "Payette_utils" + "._parse_mtldb_file"
+    iam = "parse_mtldb_file"
 
     fext = os.path.splitext(mtldat_f)[1]
     if fext == ".py":
@@ -1212,7 +1215,7 @@ def parse_mtldb_file(mtldat_f, material=None):
         mtldat = parse_xml_mtldb_file(mtldat_f, material=material)
     else:
         reportError(
-            iam, "mtldat file parsing not enabled for this file type")
+            iam, "mtldat file parsing not enabled for file type: " + fext)
 
     return mtldat
 
@@ -1221,13 +1224,13 @@ def parse_py_mtldb_file(mtldat_f, material=None):
 
     Parameters
     ----------
-    matlabel : str
+    matlabel : str, optional
       name of material
 
     Returns
     -------
     mtldat : list
-      if matlabel not None:
+      if material is not None:
           list of tuples of (name, val) pairs for material parameter values
       else:
           list of tuples of (name, [aliase1, alias2,...]) pairs for valid
@@ -1240,12 +1243,18 @@ def parse_py_mtldb_file(mtldat_f, material=None):
     py_module = imp.load_module(py_mod, fobj, pathname, description)
     fobj.close()
 
-    __all__ = getattr(py_module, "__all__")
-    if __all__ is None or not isinstance(__all__, dict):
-        reportError(iam, ("__all__ attribute in {0} not defined"
-                             .format(mtldat_f)))
+    try:
+        __all__ = getattr(py_module, "__all__")
+    except AttributeError:
+        reportError(
+            iam, "required attribute __all__ not found in {0}".format(mtldat_f))
+
+    if not isinstance(__all__, dict):
+        reportError(
+            iam, "__all__ in {0} must be a dictionary".format(mtldat_f))
 
     if material is None:
+        # return a all materials and default values
         materials = []
         for mtl_nam in __all__:
             names = [mtl_nam]
@@ -1260,7 +1269,7 @@ def parse_py_mtldb_file(mtldat_f, material=None):
                     continue
                 mtldat.append((key, float(val)))
             materials.append((names, mtldat))
-            
+
         return materials
 
     # look for name of material in file
@@ -1276,16 +1285,35 @@ def parse_py_mtldb_file(mtldat_f, material=None):
             continue
 
     if mtl_nam is None:
-        reportError(iam, ("material {0} not found in {1}"
-                             .format(material, mtldat_f)))
+        reportError(
+            iam, "{0} not found in {1}".format(material, mtldat_f))
 
-    params = getattr(py_module, mtl_nam)
+    try:
+        params = getattr(py_module, mtl_nam)
+    except KeyError:
+        reportError(
+            iam, "{0} in __all__ but not in in {1}".format(material, mtldat_f))
+
     mtldat = []
+    badvals = 0
     for key, val in params.items():
         if key.lower() == "units":
+            # ultimately, we hope to use units, but for now we don't...
             continue
-        mtldat.append((key, float(val)))
+        try:
+            val = float(val)
+        except ValueError:
+            badvals += 1
+            logerr("expected float for parameter {0} got {1}".format(key, val))
+            continue
+
+        mtldat.append((key, val))
         continue
+
+    if badvals:
+        msg = ("stopping due to previous errors in {0} for material {1}"
+               .format(mtldat_f, material))
+        reportError(iam, msg)
 
     return mtldat
 
