@@ -58,18 +58,6 @@ import Source.Payette_utils as pu
 import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr
 
-def error(caller, message):
-    """ Give error message and exit. """
-
-    sys.exit("ERROR: {0} [reported by: {1}]".format(message, caller))
-
-
-def inform(message):
-    """ Write info to user. """
-
-    sys.stdout.write("INFO: {0}\n".format(message))
-    return
-
 
 class PayetteBarf(object):
     """ General Payette barf class. Converts barf file to Payette class object
@@ -77,9 +65,9 @@ class PayetteBarf(object):
 
     """
 
-    def __init__(self, barf_file, opts):
+    def __init__(self, barf_file):
 
-        inform("running barf file: {0}".format(barf_file))
+        pu.log_message("running barf file: {0}".format(barf_file))
 
         self.barf = {}
         self.barf["lines"] = []
@@ -94,14 +82,14 @@ class PayetteBarf(object):
         self.read_barf_file()
 
         # write message to screen
-        inform("constitutive model: {0}"
-               .format(self.barf["constitutive model"]))
-        inform("constitutive model version: {0}"
-               .format(self.barf["model version"]))
-        inform("constitutive model revision: {0}"
-               .format(self.barf["model revision"]))
-        inform("barf message: {0}"
-               .format(self.barf["barf message"]))
+        pu.log_message("constitutive model: {0}"
+                       .format(self.barf["constitutive model"]))
+        pu.log_message("constitutive model version: {0}"
+                       .format(self.barf["model version"]))
+        pu.log_message("constitutive model revision: {0}"
+                       .format(self.barf["model revision"]))
+        pu.log_message("barf message: {0}"
+                       .format(self.barf["barf message"]))
 
         # convert the barf file to a payette input
         self.payette_input = self._convert_to_payette()
@@ -111,7 +99,7 @@ class PayetteBarf(object):
 
         # instantiate the Payette object
         for key, val in input_dict.items():
-            the_model = pcntnr.Payette(key, val, opts)
+            the_model = pcntnr.Payette(key, val)
             break
 
         # the model has been set up, now advance the stress and state variables
@@ -182,17 +170,21 @@ class PayetteBarf(object):
                 continue
 
         if len(strain_rate) != 6:
-            error(iam, "len(strain_rate) = {0} != 6".format(len(strain_rate)))
+            pu.report_and_raise_error(
+                "len(strain_rate) = {0} != 6".format(len(strain_rate)),
+                tracebacklimit=0)
         else:
             self.barf["strain rate"] = np.array(strain_rate)
 
         if len(stress) != 6:
-            error(iam, "len(stress) = {0} != 6".format(len(stress)))
+            pu.report_and_raise_error(
+                "len(stress) = {0} != 6".format(len(stress)), tracebacklimit=0)
         else:
             self.barf["stress"] = np.array(stress)
 
         if not dtime:
-            error(iam, "invalid timestep {0}".format(dtime))
+            pu.report_and_raise_error(
+                "invalid timestep {0}".format(dtime), tracebacklimit=0)
         else:
             self.barf["time step"] = dtime
 

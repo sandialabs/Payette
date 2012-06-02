@@ -30,15 +30,21 @@ import linecache
 import numpy as np
 import pickle
 import imp
-from inspect import stack
+import inspect
+import warnings
 
 import Payette_config as pc
 import Source.Payette_extract as pe
+import Source.runopts as ro
 
 if not os.path.isfile(os.path.join(
         os.path.dirname(os.path.realpath(__file__)),"../Payette_config.py")):
-    sys.exit("ERROR: Payette_config.py must be written by configure.py")
+    report_and_raise_error(
+        "Payette_config.py must be written by configure.py",
+        tracebacklimit=0)
 
+
+SIMLOG = None
 EPSILON = np.finfo(np.float).eps
 ACCLIM = .0001 / 100.
 
@@ -57,31 +63,6 @@ AUTHORS
 '''
 
 
-class CountCalls(object):
-   "Decorator that keeps track of the number of times a function is called."
-
-   __instances = {}
-
-   def __init__(self, f):
-      self.__f = f
-      self.__numcalls = 0
-      CountCalls.__instances[f] = self
-
-   def __call__(self, *args, **kwargs):
-      self.__numcalls += 1
-      return self.__f(*args, **kwargs)
-
-   def count(self):
-      "Return the number of times the function f was called."
-      return CountCalls.__instances[self.__f].__numcalls
-
-   @staticmethod
-   def counts():
-      "Return a dict of {function: # of calls} for all registered functions."
-      return dict([(f.__name__, CountCalls.__instances[f].__numcalls)
-                   for f in CountCalls.__instances])
-
-
 class PayetteError(Exception):
     def __init__(self, msg, tracebacklimit=None):
 
@@ -96,28 +77,83 @@ class PayetteError(Exception):
         head = '\n\n' + st + stsp + psa + stsp + st
         Exception.__init__(self, head+msg)
 
+    def __repr__(self):
+        return "PayetteError"
+
 
 def whoami():
     """ return name of calling function """
-    return stack()[1][3]
+    return inspect.stack()[1][3]
 
 
-@CountCalls
-def reportMessage(f, msg, pre="INFO: "):
-    """ report message to log """
-#    msg = 'INFO: {0} (reported from [{1}])\n'.format(msg, f)
-    msg = '{0}{1}\n'.format(pre, msg)
-    simlog.write(msg)
-    if loglevel > 0: sys.stdout.write(msg)
+def who_is_calling():
+    """return the name of the calling function"""
+    stack = inspect.stack()[2]
+    return "{0}.{1}".format(
+        os.path.splitext(os.path.basename(stack[1]))[0], stack[3])
+
+
+def log_message(message, pre="INFO: ", end="\n", noisy=False):
+    """Report message to screen and write to log file if open"""
+    message = "{0}{1}{2}".format(pre, message, end)
+    if SIMLOG is not None:
+        SIMLOG.write(message)
+    if noisy or ro.VERBOSITY > 0:
+        sys.stdout.write(message)
     return
 
 
-@CountCalls
-def reportWarning(f, msg, limit=False):
-    """ report warning to log """
-    wcount = CountCalls.counts()[whoami()]
-    if limit:
+# the following methods define error logging, counting
+def error_count():
+    """Return the current number of errors"""
+    return __count_error(inquire=True)
+def __count_error(ecount=[0], inquire=False):
+    """Count the number of errors"""
+    if inquire:
+        return ecount[0]
+    ecount[0] += 1
+    return
+def report_error(message):
+    """Report error to screen and write to log file if open"""
+    __count_error()
+    stack = inspect.stack()[1]
+    message = "ERROR: {0} [reported by: {1}]\n".format(message,
+                                                       who_is_calling())
+    if SIMLOG is not None:
+        SIMLOG.write(message)
+    sys.stdout.write(message)
+    return
+def report_and_raise_error(message, tracebacklimit=None, caller=None):
+    """Report and raise an error"""
+    __count_error()
+
+    if caller is None:
+        caller = who_is_calling()
+
+    message = ("{0} [reported by: {1}]"
+               .format(" ".join(x for x in message.split() if x), caller))
+    raise PayetteError(message, tracebacklimit)
+
+
+# the following methods define warning logging, counting
+def warn_count():
+    return __count_warning(inquire=True)
+def __count_warning(wcount=[0], inquire=False):
+    if inquire:
+        return wcount[0]
+    wcount[0] += 1
+    return
+def log_warning(message, limit=False):
+    """Report warning to screen and write to log file if open"""
+
+    if ro.WARNING == "error":
+        report_and_raise_error(message, caller=who_is_calling())
+
+    __count_warning()
+
+    if limit and ro.WARNING != "all":
         max_warn = 1000
+        wcount = warn_count()
         if wcount <= max_warn / 200 - 1:
             thresh = wcount + 1
         elif wcount > max_warn / 200 and wcount < max_warn / 100:
@@ -126,72 +162,25 @@ def reportWarning(f, msg, limit=False):
             thresh = max_warn / 10
         else:
             thresh = max_warn
-        wcount += 1
         if wcount != thresh:
             return
 
-    msg = 'WARNING: {0} (reported from [{1}])\n'.format(msg, f)
-    simlog.write(msg)
-    if loglevel > 0:
-        sys.stdout.write(msg)
-    return
-
-
-@CountCalls
-def reportError(iam, msg, tracebacklimit=None):
-    """ report error to log and raise error """
-    iam = _adjust_nam_length(iam)
-    msg = '{0} (reported from [{1}])'.format(msg, iam)
-    raise PayetteError(msg, tracebacklimit)
-    return
-
-
-def migMessage(msg):
-    """ mig interface to reportMessage """
-    reportMessage("MIG", msg)
-    return
-
-
-def migError(msg):
-    """ mig interface to reportError """
-    msg = ' '.join([x for x in msg.split(' ') if x])
-    reportError("MIG", msg, tracebacklimit=0)
-    return
-
-
-def migWarning(msg):
-    """ mig interface to reportWarning """
-    reportWarning("MIG", msg)
-    return
-
-
-def write_msg_to_screen(iam, msg):
-    """ write a message to stdout """
-    sys.stdout.write("INFO: {0:s}\n".format(msg))
-    return
-
-
-def write_wrn_to_screen(iam, msg):
-    """ write warning to stdout """
-    sys.stdout.write("WARNING: {0:s}\n".format(msg))
+    message = "WARNING: {0} [reported by: {1}]\n".format(message,
+                                                         who_is_calling())
+    if SIMLOG is not None:
+        SIMLOG.write(message)
+    sys.stdout.write(message)
     return
 
 
 def write_to_simlog(msg):
     """ write message to simulation log """
     msg = "{0:s}\n".format(msg)
-    simlog.write(msg)
+    SIMLOG.write(msg)
     return
 
 
-def _adjust_nam_length(nam):
-    """ adjust the length of a file name """
-    if not os.path.isfile(nam):
-        return nam
-    return os.path.splitext(os.path.basename(nam))[0]
-
-
-def parse_token(n,stringa,token=r'|'):
+def parse_token(n, stringa, token=r'|'):
     """ python implementation of mig partok """
     parsed_string = []
     i = 0
@@ -215,6 +204,7 @@ def parse_token(n,stringa,token=r'|'):
         continue
     return parsed_string
 
+
 def check_py_version():
     """ check python version compatibility """
     (major, minor, micro, releaselevel, serial) = sys.version_info
@@ -223,26 +213,21 @@ def check_py_version():
     return
 
 
-def setup_logger(logfile, level, mode="w"):
+def setup_logger(logfile, mode="w"):
     """ set up the simulation logger """
-    global loglevel, simlog
-    loglevel = level
-    simlog = open(logfile, mode)
+    global SIMLOG
+    SIMLOG = open(logfile, mode)
     if mode == "w":
-        simlog.write(pc.PC_INTRO + "\n")
+        SIMLOG.write(pc.PC_INTRO + "\n")
     return
-
-
-def parse_error(message):
-    """ quite on parsing error """
-    sys.exit("ERROR: {0}".format(message))
 
 
 def read_input(user_input, user_cchar=None):
     """ read a list of user inputs and return """
 
     if not user_input:
-        parse_error("no user input sent to read_input")
+        report_and_raise_error("no user input sent to read_input",
+                               tracebacklimit=0)
         pass
 
     # comment characters
@@ -263,24 +248,21 @@ def read_input(user_input, user_cchar=None):
     incompatible_blocks = (("visualization", "optimization", "enumeration"),)
 
     user_dict = {}
-    errors = 0
-    warnings = 0
 
     for input_set in input_sets:
 
         if "simulation" not in input_set:
-            warnings += 1
             keys = ", ".join(input_set.keys())
-            logwrn("expected to find a simulation block but found: {0}"
-                   .format(keys))
+            log_warning("expected to find a simulation block but found: {0}"
+                        .format(keys))
             continue
 
         simkey = input_set["simulation"]["name"]
         if not simkey:
-            errors += 1
-            logerr('did not find simulation name.  Simulation block '
-                   'must be of form:\n'
-                   '\tbegin simulation <simulation name> ... end simulation')
+            report_error(
+                'did not find simulation name.  Simulation block '
+                'must be of form:\n'
+                '\tbegin simulation <simulation name> ... end simulation')
             continue
 
         # check for incompatibilities
@@ -288,23 +270,24 @@ def read_input(user_input, user_cchar=None):
                       if x not in recognized_blocks]
 
         if bad_blocks:
-            errors += 1
-            logerr("unrecognized blocks: {0}".format(", ".join(bad_blocks)))
+            report_error(
+                "unrecognized blocks: {0}".format(", ".join(bad_blocks)))
 
         for item in incompatible_blocks:
             bad_blocks = [x for x in input_set["simulation"] if x in item]
             if len(bad_blocks) > 1:
-                errors += 1
-                logerr("{0} blocks incompatible, choose one"
-                       .format(", ".join(bad_blocks)))
+                report_error(
+                    "{0} blocks incompatible, choose one"
+                    .format(", ".join(bad_blocks)))
             continue
 
         user_dict[simkey] = input_set["simulation"]
 
         continue
 
-    if errors:
-        parse_error("resolve previous errors")
+    if error_count():
+        report_and_raise_error("stopping due to previous errors",
+                               tracebacklimit=0)
 
     return user_dict
 
@@ -363,7 +346,9 @@ def _get_blocks(user_input):
                 block_typ = split_line[1]
 
             except ValueError:
-                parse_error("encountered a begin directive with no block type")
+                report_and_raise_error(
+                    "encountered a begin directive with no block type",
+                    tracebacklimit=0)
 
             # get the (optional) block name
             try:
@@ -383,8 +368,9 @@ def _get_blocks(user_input):
 
             else:
                 if block_typ in block[block_stack[0]]:
-                    parse_error("duplicate block \"{0}\" encountered"
-                                .format(block_typ))
+                    report_and_raise_error(
+                        "duplicate block \"{0}\" encountered".format(block_typ),
+                        tracebacklimit=0)
 
                 block[block_stack[0]][block_typ] = new_block[block_typ]
 
@@ -400,11 +386,14 @@ def _get_blocks(user_input):
             try:
                 block_typ = split_line[1]
             except ValueError:
-                parse_error("encountered a end directive with no block type")
+                report_and_raise_error(
+                    "encountered a end directive with no block type",
+                    tracebacklimit=0)
 
             if block_stack[-1] != block_typ:
-                parse_error('unexpected "end {0}" directive, expected "end {1}"'
-                            .format(block_typ, block_stack[-1]))
+                msg = ('unexpected "end {0}" directive, expected "end {1}"'
+                       .format(block_typ, block_stack[-1]))
+                report_and_raise_error(msg, tracebacklimit=0)
 
             # Remove this block from the block stack
             block_stack.pop()
@@ -483,11 +472,17 @@ def textformat(var):
 
 def close_aux_files():
     """ close auxilary files """
+    global SIMLOG
+
     try:
-        simlog.close()
+        SIMLOG.close()
 
     except OSError:
         pass
+
+    SIMLOG = None
+
+    return
 
 
 def flatten(x):
@@ -564,43 +559,6 @@ def endmes(msg, pre="", end="\n", verbose=True):
     return
 
 
-def loginf(msg, pre="", end="\n", caller=None, verbose=True):
-    """ log an info message to stdout """
-    if not verbose:
-        return
-    if caller is not None:
-        msg = "{0} [reported by {1}]".format(msg, caller)
-    print("{0}INFO: {1}".format(pre, msg), end=end)
-    return
-
-
-def logmes(msg, pre="", end="\n", caller=None, verbose=True):
-    """ log a message to stdout """
-    if not verbose:
-        return
-    if caller is not None:
-        msg = "{0} [reported by {1}]".format(msg, caller)
-    print("{0}{1}".format(pre, msg), end=end)
-    return
-
-
-def logwrn(msg, pre="", end="\n", caller=None):
-    """ log a warning to stdout """
-    if caller is not None:
-        msg = "{0} [reported by {1}]".format(msg, caller)
-
-    print("{0}WARNING: {1}".format(pre, msg), end=end)
-    return
-
-
-def logerr(msg, pre="", end="\n", caller=None):
-    """ log an error to stdout """
-    if caller is not None:
-        msg = "{0} [reported by {1}]".format(msg, caller)
-
-    print("{0}ERROR: {1}".format(pre, msg), end=end)
-    return
-
 def get_header(fpath):
     """Get the header of f
 
@@ -672,14 +630,16 @@ def compute_rms_closest_point_residual(set1x, set1y, set2x, set2y):
     lset1x, lset1y, lset2x, lset2y = [len(x)
                                       for x in [set1x, set1y, set2x, set2y]]
     if lset1x != lset1y:
-        sys.exit("len(set1x) != len(set1y)")
+        report_and_raise_error("len(set1x) != len(set1y)", tracebacklimit=0)
     if lset2x != lset2y:
-        sys.exit("len(set2x) != len(set2y)")
+        report_and_raise_error("len(set2x) != len(set2y)", tracebacklimit=0)
 
     if lset1x < 2:
-        sys.exit("set1 must have at least two points.")
+        report_and_raise_error("set1 must have at least two points.",
+                               tracebacklimit=0)
     if lset2x < 1:
-        sys.exit("set2 must have at least one point.")
+        report_and_raise_error("set2 must have at least one point.",
+                               tracebacklimit=0)
 
     dx = max(set1x)-min(set1x)
     dy = max(set1y)-min(set1y)
@@ -775,9 +735,10 @@ def compute_rms(set1x, set1y, set2x, set2y, step=1):
     lset1x, lset1y, lset2x, lset2y = [len(x)
                                       for x in [set1x, set1y, set2x, set2y]]
     if lset1x != lset1y:
-        sys.exit("len(set1x) != len(set1y)")
+        report_and_raise_error("len(set1x) != len(set1y)",
+                               tracebacklimit=0)
     if lset2x != lset2y:
-        sys.exit("len(set2x) != len(set2y)")
+        report_and_raise_error("len(set2x) != len(set2y)", tracebacklimit=0)
 
     # Use a shortcut if the lengths of the x and y data sets are the same.
     # Also, before using the shortcut, do a quick check by computing the RMS
@@ -868,36 +829,29 @@ def compare_out_to_gold_rms(gold_f, out_f, to_skip=None):
 
     """
 
-    iam = "compare_out_to_gold_rms(gold_f, out_f)"
-    errors = 0
-
     if not os.path.isfile(gold_f):
-        logerr("gold file {0} not found".format(gold_f), caller=iam)
-        errors += 1
+        report_error("gold file {0} not found".format(gold_f))
         pass
 
     if not os.path.isfile(out_f):
-        logerr("output file {0} not found".format(out_f), caller=iam)
-        errors += 1
+        report_error("output file {0} not found".format(out_f))
         pass
 
-    if errors:
-        return errors, None, None
+    if error_count():
+        return error_count(), None, None
 
     # read in header
     out_h = [x.lower() for x in get_header(out_f)]
     gold_h = [x.lower() for x in get_header(gold_f)]
 
     if out_h[0] != "time":
-        errors += 1
-        logerr("time not in outfile {0}".format(out_f), caller=iam)
+        report_error("time not in outfile {0}".format(out_f))
 
     if gold_h[0] != "time":
-        errors += 1
-        logerr("time not in gold file {0}".format(gold_f), caller=iam)
+        report_error("time not in gold file {0}".format(gold_f))
 
-    if errors:
-        return errors, None, None
+    if error_count():
+        return error_count(), None, None
 
     # read in data
     out = read_data(out_f)
@@ -911,11 +865,9 @@ def compare_out_to_gold_rms(gold_f, out_f, to_skip=None):
         rmsd, nrmsd = 1.0e99, 1.0e99
 
     if nrmsd > EPSILON:
-        errors += 1
-        logerr("time step error between {0} and {1}".format(out_f, gold_f),
-               caller=iam)
+        report_error("time step error between {0} and {1}".format(out_f, gold_f))
 
-    if errors:
+    if error_count():
         return 1, None, None
 
     # get items to skip and compare
@@ -961,21 +913,16 @@ def compare_file_cols(file_1, file_2, cols=["all"]):
 
     """
 
-    iam = "compare_file_cols(file_1, file_2, cols)"
-    errors = 0
-
     if not os.path.isfile(file_1):
-        logerr("file {0} not found".format(file_1), caller=iam)
-        errors += 1
+        report_error("file {0} not found".format(file_1))
         pass
 
     if not os.path.isfile(file_2):
-        logerr("file {0} not found".format(file_2), caller=iam)
-        errors += 1
+        report_error("file {0} not found".format(file_2))
         pass
 
-    if errors:
-        return errors, None, None
+    if error_count():
+        return error_count(), None, None
 
     # read in header
     head_1 = [x.lower() for x in get_header(file_1)]
@@ -987,8 +934,7 @@ def compare_file_cols(file_1, file_2, cols=["all"]):
 
     # for now, the number of rows must be the same
     if dat_1.shape[0] != dat_2.shape[0]:
-        logerr("shape of {0} != shape of {1}"
-               .format(file_1, file_2), caller=iam)
+        report_error("shape of {0} != shape of {1}".format(file_1, file_2))
         return 1, None, None
 
     to_compare = [x for x in head_2 if x in head_1] # if x not in to_skip]
@@ -1103,10 +1049,12 @@ def _get_input_lines(raw_user_input, cchars):
             # check if insert is given in file
             idx_0, idx_f, block_insert = _find_block(user_input, block)
             if idx_0 is None:
-                parse_error("'use' block '{0:s}' not found".format(block))
+                report_and_raise_error("'use' block '{0:s}' not found".format(block),
+                             tracebacklimit=0)
             elif idx_f is None:
-                parse_error("end of 'use' block '{0:s}' not found"
-                            .format(block))
+                report_and_raise_error(
+                    "end of 'use' block '{0:s}' not found".format(block),
+                    tracebacklimit=0)
 
             used_blocks.append(block)
             all_input.extend(block_insert)
@@ -1116,7 +1064,9 @@ def _get_input_lines(raw_user_input, cchars):
             insert = " ".join(line.split()[1:])
 
             if not os.path.isfile(insert):
-                parse_error("inserted file '{0:s}' not found".format(insert))
+                report_and_raise_error(
+                    "inserted file '{0:s}' not found".format(insert),
+                    tracebacklimit=0)
 
             insert_lines = open(insert, "r").readlines()
             all_input.extend(_remove_all_comments(insert_lines, cchars))
@@ -1154,7 +1104,6 @@ def _remove_all_comments(lines, cchars):
 
 def get_constitutive_model(model_name):
     """ get the constitutive model dictionary of model_name """
-    constitutive_model = None
     constitutive_models = get_installed_models()
 
     for key, val in constitutive_models.items():
@@ -1163,8 +1112,10 @@ def get_constitutive_model(model_name):
             break
         continue
 
-    if constitutive_model is None:
-        logerr("constitutive model {0} not found".format(model_name))
+    else:
+        report_and_raise_error(
+            "constitutive model {0} not found, installed models are: {1}"
+            .format(model_name, ", ".join(constitutive_models)))
 
     return constitutive_model
 
@@ -1173,7 +1124,8 @@ def get_constitutive_model_object(model_name):
     """ get the actual model object """
     constitutive_model = get_constitutive_model(model_name)
     if constitutive_model is None:
-        sys.exit("stopping due to previous errors")
+        report_and_raise_error("stopping due to previous errors",
+                               tracebacklimit=0)
     py_mod = constitutive_model["module"]
     py_path = [os.path.dirname(constitutive_model["file"])]
     cls_nam = constitutive_model["class name"]
@@ -1206,16 +1158,14 @@ def parse_mtldb_file(mtldat_f, material=None):
       list of tuples of (name, val) pairs
 
     """
-    iam = "parse_mtldb_file"
-
     fext = os.path.splitext(mtldat_f)[1]
     if fext == ".py":
         mtldat = parse_py_mtldb_file(mtldat_f, material=material)
     elif fext == ".xml":
         mtldat = parse_xml_mtldb_file(mtldat_f, material=material)
     else:
-        reportError(
-            iam, "mtldat file parsing not enabled for file type: " + fext)
+        report_and_raise_error(
+            "mtldat file parsing not enabled for file type: " + fext)
 
     return mtldat
 
@@ -1236,8 +1186,6 @@ def parse_py_mtldb_file(mtldat_f, material=None):
           list of tuples of (name, [aliase1, alias2,...]) pairs for valid
           materials
     """
-    iam = "parse_py_mtldb_file"
-
     py_mod, py_path = get_module_name_and_path(mtldat_f)
     fobj, pathname, description = imp.find_module(py_mod, py_path)
     py_module = imp.load_module(py_mod, fobj, pathname, description)
@@ -1246,12 +1194,12 @@ def parse_py_mtldb_file(mtldat_f, material=None):
     try:
         __all__ = getattr(py_module, "__all__")
     except AttributeError:
-        reportError(
-            iam, "required attribute __all__ not found in {0}".format(mtldat_f))
+        report_and_raise_error(
+            "required attribute __all__ not found in {0}".format(mtldat_f))
 
     if not isinstance(__all__, dict):
-        reportError(
-            iam, "__all__ in {0} must be a dictionary".format(mtldat_f))
+        report_and_raise_error(
+            "__all__ in {0} must be a dictionary".format(mtldat_f))
 
     if material is None:
         # return a all materials and default values
@@ -1273,29 +1221,23 @@ def parse_py_mtldb_file(mtldat_f, material=None):
         return materials
 
     # look for name of material in file
-    mtl_nam = None
-    if material in __all__:
-        mtl_nam = material
+    for name, aliases in __all__.items():
+        if material in aliases + [name]:
+            mtl_nam = name
+            break
+        continue
 
     else:
-        for name, aliases in __all__.items():
-            if material in aliases:
-                mtl_nam = name
-                break
-            continue
-
-    if mtl_nam is None:
-        reportError(
-            iam, "{0} not found in {1}".format(material, mtldat_f))
+        report_and_raise_error(
+            "{0} not found in {1}".format(material, os.path.basename(mtldat_f)))
 
     try:
         params = getattr(py_module, mtl_nam)
     except KeyError:
-        reportError(
-            iam, "{0} in __all__ but not in in {1}".format(material, mtldat_f))
+        report_and_raise_error(
+            "{0} in __all__ but not in in {1}".format(material, mtldat_f))
 
     mtldat = []
-    badvals = 0
     for key, val in params.items():
         if key.lower() == "units":
             # ultimately, we hope to use units, but for now we don't...
@@ -1303,17 +1245,17 @@ def parse_py_mtldb_file(mtldat_f, material=None):
         try:
             val = float(val)
         except ValueError:
-            badvals += 1
-            logerr("expected float for parameter {0} got {1}".format(key, val))
+            report_error(
+                "expected float for parameter {0} got {1}".format(key, val))
             continue
 
         mtldat.append((key, val))
         continue
 
-    if badvals:
+    if error_count():
         msg = ("stopping due to previous errors in {0} for material {1}"
                .format(mtldat_f, material))
-        reportError(iam, msg)
+        report_and_raise_error(msg, tracebacklimit=0)
 
     return mtldat
 
@@ -1337,8 +1279,6 @@ def parse_xml_mtldb_file(mtldat_f, material=None):
           list of tuples of (name, [aliase1, alias2,...]) pairs for valid
           materials
     """
-    iam = "parse_xml_mtldb_file"
-
     import xml.dom.minidom as xdom
 
     # Load the material database file
@@ -1390,13 +1330,74 @@ def parse_xml_mtldb_file(mtldat_f, material=None):
 
 # the following are being kept around for back compatibiltiy
 def parseToken(*args, **kwargs):
+    message = (
+        "parseToken to be depricated, use parse_token "
+        "[called by: {0}]".format(who_is_calling()))
+    warnings.warn(message)
     return parse_token(*args, **kwargs)
 def checkPythonVersion():
+    message = (
+        "checkPythonVersion to be depricated, use check_py_version "
+        "[called by: {0}]".format(who_is_calling()))
+    warnings.warn(message)
     return check_py_version()
-def writeMessage(*args):
-    return write_msg_to_screen(*args)
-def writeWarning(*args):
-    return write_wrn_to_screen(*args)
-def writeToLog(*args):
-    return write_to_simlog(*args)
+def reportMessage(f, msg, pre="INFO: "):
+    message = (
+        "reportMessage to be depricated, use log_message "
+        "[called by: {0}]".format(who_is_calling()))
+    warnings.warn(message)
+    return log_message(msg)
+def migMessage(message):
+    message = (
+        "migMessage to be depricated, use log_message "
+        "[called by: {0}]".format(who_is_calling()))
+    warnings.warn(message)
+    return log_message(message)
+def reportError(iam, msg, tracebacklimit=None):
+    message = (
+        "reportError to be depricated, use report_and_raise_error "
+        "[called by: {0}]".format(who_is_calling()))
+    warnings.warn(message)
+    return report_and_raise_error(msg)
+def migError(msg):
+    message = (
+        "migError to be depricated, use report_and_raise_error "
+        "[called by: {0}]".format(who_is_calling()))
+    warnings.warn(message)
+    return report_and_raise_error(msg)
+def reportWarning(f, msg, limit=False):
+    message = (
+        "reportWarning to be depricated, use log_warning "
+        "[called by: {0}]".format(who_is_calling()))
+    warnings.warn(message)
+    return log_warning(msg, limit=limit)
+def logerr(msg, pre="", end="\n", caller=None):
+    message = (
+        "logerr to be depricated, use report_error "
+        "[called by: {0}]".format(who_is_calling()))
+    warnings.warn(message)
+    return report_error(msg)
+def logwrn(msg, pre="", end="\n", caller=None):
+    message = (
+        "logwrn to be depricated, use log_warning "
+        "[called by: {0}]".format(who_is_calling()))
+    warnings.warn(message)
+    return log_warning(msg)
+def logmes(msg, pre="", end="\n", caller=None, verbose=True):
+    message = (
+        "logmes to be depricated, use log_message "
+        "[called by: {0}]".format(who_is_calling()))
+    warnings.warn(message)
+    return log_message(msg)
+
+
+
+
+
+
+
+
+
+
+
 

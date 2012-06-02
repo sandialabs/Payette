@@ -159,42 +159,42 @@ def test_payette(argv):
     # number of processors
     nproc = min(mp.cpu_count(), opts.nproc)
 
-    pu.logmes(pc.PC_INTRO)
+    pu.log_message(pc.PC_INTRO, pre="")
 
     # pass user option to global variables
     FORCERERUN = opts.FORCERERUN or opts.TESTFILE
     POSTPROCESS = opts.POSTPROCESS
 
     # find tests
-    errors = 0
-    pu.loginf("Testing Payette")
+    pu.log_message("Testing Payette")
     test_dirs = pc.PC_TESTS
     for dirnam in opts.BENCHDIRS:
         dirnam = os.path.expanduser(dirnam)
         if not os.path.isdir(dirnam):
-            errors += 1
-            pu.logerr("benchmark directory {0} not found".format(dirnam))
+            pu.report_error("benchmark directory {0} not found".format(dirnam))
         elif "__test_dir__.py" not in os.listdir(dirnam):
-            errors += 1
-            pu.logerr("__test_dir__.py not found in {0}".format(dirnam))
+            pu.report_error("__test_dir__.py not found in {0}".format(dirnam))
         continue
-    if errors:
-        sys.exit("ERROR: stopping due to previous errors")
+    if pu.error_count():
+        pu.report_and_raise_error("stopping due to previous errors",
+                                  tracebacklimit=0)
 
     t_start = time.time()
     conforming = None
     if opts.TESTFILE:
         try:
-            pu.loginf("Using Payette tests from\n{0}"
-                      .format(" " * 6 + pc.PC_FOUND_TESTS))
+            pu.log_message("Using Payette tests from\n{0}"
+                           .format(" " * 6 + pc.PC_FOUND_TESTS))
             conforming = load(open(pc.PC_FOUND_TESTS, "r"))
         except IOError:
-            pu.logwrn("test file {0} not imported".format(pc.PC_FOUND_TESTS))
+            pu.log_warning(
+                "test file {0} not imported".format(pc.PC_FOUND_TESTS))
 
 
+    errors = 0
     if conforming is None:
-        pu.loginf("Gathering Payette tests from\n{0}"
-                  .format("\n".join([" " * 6 + x for x in test_dirs])))
+        pu.log_message("Gathering Payette tests from\n{0}"
+                       .format("\n".join([" " * 6 + x for x in test_dirs])))
         errors, found_tests = find_tests(opts.KEYWORDS, opts.NOKEYWORDS,
                                          opts.SPECTESTS, test_dirs)
 
@@ -223,10 +223,11 @@ def test_payette(argv):
     t_find = time.time() - t_start
 
     if errors and not opts.IGNOREERROR:
-        sys.exit("fix nonconforming benchmarks before continuing")
+        pu.report_and_raise_error(
+            "fix nonconforming benchmarks before continuing", tracebacklimit=0)
 
-    pu.loginf("Found {0} Payette tests in {1:.2f}s."
-              .format(len(conforming), t_find), end="\n\n")
+    pu.log_message("Found {0} Payette tests in {1:.2f}s."
+                   .format(len(conforming), t_find), end="\n\n")
 
     if opts.INDEX:
         out = sys.stderr
@@ -256,7 +257,8 @@ def test_payette(argv):
         return 0
 
     if not conforming:
-        sys.exit("No tests found")
+        pu.report_and_raise_error("No tests found",
+                                  tracebacklimit=0)
 
     # start the timer
     t_start = time.time()
@@ -306,9 +308,10 @@ def test_payette(argv):
         test_res[i] = {}
         continue
 
-    pu.logmes("=" * WIDTH_TERM)
-    pu.logmes("Running {0} benchmarks:".format(len(conforming)))
-    pu.logmes("=" * WIDTH_TERM)
+    pu.log_message("=" * WIDTH_TERM, pre="")
+    pu.log_message("Running {0} benchmarks:".format(len(conforming)),
+                   pre="")
+    pu.log_message("=" * WIDTH_TERM, pre="")
 
     # run the tests on multiple processors using the multiprocessor map ONLY f
     # nprocs > 1. For debug purposes, when nprocs=1, run without using the
@@ -323,7 +326,7 @@ def test_payette(argv):
         pool.join()
 
     t_run = time.time() - t_start
-    pu.logmes("=" * WIDTH_TERM)
+    pu.log_message("=" * WIDTH_TERM, pre="")
 
     # copy the mathematica notebooks to the output directory
     for mtldir, mathnb in mathnbs.items():
@@ -373,7 +376,7 @@ def test_payette(argv):
             if status not in test_statuses:
                 msg = ("return code {0} from {1} not recognized"
                        .format(status, name))
-                pu.logwrn(msg)
+                pu.log_warning(msg)
                 continue
             tcompletion = summary["completion time"]
             benchdir = summary["benchmark directory"]
@@ -447,13 +450,13 @@ def test_payette(argv):
 
     # This sends an email to everyone on the mailing list.
     if opts.NOTIFY:
-        pu.logmes("Sending results to mailing list.")
+        pu.log_message("Sending results to mailing list.", pre="")
         pn.notify("Payette Benchmarks", longtxtsummary)
 
-    pu.logmes(longtxtsummary)
-    pu.logmes("=" * WIDTH_TERM)
-    pu.logmes(txtsummary)
-    pu.logmes("=" * WIDTH_TERM)
+    pu.log_message(longtxtsummary, pre="")
+    pu.log_message("=" * WIDTH_TERM, pre="")
+    pu.log_message(txtsummary, pre="")
+    pu.log_message("=" * WIDTH_TERM, pre="")
 
     # write out the results to the summary file
     write_py_summary(summpy, test_res)
@@ -513,11 +516,12 @@ def run_payette_test(py_file):
     ran = [x for x in RANTESTS if x == test.name]
 
     if not FORCERERUN and ran and os.path.isdir(benchdir):
-        pu.logmes("{0}".format(test.name) +
-                  " " * (50 - len(test.name)) +
-                  "{0:>10s}".format("notrun\n") +
-                  "Test already ran. " +
-                  "Use -F option to force a rerun")
+        pu.log_message(
+            "{0}".format(test.name) +
+            " " * (50 - len(test.name)) +
+            "{0:>10s}".format("notrun\n") +
+            "Test already ran. " +
+            "Use -F option to force a rerun", pre="")
         result = {test.name: {"status": "notrun",
                               "keywords": test.keywords,
                               "completion time": "NA",
@@ -525,8 +529,9 @@ def run_payette_test(py_file):
         return result
 
     # Let the user know which test is running
-    pu.logmes("{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
-              "{0:>{1}s}".format("RUNNING", WIDTH_INFO))
+    pu.log_message(
+        "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
+        "{0:>{1}s}".format("RUNNING", WIDTH_INFO), pre="")
 
     # Create benchmark directory and copy the input and baseline files into the
     # new directory
@@ -550,11 +555,13 @@ def run_payette_test(py_file):
             source = base_f
             link_name = os.path.join(benchdir, os.path.basename(base_f))
             if not os.path.isfile(source):
-                pu.logerr("cannot symlink to non-existant file\n"+
-                          "os.symlink({0},{1})".format(repr(source),repr(link_name)))
+                pu.report_error(
+                    "cannot symlink to non-existant file\n" +
+                    "os.symlink({0},{1})".format(repr(source),repr(link_name)))
             if os.path.isfile(link_name):
-                pu.logerr("cannot create symlink when link destination exists\n"+
-                          "os.symlink({0},{1})".format(repr(source),repr(link_name)))
+                pu.report_error(
+                    "cannot create symlink when link destination exists\n"+
+                    "os.symlink({0},{1})".format(repr(source),repr(link_name)))
             os.symlink(
                 base_f,
                 os.path.join(benchdir, os.path.basename(base_f)))
@@ -587,8 +594,9 @@ def run_payette_test(py_file):
     # Print output at completion
     tcompletion = time.time() - starttime
     info_string = "{0} ({1:6.02f}s)".format(retcode.upper(), tcompletion)
-    pu.logmes("{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
-              "{0:>{1}s}".format(info_string, WIDTH_INFO))
+    pu.log_message(
+        "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
+        "{0:>{1}s}".format(info_string, WIDTH_INFO), pre="")
 
     # return to the directory we came from
     os.chdir(CWD)
@@ -685,7 +693,9 @@ def write_html_summary(fname, results):
 if __name__ == "__main__":
 
     if not os.path.isfile(pc.PC_MTLS_FILE):
-        sys.exit("buildPayette must be executed before tests can be run")
+        pu.report_and_raise_error(
+            "buildPayette must be executed before tests can be run",
+            tracebacklimit=0)
 
     ARGV = sys.argv[1:]
     if "--profile" in ARGV:

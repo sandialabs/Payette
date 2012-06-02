@@ -28,6 +28,8 @@ import numpy.linalg as la
 
 import Source.Payette_iterative_solvers as piter
 import Source.Payette_utils as pu
+import Source.runopts as ro
+
 from Source.Payette_tensor import I3X3, powm, expm, logm, sqrtm, to_array
 
 
@@ -99,7 +101,7 @@ def velgrad_from_strain(simdat, matdat):
     dstrain = (strain_f - strain_0) / delt
 
     # stretch and its rate
-    stretch = right_stretch(kappa, strain_f, simdat.STRICT)
+    stretch = right_stretch(kappa, strain_f)
 
     # center X on half step
     X = 0.5 * (la.inv(kappa * strain_f + I3X3) +
@@ -167,7 +169,7 @@ def velgrad_from_defgrad(simdat, matdat):
     return
 
 
-def velgrad_from_stress(simdat, matdat):
+def velgrad_from_stress(material, simdat, matdat):
     """Seek to determine the unknown components of the symmetric part of
     velocity gradient d[v] satisfying
 
@@ -180,6 +182,7 @@ def velgrad_from_stress(simdat, matdat):
 
     Parameters
     ----------
+    material : constitutive model instance
     simdat : data container object
        simulation data container
     matdat : data container object
@@ -208,13 +211,11 @@ def velgrad_from_stress(simdat, matdat):
     written by Tom Pucick for his MMD material model driver.
 
     """
-
-    material = simdat.MATERIAL
     depsdt_old = matdat.get_data("strain rate")
     nzc = matdat.get_data("prescribed stress components")
     l_nzc = len(nzc)
 
-    if not simdat.PROPORTIONAL:
+    if not ro.PROPORTIONAL:
 
         converged = piter.newton(material, simdat, matdat)
 
@@ -290,8 +291,6 @@ def update_deformation(simdat, matdat):
 
     """
 
-    iam = "updateDeformation(simdat, matdat)"
-
     # get data from containers
     kappa = simdat.KAPPA
     delt = simdat.get_data("time step")
@@ -299,16 +298,16 @@ def update_deformation(simdat, matdat):
     sym_velgrad = matdat.get_data("rate of deformation", form="Matrix")
     vorticity = matdat.get_data("vorticity", form="Matrix")
 
-    defgrad_f = expm((sym_velgrad + vorticity) * delt, simdat.STRICT)
+    defgrad_f = expm((sym_velgrad + vorticity) * delt)
     defgrad_f *= defgrad_0
-    stretch = sqrtm((defgrad_f.T) * defgrad_f, simdat.STRICT)
+    stretch = sqrtm((defgrad_f.T) * defgrad_f)
     if kappa == 0:
-        strain = logm(stretch, simdat.STRICT)
+        strain = logm(stretch)
     else:
-        strain = 1. / kappa * (powm(stretch, kappa, simdat.STRICT) - I3X3)
+        strain = 1. / kappa * (powm(stretch, kappa) - I3X3)
 
     if np.linalg.det(defgrad_f) <= 0.:
-        pu.reportError(iam, "negative Jacobian encountered")
+        pu.report_and_raise_error("negative Jacobian encountered")
 
     matdat.store_data("strain", strain)
     matdat.store_data("deformation gradient", defgrad_f)
@@ -321,7 +320,7 @@ def update_deformation(simdat, matdat):
     return
 
 
-def right_stretch(kappa, strain, strict=False):
+def right_stretch(kappa, strain):
     """Compute the symmtetric part U (right stretch) of the polar
     decomposition of the deformation gradient F = RU.
 
@@ -347,12 +346,12 @@ def right_stretch(kappa, strain, strict=False):
 
     """
     if kappa == 0.:
-        return expm(np.matrix(strain), strict)
+        return expm(np.matrix(strain))
     else:
-        return powm(kappa * np.matrix(strain) + I3X3, 1. / kappa, strict)
+        return powm(kappa * np.matrix(strain) + I3X3, 1. / kappa)
 
 
-def left_stretch(kappa, strain, strict=False):
+def left_stretch(kappa, strain):
     """Compute the symmtetric part V (left stretch) of the polar decomposition
     of the deformation gradient F = VR.
 
@@ -378,6 +377,6 @@ def left_stretch(kappa, strain, strict=False):
 
     """
     if kappa == 0.:
-        return expm(np.matrix(strain), strict)
+        return expm(np.matrix(strain))
     else:
-        return powm(kappa * np.matrix(strain) + I3X3, 1. / kappa, strict)
+        return powm(kappa * np.matrix(strain) + I3X3, 1. / kappa)

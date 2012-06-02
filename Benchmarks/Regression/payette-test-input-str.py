@@ -17,10 +17,11 @@ class Test(PayetteTest):
         self.outfile = "{0}.out".format(self.name)
         self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
         self.input_string = self.get_input_string()
-        self.runcommand = ["--no-restart","--no-writeprops","-v","0",
+        self.runcommand = ["--no-restart", "--no-writeprops", "-v", "0",
                            "--input-str={0}".format(self.input_string)]
         self.material = "elastic"
-        self.keywords = ["payette","input_str","regression","fast","builtin"]
+        self.keywords = ["payette", "input_str", "regression",
+                         "fast", "builtin"]
 
         self.owner = "Tim Fuller"
         self.date = "February 25, 2012"

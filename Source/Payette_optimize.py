@@ -37,6 +37,7 @@ from copy import deepcopy
 import Source.Payette_utils as pu
 import Source.Payette_container as pc
 import Source.Payette_extract as pe
+import Source.runopts as ro
 import Toolset.KayentaParamConv as kpc
 
 # Module level variables
@@ -48,7 +49,7 @@ FNEWEXT = ".0x312.gold"
 class Optimize(object):
     r"""docstring -> needs to be completed """
 
-    def __init__(self, job, job_inp, job_opts):
+    def __init__(self, job, job_inp):
         r""" Initialization """
 
         # get the optimization block
@@ -58,16 +59,15 @@ class Optimize(object):
         # save Perturbate information to single "data" dictionary
         self.data = {}
         self.data["basename"] = job
-        self.data["verbosity"] = job_opts.verbosity
-        self.data["return level"] = job_opts.disp
+        self.data["verbosity"] = ro.VERBOSITY
+        self.data["return level"] = ro.DISP
         self.data["fext"] = ".opt"
         self.data["baseinp"] = job_inp
         self.data["options"] = []
 
-        # set verbosity to 0 for Payette simulation and save the payette
+        # set the loglevel to 0 for Payette simulation and save the payette
         # options to the data dictionary
-        job_opts.verbosity = 0
-        self.data["payette opts"] = job_opts
+        ro.set_global_option("VERBOSITY", 0, default=True)
 
         # fill the data with the optimization information
         self.parse_optimization_block(optimize)
@@ -75,8 +75,8 @@ class Optimize(object):
         if "shearfit" not in self.data["options"]:
             # check user input for required blocks
             if "material" not in job_inp:
-                pu.logerr("material block not found in input file")
-                sys.exit(123)
+                pu.report_and_raise_error(
+                    "material block not found in input file", tracebacklimit=0)
 
         # check the optimization variables
         self.check_params()
@@ -88,20 +88,26 @@ class Optimize(object):
             self.init_shearfit()
 
         if self.data["verbosity"]:
-            pu.loginf("Optimizing {0}".format(job))
-            pu.loginf("Optimization variables: {0}"
-                      .format(", ".join(self.data["optimize"])))
+            pu.log_message("Optimizing {0}".format(job), noisy=True)
+            pu.log_message("Optimization variables: {0}"
+                           .format(", ".join(self.data["optimize"])),
+                           noisy=True)
             minvars = ", ".join([x[1:] for x in self.data["minimize"]["vars"]])
-            pu.loginf("Minimization variables: {0}".format(minvars))
+            pu.log_message("Minimization variables: {0}".format(minvars),
+                           noisy=True)
             if self.data["minimize"]["abscissa"] is not None:
-                pu.loginf("using {0} as abscissa"
-                          .format(self.data["minimize"]["abscissa"][1:]))
-            pu.loginf("Gold file: {0}".format(self.data["gold file"]))
+                pu.log_message("using {0} as abscissa"
+                               .format(self.data["minimize"]["abscissa"][1:]),
+                               noisy=True)
+            pu.log_message("Gold file: {0}".format(self.data["gold file"]),
+                           noisy=True)
             if self.data["options"]:
-                pu.loginf("Optimization options: {0}"
-                          .format(", ".join(self.data["options"])))
-            pu.loginf("Optimization method: {0}"
-                      .format(self.data["optimization method"]["method"]))
+                pu.log_message("Optimization options: {0}"
+                               .format(", ".join(self.data["options"])),
+                               noisy=True)
+            pu.log_message("Optimization method: {0}"
+                           .format(self.data["optimization method"]["method"]),
+                           noisy=True)
 
     def run_job(self, *args, **kwargs):
         r"""Run the optimization job
@@ -123,20 +129,26 @@ class Optimize(object):
         cwd = os.getcwd()
         dnam = self.data["basename"] + self.data["fext"]
         base_dir = os.path.join(cwd, dnam)
-        idir = 0
-        while True:
-            if os.path.isdir(base_dir):
-                dir_id = ".{0:03d}".format(idir)
-                base_dir = os.path.join(cwd, dnam + dir_id)
-            else:
-                break
+        if os.path.isdir(base_dir):
+            idir = 0
+            dir_id = ".{0:03d}".format(idir)
+            copy_dir = os.path.join(cwd, dnam + dir_id)
+            while True:
+                if os.path.isdir(copy_dir):
+                    dir_id = ".{0:03d}".format(idir)
+                    copy_dir = os.path.join(cwd, dnam + dir_id)
+                else:
+                    break
 
-            idir += 1
-            if idir > 100:
-                sys.exit("ERROR: max number of dirs")
+                idir += 1
+                if idir > 100:
+                    pu.report_and_raise_error(
+                        "max number of dirs", tracebacklimit=0)
+            os.rename(base_dir, copy_dir)
 
         if self.data["verbosity"]:
-            pu.loginf("Running: {0}".format(self.data["basename"]))
+            pu.log_message("Running: {0}".format(self.data["basename"]),
+                           noisy=True)
 
         os.mkdir(base_dir)
         os.chdir(base_dir)
@@ -170,8 +182,7 @@ class Optimize(object):
             continue
 
         # set up args and call optimzation routine
-        opt_args = [opt_nams, self.data, base_dir,
-                    self.data["payette opts"], xgold]
+        opt_args = [opt_nams, self.data, base_dir, xgold]
         opt_method = self.data["optimization method"]["method"]
         opt_options = {"maxiter": self.data["maximum iterations"],
                        "xtol": self.data["tolerance"],
@@ -208,13 +219,15 @@ class Optimize(object):
             msg = ", ".join(["{0} = {1:12.6E}".format(opt_nams[i], x)
                              for i, x in enumerate(opt_params)])
 
-        pu.loginf("Optimized parameters found on iteration {0:d}"
-                  .format(IOPT + 1))
-        pu.loginf("Optimized parameters: {0}".format(msg))
+        pu.log_message("Optimized parameters found on iteration {0:d}"
+                       .format(IOPT + 1),
+                       noisy=True)
+        pu.log_message("Optimized parameters: {0}".format(msg),
+                       noisy=True)
 
         # last_job = os.path.join(base_dir,
         #                         self.data["basename"] + ".{0:03d}".format(IOPT))
-        # pu.loginf("Ultimate simulation directory: {0}".format(last_job))
+        # pu.log_message("Ultimate simulation directory: {0}".format(last_job))
 
         # write out the optimized parameters
         opt_f = os.path.join(base_dir, self.data["basename"] + ".opt")
@@ -274,7 +287,6 @@ class Optimize(object):
         None
 
         """
-        errors = 0
         gold_f = None
         minimize = {"abscissa": None, "vars": []}
         allowed_methods = {
@@ -316,12 +328,12 @@ class Optimize(object):
             if "method" in item[0].lower():
                 opt_method = allowed_methods.get(item[1].lower())
                 if opt_method is None:
-                    pu.logerr("invalid method {0}".format(item[1].lower()))
-                    errors += 1
+                    pu.report_error(
+                        "invalid method {0}".format(item[1].lower()))
 
-        if errors:
-            pu.logerr("stopping due to previous errors")
-            sys.exit(123)
+        if pu.error_count():
+            pu.report_and_raise_error(
+                "stopping due to previous errors", tracebacklimit=0)
 
         # now get the rest
         for item in opt_block:
@@ -331,8 +343,7 @@ class Optimize(object):
 
             if "gold" in item[0].lower() and "file" in item[1].lower():
                 if not os.path.isfile(item[2]):
-                    errors += 1
-                    pu.logerr("gold file {0} not found".format(item[2]))
+                    pu.report_error("gold file {0} not found".format(item[2]))
 
                 else:
                     gold_f = item[2]
@@ -362,9 +373,8 @@ class Optimize(object):
                 vals = item[2:]
 
                 if shearfit and key.lower() not in ("a1", "a2", "a3", "a4"):
-                    errors += 1
-                    pu.logerr("optimize variable "+ key +
-                              " not allowed with shearfit method")
+                    pu.report_error("optimize variable "+ key +
+                                    " not allowed with shearfit method")
 
                 bounds = (None, None)
                 init_val = None
@@ -375,12 +385,12 @@ class Optimize(object):
                         idx = vals.index("bounds") + 1
                         bounds = [float(x) for x in vals[idx:idx+2]]
                     except ValueError:
-                        errors += 1
-                        pu.logerr("bounds requires 2 arguments")
+                        pu.report_error("bounds requires 2 arguments")
 
                     if bounds[0] > bounds[1]:
-                        pu.logerr("lower bound {0} > upper bound {1} for {2}"
-                                  .format(bounds[0], bounds[1], key))
+                        pu.report_error(
+                            "lower bound {0} > upper bound {1} for {2}"
+                            .format(bounds[0], bounds[1], key))
 
                 if "initial" in vals:
                     idx = vals.index("initial")
@@ -389,12 +399,10 @@ class Optimize(object):
                         init_val = float(vals[idx+1])
 
                 if "lbound" in vals:
-                    errors += 1
-                    pu.logerr("depricated keyword 'lbound'")
+                    pu.report_error("depricated keyword 'lbound'")
 
                 if "ubound" in vals:
-                    errors += 1
-                    pu.logerr("depricated keyword 'lbound'")
+                    pu.report_error("depricated keyword 'lbound'")
 
                 optimize[key] = {}
                 optimize[key]["bounds"] = bounds
@@ -406,9 +414,8 @@ class Optimize(object):
                 vals = item[2:]
 
                 if shearfit and key.lower() not in ("a1", "a2", "a3", "a4"):
-                    errors += 1
-                    pu.logerr("fixed variable "+ key +
-                              " not allowed with shearfit method")
+                    pu.report_error("fixed variable "+ key +
+                                    " not allowed with shearfit method")
 
                 init_val = None
                 if "initial" in vals:
@@ -447,40 +454,33 @@ class Optimize(object):
             continue
 
         if gold_f is None:
-            pu.logerr("No gold file given for optimization problem")
-            errors += 1
+            pu.report_error("No gold file given for optimization problem")
 
         else:
             if not os.path.isfile(gold_f):
-                errors += 1
-                pu.logerr("gold file {0} not found".format(gold_f))
+                pu.report_error("gold file {0} not found".format(gold_f))
             else:
                 gold_f = os.path.realpath(gold_f)
 
         if not shearfit and not minimize["vars"]:
-            errors += 1
-            pu.logerr("no parameters to minimize given")
+            pu.report_error("no parameters to minimize given")
 
         if not shearfit and not optimize:
-            errors += 1
-            pu.logerr("no parameters to optimize given")
+            pu.report_error("no parameters to optimize given")
 
         for key, val in optimize.items():
             if val["initial value"] is None:
-                pu.logerr("no initial value given for {0}".format(key))
-                errors += 1
+                pu.report_error("no initial value given for {0}".format(key))
 
         for key, val in fix.items():
             if val["initial value"] is None:
-                errors += 1
-                pu.logerr("no initial value given for {0}".format(key))
+                pu.report_error("no initial value given for {0}".format(key))
             if key.lower() in [x.lower() for x in optimize]:
-                errors += 1
-                pu.logerr("cannot fix and optimize {0}".format(key))
+                pu.report_error("cannot fix and optimize {0}".format(key))
 
-        if errors:
-            pu.logerr("stopping due to previous errors")
-            sys.exit(2)
+        if pu.error_count():
+            pu.report_and_raise_error("stopping due to previous errors",
+                                      tracebacklimit=0)
 
         if shearfit:
             # for shearfit, we optimize a1 - a4 by minimizing errror in rootj2
@@ -489,14 +489,13 @@ class Optimize(object):
             for item in minimize["vars"]:
                 if (item.lower() not in ("@i1", "@rootj2") and
                     item.lower()[0:4] != "@sig"):
-                    errors += 1
-                    pu.logerr("minimize variable "+ min_var[1:] +
-                              " not allowed with shearfit method")
+                    pu.report_error("minimize variable "+ min_var[1:] +
+                                    " not allowed with shearfit method")
                 continue
 
-            if errors:
-                pu.logerr("stopping due to previous errors")
-                sys.exit(3)
+            if pu.error_count():
+                pu.report_and_raise_error(
+                    "stopping due to previous errors", tracebacklimit=0)
 
             head = list(set([x.lower() for x in sorted(pu.get_header(gold_f))]))
             if head != ["i1", "rootj2"]:
@@ -506,9 +505,9 @@ class Optimize(object):
                         sigcnt += 1
                     continue
                 if sigcnt < 3:
-                    pu.logerr("{0} does not contain sufficient information to "
-                              "compute I1 and ROOTJ2".format(gold_f))
-                    sys.exit(3)
+                    pu.report_and_raise_error(
+                        "{0} does not contain sufficient information to "
+                        "compute I1 and ROOTJ2".format(gold_f), tracebacklimit=0)
 
                 # user gave file with sig11, sig22, ..., it needs to be
                 # converted to i1 and rootj2
@@ -541,8 +540,6 @@ class Optimize(object):
 
         """
 
-        errors = 0
-
         if "shearfit" in self.data["options"]:
             # for shearfit, we don't actually have to call Kayenta
             return
@@ -565,32 +562,28 @@ class Optimize(object):
             job_inp["material"]["content"].append(
                 "{0} {1}".format(key, init_val))
 
-        the_model = pc.Payette(self.data["basename"],
-                               job_inp,
-                               self.data["payette opts"])
+        the_model = pc.Payette(self.data["basename"], job_inp)
         param_table = the_model.material.constitutive_model.parameter_table
 
-        try:
-            os.remove(self.data["basename"] + ".log")
-        except OSError:
-            pass
-
-        try:
-            os.remove(self.data["basename"] + ".props")
-        except OSError:
-            pass
+        # remove cruft
+        for ext in (".log", ".props", ".math1", ".math2", ".prf", ".out"):
+            try:
+                os.remove(self.data["basename"] + ext)
+            except OSError:
+                pass
+            continue
 
         # check that the optimize variables are in this models parameters
         not_in = [x for x in self.data["optimize"] if x.lower() not in
                   [y.lower() for y in param_table.keys()]]
         if not_in:
-            pu.logerr("Optimization parameter[s] {0} not in model parameters"
-                      .format(", ".join(not_in)))
-            errors += 1
+            pu.report_error(
+                "Optimization parameter[s] {0} not in model parameters"
+                .format(", ".join(not_in)))
 
-        if errors:
-            pu.logerr("exiting due to previous errors")
-            sys.exit(123)
+        if pu.error_count():
+            pu.report_and_raise_error("exiting due to previous errors",
+                                      tracebacklimit=0)
 
         return
 
@@ -617,9 +610,9 @@ class Optimize(object):
         extraction = pe.extract(exargs)
 
         if extraction:
-            pu.logerr("error extracting minimization variables from {0}"
-                      .format(self.data["gold file"]))
-            sys.exit(123)
+            pu.report_and_raise_error(
+                "error extracting minimization variables from {0}"
+                .format(self.data["gold file"]), tracebacklimit=0)
 
         return
 
@@ -709,8 +702,6 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
         Initial guess.
     data : dict
         Data container for problem
-    job_opts : sequence
-        List of options to be passed to runPayette
     args : tuple, optional
         Extra arguments passed to the objective function and its derivatives
         (Jacobian, Hessian).
@@ -762,13 +753,13 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
 
     has_bounds = [x for j in bounds for x in j if x is not None]
     if meth in ["nelder-mead", "powell"] and has_bounds:
-        pu.logwrn("Method {0} cannot handle constraints nor bounds directly."
-                  .format(method))
+        pu.log_warning(
+            "Method {0} cannot handle constraints nor bounds directly."
+            .format(method))
 
     if has_bounds or shearfit:
         # user has specified bounds on the parameters to be optimized. Here,
         # we convert the bounds to inequality constraints
-        errors = 0
         lcons, ucons = [], []
         for ibnd, bound in enumerate(bounds):
             lbnd, ubnd = bound
@@ -784,9 +775,8 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
                     ubnd = 1.e20
 
             if lbnd > ubnd:
-                errors += 1
-                pu.logerr("lbnd({0:12.6E}) > ubnd({1:12.6E})"
-                          .format(lbnd, ubnd))
+                pu.report_error("lbnd({0:12.6E}) > ubnd({1:12.6E})"
+                                .format(lbnd, ubnd))
 
             lcons.append(lambda z, idx=ibnd, bnd=lbnd: z[idx] - bnd/FAC[idx])
             ucons.append(lambda z, idx=ibnd, bnd=ubnd: bnd/FAC[idx] - z[idx])
@@ -795,8 +785,9 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
 
             continue
 
-        if errors:
-            sys.exit("ERROR: Resolve previous errors")
+        if pu.error_count():
+            pu.report_and_raise_error(
+                "ERROR: Resolve previous errors", tracebacklimit=0)
 
         cons = lcons + ucons
 
@@ -816,12 +807,13 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
             args=args, disp=disp)
 
     else:
-        sys.exit("ERROR: Unrecognized method {0}".format(method))
+        pu.report_and_raise_error(
+            "ERROR: Unrecognized method {0}".format(method), tracebacklimit=0)
 
     return xopt * FAC
 
 
-def func(xcall, xnams, data, base_dir, job_opts, xgold):
+def func(xcall, xnams, data, base_dir, xgold):
 
     r"""Objective function
 
@@ -835,8 +827,6 @@ def func(xcall, xnams, data, base_dir, job_opts, xgold):
         Current best guess for optimized parameters
     data : dict
         Optimization class data container
-    job_opts : instance
-        runPayette options
     xgold : str
         File path to gold file
 
@@ -887,29 +877,31 @@ def func(xcall, xnams, data, base_dir, job_opts, xgold):
             continue
 
     if data["verbosity"]:
-        pu.loginf("Iteration {0:03d}, trial parameters: {1}"
-                  .format(IOPT + 1, ", ".join(msg)))
+        pu.log_message("Iteration {0:03d}, trial parameters: {1}"
+                       .format(IOPT + 1, ", ".join(msg)),
+                       noisy=True)
 
     # instantiate Payette object
-    the_model = pc.Payette(job, job_inp, job_opts)
+    the_model = pc.Payette(job, job_inp)
 
     # run the job
     solve = the_model.run_job()
 
     the_model.finish()
 
-    if job_opts.disp:
+    if ro.DISP:
         retcode = solve["retcode"]
     else:
         retcode = solve
 
     if retcode != 0:
-        sys.exit("ERROR: simulation failed")
+        pu.report_and_raise_error("simulation failed", tracebacklimit=0)
 
     # extract minimization variables from the simulation output
     out_f = os.path.join(job_dir, job + ".out")
     if not os.path.isfile(out_f):
-        sys.exit("out file {0} not created".format(out_f))
+        pu.report_and_raise_error("out file {0} not created".format(out_f),
+                                  tracebacklimit=0)
 
     exargs = [out_f, "--silent", "--xout"]
     if data["minimize"]["abscissa"] is not None:
@@ -926,7 +918,7 @@ def func(xcall, xnams, data, base_dir, job_opts, xgold):
         errors = pu.compare_file_cols(xgold, xout)
 
     if errors[0]:
-        sys.exit("Resolve previous errors")
+       pu.report_and_raise_error("Resolve previous errors", tracebacklimit=0)
 
     error = math.sqrt(np.sum(errors[1] ** 2) / float(len(errors[1])))
     error = np.amax(np.abs(errors[1]))
@@ -940,7 +932,7 @@ def func(xcall, xnams, data, base_dir, job_opts, xgold):
     return error
 
 
-def rtxc(xcall, xnams, data, base_dir, job_opts, xgold):
+def rtxc(xcall, xnams, data, base_dir, xgold):
     """The Kayenta limit function
 
     Evaluates the Kayenta limit function
@@ -998,8 +990,9 @@ def rtxc(xcall, xnams, data, base_dir, job_opts, xgold):
             continue
 
     if data["verbosity"]:
-        pu.loginf("Iteration {0:03d}, trial parameters: {1}"
-                  .format(IOPT + 1, ", ".join(msg)))
+        pu.log_message("Iteration {0:03d}, trial parameters: {1}"
+                       .format(IOPT + 1, ", ".join(msg)),
+                       noisy=True)
 
     # compute rootj2 and error
     v = data["index array"]
@@ -1069,8 +1062,9 @@ def get_rtj2_vs_i1(fpath):
         continue
 
     if sig11 is None or sig22 is None or sig33 is None:
-        sys.exit("insufficient information in {0} to compute I1 and ROOTJ2"
-                 .format(gold_f))
+        pu.report_and_raise_error(
+            "insufficient information in {0} to compute I1 and ROOTJ2"
+            .format(gold_f), tracebacklimit=0)
 
     if sig12 is None:
         sig12 = np.zeros(len(sig11))

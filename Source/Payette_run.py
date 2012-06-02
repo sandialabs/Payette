@@ -38,12 +38,14 @@ import pickle
 import optparse
 import time
 import multiprocessing as mp
+import logging
 
 import Payette_config as pc
 import Source.Payette_utils as pu
 import Source.Payette_container as pcntnr
 import Source.Payette_optimize as po
 import Source.Payette_permutate as pp
+import Source.runopts as ro
 
 
 def run_payette(argv, disp=0):
@@ -80,11 +82,13 @@ def run_payette(argv, disp=0):
         help=("Additional comment characters for input file "
                 "[default: %default]"))
     parser.add_option(
-        "-d", "--debug",
-        dest="debug",
-        action="store_true",
-        default=False,
-        help="Global debug flag [default: %default]")
+        "--disp",
+        dest="disp",
+        action="store",
+        type=int,
+        default=disp,
+        help=("Return extra diagnostic information from run_job if disp > 0 "
+              "[default: %default]"))
     parser.add_option(
         "--input-str",
         dest="inputstr",
@@ -93,36 +97,10 @@ def run_payette(argv, disp=0):
         help=("Input string for simulation instead of file "
                 "[default: %default]"))
     parser.add_option(
-        "-j", "--nproc",
-        dest="nproc",
-        type=int,
-        default=1,
-        action="store",
-        help="Number of simultaneous jobs [default: %default]")
-    parser.add_option(
-        "-k", "--keep",
-        dest="keep",
-        action="store_true",
-        default=False,
-        help=("Do not overwrite old output files with each run "
-                "[default: %default]"))
-    parser.add_option(
         "-m", "--materials",
         dest="mtls",
         default=False,
         action="store_true")
-    parser.add_option(
-        "--no-restart",
-        dest="norestart",
-        action="store_true",
-        default=False,
-        help="Do not save restart files [default: %default]")
-    parser.add_option(
-        "--no-writeprops",
-        dest="nowriteprops",
-        action="store_true",
-        default=False,
-        help="Do not write checked parameters [default: %default]")
     parser.add_option(
         "-p", "--princ",
         dest="principal",
@@ -131,74 +109,118 @@ def run_payette(argv, disp=0):
         help=("Diagonalize input arguments and run problem in "
                 "principal coordinates [default: %default]"))
     parser.add_option(
-        "--proportional",
-        dest="proportional",
-        action="store_true",
-        default=False,
-        help=("Use proportional loading for prescribed stress"
-                "components. [default: %default]"))
-    parser.add_option(
-        "-s", "--strict",
-        dest="strict",
-        action="store_true",
-        default=False,
-        help=("Do not use approximations to update kinematic "
-                "quantities (slow) [default: %default]"))
-    parser.add_option(
-        "-S", "--sqa",
-        dest="sqa",
-        action="store_true",
-        default=False,
-        help="Run additional verification/sqa checks [default: %default]")
-    parser.add_option(
         "-t",
         dest="timing",
         action="store_true",
         default=False,
         help="time execution of Payette runs [default: %default]")
-    parser.add_option(
-        "-T", "--use-table",
-        dest="use_table",
-        action="store_true",
-        default=False,
-        help=("Update kinematic quantities from input when "
-              "applicable [default: %default]"))
-    parser.add_option(
-        "--test-restart",
-        dest="testrestart",
-        action="store_true",
-        default=False,
-        help="Test restart capabilities [default: %default]")
+
+    # the following options have defaults set in runopt.py, later, we pass the
+    # user requested options back to runopt.py so they are set of the rest of
+    # the modules used by runPayette
     parser.add_option(
         "-v", "--verbosity",
         dest="verbosity",
         type="choice",
         choices=["0", "1", "2", "3", "4"],
-        default="3",
+        default=str(ro.VERBOSITY),
         action="store",
         help="Verbosity default: %default]")
     parser.add_option(
-        "-w", "--write-vandd",
+        "-S", "--sqa",
+        dest="sqa",
+        action="store_true",
+        default=ro.SQA,
+        help="Run additional verification/sqa checks [default: %default]")
+    parser.add_option(
+        "-d", "--debug",
+        dest="debug",
+        action="store_true",
+        default=ro.DBG,
+        help="Global debug flag [default: %default]")
+    parser.add_option(
+        "-s", "--strict",
+        dest="strict",
+        action="store_true",
+        default=ro.STRICT,
+        help=("Do not use approximations to update kinematic "
+                "quantities (slow) [default: %default]"))
+    parser.add_option(
+        "--no-restart",
+        dest="norestart",
+        action="store_true",
+        default=ro.NORESTART,
+        help="Do not save restart files [default: %default]")
+    parser.add_option(
+        "--no-writeprops",
+        dest="nowriteprops",
+        action="store_true",
+        default=ro.NOWRITEPROPS,
+        help="Do not write checked parameters [default: %default]")
+    parser.add_option(
+        "-T", "--use-table",
+        dest="use_table",
+        action="store_true",
+        default=ro.USE_TABLE,
+        help=("Update kinematic quantities from input when "
+              "applicable [default: %default]"))
+    parser.add_option(
+        "-k", "--keep",
+        dest="keep",
+        action="store_true",
+        default=ro.KEEP,
+        help=("Do not overwrite old output files with each run "
+                "[default: %default]"))
+    parser.add_option(
+        "--write-vandd",
         dest="write_vandd_table",
         action="store_true",
-        default=False,
+        default=ro.WRITE_VANDD_TABLE,
         help=("Write equivalent velocity and displacement table "
               "[default: %default]"))
+    parser.add_option(
+        "--test-restart",
+        dest="testrestart",
+        action="store_true",
+        default=ro.TESTRESTART,
+        help="Test restart capabilities [default: %default]")
+    parser.add_option(
+        "--proportional",
+        dest="proportional",
+        action="store_true",
+        default=ro.PROPORTIONAL,
+        help=("Use proportional loading for prescribed stress"
+                "components. [default: %default]"))
+    parser.add_option(
+        "-j", "--nproc",
+        dest="nproc",
+        type=int,
+        default=ro.NPROC,
+        action="store",
+        help="Number of simultaneous jobs [default: %default]")
     parser.add_option(
         "--check-setup",
         dest="check_setup",
         action="store_true",
-        default=False,
+        default=ro.CHECK_SETUP,
         help=("Set up material and exit, printing set up information "
               "[default: %default]"))
     parser.add_option(
-        "--disp",
-        dest="disp",
+        "-w", "--write-input",
+        dest="write_input",
+        action="store_true",
+        default=ro.WRITE_INPUT,
+        help="Write input file for simulation [default: %default]")
+    parser.add_option(
+        "-W",
+        dest="warning",
+        type="choice",
         action="store",
-        type=int,
-        default=disp,
-        help=("Return extra diagnostic information from run_job if disp > 0 "
-              "[default: %default]"))
+        choices=["warn", "error", "all"],
+        default=ro.WARNING,
+        help="warning level [default: %default]")
+
+    # parse the command line arguments
     (opts, args) = parser.parse_args(argv)
 
     payette_exts = [".log", ".math1", ".math2", ".props", ".echo", ".prf"]
@@ -206,7 +228,13 @@ def run_payette(argv, disp=0):
         payette_exts.extend([".out"])
         opts.clean = True
 
+    if opts.debug:
+        opts.verbosity = 4
+
     opts.verbosity = int(opts.verbosity)
+
+    # pass command line arguments to global Payette variables
+    ro.set_command_line_options(opts)
 
     if opts.clean:
         cleaned = False
@@ -216,10 +244,10 @@ def run_payette(argv, disp=0):
             argnam = os.path.splitext(arg)[0]
             if argnam not in [os.path.splitext(x)[0]
                               for x in os.listdir(argdir)]:
-                pu.logwrn("no Payette output for {0} found in {1}"
-                          .format(arg, argdir))
+                pu.log_warning("no Payette output for {0} found in {1}"
+                               .format(arg, argdir))
                 continue
-            pu.loginf("cleaning output for {0}".format(argnam))
+            pu.log_message("cleaning output for {0}".format(argnam))
             for ext in payette_exts:
                 try:
                     os.remove(argnam + ext)
@@ -233,7 +261,7 @@ def run_payette(argv, disp=0):
 
     # ----------------------------------------------- start: get the user input
     if opts.verbosity:
-        pu.logmes(pc.PC_INTRO)
+        pu.log_message(pc.PC_INTRO, pre="")
 
     input_lines = []
     if opts.inputstr:
@@ -262,7 +290,7 @@ def run_payette(argv, disp=0):
             if not os.path.isfile(barf_file):
                 parser.error("barf file {0} not found".format(barf_file))
 
-            PayetteBarf(barf_file, opts)
+            PayetteBarf(barf_file)
 
         return 0
 
@@ -317,26 +345,24 @@ def run_payette(argv, disp=0):
 
             elif os.path.isfile(os.path.join(pc.PC_INPUTS, arg)):
                 ftmp = os.path.join(pc.PC_INPUTS, arg)
-                pu.write_msg_to_screen(iam, "Using " + ftmp + " as input")
+                pu.log_message("Using " + ftmp + " as input")
 
             elif not fext or fext == ".":
                 # add .inp extension to arg
                 arginp = fbase + ".inp"
                 if os.path.isfile(arginp):
                     ftmp = arginp
-                    pu.write_msg_to_screen(iam, "Using " + ftmp + " as input")
+                    pu.log_message("Using " + ftmp + " as input")
 
                 elif os.path.isfile(os.path.join(pc.PC_INPUTS, arginp)):
                     ftmp = os.path.join(pc.PC_INPUTS, arginp)
-                    pu.write_msg_to_screen(iam, "Using " + ftmp + " as input")
+                    pu.log_message("Using " + ftmp + " as input")
 
             if not ftmp:
-                pu.write_wrn_to_screen(
-                    iam, "{0} not found in {1}, {2}, or {3}"
-                    .format(arg,
-                            os.path.dirname(os.path.realpath(arg)),
-                            os.getcwd(),
-                            pc.PC_INPUTS))
+                pu.log_warning("{0} not found in {1}, {2}, or {3}"
+                               .format(arg,
+                                       os.path.dirname(os.path.realpath(arg)),
+                                       os.getcwd(), pc.PC_INPUTS))
                 badf.append(arg)
                 continue
 
@@ -347,8 +373,8 @@ def run_payette(argv, disp=0):
             continue
 
         if badf:
-            pu.write_wrn_to_screen(iam, "The following files were not found: {0}"
-                                   .format(", ".join(badf)))
+            pu.log_warning("The following files were not found: {0}"
+                           .format(", ".join(badf)))
 
         if not foundf and not input_lines:
             parser.print_help()
@@ -362,8 +388,9 @@ def run_payette(argv, disp=0):
         # read the user input
         user_input_dict = pu.read_input(input_lines, opts.cchar)
         if not user_input_dict:
-            sys.exit("ERROR: user input not found in {0:s}"
-                     .format(", ".join(foundf)))
+            pu.report_and_raise_error(
+                "user input not found in {0:s}".format(", ".join(foundf)),
+                tracebacklimit=0)
     # ----------------------------------------------------- end: get user input
 
     # we have a list of user input.  now create a generator to send to _run_job
@@ -373,9 +400,11 @@ def run_payette(argv, disp=0):
     # number of processors
     nproc = min(min(mp.cpu_count(), opts.nproc), len(user_input_dict))
     opts.verbosity = opts.verbosity if nproc == 1 else 0
+    ro.NPROC = nproc
+    ro.VERBOSITY = opts.verbosity
 
     if nproc > 1:
-        pu.write_wrn_to_screen(iam, """
+        pu.log_warning("""\
              Running with multiple processors.  Logging to the console
              has been turned off.  If a job hangs, [ctrl-c] at the
              console will not shut down Payette.  Instead, put the job
@@ -419,14 +448,14 @@ def _run_job(args):
 
     elif "optimization" in user_input:
         # intantiate the Optimize object
-        the_model = po.Optimize(job_id, user_input, opts)
+        the_model = po.Optimize(job_id, user_input)
 
     elif 'permutation' in user_input:
         # intantiate the Optimize object
-        the_model = pp.Permutate(job_id, user_input, opts)
+        the_model = pp.Permutate(job_id, user_input)
 
     else:
-        the_model = pcntnr.Payette(job_id, user_input, opts)
+        the_model = pcntnr.Payette(job_id, user_input)
 
     # run the job
     if timing:
@@ -462,9 +491,12 @@ def print_timing_info(tim0, tim1, tim2, name=None):
 
     ttot = time.time() - tim0
     texe = tim2 - tim1
-    pu.logmes("\n-------------- {0} timing info --------------".format(name))
-    pu.logmes("total problem execution time:\t{0:f}".format(texe))
-    pu.logmes("total simulation time:\t\t{0:f}\n".format(ttot))
+    pu.log_message(
+        "\n-------------- {0} timing info --------------".format(name),
+        pre="")
+    pu.log_message("total problem execution time:\t{0:f}".format(texe),
+                   pre="")
+    pu.log_message("total simulation time:\t\t{0:f}\n".format(ttot), pre="")
     return None
 
 
@@ -473,15 +505,18 @@ def print_final_timing_info(tim0):
     """ print timing info from end of run"""
 
     ttot = time.time() - tim0
-    pu.logmes("\n-------------- simulation timing info --------------")
-    pu.logmes("total simulation time:\t\t{0:f}".format(ttot))
+    pu.log_message(
+        "\n-------------- simulation timing info --------------", pre="")
+    pu.log_message("total simulation time:\t\t{0:f}".format(ttot), pre="")
     return None
 
 
 if __name__ == "__main__":
 
     if not os.path.isfile(pc.PC_MTLS_FILE):
-        sys.exit("buildPayette must be executed before tests can be run")
+        pu.report_and_raise_error(
+            "buildPayette must be executed before tests can be run",
+            tracebacklimit=0)
 
     ARGV = sys.argv[1:]
 

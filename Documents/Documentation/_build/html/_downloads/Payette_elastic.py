@@ -21,11 +21,10 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import sys
-import os
-import numpy as np
+from os.path import dirname, realpath, join
+from numpy import array
 
-import Source.Payette_utils as pu
+from Source.Payette_utils import log_warning, log_message, report_and_raise_error
 from Source.Payette_tensor import iso, dev
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_F2PY_CALLBACK
@@ -38,16 +37,16 @@ except:
     imported = False
     pass
 
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+THIS_DIR = dirname(realpath(__file__))
 attributes = {
     "payette material": True,
     "name": "elastic",
     "aliases": ["hooke", "linear elastic"],
     "code types": ("python", "fortran"),
-    "fortran build script": os.path.join(THIS_DIR, "Build_elastic.py"),
+    "fortran build script": join(THIS_DIR, "Build_elastic.py"),
     "material type": ["mechanical"],
     "default material": True,
-    "material database": os.path.join(THIS_DIR, "elastic_mtl_database.py"),
+    "material database": join(THIS_DIR, "elastic_mtl_database.py"),
     }
 
 class Elastic(ConstitutiveModelPrototype):
@@ -95,7 +94,7 @@ class Elastic(ConstitutiveModelPrototype):
         # work with the entire ui, so we only pick out what we want
         mu, k = self.ui0[1], self.ui0[4]
         self.ui = self.ui0
-        mui = np.array([k, mu])
+        mui = array([k, mu])
 
         self.bulk_modulus, self.shear_modulus = k, mu
 
@@ -125,7 +124,7 @@ class Elastic(ConstitutiveModelPrototype):
         else:
             a = [1, dt, self.mui, sigold, d]
             if PC_F2PY_CALLBACK:
-                a += [pu.migError, pu.migMessage]
+                a += [report_and_raise_error, log_message]
             sig = mtllib.elast_calc(*a)
 
         # store updated data
@@ -136,25 +135,25 @@ class Elastic(ConstitutiveModelPrototype):
         k, mu = mui
 
         if k <= 0.:
-            pu.reportError(iam, "Bulk modulus K must be positive")
+            report_and_raise_error("Bulk modulus K must be positive")
 
         if mu <= 0.:
-            pu.reportError(iam, "Shear modulus MU must be positive")
+            report_and_raise_error("Shear modulus MU must be positive")
 
         # poisson's ratio
         nu = (3. * k - 2 * mu) / (6 * k + 2 * mu)
         if nu < 0.:
-            pu.reportWarning(iam, "negative Poisson's ratio")
+            log_warning("negative Poisson's ratio")
 
-        ui = np.array([k, mu])
+        ui = array([k, mu])
 
         return ui
 
     def _fort_set_up(self, mui):
-        props = np.array(mui)
+        props = array(mui)
         a = [props]
         if PC_F2PY_CALLBACK:
-            a += [pu.migError, pu.migMessage]
+            a += [report_and_raise_error, log_message]
         ui = mtllib.elast_chk(*a)
         return ui
 

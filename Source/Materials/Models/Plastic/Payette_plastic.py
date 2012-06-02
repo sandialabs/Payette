@@ -26,7 +26,7 @@ from numpy import concatenate, array, zeros
 from math import sqrt
 
 from Source.Payette_utils import (
-    reportError, reportWarning, migError, migMessage, parse_token)
+    report_and_raise_error, log_warning, log_message, parse_token)
 from Source.Payette_tensor import SYM_MAP, iso, dev, mag, ddp
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_F2PY_CALLBACK
@@ -130,7 +130,7 @@ class Plastic(ConstitutiveModelPrototype):
         else:
             a = [1, self.nsv, dt, self.mui, sigold, d, xtra]
             if PC_F2PY_CALLBACK:
-                a += [migError, migMessage]
+                a.extend([report_and_raise_error, log_message])
             sig, xtra = mtllib.plast_calc(*a)
 
         # store updated data
@@ -139,43 +139,41 @@ class Plastic(ConstitutiveModelPrototype):
 
     def _py_set_up(self, mui):
 
-        iam = "_py_set_up"
         k, mu, y, a, c, m = mui
 
         if k <= 0.:
-            reportError(iam, "Bulk modulus K must be positive")
+            report_and_raise_error("Bulk modulus K must be positive")
 
         if mu <= 0.:
-            reportError(iam, "Shear modulus MU must be positive")
+            report_and_raise_error("Shear modulus MU must be positive")
 
         if y < 0.:
-            reportError(iam, "Yield strength Y must be positive")
+            report_and_raise_error("Yield strength Y must be positive")
 
         if y == 0:
             y = 1.e99
 
         if a < 0.:
-            reportError(iam,
-                        "Kinematic hardening modulus A must be non-negative")
+            report_and_raise_error(
+                "Kinematic hardening modulus A must be non-negative")
 
         if c < 0.:
-            reportError(iam,
-                        "Isotropic hardening modulus C must be non-negative")
+            report_and_raise_error(
+                "Isotropic hardening modulus C must be non-negative")
 
         if m < 0:
-            reportError(iam,
-                        "Isotropic hardening power M must be non-negative")
+            report_and_raise_error(
+                "Isotropic hardening power M must be non-negative")
         elif m == 0:
             if c != 0:
-                reportWarning(
-                    iam,
+                log_warning(
                     "Isotropic hardening modulus C being set 0 because M = 0")
             c = 0.
 
         # poisson's ratio
         nu = (3. * k - 2 * mu) / (6 * k + 2 * mu)
         if nu < 0.:
-            reportWarning(iam, "negative Poisson's ratio")
+            log_warning("negative Poisson's ratio")
 
         ui = array([k, mu, y, a, c, m])
 
@@ -206,14 +204,14 @@ class Plastic(ConstitutiveModelPrototype):
         props = array(mui)
         a = [props]
         if PC_F2PY_CALLBACK:
-            a += [migError, migMessage]
+            a.extend([report_and_raise_error, log_message])
         ui = mtllib.plast_chk(*a)
         return ui
 
     def _set_field(self, ui):
         a = []
         if PC_F2PY_CALLBACK:
-            a += [migError, migMessage]
+            a.extend([report_and_raise_error, log_message])
         return mtllib.plast_rxv(*a)
 
 def _py_update_state(ui, dt, d, sigold, xtra):
@@ -275,7 +273,7 @@ def _py_update_state(ui, dt, d, sigold, xtra):
 
     dlam = facyld * num / dnom
     if dlam < 0.:
-        reportError(iam, "negative dlam")
+        report_and_raise_error("negative dlam")
 
     # equivalet plastic strain
     gam += dlam * mag(dev(n))

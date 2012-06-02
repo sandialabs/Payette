@@ -108,33 +108,21 @@ class PayetteTest(object):
 
     def check_setup(self):
 
-        iam = "{0}.checkSetup(self)".format(self.name)
-
-        errors = 0
-
         if not self.enabled:
-            return errors
+            return 0
 
         if not self.name:
-            errors += 1
-            pu.logwrn("no name given for test", caller=iam)
-            pass
+            pu.report_error("no name given for test", caller=iam)
 
         if not self.tdir:
-            errors += 1
-            pu.logwrn("no test directory given for test", caller=iam)
-            pass
+            pu.report_error("no test directory given for test", caller=iam)
 
         if not self.keywords:
-            errors += 1
-            pu.logwrn("no keywords given", caller=iam)
-            pass
+            pu.report_error("no keywords given", caller=iam)
 
         if not isinstance(self.keywords, (list, tuple)):
-            errors += 1
-            pu.logwrn("keywords must be list, got {0}".format(self.keywords),
-                      caller=iam)
-            pass
+            pu.report_error(
+                "keywords must be list, got {0}".format(self.keywords))
 
         else:
             self.keywords = [x.lower() for x in self.keywords]
@@ -147,40 +135,27 @@ class PayetteTest(object):
                     tkw += 1
                 continue
             if not lkw:
-                errors += 1
-                msg = "keywords must specify one of {0}".format(", ".join(speed_kws))
-                pu.logerr(msg, caller=iam)
+                pu.report_error("keywords must specify one of {0}"
+                                .format(", ".join(speed_kws)))
             elif lkw > 1:
-                errors += 1
-                msg = ("keywords must specify only one of {0}"
-                       .format(", ".join(speed_kws)))
-                pu.logerr(msg, caller=iam)
-                pass
+                pu.report_error("keywords must specify only one of {0}"
+                                .format(", ".join(speed_kws)))
+
             if not tkw:
-                errors += 1
-                msg = "keywords must specify one of {0}".format(", ".join(type_kws))
-                pu.logerr(msg, caller=iam)
+                pu.report_error("keywords must specify one of {0}"
+                                .format(", ".join(type_kws)))
             elif tkw > 1:
-                msg = ("keywords must specify only one of {0}"
-                       .format(", ".join(type_kws)))
-                pu.logwrn(msg, caller=iam)
-                pass
-            pass
+                pu.log_warning("keywords must specify only one of {0}"
+                               .format(", ".join(type_kws)))
 
         if self.owner is None:
-            errors += 1
-            pu.logwrn("no owner specified", caller=iam)
-            pass
+            pu.report_error("no owner specified")
 
         if self.date is None:
-            errors += 1
-            pu.logwrn("no date given", caller=iam)
-            pass
+            pu.report_error("no date given")
 
         if self.infile is not None and not os.path.isfile(self.infile):
-            errors += 1
-            pu.logwrn("infile {0} not found".format(self.infile), caller=iam)
-            pass
+            pu.report_error("infile {0} not found".format(self.infile))
 
         if self.baseline:
             if not isinstance(self.baseline, (list, tuple)):
@@ -188,9 +163,7 @@ class PayetteTest(object):
 
             for fff in self.baseline:
                 if not os.path.isfile(fff):
-                    errors += 1
-                    pu.logwrn("baseline {0} not found".format(fff),
-                              caller=iam)
+                    pu.report_error("baseline {0} not found".format(fff))
                     continue
 
         if self.aux_files:
@@ -198,18 +171,14 @@ class PayetteTest(object):
                 self.aux_files = [self.aux_files]
             for fff in self.aux_files:
                 if not os.path.isfile(fff):
-                    errors += 1
-                    pu.logwrn("auxilary file {0} not found".format(fff),
-                              caller=iam)
+                    pu.report_error("auxilary file {0} not found".format(fff))
                 continue
 
         if self.compare_method is None:
             self.compare_method = self.compare_out_to_baseline_rms
 
         if self.description is None:
-            errors += 1
-            pu.logwrn("no description given", caller=iam)
-            pass
+            pu.report_error("no description given")
 
         if not isinstance(self.items_to_skip, (list,tuple)):
             self.items_to_skip = [self.items_to_skip]
@@ -218,13 +187,9 @@ class PayetteTest(object):
         if not isinstance(self.items_to_compare, (list,tuple)):
             self.items_to_compare = [self.items_to_compare]
 
-        # check for previous errors
-        if errors:
-            pu.logerr("stopping due to previous errors", caller=iam)
+        self.checked = True
 
-        self.checkd = True
-
-        return errors
+        return pu.error_count()
 
     def runTest(self):
 
@@ -312,8 +277,8 @@ class PayetteTest(object):
                 3: failed
         """
         iam = "{0}.compare_out_to_baseline_rms_general(self)".format(self.name)
-        errors = 0
 
+        errors = 0
         # open the log file
         log = TestLogger(self.name + ".diff","w")
 
@@ -655,14 +620,14 @@ class PayetteTest(object):
                     break
                 continue
             pass
-        try: epsfail = float(epsfail)
+        try:
+            epsfail = float(epsfail)
         except TypeError:
             errors += 1
             log.error(iam,"epsfail must be float, got {0}".format(epsfail))
         except:
             errors += 1
             log.error(iam,"bad epsfail [{0}]".format(epsfail))
-            pass
 
         # read in header
         outheader = [x.lower() for x in self.get_header(outf)]
@@ -905,11 +870,11 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
         errors = 0
         for test_dir in test_dirs:
             if not os.path.isdir(test_dir):
-                errors += 1
-                pu.logerr("test directory {0} not found".format(test_dir))
+                pu.report_error("test directory {0} not found".format(test_dir))
             continue
         if errors:
-            sys.exit("ERROR: stopping due to previous errors")
+            pu.report_and_raise_error("stopping due to previous errors",
+                                      tracebacklimit=0)
     else:
         test_dirs = [pc.PC_TESTS]
 
@@ -955,7 +920,7 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
                     errors += 1
                     msg = ("removing duplicate python module {0} in tests"
                            .format(py_mod))
-                    pu.logwrn(msg, caller=iam)
+                    pu.log_warning(msg)
                     del py_modules[py_mod]
 
                 else:
@@ -996,7 +961,7 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
             errors += 1
             msg = ("{0} test class name must be 'Test', got {1}"
                    .format(class_name,py_mod))
-            pu.logerr(msg, caller=iam)
+            pu.report_error(msg)
             continue
 
         include = False
@@ -1006,8 +971,7 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
         test = py_module.Test(check=False)
 
         if not test.enabled:
-            pu.logwrn("disabled test: {0} encountered".format(py_mod),
-                      caller=iam)
+            pu.log_warning("disabled test: {0} encountered".format(py_mod))
             continue
 
         if not isinstance(test.keywords, (list, tuple)):
@@ -1055,9 +1019,10 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
             constitutive_models = pickle.load(fobj)
         if test.material is not None:
             if constitutive_models.get(test.material) is None:
-                pu.logwrn(("material model" + " '" + test.material + "' " +
-                           "required by" + " '" + test.name + "' " +
-                           "not installed, test will be skipped"), caller=iam)
+                pu.log_warning(
+                    "material model" + " '" + test.material + "' " +
+                    "required by" + " '" + test.name + "' " +
+                    "not installed, test will be skipped")
                 continue
 
         speed = [x for x in speed_kws if x in test.keywords][0]
@@ -1077,5 +1042,5 @@ if __name__ == "__main__":
     print(fast_tests)
     print(medium_tests)
     print(long_tests)
-    sys.exit("here at end")
+    sys.exit()
 

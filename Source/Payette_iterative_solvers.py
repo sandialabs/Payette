@@ -30,6 +30,7 @@ import sys
 
 import Source.Payette_utils as pu
 import Source.Payette_tensor as pt
+import Source.runopts as ro
 
 
 def newton(material, simdat, matdat):
@@ -136,15 +137,9 @@ def newton(material, simdat, matdat):
             depsdt[nzc] -= np.linalg.solve(jac_sub, sig_dif) / delt
 
         except:
-            print jac_sub
-            print sig_dif
-            print delt
-            print nzc
-            print prsig
-            sys.exit("here")
             depsdt[nzc] -= np.linalg.lstsq(jac_sub, sig_dif)[0] / delt
             msg = 'Using least squares approximation to matrix inverse'
-            pu.reportWarning(__file__, msg, limit=True)
+            pu.log_warning(msg, limit=True)
 
         if (depsmag(depsdt, delt) > depsmax):
             # increment too large, restore changed data and exit
@@ -267,7 +262,7 @@ def func(depsdt_opt, material, simdat, matdat):
 
     # check the error
     error = 0.
-    if not simdat.PROPORTIONAL:
+    if not ro.PROPORTIONAL:
         for i, j in enumerate(nzc):
             error += (sig[j] - prsig[i]) ** 2
             continue

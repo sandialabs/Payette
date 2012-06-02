@@ -34,6 +34,7 @@ from itertools import izip, product
 
 import Source.Payette_utils as pu
 import Source.Payette_container as pc
+import Source.runopts as ro
 
 
 FARGS = []
@@ -42,7 +43,7 @@ FARGS = []
 class Permutate(object):
     r"""docstring -> needs to be completed """
 
-    def __init__(self, job, job_inp, job_opts):
+    def __init__(self, job, job_inp):
 
         # extract the permutation block and delete it so that it is not read
         # again
@@ -53,16 +54,15 @@ class Permutate(object):
         # save Perturbate information to single "data" dictionary
         self.data = {}
         self.data["basename"] = job
-        self.data["nproc"] = job_opts.nproc
-        self.data["return level"] = job_opts.disp
-        self.data["verbosity"] = job_opts.verbosity
+        self.data["nproc"] = ro.NPROC
+        self.data["return level"] = ro.DISP
+        self.data["verbosity"] = ro.VERBOSITY
         self.data["fext"] = ".perm"
         self.data["baseinp"] = job_inp
 
         # set verbosity to 0 for Payette simulation and save the payette
         # options to the data dictionary
-        job_opts.verbosity = 0
-        self.data["payette opts"] = job_opts
+        ro.set_global_option("VERBOSITY", 0, default=True)
 
         # allowed directives
         self.allowed_directives = ("method", "options", "permutate", )
@@ -88,10 +88,12 @@ class Permutate(object):
 
         # print info
         if self.data["verbosity"]:
-            pu.loginf("Permutating job: {0}".format(self.data["basename"]))
-            pu.loginf("Permutated variables: {0}"
-                      .format(", ".join(self.param_nams)))
-            pu.loginf("Permutation method: {0}".format(self.method))
+            pu.log_message("Permutating job: {0}".format(self.data["basename"]),
+                           noisy=True)
+            pu.log_message("Permutated variables: {0}"
+                           .format(", ".join(self.param_nams)), noisy=True)
+            pu.log_message("Permutation method: {0}".format(self.method),
+                           noisy=True)
 
     def run_job(self, *args, **kwargs):
         r"""Run the permutation job
@@ -113,20 +115,26 @@ class Permutate(object):
         cwd = os.path.realpath(os.getcwd())
         dnam = self.data["basename"] + self.data["fext"]
         base_dir = os.path.join(cwd, dnam)
-        idir = 0
-        while True:
-            if os.path.isdir(base_dir):
-                dir_id = ".{0:03d}".format(idir)
-                base_dir = os.path.join(cwd, dnam + dir_id)
-            else:
-                break
+        if os.path.isdir(base_dir):
+            idir = 0
+            dir_id = ".{0:03d}".format(idir)
+            copy_dir = os.path.join(cwd, dnam + dir_id)
+            while True:
+                if os.path.isdir(copy_dir):
+                    dir_id = ".{0:03d}".format(idir)
+                    copy_dir = os.path.join(cwd, dnam + dir_id)
+                else:
+                    break
 
-            idir += 1
-            if idir > 100:
-                sys.exit("ERROR: max number of dirs")
+                idir += 1
+                if idir > 100:
+                    pu.report_and_raise_error("max number of dirs",
+                                              tracebacklimit=0)
+            os.rename(base_dir, copy_dir)
 
         if self.data["verbosity"]:
-            pu.loginf("Running: {0}".format(self.data["basename"]))
+            pu.log_message("Running: {0}".format(self.data["basename"]),
+                           noisy=True)
 
         os.mkdir(base_dir)
         os.chdir(base_dir)
@@ -139,8 +147,7 @@ class Permutate(object):
         # Save additional arguments to func in the global FARGS. This would be
         # handled better using something similar to scipy.optimize.py's
         # wrap_function, but that is not compatible with Pool.map.
-        FARGS = [self.param_nams, self.data, base_dir,
-                 self.data["payette opts"], index_f]
+        FARGS = [self.param_nams, self.data, base_dir, index_f]
 
         nproc = min(mp.cpu_count(), self.data["nproc"])
         if nproc == 1:
@@ -156,9 +163,11 @@ class Permutate(object):
         os.chdir(cwd)
 
         if self.data["verbosity"]:
-            pu.loginf("Permutation job {0} completed"
-                      .format(self.data["basename"]), pre="\n")
-            pu.loginf("Output directory: {0}".format(base_dir))
+            pu.log_message("Permutation job {0} completed"
+                           .format(self.data["basename"]), pre="\n",
+                           noisy=True)
+            pu.log_message("Output directory: {0}".format(base_dir),
+                           noisy=True)
 
         retcode = 0
 
@@ -190,7 +199,6 @@ class Permutate(object):
         None
 
         """
-        errors = 0
         param_ranges = []
         options = []
 
@@ -204,9 +212,8 @@ class Permutate(object):
             directive = item[0].lower()
 
             if directive not in self.allowed_directives:
-                errors += 1
-                pu.logerr("unrecognized keyword \"{0}\" in permutation block"
-                          .format(directive))
+                pu.report_error("unrecognized keyword \"{0}\" in permutation block"
+                                .format(directive))
                 continue
 
             if directive == "options":
@@ -214,21 +221,21 @@ class Permutate(object):
                 try:
                     opt = [x.lower() for x in item[1:]]
                 except IndexError:
-                    errors += 1
-                    pu.logerr("no options given following 'option' directive")
+                    pu.report_error(
+                        "no options given following 'option' directive")
                     continue
 
                 if opt[0] in pu.flatten(self.allowed_methods):
-                    pu.logwrn("using deprecated 'options' keyword to specify "
-                              "the {0} 'method'".format(opt[0]))
+                    pu.log_warning(
+                        "using deprecated 'options' keyword to specify "
+                        "the {0} 'method'".format(opt[0]))
                     directive = "method"
 
                 else:
                     bad_opt = [x for x in opt if x not in self.allowed_options]
                     if bad_opt:
-                        errors += 1
-                        pu.logerr("options '{0:s}' not recognized"
-                                  .format(", ".join(bad_opt)))
+                        pu.report_error("options '{0:s}' not recognized"
+                                        .format(", ".join(bad_opt)))
 
                     else:
                         options.extend(opt)
@@ -242,24 +249,22 @@ class Permutate(object):
                 try:
                     meth = item[1]
                 except IndexError:
-                    errors += 1
-                    pu.logerr("no method given following 'method' directive")
+                    pu.report_error(
+                        "no method given following 'method' directive")
                     continue
 
                 if self.method is None:
                     self.method = meth
 
                 else:
-                    errors += 1
-                    pu.logerr("requested method '{0}' but method '{1}'"
-                              .format(meth, self.method) +
+                    pu.report_error("requested method '{0}' but method '{1}'"
+                                    .format(meth, self.method) +
                               " already requested")
                     continue
 
                 bad_meth = self.method not in pu.flatten(self.allowed_methods)
                 if bad_meth:
-                    errors += 1
-                    pu.logerr(
+                    pu.report_error(
                         "method '{0:s}' not recognized, allowed methods are {1}"
                         .format(self.method, ", ".join(self.allowed_methods)))
                 continue
@@ -270,16 +275,14 @@ class Permutate(object):
                 try:
                     key = item[1]
                 except IndexError:
-                    errors += 1
-                    pu.logerr("No item given for permutate keyword")
+                    pu.report_error("No item given for permutate keyword")
                     continue
 
                 try:
                     vals = [x.lower() for x in item[2:]]
                 except IndexError:
-                    errors += 1
-                    pu.logerr("No values given for permutate keyword {0}"
-                              .format(key))
+                    pu.report_error("No values given for permutate keyword {0}"
+                                    .format(key))
                     continue
 
                 # specified range
@@ -287,8 +290,7 @@ class Permutate(object):
                 if "range" in vals:
                     p_range = ", ".join(vals[vals.index("range") + 1:])
                     if len(p_range.split(",")) < 2:
-                        errors += 1
-                        pu.logerr("range requires at least 2 arguments")
+                        pu.report_error("range requires at least 2 arguments")
                         continue
 
                     elif len(p_range.split(",")) == 2:
@@ -309,8 +311,7 @@ class Permutate(object):
 
                 # check that a range was given
                 if p_range is None or not len(p_range):
-                    errors += 1
-                    pu.logerr("no range/sequence given for " + key)
+                    pu.report_error("no range/sequence given for " + key)
                     p_range = np.zeros(1)
 
                 p_range = p_range.tolist()
@@ -322,18 +323,17 @@ class Permutate(object):
 
             continue
 
-        if errors:
-            pu.logerr("quiting due to previous errors")
-            sys.exit(2)
+        if pu.error_count():
+            pu.report_and_raise_error("quiting due to previous errors",
+                                      tracebacklimit=0)
 
         # check for conflicting options
         for item in self.conflicting_options:
             conflict = [x for x in options if x in item]
             if len(conflict) - 1:
-                pu.logerr(
+                pu.report_and_raise_error(
                     "conflicting options \"{0}\" ".format(", ".join(conflict)) +
-                    "given in permuation block")
-                sys.exit(2)
+                    "given in permuation block", tracebacklimit=0)
 
         if self.method is None:
             self.method = "zip"
@@ -343,9 +343,10 @@ class Permutate(object):
 
         else:
             if len(set([len(x) for x in param_ranges])) - 1:
-                pu.logerr("number of permutations must be the same for "
-                          "all permutated parameters when using method: [zip]")
-                sys.exit(3)
+                pu.report_and_raise_error(
+                    "number of permutations must be the same for "
+                    "all permutated parameters when using method: [zip]",
+                    tracebacklimit=0)
             param_ranges = zip(*param_ranges)
 
         nruns = len(param_ranges)
@@ -370,8 +371,6 @@ class Permutate(object):
 
         """
 
-        errors = 0
-
         # Remove from the material block the permutated parameters. Current
         # values will be inserted in to the material block for each run.
         content = []
@@ -387,12 +386,11 @@ class Permutate(object):
         job_inp = deepcopy(self.data["baseinp"])
         for key, val in zip(self.param_nams, self.initial_vals):
             job_inp["material"]["content"].append("{0} {1}".format(key, val))
-        the_model = pc.Payette(self.data["basename"], job_inp,
-                               self.data["payette opts"])
+        the_model = pc.Payette(self.data["basename"], job_inp)
         param_table = the_model.material.constitutive_model.parameter_table
 
         # remove cruft
-        for ext in (".log", ".props", ".math1", ".math2", ".prf"):
+        for ext in (".log", ".props", ".math1", ".math2", ".prf", ".out"):
             try:
                 os.remove(self.data["basename"] + ext)
             except OSError:
@@ -404,13 +402,13 @@ class Permutate(object):
                   [y.lower() for y in param_table.keys()]]
 
         if not_in:
-            pu.logerr("permutated parameter[s] {0} not in model parameters"
-                      .format(", ".join(not_in)))
-            errors += 1
+            pu.report_error(
+                "permutated parameter[s] {0} not in model parameters"
+                .format(", ".join(not_in)))
 
-        if errors:
-            pu.logerr("exiting due to previous errors")
-            sys.exit(123)
+        if pu.error_count():
+            pu.report_and_raise_error("exiting due to previous errors",
+                                      tracebacklimit=0)
 
         the_model.finish()
 
@@ -444,7 +442,7 @@ def func(xcall):
     job_id = xcall[0]
     xcall = xcall[1]
 
-    xnams, data, base_dir, job_opts, index_f = FARGS
+    xnams, data, base_dir, index_f = FARGS
     job = data["basename"] + "." + job_id
 
     job_dir = os.path.join(base_dir, job)
@@ -471,8 +469,9 @@ def func(xcall):
     pu.write_input_file(job, job_inp, os.path.join(job_dir, job + ".inp"))
 
     if data["verbosity"]:
-        pu.loginf("Running job {0:s}, parameters: {1}"
-                  .format(job_id, ", ".join(msg)))
+        pu.log_message("Running job {0:s}, parameters: {1}"
+                       .format(job_id, ", ".join(msg)),
+                       noisy=True)
 
     # write to the index file
     with open(index_f, "a") as fobj:
@@ -483,14 +482,14 @@ def func(xcall):
         fobj.write("}\n")
 
     # instantiate Payette object
-    the_model = pc.Payette(job, job_inp, job_opts)
+    the_model = pc.Payette(job, job_inp)
 
     # run the job
     solve = the_model.run_job()
 
     the_model.finish()
 
-    if job_opts.disp:
+    if ro.DISP:
         retcode = solve["retcode"]
     else:
         retcode = solve

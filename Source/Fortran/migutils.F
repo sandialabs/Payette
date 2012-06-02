@@ -4,26 +4,26 @@ C     callback functions to call python functions
 C*************************************************************************
       SUBROUTINE LOGMES(MSG)
       CHARACTER*(*) MSG
-      EXTERNAL migMessage
-      CALL migMessage(MSG)
+      EXTERNAL log_message
+      CALL log_message(MSG)
       END SUBROUTINE LOGMES
 C*************************************************************************
       SUBROUTINE BOMBED(MSG)
       CHARACTER*(*) MSG
       CHARACTER*120 JNKSTR
-      EXTERNAL migError
+      EXTERNAL report_and_raise_error
       WRITE(JNKSTR,77)MSG
  77   FORMAT('BOMBED: ',A100)
-      CALL migError(JNKSTR)
+      CALL report_and_raise_error(JNKSTR)
       END SUBROUTINE BOMBED
 C*************************************************************************
       SUBROUTINE FATERR(CALLER, MSG)
       CHARACTER*(*) CALLER
       CHARACTER*(*) MSG
       CHARACTER*300 JNKSTR
-      EXTERNAL migError
+      EXTERNAL report_and_raise_error
       WRITE(JNKSTR,77)MSG,CALLER
-      CALL migError(JNKSTR)
+      CALL report_and_raise_error(JNKSTR)
  77   FORMAT('FATERR: ',A100,' detected by ',A100)
       END SUBROUTINE FATERR
 #else

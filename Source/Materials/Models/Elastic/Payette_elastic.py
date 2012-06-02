@@ -24,7 +24,7 @@
 from os.path import dirname, realpath, join
 from numpy import array
 
-from Source.Payette_utils import reportWarning, reportError, migMessage, migError
+from Source.Payette_utils import log_warning, log_message, report_and_raise_error
 from Source.Payette_tensor import iso, dev
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_F2PY_CALLBACK
@@ -124,7 +124,7 @@ class Elastic(ConstitutiveModelPrototype):
         else:
             a = [1, dt, self.mui, sigold, d]
             if PC_F2PY_CALLBACK:
-                a += [migError, migMessage]
+                a.extend([report_and_raise_error, log_message])
             sig = mtllib.elast_calc(*a)
 
         # store updated data
@@ -135,15 +135,15 @@ class Elastic(ConstitutiveModelPrototype):
         k, mu = mui
 
         if k <= 0.:
-            reportError(iam, "Bulk modulus K must be positive")
+            report_and_raise_error("Bulk modulus K must be positive")
 
         if mu <= 0.:
-            reportError(iam, "Shear modulus MU must be positive")
+            report_and_raise_error("Shear modulus MU must be positive")
 
         # poisson's ratio
         nu = (3. * k - 2 * mu) / (6 * k + 2 * mu)
         if nu < 0.:
-            reportWarning(iam, "negative Poisson's ratio")
+            log_warning("negative Poisson's ratio")
 
         ui = array([k, mu])
 
@@ -153,7 +153,7 @@ class Elastic(ConstitutiveModelPrototype):
         props = array(mui)
         a = [props]
         if PC_F2PY_CALLBACK:
-            a += [migError, migMessage]
+            a .extend([report_and_raise_error, log_message])
         ui = mtllib.elast_chk(*a)
         return ui
 

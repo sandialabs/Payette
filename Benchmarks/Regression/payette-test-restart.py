@@ -17,13 +17,13 @@ class Test(PayetteTest):
         self.outfile = "{0}.out".format(self.name)
         self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
         self.restartfile = self.name + ".prf"
-        self.runcommand = ["runPayette","--no-writeprops",
-                           "--test-restart",self.infile]
-        self.restartcommand = ["runPayette","--no-writeprops",
-                               "--test-restart",self.restartfile]
+        self.runcommand = ["runPayette", "--no-writeprops",
+                           "--test-restart", self.infile]
+        self.restartcommand = ["runPayette", "--no-writeprops",
+                               "--test-restart", self.restartfile]
         self.material = "elastic"
 
-        self.keywords = ["builtin","payette","restart","regression","fast"]
+        self.keywords = ["builtin", "payette", "restart", "regression", "fast"]
         self.compare_method = self.compare_out_to_baseline_rms
         self.owner = "Tim Fuller"
         self.date = "February 25, 2012"

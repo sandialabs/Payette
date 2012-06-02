@@ -97,13 +97,14 @@ begin simulation exmpl_0
 
   begin material
 
-    # Model "hooke" is a fortran linear elastic model.
+    # Model "hooke" is a linear elastic model.
     # Many constitutive models have aliases.  hooke, for example, can also
     # be specified by "elastic", "elasticity", or "linear elastic"
 
     constitutive model hooke
+    # options = fortran # use the fortran implementation
 
-    # The linear elastic model doesn't actually use RHO or A1. The input
+    # The linear elastic model doesn't actually use A1. The input
     # parser will warn you of that but will not stop the calculation. This
     # allows changing the constitutive model without having to change all of
     # the parameters. This assumes, of course, that many of the models use

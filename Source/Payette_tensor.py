@@ -41,6 +41,7 @@ from scipy import linalg
 from math import sqrt
 
 import Source.Payette_utils as pu
+import Source.runopts as ro
 
 
 DI3 = [[0, 1, 2], [0, 1, 2]]
@@ -80,7 +81,6 @@ VEC_MAP = {0: (0,), 1: (1,), 2: (2,)}
 
 def to_matrix(arga):
     """convert arga to a matrix"""
-    iam = "to_matrix"
     if len(arga) == 6:
         return np.matrix([[arga[0], arga[3], arga[5]],
                           [arga[3], arga[1], arga[4]],
@@ -91,16 +91,15 @@ def to_matrix(arga):
                           [arga[6], arga[7], arga[8]]], dtype='double')
     else:
         msg = "wrong size array of size [{0:d}]".format(len(arga))
-        pu.reportError(iam, msg)
+        pu.report_and_raise_error(msg)
         return
 
 
 def to_array(arga, symmetric=True):
     """convert arga to an array"""
-    iam = "to_array"
     shape = np.shape(arga)
     if shape[0] != shape[1] or shape[0] != 3:
-        pu.reportError(iam, 'wrong shape [{0}]'.format(str(shape)))
+        pu.report_and_raise_error('wrong shape [{0}]'.format(str(shape)))
         return 1
     if not symmetric:
         return np.array([arga[0, 0], arga[0, 1], arga[0, 2],
@@ -113,9 +112,9 @@ def to_array(arga, symmetric=True):
                      arga[0, 1], arga[1, 2], arga[0, 2]], dtype='double')
 
 
-def powm(arga, pwm, strict=False):
+def powm(arga, pwm):
     """return the matrix power of arga"""
-    if isdiag(arga) and not strict:
+    if isdiag(arga) and not ro.STRICT:
         arga[DI3] = np.diag(arga) ** pwm
     else:
         eig_val, eig_vec = la.eigh(arga)
@@ -124,37 +123,37 @@ def powm(arga, pwm, strict=False):
     return arga
 
 
-def expm(arga, strict=False):
+def expm(arga):
     """return the matrix exponential of arga"""
-    if isdiag(arga) and not strict:
+    if isdiag(arga) and not ro.STRICT:
         arga[DI3] = np.exp(np.diag(arga))
-    elif strict:
+    elif ro.STRICT:
         arga = np.real(scipy.linalg.expm(arga))
     else:
         arga = I3X3 + arga + np.dot(arga, arga) / 2.
     return arga
 
 
-def sqrtm(arga, strict=False):
+def sqrtm(arga):
     """return the matrix square root of arga"""
     if np.isnan(arga).any() or np.isinf(arga).any():
         msg = "Probably reaching the numerical limits for the " +\
               "magnitude of the deformation."
-        pu.reportError(__file__, msg)
-    if isdiag(arga) and not strict:
+        pu.report_and_raise_error(msg)
+    if isdiag(arga) and not ro.STRICT:
         arga[DI3] = np.sqrt(np.diag(arga))
-    elif strict:
+    elif ro.STRICT:
         arga = np.real(scipy.linalg.sqrtm(arga))
     else:
         arga = powm(arga, 0.5)
     return arga
 
 
-def logm(arga, strict=False):
+def logm(arga):
     """return the matrix log of arga"""
-    if isdiag(arga) and not strict:
+    if isdiag(arga) and not ro.STRICT:
         arga[DI3] = np.log(np.diag(arga))
-    elif strict:
+    elif ro.STRICT:
         arga = np.real(scipy.linalg.logm(arga))
     else:
         arga = ((arga - I3X3) - np.dot(arga - I3X3, arga - I3X3) / 2. +
@@ -303,8 +302,6 @@ def dd66x6(job, arga, argx):
 
     """
 
-    iam = "dd66x6"
-
     mandel = np.array([1., 1., 1., sqrt(2.), sqrt(2.), sqrt(2.)])
     res = np.zeros(6)
 
@@ -320,7 +317,7 @@ def dd66x6(job, arga, argx):
         res = np.dot(tens, arga)
 
     else:
-        pu.reportError(iam, "unknown job sent to dd66x6")
+        pu.report_and_raise_error("unknown job sent to dd66x6")
 
     # Convert result to Voigt form
     res = res / mandel

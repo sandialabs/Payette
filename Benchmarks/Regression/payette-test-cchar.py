@@ -14,10 +14,10 @@ class Test(PayetteTest):
 
         self.infile = "{0}.inp".format(os.path.join(self.tdir,self.name))
         self.outfile = "{0}.out".format(self.name)
-        self.runcommand = ["runPayette","--no-writeprops","--no-restart",
+        self.runcommand = ["runPayette", "--no-writeprops", "--no-restart",
                            "--cchar=!",self.infile]
         self.material = "elastic"
-        self.keywords = ["payette","cchar","regression","fast","builtin"]
+        self.keywords = ["payette", "cchar", "regression", "fast", "builtin"]
 
         self.owner = "Tim Fuller"
         self.date = "February 25, 2012"
@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     test = Test()
     if "--cleanup" in sys.argv:
-        for ext in ["out","res","log","prf","pyc","echo"]:
+        for ext in ["out", "res", "log", "prf", "pyc", "echo"]:
             try: os.remove("%s.%s"%(test.name,ext))
             except: pass
             continue

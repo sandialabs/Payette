@@ -3,16 +3,16 @@
 
 python module payette__user__routines
     interface payette_user_interface
-        subroutine migmessage(message)
-            intent(callback) migmessage
+        subroutine log_message(message)
+            intent(callback) log_message
             character*(*) :: message
-            real intent(callback) :: migerror
-        end subroutine migmessage
-        subroutine migerror(message)
-            intent(callback) migerror
+            real intent(callback) :: report_and_raise_error
+        end subroutine log_message
+        subroutine report_and_raise_error(message)
+            intent(callback) report_and_raise_error
             character*(*) :: message
-            real intent(callback) :: migmessage
-        end subroutine migerror
+            real intent(callback) :: log_message
+        end subroutine report_and_raise_error
     end interface payette_user_interface
 end python module payette__user__routines
 
@@ -28,20 +28,20 @@ python module plastic ! in
             double precision dimension(6),intent(in,out) :: sig
             double precision dimension(6),intent(in) :: d
             double precision dimension(nsv),intent(in,out) :: sv
-            intent(callback) migerror
-            external migerror
-            intent(callback) migmessage
-            external migmessage
+            intent(callback) report_and_raise_error
+            external report_and_raise_error
+            intent(callback) log_message
+            external log_message
         end subroutine plast_calc
         subroutine plast_chk(ui) ! in :diamm:.//diamm_mig.F
             use payette__user__routines
             integer, parameter :: nprop=6
             integer, parameter :: nsv=7
             double precision dimension(nprop),intent(in,out) :: ui
-            intent(callback) migerror
-            external migerror
-            intent(callback) migmessage
-            external migmessage
+            intent(callback) report_and_raise_error
+            external report_and_raise_error
+            intent(callback) log_message
+            external log_message
         end subroutine plast_chk
         subroutine plast_rxv(nx,namea,keya,rinit,iadvct)
             use payette__user__routines
@@ -54,10 +54,10 @@ python module plastic ! in
             character dimension(mxk),intent(out) :: keya
             double precision dimension(nsv),intent(out) :: rinit
             integer dimension(nsv),intent(out) :: iadvct
-            intent(callback) migerror
-            external migerror
-            intent(callback) migmessage
-            external migmessage
+            intent(callback) report_and_raise_error
+            external report_and_raise_error
+            intent(callback) log_message
+            external log_message
         end subroutine plast_rxv
     end interface
 end python module plastic

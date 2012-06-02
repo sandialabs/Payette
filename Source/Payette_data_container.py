@@ -52,7 +52,7 @@ class DataContainer:
         self.data_container = {}
         self.plot_key_map = {}
         self.plot_key_list = []
-        self.option_container = {}
+        self.static_data_container = {}
         self.extra_vars_map = {}
         self.extra_vars_registered = False
         self.num_extra = 0
@@ -83,10 +83,12 @@ class DataContainer:
         if (name in self.data_container or
             name.upper() in self.data_container or
             name.lower() in self.data_container):
-            pu.reportError(iam,"variable {0} already registered".format(name))
+            pu.report_and_raise_error(
+                "variable {0} already registered".format(name))
 
         if typ not in self.data_types:
-            pu.reportError(iam,"unrecognized data type: {0}".format(typ))
+            pu.report_and_raise_error(
+                "unrecognized data type: {0}".format(typ))
 
         shape = None
         if typ in self.tensor_vars:
@@ -95,7 +97,7 @@ class DataContainer:
                  not isinstance(init_val,(list,np.ndarray)) ):
                 msg = ("{0} data {1} must be a list "
                        "or numpy.ndarray, got {2}".format(typ,name,init_val))
-                pu.reportError(iam,msg)
+                pu.report_and_raise_error(msg)
 
             if typ == "SymTensor":
                 if init_val is None:
@@ -104,7 +106,7 @@ class DataContainer:
                     init_val = self.I6
                 elif len(init_val) != 6:
                     msg = "length of SymTensor data {0} != 6".format(name)
-                    pu.reportError(iam,msg)
+                    pu.report_and_raise_error(msg)
 
             elif typ == "Tensor":
                 if init_val is None:
@@ -113,7 +115,7 @@ class DataContainer:
                     init_val = self.I9
                 elif len(init_val) != 9:
                     msg = "length of Tensor data {0} != 9".format(name)
-                    pu.reportError(iam,msg)
+                    pu.report_and_raise_error(msg)
 
             elif typ == "Vector":
                 if init_val is None:
@@ -122,18 +124,18 @@ class DataContainer:
                     init_val = self.I3
                 elif len(init_val) != 3:
                     msg = "length of Vector data {0} != 3".format(name)
-                    pu.reportError(iam,msg)
+                    pu.report_and_raise_error(msg)
 
             elif typ == "Matrix":
                 if init_val is None:
                     if dim is None:
                         msg="no dim specified for {0}".format(name)
-                        pu.reportError(iam,msg)
+                        pu.report_and_raise_error(msg)
 
                     else:
                         if not isinstance(dim,(int,tuple)):
                             msg="bad dim {0} for {1}".format(dim,name)
-                            pu.reportError(iam,msg)
+                            pu.report_and_raise_error(msg)
                         else:
                             init_val = np.zeros(dim)
 
@@ -141,7 +143,7 @@ class DataContainer:
                     if init_val == "Identity":
                         if not isinstance(dim,int):
                             msg="bad dim {0} for {1}".format(dim,name)
-                            pu.reportError(iam,msg)
+                            pu.report_and_raise_error(msg)
 
                         init_val = np.eye(dim)
 
@@ -156,7 +158,7 @@ class DataContainer:
 
             if not isinstance(init_val,(list,tuple)):
                 msg = "List data {0} must be a list".format(name)
-                pu.reportError(iam,msg)
+                pu.report_and_raise_error(msg)
 
             value = [x for x in init_val]
             old_value = [x for x in init_val]
@@ -169,7 +171,7 @@ class DataContainer:
 
             if not isinstance(init_val,(np.ndarray,list,tuple)):
                 msg = "Integer Array data {0} must not be a np.ndarray".format(name)
-                pu.reportError(iam,msg)
+                pu.report_and_raise_error(msg)
 
             value = np.array([x for x in init_val],dtype=int)
             old_value = np.array([x for x in init_val],dtype=int)
@@ -182,7 +184,7 @@ class DataContainer:
 
             if not isinstance(init_val,(np.ndarray,list,tuple)):
                 msg = "Array data {0} must be a np.ndarray".format(name)
-                pu.reportError(iam,msg)
+                pu.report_and_raise_error(msg)
 
             value = np.array(init_val)
             old_value = np.array(init_val)
@@ -195,7 +197,7 @@ class DataContainer:
 
             if isinstance(init_val,(list,tuple,np.ndarray)):
                 msg = "Scalar data {0} must ba scalar".format(name)
-                pu.reportError(iam,msg)
+                pu.report_and_raise_error(msg)
 
             value = init_val
             old_value = init_val
@@ -209,7 +211,7 @@ class DataContainer:
             if not isinstance(init_val,bool):
                 msg = ("Boolean data {0} must be boolean, got {1}"
                        .format(name,init_val))
-                pu.reportError(iam,msg)
+                pu.report_and_raise_error(msg)
 
             value = init_val
             old_value = init_val
@@ -223,7 +225,7 @@ class DataContainer:
             if not isinstance(plot_key, str):
                 msg = ("plot_key for {0} must be a string, got {1}"
                        .format(name, plot_key))
-                pu.reportError(iam, msg)
+                pu.report_and_raise_error( msg)
 
             # format the plot key
             plot_key = plot_key.replace(" ","_").upper()
@@ -291,8 +293,8 @@ class DataContainer:
         try:
             del self.data_container[name]
         except KeyError:
-            pu.reportWarning(
-                iam, "attempting to unregister non-registered data {0}".format(name))
+            pu.log_warning(
+                "attempting to unregister non-registered data {0}".format(name))
 
     def register_xtra_vars(self, nxtra, names, keys, values):
         """ register extra data with the data container """
@@ -300,7 +302,8 @@ class DataContainer:
         iam = "{0}.register_xtra_vars".format(self.name)
 
         if self.extra_vars_registered:
-            reporteError(iam, "extra variables can only be registered once")
+            pu.report_and_raise_error(
+                "extra variables can only be registered once")
 
         self.extra_vars_registered = True
         self.num_extra = nxtra
@@ -318,40 +321,34 @@ class DataContainer:
 
         return
 
-    def register_option(self,name,val):
+    def register_static_data(self, name, val):
+        """Register unchanging data
 
+        Parameters
+        ----------
+        name : str
+        val :
         """
-            register data to the option container
 
-            INPUT
-              name: option name
-              val: option value
-        """
+        if name in self.static_data_container:
+            pu.report_and_raise_error(
+                "static data {0} already registered".format(name))
 
-        iam = "{0}.register_option(self,name,val)".format(self.name)
-
-        if name in self.option_container:
-            pu.reportError(iam,"option {0} already registered".format(name))
-
-        self.option_container[name] = val
+        self.static_data_container[name] = val
         setattr(self,name.replace(" ","_").upper(),val)
         return
 
-    def get_all_options(self):
-        return self.option_container
+    def get_static_data(self,name):
 
-    def get_option(self,name):
+        """ return static_data[name] """
 
-        """ return option[name] """
+        if not self.static_data_container.has_key(name):
+            msg = """\
+{0} not in {1}.static_data_container, registered data are:
+{2}.""".format(name, self.name, ", ".join(self.static_data_container.keys()))
+            pu.report_and_raise_error(msg)
 
-        iam = "{0}.get_option(self,name,val)".format(self.name)
-
-        if not self.option_container.has_key(name):
-            msg = ("{0} not in {1}.option_container. registered options are:\n{2}."
-                   .format(name,self.name,", ".join(self.option_container.keys())))
-            pu.reportError(iam,msg)
-
-        return self.option_container.get(name)
+        return self.static_data_container.get(name)
 
     def get_data(self, name, stash=False, cur=False, form="Array"):
         """ return simulation_data[name][valtyp] """
@@ -365,7 +362,7 @@ class DataContainer:
             idx = self.plot_key_map[plot_key]["idx"]
 
         if stash and cur:
-            pu.reportError(iam,"cannot get stash and cur simultaneously")
+            pu.report_and_raise_error("cannot get stash and cur simultaneously")
 
         if stash:
             valtyp = "stashed value"
@@ -389,7 +386,7 @@ class DataContainer:
                     "{0} not in {1}.data_container. registered data are:\n{2}."
                     .format(name, self.name,
                             ", ".join(self.data_container.keys())))
-                pu.reportError(iam, msg)
+                pu.report_and_raise_error(msg)
 
             typ = data["type"]
 
@@ -403,12 +400,14 @@ class DataContainer:
 
                 elif form == "Matrix":
                     if typ == "Vector":
-                        pu.reportError(iam,"cannont return vector matrix")
+                        pu.report_and_raise_error(
+                            "cannont return vector matrix")
 
                     retval = pt.to_matrix(data[valtyp])
 
                 else:
-                    pu.reportError(iam,"unrecognized form {0}".format(form))
+                    pu.report_and_raise_error(
+                        "unrecognized form {0}".format(form))
 
             elif typ == "List":
                 retval = [x for x in data[valtyp]]
@@ -441,7 +440,7 @@ class DataContainer:
         iam = "{0}.store_data(self,name,newval)".format(self.name)
 
         if old and stash:
-            pu.reportError(iam,"can only store old or stash not both")
+            pu.report_and_raise_error("can only store old or stash not both")
 
         if stash:
             valtyp = "stashed value"
@@ -453,7 +452,7 @@ class DataContainer:
         # handle extra variables
         if name == "extra variables":
             if len(newval) != self.num_extra:
-                pu.reportError(iam,"wrong size for extra variable array")
+                pu.report_and_raise_error("wrong size for extra variable array")
 
             for ixv,xv in enumerate(newval):
                 name = self.getExName(ixv)
@@ -465,7 +464,7 @@ class DataContainer:
         if data is None:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
                    .format(name, self.name, ", ".join(self.data_container.keys())))
-            pu.reportError(iam,msg)
+            pu.report_and_raise_error(msg)
 
         typ = data["type"]
 
@@ -480,15 +479,19 @@ class DataContainer:
                 elif typ == "SymTensor":
                     newval = pt.to_array(newval)
                 else:
-                    pu.reportError(iam,"vector cannot be converted from matrix")
+                    pu.report_and_raise_error(
+                        "vector cannot be converted from matrix")
 
             # check lengths
             if typ == "Vector" and len(newval) != 3:
-                pu.reportError(iam,"len Vector data {0} != 3".format(name))
+                pu.report_and_raise_error(
+                    "len Vector data {0} != 3".format(name))
             elif typ == "SymTensor" and len(newval) != 6:
-                pu.reportError(iam,"len SymTensor data {0} != 6".format(name))
+                pu.report_and_raise_error(
+                    "len SymTensor data {0} != 6".format(name))
             elif typ == "Tensor" and len(newval) != 9:
-                pu.reportError(iam,"len Tensor data {0} != 9".format(name))
+                pu.report_and_raise_error(
+                    "len Tensor data {0} != 9".format(name))
 
             # store the newval
             data[valtyp] = np.array(newval)
@@ -550,7 +553,7 @@ class DataContainer:
         if name not in self.data_container:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
                    .format(name, self.name, ", ".join(self.data_container.keys())))
-            pu.reportError(iam, msg)
+            pu.report_and_raise_error(msg)
 
         value = self.get_stashed_data(name)
         self.store_data(name, value, old=True)
@@ -574,8 +577,9 @@ class DataContainer:
         if name == "extra variables":
             if value is not None:
                 if len(value) != self.num_extra:
-                    pu.reportError(iam,"len(value [{0:d}]) != num_extra [{1:d}]"
-                                   .format(len(value), self.num_extra))
+                    pu.report_and_raise_error(
+                        "len(value [{0:d}]) != num_extra [{1:d}]"
+                        .format(len(value), self.num_extra))
 
                 for idx, exval in enumerate(value):
                     name = self.extra_vars_map[idx]
@@ -594,7 +598,7 @@ class DataContainer:
         if name not in self.data_container:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
                    .format(name,self.name,", ".join(self.data_container.keys())))
-            pu.reportError(iam,msg)
+            pu.report_and_raise_error(msg)
 
         if value is None:
             value = self.get_data(name, cur=True)
@@ -609,7 +613,7 @@ class DataContainer:
         name = self.extra_vars_map.get(idx)
         if name is None:
             msg = "{0:d} not in {1}.extra_vars_map.".format(idx,self.name)
-            pu.reportError(iam,msg)
+            pu.report_and_raise_error(msg)
         return name
 
     def get_plot_key(self, name):
@@ -617,7 +621,7 @@ class DataContainer:
         if data is None:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
                    .format(name, self.name,", ".join(self.data_container.keys())))
-            pu.reportError(iam,msg)
+            pu.report_and_raise_error(msg)
         return data["plot key"]
 
     def get_plot_name(self, name, idx=None):
@@ -633,7 +637,7 @@ class DataContainer:
             if data is None:
                 msg = ("{0} not in plotable data. plotable data are:\n{2}."
                        .format(name, self.name,", ".join(self.plot_key_list)))
-                pu.reportError(iam, msg)
+                pu.report_and_raise_error(msg)
             plot_name = data["plot name"]
             if idx is not None:
                 plot_name = plot_name[idx]
@@ -662,7 +666,7 @@ class DataContainer:
         if data is None:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
                    .format(name,self.name,", ".join(self.data_container.keys())))
-            pu.reportError(iam,msg)
+            pu.report_and_raise_error(msg)
 
         return data
 
@@ -694,5 +698,5 @@ class DataContainer:
         if comp:
             return comp
         else:
-            pu.reportError(__file__,"bad mapping")
+            pu.report_and_raise_error("bad mapping")
 

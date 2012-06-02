@@ -61,7 +61,7 @@ and try importing the material's extension module directly in a python
 session.  If it does not import, you will need to rebuild the extension module.
 If rebuilding Payette does not fix the problem, please contact the
 Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
-            pu.reportError(iam, msg)
+            pu.report_and_raise_error(msg)
 
         self.eos_model = self.constitutive_model.eos_model
 
@@ -93,8 +93,8 @@ Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
                                 "adjusted value": val2}
             continue
 
-        # register param table
-        self.matdat.register_option("parameter table", param_table)
+        pass
+
 
     def register_default_data(self):
         """Register the default data for the material """

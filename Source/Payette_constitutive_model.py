@@ -29,6 +29,7 @@ import os
 import imp
 import Source.Payette_tensor as pt
 import Source.Payette_utils as pu
+import Source.runopts as ro
 
 
 class ConstitutiveModelPrototype(object):
@@ -81,7 +82,6 @@ class ConstitutiveModelPrototype(object):
 
         # pass init_data to class data
         self.name = init_data["name"]
-        iam = self.name + "__init__"
         self.aliases = init_data["aliases"]
         if not isinstance(self.aliases, (list, tuple)):
             self.aliases = [self.aliases]
@@ -94,16 +94,18 @@ class ConstitutiveModelPrototype(object):
         if self.code is None:
             self.code = code_types[0]
         elif self.code not in code_types:
-            pu.reportError(iam, ("requested code type {0} not supported by {1}"
-                                 .format(self.code, self.name)))
+            pu.report_and_raise_error(
+                "requested code type {0} not supported by {1}"
+                .format(self.code, self.name))
 
-        # @mswan{ -> this would be new
+        pu.log_message("using {0} implementation of the '{1}' constitutive model"
+                       .format(self.code, self.name))
+
         # location of material data file - if any
         self.mtldat_f = init_data.get("material database")
         if self.mtldat_f is not None and not os.path.isfile(self.mtldat_f):
-            pu.reportError(
-                iam, "material data file {0} not found".format(self.mtldat_f))
-        # @mswan}
+            pu.report_and_raise_error(
+                "material data file {0} not found".format(self.mtldat_f))
 
         # specialized models
         mat_typ = init_data["material type"]
@@ -126,54 +128,49 @@ class ConstitutiveModelPrototype(object):
         self.dc = np.zeros(self.ndc)
         self.bulk_modulus = 0.
         self.shear_modulus = 0.
-        self.errors = 0
 
         pass
 
     def set_up(self, *args):
         """ set up model """
-        iam = "ConstitutiveModelPrototype.set_up"
-        pu.reportError(
-            iam, 'Constitutive model must provide set_up method')
+        pu.report_and_raise_error(
+            'Constitutive model must provide set_up method')
         return
 
     def update_state(self, *args):
         """ update state """
-        iam = "ConstitutiveModelPrototype.update_state"
-        pu.reportError(
-            iam, 'Constitutive model must provide update_state method')
+        pu.report_and_raise_error(
+            'Constitutive model must provide update_state method')
         return
 
     def finish_setup(self, matdat):
         """ check that model is properly set up """
 
-        name = self.name
-        iam = name + ".finish_setup"
-
-        if self.errors:
-            pu.reportError(iam, "previously encountered parsing errors")
+        if pu.error_count():
+            pu.report_and_raise_error("previously encountered parsing errors")
 
         if not any(self.ui):
-            pu.reportError(iam, "empty ui array")
+            pu.report_and_raise_error("empty ui array")
 
         if self.eos_model:
             # mss: do something here? But is seems unnecessary.
             return
 
         if not self.bulk_modulus:
-            pu.reportError(iam, "bulk modulus not defined")
+            pu.report_and_raise_error("bulk modulus not defined")
 
         if not self.shear_modulus:
-            pu.reportError(iam, "shear modulus not defined")
+            pu.report_and_raise_error("shear modulus not defined")
 
         if self.J0 is None:
             self.compute_init_jacobian()
 
         if not any(x for y in self.J0 for x in y):
-            pu.reportError(iam, "iniatial Jacobian is empty")
+            pu.report_and_raise_error("iniatial Jacobian is empty")
 
         matdat.register_data("jacobian", "Matrix", init_val=self.J0)
-        matdat.register_option("efield sim", self.electric_field_model)
+        if self.electric_field_model:
+            ro.set_global_option("EFIELD_SIM", True)
 
         return
 
@@ -204,18 +201,17 @@ class ConstitutiveModelPrototype(object):
         if aliases is None:
             aliases = []
 
-        iam = self.name + ".register_parameter"
         if not isinstance(param_name, str):
-            pu.reportError(iam,"parameter name must be a string, got {0}"
-                        .format(param_name))
+            pu.report_and_raise_error(
+                "parameter name must be a string, got {0}".format(param_name))
 
         if not isinstance(param_idx, int):
-            pu.reportError(iam,"parameter index must be an int, got {0}"
-                        .format(param_idx))
+            pu.report_and_raise_error(
+                "parameter index must be an int, got {0}".format(param_idx))
 
         if not isinstance(aliases, list):
-            pu.reportError(
-                iam, "aliases must be a list, got {0}".format(aliases))
+            pu.report_and_raise_error(
+                "aliases must be a list, got {0}".format(aliases))
 
         # register full name, low case name, and aliases
         full_name = param_name
@@ -227,15 +223,13 @@ class ConstitutiveModelPrototype(object):
                      if x in self.registered_params_and_aliases]
 
         if dupl_name:
-            pu.reportWarning(iam,"duplicate parameter names: {0}"
-                          .format(", ".join(param_names)))
-            self.errors += 1
+            pu.report_error(
+                "duplicate parameter names: {0}".format(", ".join(param_names)))
 
         if param_idx in self.registered_param_idxs:
-            pu.reportWarning(
-                iam, ("duplicate ui location [{0}] in parameter table"
-                      .format(", ".join(param_names))))
-            self.errors += 1
+            pu.report_error(
+                "duplicate ui location [{0}] in parameter table"
+                .format(", ".join(param_names)))
 
         self.registered_params.append(full_name)
         self.registered_params_and_aliases.extend(param_names)
@@ -276,8 +270,6 @@ class ConstitutiveModelPrototype(object):
     def parse_parameters(self, *args):
         """ populate the materials ui array from the self.params dict """
 
-        iam = self.name + ".parse_parameters"
-
         self.ui0 = np.zeros(self.nprop)
         self.ui = np.zeros(self.nprop)
         for param, param_dict in self.parameter_table.items():
@@ -290,47 +282,44 @@ class ConstitutiveModelPrototype(object):
         # ui array
         ignored, not_parseable = [], []
         for param, param_val in self.user_input_params.items():
-            param_nam = None
+            param_name = None
             if param in self.parameter_table:
-                param_nam = param
+                param_name = param
 
             else:
                 # look for alias
                 for key, val in self.parameter_table.items():
                     if param.lower() in val["names"]:
-                        param_nam = key
+                        param_name = key
                         break
                     continue
 
-            if param_nam is None:
+            if param_name is None:
                 ignored.append(param)
                 continue
 
-            if not self.parameter_table[param_nam]["parseable"]:
+            if not self.parameter_table[param_name]["parseable"]:
                 not_parseable.append(param)
                 continue
 
-            ui_idx = self.parameter_table[param_nam]["ui pos"]
+            ui_idx = self.parameter_table[param_name]["ui pos"]
             self.ui0[ui_idx] = param_val
             continue
 
         if ignored:
-            pu.reportWarning(iam,
-                             "ignoring unregistered parameters: {0}"
-                             .format(", ".join(ignored)))
+            pu.log_warning(
+                "ignoring unregistered parameters: {0}"
+                .format(", ".join(ignored)))
         if not_parseable:
-            pu.reportWarning(iam,
-                             "ignoring unparseable parameters: {0}"
-                             .format(", ".join(not_parseable)))
+            pu.log_warning("ignoring unparseable parameters: {0}"
+                           .format(", ".join(not_parseable)))
 
         return
 
     def parse_user_params(self, user_params):
         """ read the user params and populate user_input_params """
-        iam = self.name + ".parse_user_params"
-
         if not user_params:
-            pu.reportError(iam, "no parameters found")
+            pu.report_and_raise_error("no parameters found")
             return 1
 
         errors = 0
@@ -353,17 +342,17 @@ class ConstitutiveModelPrototype(object):
                 if self.mtldat_f is None:
                     msg = ("requested matlabel but "+ self.name +
                            " does not provide a material data file")
-                    pu.reportError(iam, msg)
+                    pu.report_and_raise_error(msg)
 
                 try:
                     matlabel = " ".join(line[1:])
                 except IndexError:
-                    pu.reportError(iam, "empty matlabel encountered")
+                    pu.report_and_raise_error("empty matlabel encountered")
 
                 # matlabel found, now parse the file for names and values
                 mtldat = pu.parse_mtldb_file(self.mtldat_f, material=matlabel)
                 for name, val in mtldat:
-                    self.user_input_params[name] = val
+                    self.user_input_params[name.upper()] = val
                     continue
 
                 continue
@@ -381,14 +370,14 @@ class ConstitutiveModelPrototype(object):
                 errors += 1
                 msg = ("could not convert {0} for parameter {1} to float"
                        .format(val, name))
-                pu.reportWarning(iam, msg)
+                pu.log_warning(msg)
                 continue
 
-            self.user_input_params[name] = val
+            self.user_input_params[name.upper()] = val
             continue
 
         if errors:
-            pu.reportError(iam, "stopping due to previous errors")
+            pu.report_and_raise_error("stopping due to previous errors")
 
         return
 

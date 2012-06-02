@@ -30,8 +30,7 @@ import Source.Payette_iterative_solvers as citer
 import Source.Payette_kinematics as pk
 import Source.Payette_utils as pu
 import Source.Payette_tensor as pt
-
-iam = "Payette_driver.solid_driver(the_model,restart)"
+import Source.runopts as ro
 
 np.set_printoptions(precision=4)
 
@@ -60,12 +59,12 @@ def eos_driver(the_model, **kwargs):
     erg2joule = 1.0e-4
 
     simdat = the_model.simulation_data()
-    material = simdat.MATERIAL
+    material = the_model.material
     matdat = material.material_data()
 
     eos_model = material.constitutive_model
 
-    nprints = simdat.get_option("nprints")
+    nprints = simdat.NPRINTS
     rho_temp_pairs = simdat.get_data("leg data")
     simdir = the_model.simdir
     simnam = the_model.name
@@ -105,26 +104,26 @@ def eos_driver(the_model, **kwargs):
 ################################################################################
 ###############                     SURFACE                      ###############
 ################################################################################
-    if (simdat.get_option("surface increments") != None and
-        simdat.get_option("density range") != None and
-        simdat.get_option("temperature range") != None):
+    if (simdat.SURFACE_INCREMENTS is not None and
+        simdat.DENSITY_RANGE is not None and
+        simdat.TEMPERATURE_RANGE is not None):
 
-        t_range = simdat.get_option("temperature range")
-        rho_range = simdat.get_option("density range")
-        surf_incr = simdat.get_option("surface increments")
+        t_range = simdat.TEMPERATURE_RANGE
+        rho_range = simdat.DENSITY_RANGE
+        surf_incr = simdat.SURFACE_INCREMENTS
 
         out_fnam = os.path.join(simdir, simnam + ".surface")
         out_fobj = open(out_fnam, "w")
 
-        pu.loginf("=" * (80 - 6))
-        pu.loginf("Begin surface")
+        pu.log_message("=" * (80 - 6))
+        pu.log_message("Begin surface")
         DEJAVU = False
         idx = 0
         for rho in np.linspace(rho_range[0], rho_range[1], surf_incr):
             for temp in np.linspace(t_range[0], t_range[1], surf_incr):
                 idx += 1
                 if idx%int(surf_incr**2/float(nprints)) == 0:
-                    pu.loginf("Surface step {0}/{1}".format(idx,surf_incr**2))
+                    pu.log_message("Surface step {0}/{1}".format(idx,surf_incr**2))
                 # convert to CGSEV from MKSK
                 tmprho = rho/1000.0
                 tmptemp = K2eV*temp
@@ -154,36 +153,37 @@ def eos_driver(the_model, **kwargs):
 
         out_fobj.flush()
         out_fobj.close()
-        pu.loginf("End surface")
-        pu.loginf("Surface file: {0}".format(out_fnam))
+        pu.log_message("End surface")
+        pu.log_message("Surface file: {0}".format(out_fnam))
 
 ################################################################################
 ###############                     ISOTHERM                     ###############
 ################################################################################
 
-    if (simdat.get_option("path increments") != None and
-        simdat.get_option("path isotherm") != None and
-        simdat.get_option("density range") != None):
+    if (simdat.PATH_INCREMENTS is not None and
+        simdat.PATH_ISOTHERM is not None and
+        simdat.DENSITY_RANGE is not None):
 
         # isotherm = [density, temperature]
-        isotherm = simdat.get_option("path isotherm")
-        rho_range = simdat.get_option("density range")
-        path_incr = simdat.get_option("path increments")
+        isotherm = simdat.PATH_ISOTHERM
+        rho_range = simdat.DENSITY_RANGE
+        path_incr = simdat.PATH_INCREMENTS
 
         if not rho_range[0] <= isotherm[0] <= rho_range[1]:
-            sys.exit("initial isotherm density not within range")
+            pu.report_and_raise_error(
+                "initial isotherm density not within range", tracebacklimit=0)
 
         out_fnam = os.path.join(simdir, simnam + ".isotherm")
         out_fobj = open(out_fnam, "w")
 
-        pu.loginf("=" * (80 - 6))
-        pu.loginf("Begin isotherm")
+        pu.log_message("=" * (80 - 6))
+        pu.log_message("Begin isotherm")
         DEJAVU = False
         idx = 0
         for rho in np.linspace(isotherm[0], rho_range[1], path_incr):
             idx += 1
             if idx%int(path_incr/float(nprints)) == 0:
-                pu.loginf("Isotherm step {0}/{1}".format(idx,path_incr))
+                pu.log_message("Isotherm step {0}/{1}".format(idx,path_incr))
 
             tmprho = rho/1000.0
             tmptemp = K2eV*isotherm[1]
@@ -213,35 +213,38 @@ def eos_driver(the_model, **kwargs):
 
         out_fobj.flush()
         out_fobj.close()
-        pu.loginf("End isotherm")
-        pu.loginf("Isotherm file: {0}".format(out_fnam))
+        pu.log_message("End isotherm")
+        pu.log_message("Isotherm file: {0}".format(out_fnam))
 
 ################################################################################
 ###############                     HUGONIOT                     ###############
 ################################################################################
 
-    if (simdat.get_option("path increments") != None and
-        simdat.get_option("path hugoniot") != None and
-        simdat.get_option("temperature range") != None and
-        simdat.get_option("density range") != None):
+    if (simdat.PATH_INCREMENTS is not None and
+        simdat.PATH_HUGONIOT is not None and
+        simdat.TEMPERATURE_RANGE is not None and
+        simdat.DENSITY_RANGE is not None):
 
         # hugoniot = [density, temperature]
-        hugoniot = simdat.get_option("path hugoniot")
-        rho_range = simdat.get_option("density range")
-        t_range = simdat.get_option("temperature range")
-        path_incr = simdat.get_option("path increments")
+        hugoniot = simdat.PATH_HUGONIOT
+        rho_range = simdat.DENSITY_RANGE
+        t_range = simdat.TEMPERATURE_RANGE
+        path_incr = simdat.PATH_INCREMENTS
 
 
         if not rho_range[0] <= hugoniot[0] <= rho_range[1]:
-            sys.exit("initial hugoniot density not within range")
+            report_and_raise_error(
+                "initial hugoniot density not within range", tracebacklimit=0)
         if not t_range[0] <= hugoniot[1] <= t_range[1]:
-            sys.exit("initial hugoniot temperature not within range")
+            report_and_raise_error(
+                "initial hugoniot temperature not within range",
+                tracebacklimit=0)
 
         out_fnam = os.path.join(simdir, simnam + ".hugoniot")
         out_fobj = open(out_fnam, "w")
 
-        pu.loginf("=" * (80 - 6))
-        pu.loginf("Begin Hugoniot")
+        pu.log_message("=" * (80 - 6))
+        pu.log_message("Begin Hugoniot")
 
         init_density_MKSK = hugoniot[0]
         init_temperature_MKSK = hugoniot[1]
@@ -262,7 +265,7 @@ def eos_driver(the_model, **kwargs):
         for rho in np.linspace(hugoniot[0], rho_range[1], path_incr):
             idx += 1
             if idx%int(path_incr/float(nprints)) == 0:
-                pu.loginf("Hugoniot step {0}/{1}".format(idx,path_incr))
+                pu.log_message("Hugoniot step {0}/{1}".format(idx,path_incr))
             #
             # Here we solve the Rankine-Hugoniot equation as
             # a function of energy with constant density:
@@ -300,7 +303,7 @@ def eos_driver(the_model, **kwargs):
                 if errval < 1.0e-9 or converged_idx > 100:
                     CONVERGED = True
                     if converged_idx > 100:
-                        pu.loginf("Max iterations reached (tol = {0:14.10e}).\n".format(1.0e-9)+
+                        pu.log_message("Max iterations reached (tol = {0:14.10e}).\n".format(1.0e-9)+
                                "rel error   = {0:14.10e}\n".format(float(errval))+
                                "abs error   = {0:14.10e}\n".format(float(f))+
                                "func val    = {0:14.10e}\n".format(float(f))+
@@ -327,8 +330,8 @@ def eos_driver(the_model, **kwargs):
 
         out_fobj.flush()
         out_fobj.close()
-        pu.loginf("End Hugoniot")
-        pu.loginf("Hugoniot file: {0}".format(out_fnam))
+        pu.log_message("End Hugoniot")
+        pu.log_message("Hugoniot file: {0}".format(out_fnam))
 
     return 0
 
@@ -368,11 +371,11 @@ def solid_driver(the_model, **kwargs):
     # --- simulation data
     simdat = the_model.simulation_data()
 
-    if simdat.DEBUG:
+    if ro.DBG:
         pdb = __import__('pdb')
 
     # --- options
-    verbose = simdat.VERBOSITY > 0
+    verbose = ro.VERBOSITY > 0
 
     # --- data
     ileg = int(simdat.get_data("leg number"))
@@ -385,14 +388,25 @@ def solid_driver(the_model, **kwargs):
     sig_hld = np.zeros(6)
 
     # --- material data
-    material = simdat.MATERIAL
+    material = the_model.material
     matdat = material.material_data()
     J0 = matdat.get_data("jacobian")
 
     # -------------------------------------------------------- initialize model
-    # --- start output file and Mathematica files
-    msg = "starting calculations for simulation {0}".format(the_model.name)
-    pu.reportMessage(iam, msg)
+    # --- log information to user for this run
+    pu.log_message(
+        "starting calculations for simulation {0}".format(the_model.name))
+    if ro.VERBOSITY > 3:
+        if ro.SQA:
+            pu.log_message("performing additional SQA checks")
+        if ro.USE_TABLE:
+            pu.log_message("using table values for prescribed deformations")
+        if ro.TESTRESTART and not restart:
+            pu.log_message("testing restart capability")
+        if not ro.NORESTART:
+            pu.log_message("restart file will be generated")
+        if ro.WRITE_VANDD_TABLE:
+            pu.log_message("velocity and displacement tables will be generated")
 
     # --- call the material model with zero state
     if ileg == 0:
@@ -409,7 +423,7 @@ def solid_driver(the_model, **kwargs):
     for leg in legs:
 
         # test restart capability
-        if the_model.test_restart and not restart:
+        if ro.TESTRESTART and not restart:
             if ileg == int(len(legs) / 2):
                 print("\n\nStopping to test Payette restart capabilities.\n"
                       "Restart the simulation by executing\n\n"
@@ -424,6 +438,12 @@ def solid_driver(the_model, **kwargs):
         if delt == 0.:
             continue
         nv, dflg = 0, list(set(ltype))
+        for inum in (0, 6):
+            try:
+                dflg.remove(inum)
+            except ValueError:
+                pass
+
         nprints = simdat.NPRINTS if simdat.NPRINTS else nsteps
         if simdat.EMIT == "sparse":
             nprints = min(10,nsteps)
@@ -434,7 +454,7 @@ def solid_driver(the_model, **kwargs):
         sig_beg = matdat.get_data("stress")
         F_beg = matdat.get_data("deformation gradient")
         v = matdat.get_data("prescribed stress components")
-        if matdat.EFIELD_SIM:
+        if ro.EFIELD_SIM:
             efld_beg = matdat.get_data("electric field")
 
         if len(v):
@@ -446,7 +466,7 @@ def solid_driver(the_model, **kwargs):
                 continue
 
         if verbose:
-            pu.reportMessage(iam, cons_msg.format(lnum, lnl, 1, lns, t_beg, dt))
+            pu.log_message(cons_msg.format(lnum, lnl, 1, lns, t_beg, dt))
 
         # --- loop through components of prdef and compute the values at the end
         #     of this leg:
@@ -457,7 +477,7 @@ def solid_driver(the_model, **kwargs):
         #       for ltype = 5: F_end at t_end -> prdef
         #       for ltype = 6: efld_end at t_end-> prdef
         eps_end, F_end = pt.Z6, pt.I9
-        if matdat.EFIELD_SIM:
+        if ro.EFIELD_SIM:
             efld_end = pt.Z3
 
         # if stress is prescribed, we don't compute sig_end just yet, but sig_hld
@@ -467,7 +487,7 @@ def solid_driver(the_model, **kwargs):
             if ltype[i] not in range(7):
                 msg = ("Invalid load type (ltype) parameter "
                        "{0} prescribed for leg {1}".format(ltype[i], lnum))
-                pu.reportError(iam, msg)
+                pu.report_and_raise_error(msg)
                 return 1
 
             if ltype[i] == 0:
@@ -498,7 +518,7 @@ def solid_driver(the_model, **kwargs):
                 F_end[i] = prdef[i]
 
             # electric field
-            elif matdat.EFIELD_SIM and (i >= 9 and ltype[i] == 6):
+            elif ro.EFIELD_SIM and (i >= 9 and ltype[i] == 6):
                 efld_end[i - 9] = prdef[i]
 
             continue
@@ -527,7 +547,7 @@ def solid_driver(the_model, **kwargs):
 
             F_int = a1 * F_beg + a2 * F_end
 
-            if matdat.EFIELD_SIM:
+            if ro.EFIELD_SIM:
                 efld_int = a1 * efld_beg + a2 * efld_end
 
             if len(v):
@@ -544,7 +564,7 @@ def solid_driver(the_model, **kwargs):
             # advance known values to end of step
             simdat.advance_data("time", t)
             simdat.advance_data("time step", dt)
-            if matdat.EFIELD_SIM:
+            if ro.EFIELD_SIM:
                 matdat.advance_data("electric field", efld_int)
 
             # --- find d (symmetric part of velocity gradient)
@@ -564,7 +584,7 @@ def solid_driver(the_model, **kwargs):
                 # --- One or more stresses prescribed
                 matdat.advance_data("strain rate", depsdt)
                 matdat.advance_data("prescribed stress", prsig_int)
-                pk.velgrad_from_stress(simdat, matdat)
+                pk.velgrad_from_stress(material, simdat, matdat)
                 matdat.advance_data("strain rate")
                 depsdt = matdat.get_data("strain rate")
                 matdat.store_data("rate of deformation", depsdt)
@@ -581,11 +601,16 @@ def solid_driver(the_model, **kwargs):
             matdat.advance_data("strain")
             matdat.advance_data("equivalent strain")
 
-            if simdat.USE_TABLE:
+            if ro.USE_TABLE:
                 # use the actual table values, not the values computed above
                 if dflg == [1] or dflg == [2] or dflg == [1, 2]:
+                    if ro.VERBOSITY > 3:
+                        pu.log_message("retrieving updated strain from table")
                     matdat.advance_data("strain", eps_int)
                 elif dflg[0] == 5:
+                    if ro.VERBOSITY > 3:
+                        pu.log_message("retrieving updated deformation "
+                                       "gradient from table")
                     matdat.advance_data("deformation gradient", F_int)
 
             # update material state
@@ -604,33 +629,49 @@ def solid_driver(the_model, **kwargs):
             if (nsteps-n)%print_interval == 0:
                 the_model.write_state()
 
-            if simdat.SCREENOUT or ( verbose and (2 * n - nsteps) == 0 ):
-                pu.reportMessage(iam, cons_msg.format(lnum, lnl, n, lns, t, dt))
+            if simdat.SCREENOUT or (verbose and (2 * n - nsteps) == 0):
+                pu.log_message(cons_msg.format(lnum, lnl, n, lns, t, dt))
 
             # ------------------------------------------ begin{end of step SQA}
-            if simdat.SQA:
-                if dflg == [1] or dflg == [2] or dflg == [1,2]:
+            if ro.SQA:
+
+                if dflg == [1] or dflg == [2] or dflg == [1, 2]:
+                    if ro.VERBOSITY > 3:
+                        pu.log_message("checking that computed strain matches "
+                                       "at end of step prescribed strain")
                     eps_tmp = matdat.get_data("strain")
                     max_diff = np.max(np.abs(eps_tmp - eps_int))
                     dnom = max(np.max(np.abs(eps_int)), 0.)
                     dnom = dnom if dnom != 0. else 1.
                     rel_diff = max_diff / dnom
-                    if rel_diff > pu.ACCLIM and max_diff > pu.EPSILON:
+                    if rel_diff > pu.ACCLIM:
                         msg = ("E differs from prdef excessively at end of step "
                                "{0} of leg {1} with a percent difference of {2:f}"
                                .format(n, lnum, rel_diff * 100.))
-                        pu.reportWarning(iam, msg)
+                        pu.log_warning(msg)
+                    elif ro.VERBOSITY > 3:
+                        pu.log_message("computed strain at end of step matches "
+                                       "prescribed strain")
 
                 elif dflg == [5]:
+                    if ro.VERBOSITY > 3:
+                        pu.log_message("checking that computed deformation "
+                                       "gradient at end of step matches "
+                                       "prescribed deformation gradient")
                     F_tmp = matdat.get_data("deformation gradient")
                     max_diff = (np.max(F_tmp - F_int)) / np.max(np.abs(F_int))
                     dnom = max(np.max(np.abs(F_int)), 0.)
                     dnom = dnom if dnom != 0. else 1.
                     rel_diff = max_diff / dnom
-                    if rel_diff > pu.ACCLIM and max_diff > pu.EPSILON:
-                        msg = ("F differs from prdef excessively at end of step "
-                               " with max_diff {0:f}".format(max_diff))
-                        pu.reportWarning(iam, msg)
+                    if rel_diff > pu.ACCLIM:
+                        msg = ("F differs from prdef excessively at end of "
+                               "step {0:d} with relative diff {1:2f}%"
+                               .format(n, rel_diff * 100.))
+                        pu.log_warning(msg)
+                    elif ro.VERBOSITY > 3:
+                        pu.log_message("computed deformation gradient "
+                                       "at end of step matches prescribed "
+                                       "deformation gradient")
 
             # -------------------------------------------- end{end of step SQA}
 
@@ -641,42 +682,57 @@ def solid_driver(the_model, **kwargs):
         simdat.advance_data("leg number", ileg + 1)
         ileg += 1
 
-        if the_model.write_vandd_table:
+        if ro.WRITE_VANDD_TABLE:
             the_model.write_vel_and_disp(t_beg, t_end, eps_beg, eps_end)
 
         # advances time must come after writing the v & d tables above
         t_beg = t_end
 
-        if the_model.write_restart:
+        if not ro.NORESTART:
             with open(the_model.restart_file, 'wb') as fobj:
                 pickle.dump(the_model, fobj, 2)
 
         # --- print message to screen
         if verbose and nsteps > 1:
-            pu.reportMessage(iam, cons_msg.format(lnum, lnl, n + 1, lns, t, dt))
+            pu.log_message(cons_msg.format(lnum, lnl, n + 1, lns, t, dt))
 
         # ----------------------------------------------- begin{end of leg SQA}
-        if simdat.SQA:
-            if dflg == [1] or dflg == [2] or dflg == [1,2]:
+        if ro.SQA:
+            if dflg == [1] or dflg == [2] or dflg == [1, 2]:
+                if ro.VERBOSITY > 3:
+                    pu.log_message("checking that computed strain at end of "
+                                   "leg matches prescribed strain")
                 eps_tmp = matdat.get_data("strain")
                 max_diff = np.max(np.abs(eps_tmp - eps_end))
                 dnom = np.max(eps_end) if np.max(eps_end) >= pu.EPSILON else 1.
                 rel_diff = max_diff / dnom
-                if rel_diff > pu.ACCLIM and max_diff > pu.EPSILON:
+                if rel_diff > pu.ACCLIM:
                     msg = ("E differs from prdef excessively at end of "
-                           "leg {0} with relative diff {1:f}"
-                           .format(lnum, rel_diff))
-                    pu.reportWarning(iam, msg)
+                           "leg {0} with relative diff {1:2f}%"
+                           .format(lnum, rel_diff * 100.))
+                    pu.log_warning(msg)
+                elif ro.VERBOSITY > 3:
+                    pu.log_message("computed strain at end of leg matches "
+                                   "prescribed strain")
 
             elif dflg == [5]:
+                if ro.VERBOSITY > 3:
+                    pu.log_message("checking that computed deformation gradient "
+                                   "at end of leg matches prescribed "
+                                   "deformation gradient")
                 F_tmp = matdat.get_data("deformation gradient")
                 max_diff = np.max(np.abs(F_tmp - F_end)) / np.max(np.abs(F_end))
                 dnom = np.max(F_end) if np.max(F_end) >= pu.EPSILON else 1.
                 rel_diff = max_diff / dnom
-                if rel_diff > pu.ACCLIM and max_diff > pu.EPSILON:
-                    msg = ("F differs from prdef excessively at end of leg "
-                           " with max_diff {0:f}".format(max_diff))
-                    pu.reportWarning(iam, msg)
+                if rel_diff > pu.ACCLIM:
+                    msg = ("F differs from prdef excessively at end of "
+                           "leg {0:d} with relative diff {1:2f}%"
+                           .format(lnum, rel_diff * 100.))
+                    pu.log_warning(msg)
+                elif ro.VERBOSITY > 3:
+                    pu.log_message("computed deformation gradient "
+                                   "at end of leg matches prescribed "
+                                   "deformation gradient")
 
         # ------------------------------------------------- end{end of leg SQA}
 

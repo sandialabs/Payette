@@ -3,16 +3,16 @@
 
 python module payette__user__routines
     interface payette_user_interface
-        subroutine migmessage(message)
-            intent(callback) migmessage
+        subroutine log_message(message)
+            intent(callback) log_message
             character*(*) :: message
-            real intent(callback) :: migerror
-        end subroutine migmessage
-        subroutine migerror(message)
-            intent(callback) migerror
+            real intent(callback) :: report_and_raise_error
+        end subroutine log_message
+        subroutine report_and_raise_error(message)
+            intent(callback) report_and_raise_error
             character*(*) :: message
-            real intent(callback) :: migmessage
-        end subroutine migerror
+            real intent(callback) :: log_message
+        end subroutine report_and_raise_error
     end interface payette_user_interface
 end python module payette__user__routines
 
@@ -26,19 +26,19 @@ python module finite_elastic ! in
             double precision dimension(6),intent(out) :: e
             double precision dimension(6),intent(out) :: pk2
             double precision dimension(6),intent(out) :: sig
-            intent(callback) migerror
-            external migerror
-            intent(callback) migmessage
-            external migmessage
+            intent(callback) report_and_raise_error
+            external report_and_raise_error
+            intent(callback) log_message
+            external log_message
         end subroutine finite_elast_calc
         subroutine finite_elast_chk(ui) ! in :diamm:.//diamm_mig.F
             use payette__user__routines
             integer, parameter :: nprop=3
             double precision dimension(nprop),intent(in,out) :: ui
-            intent(callback) migerror
-            external migerror
-            intent(callback) migmessage
-            external migmessage
+            intent(callback) report_and_raise_error
+            external report_and_raise_error
+            intent(callback) log_message
+            external log_message
         end subroutine finite_elast_chk
     end interface
 end python module finite_elastic

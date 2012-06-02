@@ -18,7 +18,8 @@ class Test(PayetteTest):
         self.infile = "{0}.gold".format(os.path.join(self.tdir,self.name))
         self.outfile = "{0}.xout".format(self.name)
         self.baseline = "{0}.xgold".format(os.path.join(self.tdir,self.name))
-        self.keywords = ["payette","regression","fast","extraction","builtin"]
+        self.keywords = ["payette", "regression", "fast",
+                         "extraction", "builtin"]
         self.runcommand = ["extractPayette",self.infile,r"@time",
                            r"@strain11",r"@sig11",r"2*@strain11",r"2*@sig11",r"2*%2"]
 

@@ -18,7 +18,7 @@ begin boundary
 end boundary
 
 begin material
-  constitutive model kayenta_qsfail
+  constitutive model kayenta
   rho 2700
   yield strength 1.e99
   shmod 26.e9

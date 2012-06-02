@@ -24,7 +24,7 @@
 from os.path import dirname, join, realpath
 from numpy import array, zeros
 
-from Source.Payette_utils import reportError, reportWarning, migError, migMessage
+from Source.Payette_utils import log_warning, report_and_raise_error, log_message
 from Source.Payette_tensor import ata, push, I6
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_F2PY_CALLBACK
@@ -142,7 +142,7 @@ class FiniteElastic(ConstitutiveModelPrototype):
         else:
             a = [1, self.mui, F]
             if PC_F2PY_CALLBACK:
-                a += [migError, migMessage]
+                a.extend([report_and_raise_error, log_message])
             E, pk2, sig = mtllib.finite_elast_calc(*a)
 
         matdat.store_data("stress", sig)
@@ -155,10 +155,10 @@ class FiniteElastic(ConstitutiveModelPrototype):
 
         mu, nu, k = mui
         if nu < 0.:
-            reportWarning(iam, "neg Poisson")
+            log_warning("neg Poisson")
 
         if mu <= 0.:
-            reportError(iam, "Shear modulus G must be positive")
+            report_and_raise_error("Shear modulus G must be positive")
 
         # compute c11, c12, and c44
         c11 = k + 4. / 3. * mu
@@ -171,7 +171,7 @@ class FiniteElastic(ConstitutiveModelPrototype):
         props = array(mui)
         a = [props]
         if PC_F2PY_CALLBACK:
-            a += [migError, migMessage]
+            a.extend([report_and_raise_error, log_message])
         ui = mtllib.finite_elast_chk(*a)
         return ui
 

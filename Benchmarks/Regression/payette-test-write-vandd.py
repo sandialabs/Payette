@@ -21,7 +21,7 @@ class Test(PayetteTest):
         self.keywords = ["builtin", "payette", "regression",
                          "fast", "vtable", "dtable"]
         self.runcommand = ["runPayette", "--no-writeprops", "--no-restart",
-                           "-w",self.infile]
+                           "--write-vandd", self.infile]
         self.material = "elastic"
 
         self.owner = "Tim Fuller"
