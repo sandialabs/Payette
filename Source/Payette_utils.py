@@ -1213,7 +1213,10 @@ def parse_mtldb_file(mtldat_f, material=None):
     if fext == ".py":
         mtldat = parse_py_mtldb_file(mtldat_f, material=material)
     elif fext == ".xml":
-        mtldat = px.parse_xml_mtldb_file(mtldat_f, material=material)
+        if material is None:
+            mtldat = px.get_parameterized_materials(mtldat_f)
+        else:
+            mtldat = px.get_material_parameterization(mtldat_f, material)
     else:
         reportError(
             iam, "mtldat file parsing not enabled for file type: " + fext)
