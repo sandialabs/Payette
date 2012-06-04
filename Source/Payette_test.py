@@ -71,36 +71,38 @@ class TestLogger(object):
 
 class PayetteTest(object):
 
-    name = None
-    tdir = None
-    keywords = []
-    owner = None
-    date = None
-    infile = None
-    outfile = None
-    rms_sets = None
-    runcommand = None
-    material = None
-    baseline = []
-    aux_files = []
-    description = None
-    enabled = False
-    passcode = 0
-    badincode = 1
-    diffcode = 2
-    failcode = 3
-    failtoruncode = 4
-    compare_method = None
-    checked = False
-
-    items_to_skip = []
-    items_to_compare = []
-
-    # tolerances
-    difftol = 6.e-6
-    failtol = 1.e-3
-
     def __init__(self, check=True):
+        self.name = None
+        self.tdir = None
+        self.keywords = []
+        self.owner = None
+        self.date = None
+        self.infile = None
+        self.outfile = None
+        self.rms_sets = None
+        self.runcommand = None
+        self.material = None
+        self.baseline = []
+        self.aux_files = []
+        self.description = None
+        self.enabled = False
+        self.passcode = 0
+        self.badincode = 1
+        self.diffcode = 2
+        self.failcode = 3
+        self.failtoruncode = 4
+        self.compare_method = None
+        self.compare_method = self.compare_out_to_baseline_rms
+
+        self.checked = not check
+
+        self.items_to_skip = []
+        self.items_to_compare = []
+
+        # tolerances
+        self.difftol = 6.e-6
+        self.failtol = 1.e-3
+
         pass
 
     def get_keywords(self):
@@ -163,7 +165,7 @@ class PayetteTest(object):
 
             for fff in self.baseline:
                 if not os.path.isfile(fff):
-                    pu.report_error("baseline {0} not found".format(fff))
+                    pu.report_error("baseline file {0} not found".format(fff))
                     continue
 
         if self.aux_files:
@@ -173,9 +175,6 @@ class PayetteTest(object):
                 if not os.path.isfile(fff):
                     pu.report_error("auxilary file {0} not found".format(fff))
                 continue
-
-        if self.compare_method is None:
-            self.compare_method = self.compare_out_to_baseline_rms
 
         if self.description is None:
             pu.report_error("no description given")
@@ -232,7 +231,7 @@ class PayetteTest(object):
 
         iam = "{0}.build_command".format(self.name)
 
-        if not isinstance(cmd,(list,tuple)):
+        if not isinstance(cmd, (list,tuple)):
             cmd = [cmd]
             pass
 
@@ -287,7 +286,10 @@ class PayetteTest(object):
             pass
 
         if not os.path.isfile(baselinef):
-            log.error(iam,"baseline file not found {0}".format(self.name))
+            log.error(
+                iam,
+                "baseline file {0} not found for {1}".format(baselinef,
+                                                             self.name))
             errors += 1
             pass
 
@@ -296,7 +298,9 @@ class PayetteTest(object):
             pass
 
         if not os.path.isfile(outf):
-            log.error(iam,"output file not found for {0}".format(self.name))
+            log.error(
+                iam,
+                "output file {0} not found for {1}".format(outf, self.name))
             errors += 1
             pass
 
@@ -449,7 +453,9 @@ class PayetteTest(object):
             pass
 
         if not os.path.isfile(baselinef):
-            log.error(iam,"baseline file not found {0}".format(self.name))
+            log.error(
+                iam,
+                "baseline file {0} not found for {1}".format(baselinef, self.name))
             errors += 1
             pass
 
@@ -458,7 +464,9 @@ class PayetteTest(object):
             pass
 
         if not os.path.isfile(outf):
-            log.error(iam,"output file not found for {0}".format(self.name))
+            log.error(
+                iam,
+                "output file {0} not found for {1}".format(outf, self.name))
             errors += 1
             pass
 

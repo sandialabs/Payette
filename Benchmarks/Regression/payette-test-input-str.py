@@ -7,7 +7,7 @@ from Source.Payette_run import run_payette
 class Test(PayetteTest):
 
     def __init__(self, check=True):
-
+        super(Test, self).__init__(check)
 
         self.enabled = True
 

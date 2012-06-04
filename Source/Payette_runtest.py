@@ -31,7 +31,6 @@ M. Scot Swan, Sandia National Laboratories, mswan@sandia.gov
 
 """
 
-from __future__ import print_function
 import sys
 import imp
 import os
@@ -44,6 +43,7 @@ from shutil import copyfile, rmtree
 from pickle import dump, load
 import datetime
 import getpass
+import re
 
 import Payette_config as pc
 import Source.Payette_utils as pu
@@ -53,10 +53,6 @@ import Toolset.postprocess as pp
 
 # --- module level variables
 CWD = os.getcwd()
-TESTRESDIR = os.path.join(CWD, "TestResults.{0}".format(platform.system()))
-RANTESTS = []
-POSTPROCESS = False
-FORCERERUN = False
 WIDTH_TERM = 80
 WIDTH_INFO = 25
 
@@ -69,8 +65,6 @@ def test_payette(argv):
     against the accepted results.
 
     """
-
-    global RANTESTS, POSTPROCESS, FORCERERUN
 
     # *************************************************************************
     # -- command line option parsing
@@ -102,6 +96,12 @@ def test_payette(argv):
         help=("Additional directories to scan for benchmarks, accumulated "
               "[default: %default]."))
     parser.add_option(
+        "-D",
+        dest="testresdir",
+        action="store",
+        default=os.path.join(CWD, "TestResults.{0}".format(platform.system())),
+        help=("Directory to run tests [default: %default]."))
+    parser.add_option(
         "-i", "--index",
         dest="INDEX",
         action="store_true",
@@ -109,7 +109,7 @@ def test_payette(argv):
         help="Print benchmarks index [default: %default].")
     parser.add_option(
         "-F",
-        dest="FORCERERUN",
+        dest="forcererun",
         action="store_true",
         default=False,
         help="Force benchmarks to be run again [default: %default].")
@@ -127,7 +127,7 @@ def test_payette(argv):
         help="build payette [default: %default].")
     parser.add_option(
         "-p", "--postprocess",
-        dest="POSTPROCESS",
+        dest="postprocess",
         action="store_true",
         default=False,
         help="Generate plots for run tests [default: %default]")
@@ -145,11 +145,17 @@ def test_payette(argv):
         help="Ignore noncomforming tests [default: %default]")
     parser.add_option(
         "-u",
-        dest="TESTFILE",
+        dest="testfile",
         action="store_true",
         default=False,
         help=("Use previously generated test file, -F is implied "
               "[default: %default]"))
+    parser.add_option(
+        "-S",
+        dest="switch",
+        action="store",
+        default=None,
+        help=("Switch material A for B [usage -S'A:B'] [default: %default]"))
 
     (opts, args) = parser.parse_args(argv)
 
@@ -159,14 +165,10 @@ def test_payette(argv):
     # number of processors
     nproc = min(mp.cpu_count(), opts.nproc)
 
-    pu.log_message(pc.PC_INTRO, pre="")
-
-    # pass user option to global variables
-    FORCERERUN = opts.FORCERERUN or opts.TESTFILE
-    POSTPROCESS = opts.POSTPROCESS
+    pu.log_message(pc.PC_INTRO, pre="", noisy=True)
 
     # find tests
-    pu.log_message("Testing Payette")
+    pu.log_message("Testing Payette", noisy=True)
     test_dirs = pc.PC_TESTS
     for dirnam in opts.BENCHDIRS:
         dirnam = os.path.expanduser(dirnam)
@@ -181,20 +183,20 @@ def test_payette(argv):
 
     t_start = time.time()
     conforming = None
-    if opts.TESTFILE:
+    if opts.testfile:
         try:
             pu.log_message("Using Payette tests from\n{0}"
-                           .format(" " * 6 + pc.PC_FOUND_TESTS))
+                           .format(" " * 6 + pc.PC_FOUND_TESTS), noisy=True)
             conforming = load(open(pc.PC_FOUND_TESTS, "r"))
+            errors = 0
         except IOError:
             pu.log_warning(
                 "test file {0} not imported".format(pc.PC_FOUND_TESTS))
 
-
-    errors = 0
     if conforming is None:
         pu.log_message("Gathering Payette tests from\n{0}"
-                       .format("\n".join([" " * 6 + x for x in test_dirs])))
+                       .format("\n".join([" " * 6 + x for x in test_dirs])),
+                       noisy=True)
         errors, found_tests = find_tests(opts.KEYWORDS, opts.NOKEYWORDS,
                                          opts.SPECTESTS, test_dirs)
 
@@ -227,7 +229,8 @@ def test_payette(argv):
             "fix nonconforming benchmarks before continuing", tracebacklimit=0)
 
     pu.log_message("Found {0} Payette tests in {1:.2f}s."
-                   .format(len(conforming), t_find), end="\n\n")
+                   .format(len(conforming), t_find), end="\n\n",
+                   noisy=True)
 
     if opts.INDEX:
         out = sys.stderr
@@ -241,8 +244,6 @@ def test_payette(argv):
                 py_module = imp.load_module(py_mod, fobj, pathname, description)
                 fobj.close()
                 test = py_module.Test()
-                if not test.checked:
-                    test.check_setup()
                 out.write(WIDTH_TERM * "=" + "\n")
                 out.write("Name:  {0}\n".format(test.name))
                 out.write("Owner: {0}\n\n".format(test.owner))
@@ -257,23 +258,22 @@ def test_payette(argv):
         return 0
 
     if not conforming:
-        pu.report_and_raise_error("No tests found",
-                                  tracebacklimit=0)
+        pu.report_and_raise_error("No tests found", tracebacklimit=0)
 
     # start the timer
     t_start = time.time()
 
     # Make a TestResults directory named "TestResults.{platform}"
     if opts.buildpayette:
-        if os.path.isdir(TESTRESDIR):
-            testresdir0 = "{0}_0".format(TESTRESDIR)
-            shutil.move(TESTRESDIR, testresdir0)
+        if os.path.isdir(opts.testresdir):
+            testresdir0 = "{0}_0".format(opts.testresdir)
+            shutil.move(opts.testresdir, testresdir0)
 
-    if not os.path.isdir(TESTRESDIR):
-        os.mkdir(TESTRESDIR)
+    if not os.path.isdir(opts.testresdir):
+        os.mkdir(opts.testresdir)
 
     old_results = {}
-    summpy = os.path.join(TESTRESDIR, "summary.py")
+    summpy = os.path.join(opts.testresdir, "summary.py")
     summhtml = os.path.splitext(summpy)[0] + ".html"
     if os.path.isfile(summpy):
         py_path = [os.path.dirname(summpy)]
@@ -285,7 +285,7 @@ def test_payette(argv):
             old_results = py_module.payette_test_results
         except AttributeError:
             copyfile(summpy,
-                     os.path.join(TESTRESDIR, "summary_orig.py"))
+                     os.path.join(opts.testresdir, "summary_orig.py"))
         try:
             os.remove("{0}c".format(summpy))
         except OSError:
@@ -298,7 +298,9 @@ def test_payette(argv):
     # Put all run tests in a flattened list for checking if test has
     # been run
     if old_results:
-        RANTESTS = [x for y in old_results.values() for x in y]
+        rantests = [x for y in old_results.values() for x in y]
+    else:
+        rantests = []
 
     # reset the test results
     test_statuses = ["pass", "diff", "fail", "notrun",
@@ -308,60 +310,29 @@ def test_payette(argv):
         test_res[i] = {}
         continue
 
-    pu.log_message("=" * WIDTH_TERM, pre="")
+    pu.log_message("=" * WIDTH_TERM, pre="", noisy=True)
     pu.log_message("Running {0} benchmarks:".format(len(conforming)),
-                   pre="")
-    pu.log_message("=" * WIDTH_TERM, pre="")
+                   pre="", noisy=True)
+    pu.log_message("=" * WIDTH_TERM, pre="", noisy=True)
 
     # run the tests on multiple processors using the multiprocessor map ONLY f
     # nprocs > 1. For debug purposes, when nprocs=1, run without using the
     # multiprocessor map because it makes debugging worse than it should be.
+    test_inp = ((test, opts, rantests) for test in conforming)
     if nproc == 1:
-        all_results = [run_payette_test(test) for test in conforming]
+        all_results = [_run_test(job) for job in test_inp]
 
     else:
         pool = mp.Pool(processes=nproc)
-        all_results = pool.map(run_payette_test, conforming)
+        all_results = pool.map(_run_test, test_inp)
         pool.close()
         pool.join()
 
     t_run = time.time() - t_start
-    pu.log_message("=" * WIDTH_TERM, pre="")
+    pu.log_message("=" * WIDTH_TERM, pre="", noisy=True)
 
     # copy the mathematica notebooks to the output directory
-    for mtldir, mathnb in mathnbs.items():
-        for item in mathnb:
-            fbase = os.path.basename(item)
-            fold = os.path.join(TESTRESDIR, mtldir, fbase)
-
-            try:
-                os.remove(fold)
-            except OSError:
-                pass
-
-            if item.endswith(".m"):
-                # don't copy the .m file, but write it, replacing rundir and
-                # demodir with TESTRESDIR
-                with open(fold, "w") as fobj:
-                    for line in open(item, "r").readlines():
-                        demodir = os.path.join(TESTRESDIR, mtldir) + os.sep
-                        rundir = os.path.join(TESTRESDIR, mtldir) + os.sep
-                        if r"$DEMODIR" in line:
-                            line = 'demodir="{0:s}"\n'.format(demodir)
-                        elif r"$RUNDIR" in line:
-                            line = 'rundir="{0:s}"\n'.format(rundir)
-                        fobj.write(line)
-                        continue
-
-                continue
-
-            else:
-                # copy the notebook files
-                shutil.copyfile(item, fold)
-
-            continue
-
-        continue
+    _copy_mathematica_nbs(mathnbs, opts.testresdir)
 
     # all_results is a large list of the summary of every test.
     # Go through it and use the information to construct the test_res
@@ -450,13 +421,13 @@ def test_payette(argv):
 
     # This sends an email to everyone on the mailing list.
     if opts.NOTIFY:
-        pu.log_message("Sending results to mailing list.", pre="")
+        pu.log_message("Sending results to mailing list.", pre="", noisy=True)
         pn.notify("Payette Benchmarks", longtxtsummary)
 
-    pu.log_message(longtxtsummary, pre="")
-    pu.log_message("=" * WIDTH_TERM, pre="")
-    pu.log_message(txtsummary, pre="")
-    pu.log_message("=" * WIDTH_TERM, pre="")
+    pu.log_message(longtxtsummary, pre="", noisy=True)
+    pu.log_message("=" * WIDTH_TERM, pre="", noisy=True)
+    pu.log_message(txtsummary, pre="", noisy=True)
+    pu.log_message("=" * WIDTH_TERM, pre="", noisy=True)
 
     # write out the results to the summary file
     write_py_summary(summpy, test_res)
@@ -476,25 +447,30 @@ def test_payette(argv):
         continue
 
     if opts.buildpayette:
-        shutil.rmtree(TESTRESDIR)
+        shutil.rmtree(opts.testresdir)
         try:
-            shutil.move(testresdir0, TESTRESDIR)
+            shutil.move(testresdir0, opts.testresdir)
         except:
             pass
 
     return 0
 
 
-def run_payette_test(py_file):
+def _run_test(args):
 
     """ run the payette test in py_file """
 
-    py_path = [os.path.dirname(py_file)]
-    py_mod = pu.get_module_name(py_file)
-    fobj, pathname, description = imp.find_module(py_mod, py_path)
-    py_module = imp.load_module(py_mod, fobj, pathname, description)
-    fobj.close()
+    # pass args to local variables
+    py_file, opts, rantests = args
 
+    # check for switched materials
+    switch = opts.switch
+    if switch is not None:
+        switch = [x.lower() for x in switch.split(":")]
+
+    py_module = _get_test_module(py_file)
+
+    # we instantiate the test here to copy files to destination directory
     test = py_module.Test()
 
     # directory where test will be run. If the test was taken from the
@@ -510,18 +486,18 @@ def run_payette_test(py_file):
         testbase = os.path.dirname(py_file).split(pc.PC_TESTS[0] + os.sep)[1]
     else:
         testbase = os.path.split(os.path.dirname(py_file))[1]
-    benchdir = os.path.join(TESTRESDIR, testbase, test.name)
+    benchdir = os.path.join(opts.testresdir, testbase, test.name)
 
     # check if benchmark has been run
-    ran = [x for x in RANTESTS if x == test.name]
+    ran = [x for x in rantests if x == test.name]
 
-    if not FORCERERUN and ran and os.path.isdir(benchdir):
+    if not (opts.forcererun or opts.testfile) and ran and os.path.isdir(benchdir):
         pu.log_message(
             "{0}".format(test.name) +
             " " * (50 - len(test.name)) +
             "{0:>10s}".format("notrun\n") +
             "Test already ran. " +
-            "Use -F option to force a rerun", pre="")
+            "Use -F option to force a rerun", pre="", noisy=True)
         result = {test.name: {"status": "notrun",
                               "keywords": test.keywords,
                               "completion time": "NA",
@@ -531,7 +507,7 @@ def run_payette_test(py_file):
     # Let the user know which test is running
     pu.log_message(
         "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
-        "{0:>{1}s}".format("RUNNING", WIDTH_INFO), pre="")
+        "{0:>{1}s}".format("RUNNING", WIDTH_INFO), pre="", noisy=True)
 
     # Create benchmark directory and copy the input and baseline files into the
     # new directory
@@ -540,14 +516,17 @@ def run_payette_test(py_file):
     os.makedirs(benchdir)
 
     # copy input file, if any
+    test_files = []
     if test.infile:
-        copyfile(test.infile,
-                 os.path.join(benchdir, os.path.basename(test.infile)))
+        infile = os.path.join(benchdir, os.path.basename(test.infile))
+        copyfile(test.infile, infile)
+        test_files.append(infile)
 
     # copy the python test file and make it executable
-    copyfile(py_file,
-             os.path.join(benchdir, os.path.basename(py_file)))
-    os.chmod(os.path.join(benchdir, os.path.basename(py_file)), 0o750)
+    test_py_file = os.path.join(benchdir, os.path.basename(py_file))
+    copyfile(py_file, test_py_file)
+    test_files.append(test_py_file)
+    os.chmod(test_py_file, 0o750)
 
     # symlink the baseline file
     if test.baseline:
@@ -575,13 +554,24 @@ def run_payette_test(py_file):
                 os.path.join(benchdir, os.path.basename(aux_f)))
             continue
 
-    # move to the new directory and run the test
-    os.chdir(benchdir)
-    starttime = time.time()
+    # check for switching
+    if (test.material is not None and
+        switch is not None and
+        test.material.lower() == switch[0]):
+            # switch the material
+            _switch_materials(files=test_files, switch=switch)
 
+    # delete the current test instance, and instantiate new from the files
+    # just copied. Move to the new directory and run the test
+    del py_module, test
+    os.chdir(benchdir)
+
+    py_module = _get_test_module(test_py_file)
+    test = py_module.Test()
+    starttime = time.time()
     retcode = test.runTest()
 
-    if POSTPROCESS and os.path.isfile(test.outfile):
+    if opts.postprocess and os.path.isfile(test.outfile):
         pp.postprocess(test.outfile, verbosity=0)
 
     retcode = ("bad input" if retcode == test.badincode else
@@ -596,7 +586,7 @@ def run_payette_test(py_file):
     info_string = "{0} ({1:6.02f}s)".format(retcode.upper(), tcompletion)
     pu.log_message(
         "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
-        "{0:>{1}s}".format(info_string, WIDTH_INFO), pre="")
+        "{0:>{1}s}".format(info_string, WIDTH_INFO), pre="", noisy=True)
 
     # return to the directory we came from
     os.chdir(CWD)
@@ -677,7 +667,7 @@ def write_html_summary(fname, results):
 
                 status = "Exit {0} {1}".format(stat, tcompletion)
                 for myfile in files:
-                    if myfile.endswith(".out.html") and POSTPROCESS:
+                    if myfile.endswith(".out.html") and opts.postprocess:
                         fobj.write("<li><a href='{0}'>PostProcessing</a>\n"
                                    .format(os.path.join(tresd, myfile)))
                 fobj.write("<li>Keywords: {0}\n".format(keywords))
@@ -688,6 +678,64 @@ def write_html_summary(fname, results):
             continue
 
     return
+
+
+def _copy_mathematica_nbs(mathnbs, destdir):
+    """copy the mathematica notebooks to the destination directory"""
+
+    for mtldir, mathnb in mathnbs.items():
+        for item in mathnb:
+            fbase = os.path.basename(item)
+            fold = os.path.join(destdir, mtldir, fbase)
+
+            try:
+                os.remove(fold)
+            except OSError:
+                pass
+
+            if item.endswith(".m"):
+                # don't copy the .m file, but write it, replacing rundir and
+                # demodir with destdir
+                with open(fold, "w") as fobj:
+                    for line in open(item, "r").readlines():
+                        demodir = os.path.join(destdir, mtldir) + os.sep
+                        rundir = os.path.join(destdir, mtldir) + os.sep
+                        if r"$DEMODIR" in line:
+                            line = 'demodir="{0:s}"\n'.format(demodir)
+                        elif r"$RUNDIR" in line:
+                            line = 'rundir="{0:s}"\n'.format(rundir)
+                        fobj.write(line)
+                        continue
+
+                continue
+
+            else:
+                # copy the notebook files
+                shutil.copyfile(item, fold)
+
+            continue
+
+        continue
+
+
+def _switch_materials(files, switch):
+    """switch materials"""
+    pat, repl = re.compile(switch[0], re.I|re.M), switch[1].lower()
+    for fname in files:
+        lines = open(fname, "r").read()
+        with open(fname, "w") as fobj:
+            fobj.write(pat.sub(repl, lines))
+        continue
+    return
+
+
+def _get_test_module(py_file):
+    py_path = [os.path.dirname(py_file)]
+    py_mod = pu.get_module_name(py_file)
+    fobj, pathname, description = imp.find_module(py_mod, py_path)
+    py_module = imp.load_module(py_mod, fobj, pathname, description)
+    fobj.close()
+    return py_module
 
 
 if __name__ == "__main__":
