@@ -69,13 +69,16 @@ class PayetteError(Exception):
         if tracebacklimit is not None:
             sys.tracebacklimit = tracebacklimit
 
+        self.message = msg
+
         l = 79 # should be odd number
         st, stsp = '*'*l + '\n', '*' + ' '*(l-2) + '*\n'
         psf = 'Payette simulation failed'
         ll = (l - len(psf) - 2)/2
         psa = '*' + ' '*ll + psf + ' '*ll + '*\n'
         head = '\n\n' + st + stsp + psa + stsp + st
-        Exception.__init__(self, head+msg)
+
+        Exception.__init__(self, head + self.message)
 
     def __repr__(self):
         return "PayetteError"
@@ -103,12 +106,21 @@ def log_message(message, pre="INFO: ", end="\n", noisy=False):
     return
 
 
+def reset_error_and_warnings():
+    __count_error(reset=True)
+    __count_warning(reset=True)
+    return
+
 # the following methods define error logging, counting
 def error_count():
     """Return the current number of errors"""
     return __count_error(inquire=True)
-def __count_error(ecount=[0], inquire=False):
+def __count_error(ecount=[0], inquire=False, reset=False):
     """Count the number of errors"""
+    if reset:
+        ecount = [0]
+        return
+
     if inquire:
         return ecount[0]
     ecount[0] += 1
@@ -121,7 +133,7 @@ def report_error(message):
                                                        who_is_calling())
     if SIMLOG is not None:
         SIMLOG.write(message)
-    sys.stdout.write(message)
+    sys.stderr.write(message)
     return
 def report_and_raise_error(message, tracebacklimit=None, caller=None):
     """Report and raise an error"""
@@ -130,7 +142,7 @@ def report_and_raise_error(message, tracebacklimit=None, caller=None):
     if caller is None:
         caller = who_is_calling()
 
-    message = ("{0} [reported by: {1}]"
+    message = ("ERROR: {0} [reported by: {1}]"
                .format(" ".join(x for x in message.split() if x), caller))
     raise PayetteError(message, tracebacklimit)
 
@@ -138,12 +150,15 @@ def report_and_raise_error(message, tracebacklimit=None, caller=None):
 # the following methods define warning logging, counting
 def warn_count():
     return __count_warning(inquire=True)
-def __count_warning(wcount=[0], inquire=False):
+def __count_warning(wcount=[0], inquire=False, reset=False):
+    if reset:
+        wcount = [0]
+        return
     if inquire:
         return wcount[0]
     wcount[0] += 1
     return
-def log_warning(message, limit=False):
+def log_warning(message, limit=False, caller=None):
     """Report warning to screen and write to log file if open"""
 
     if ro.WARNING == "error":
@@ -165,11 +180,12 @@ def log_warning(message, limit=False):
         if wcount != thresh:
             return
 
-    message = "WARNING: {0} [reported by: {1}]\n".format(message,
-                                                         who_is_calling())
+    if caller is None:
+        caller = who_is_calling()
+    message = "WARNING: {0} [reported by: {1}]\n".format(message, caller)
     if SIMLOG is not None:
         SIMLOG.write(message)
-    sys.stdout.write(message)
+    sys.stderr.write(message)
     return
 
 

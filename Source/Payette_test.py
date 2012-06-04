@@ -209,8 +209,10 @@ class PayetteTest(object):
         if error:
             return error
 
-        try: echof = kwargs["echof"]
-        except: echof = self.name + ".echo"
+        try:
+            echof = kwargs["echof"]
+        except KeyError:
+            echof = self.name + ".echo"
 #        if "runPayette" in cmd[0]:
 #            # run directly and not through a subprocess
 #            sys.stdout = open(echof,"w")
@@ -256,7 +258,7 @@ class PayetteTest(object):
             pass
 
         if not found:
-            pu.error("executable {0} not found".format(exenam), caller=iam)
+            pu.report_error("executable {0} not found".format(exenam), caller=iam)
             return None, self.failcode
 
         cmd[0] = exenam

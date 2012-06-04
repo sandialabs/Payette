@@ -179,6 +179,7 @@ def test_payette(argv):
             pu.report_error("__test_dir__.py not found in {0}".format(dirnam))
         continue
     if pu.error_count():
+        sys.stderr.write("here i am")
         pu.report_and_raise_error("stopping due to previous errors",
                                   tracebacklimit=0)
 
@@ -572,8 +573,9 @@ def _run_test(args):
     starttime = time.time()
     try:
         retcode = test.runTest()
-    except PayetteError:
+    except PayetteError as error:
         retcode = test.failcode
+        pu.log_warning(error.message)
     except:
         pu.log_warning("got an exception!")
 

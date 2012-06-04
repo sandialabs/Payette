@@ -508,6 +508,7 @@ class Payette:
 
         # restore runopts
         ro.restore_default_options()
+        pu.reset_error_and_warnings()
 
         # close the files
         pu.close_aux_files()
