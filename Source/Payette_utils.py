@@ -36,6 +36,7 @@ import warnings
 import Payette_config as pc
 import Source.Payette_extract as pe
 import Source.runopts as ro
+import Source.Payette_xml_parser as px
 
 if not os.path.isfile(os.path.join(
         os.path.dirname(os.path.realpath(__file__)),"../Payette_config.py")):
@@ -1178,7 +1179,10 @@ def parse_mtldb_file(mtldat_f, material=None):
     if fext == ".py":
         mtldat = parse_py_mtldb_file(mtldat_f, material=material)
     elif fext == ".xml":
-        mtldat = parse_xml_mtldb_file(mtldat_f, material=material)
+        if material is None:
+            mtldat = px.get_parameterized_materials(mtldat_f)
+        else:
+            mtldat = px.get_material_parameterization(mtldat_f, material)
     else:
         report_and_raise_error(
             "mtldat file parsing not enabled for file type: " + fext)
@@ -1274,75 +1278,6 @@ def parse_py_mtldb_file(mtldat_f, material=None):
         report_and_raise_error(msg, tracebacklimit=0)
 
     return mtldat
-
-def parse_xml_mtldb_file(mtldat_f, material=None):
-    """Parse the xml material database file
-
-    Parameters
-    ----------
-    mtldat_f : str
-      path to xml material database file
-
-    material : str
-      name of material
-
-    Returns
-    -------
-    mtldat : list
-      if matlabel not None:
-          list of tuples of (name, val) pairs for material parameter values
-      else:
-          list of tuples of (name, [aliase1, alias2,...]) pairs for valid
-          materials
-    """
-    import xml.dom.minidom as xdom
-
-    # Load the material database file
-    dom = xdom.parse(mtldat_f)
-
-    if material is None:
-        # Get all the xml data in 'Material' tags and return the names
-        input_sets = []
-        MatList = dom.getElementsByTagName('Material')
-        for mat in MatList:
-            # Here we get the name and description, just in case
-            # someone wants the description at some point in time.
-            try:
-                description = str(mat.firstChild.nodeValue)
-            except AttributeError:
-                description = None
-            input_sets.append((str(mat.getAttribute('name')), []))
-        return input_sets
-    else:
-        # Every set of inputs needs a unit system.
-        Unit_system = str(dom.getElementsByTagName('Units')[0].firstChild.data)
-        mat_params = [("Units", Unit_system)]
-
-        # Load in the defaults because only the non-default parameters
-        # are given in the XML file.
-        ParamList = dom.getElementsByTagName('Parameter')
-        for param in ParamList:
-            param_name = param.getAttribute('name')
-            param_default = param.getAttribute('default')
-            mat_params.append((str(param_name), float(param_default)))
-
-        # Cycle through all the materials looking for the one requested.
-        MatList = dom.getElementsByTagName('Material')
-        for mat in MatList:
-            mat_name = str(mat.getAttribute('name'))
-            if mat_name.lower() != material.lower():
-                continue
-
-            # Go through all the default parameters looking for a given
-            # value for the specific material.
-            for idx in range(1, len(mat_params)):
-                param_name, param_val = mat_params[idx]
-                val = mat.getAttribute(param_name)
-                if len(val) > 0:
-                    mat_params[idx] = (param_name, float(val))
-            break
-        return mat_params
-
 
 # the following are being kept around for back compatibiltiy
 def parseToken(*args, **kwargs):
