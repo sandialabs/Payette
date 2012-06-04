@@ -214,6 +214,10 @@ PC_INTRO = """
 # --- spacing used for logs to console
 SPACE = "      "
 
+# --- All environmental variables used by Payette are listed here
+ENV_BENCHDIR = "PAYETTE_BENCHDIR"
+ENV_MTLDIR = "PAYETTE_MTLDIR"
+
 # --- base level directories
 THIS_FILE = realpath(__file__)
 PC_ROOT = dirname(THIS_FILE)
@@ -221,7 +225,8 @@ PC_AUX = join(PC_ROOT, "Aux")
 PC_DOCS = join(PC_ROOT, "Documents")
 PC_SOURCE = join(PC_ROOT, "Source")
 PC_TESTS = [join(PC_ROOT, "Benchmarks")]
-USER_TESTS = os.getenv("PAYETTE_BENCHDIR", "")
+ENV_BENCHDIR = "PAYETTE_BENCHDIR"
+USER_TESTS = os.getenv(ENV_BENCHDIR, "")
 PC_TESTS.extend([x for x in USER_TESTS.split(os.pathsep) if x])
 PC_TOOLS = join(PC_ROOT, "Toolset")
 PC_FOUND_TESTS = join(PC_TOOLS, "__found_tests__.py")
@@ -283,7 +288,7 @@ ERRORS += check_exists("PC_INPUTS", PC_INPUTS)
 # PC_MTLDIRS is the directory where we search for Payette material models
 PC_MTLS = join(PC_SOURCE, "Materials")
 PC_MTLDIRS = [join(PC_MTLS, "Models")]
-USER_MTLS = os.getenv("PAYETTE_MTLDIR", "")
+USER_MTLS = os.getenv(ENV_MTLDIR, "")
 PC_MTLDIRS.extend([x for x in USER_MTLS.split(os.pathsep) if x])
 for mtl_d in [x for x in PC_MTLDIRS]:
     if isdir(mtl_d):
@@ -454,6 +459,18 @@ def configure_payette(argv):
 
     # clean up first
     clean_payette()
+
+    # Report on environmental variables
+    loginf("checking for Payette-related environmental variables")
+    if USER_MTLS == "":
+        logmes("${0} not set".format(ENV_MTLDIR), pre=SPACE)
+    else:
+        logmes("${0} set".format(ENV_MTLDIR), pre=SPACE)
+
+    if USER_TESTS == "":
+        logmes("${0} not set".format(ENV_BENCHDIR), pre=SPACE)
+    else:
+        logmes("${0} set".format(ENV_BENCHDIR), pre=SPACE)
 
     # configure Payette
     loginf("configuring Payette environment")
