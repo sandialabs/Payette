@@ -108,7 +108,7 @@ class XMLParser:
         tmp = ModelParameters.getElementsByTagName('Units')
         if len(tmp) != 1:
             sys.exit("Expected a 'Units' in the 'ModelParameters' element.")
-        self.units = str(tmp[0].firstChild.data).strip()
+        self.unit_system = str(tmp[0].firstChild.data).strip()
     
         #
         # Get the Model Parameters (Default).
@@ -122,6 +122,8 @@ class XMLParser:
                 mname = str(parameter.attributes.item(idx).name).strip()
                 mval = str(parameter.attributes.item(idx).value).strip()
                 tmp[mname] = mval
+            if not tmp.has_key("aliases"):
+                tmp['aliases'] = ''
             self.parameters.append(tmp)
     
         #
@@ -184,7 +186,7 @@ class XMLParser:
         iam = "get_material_parameterizations"
     
         # Every set of inputs needs a unit system.
-        mtldat = [("Units", self.units)]
+        mtldat = [("Units", self.unit_system)]
     
         for mat in self.materials:
             if mat["name"].lower() == mat_name.lower():

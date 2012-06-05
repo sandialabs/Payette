@@ -29,6 +29,7 @@ from Source.Payette_tensor import iso, dev
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_F2PY_CALLBACK
 from Toolset.elastic_conversion import compute_elastic_constants
+import Source.Payette_xml_parser as px
 
 try:
     import Source.Materials.Library.elastic as mtllib
@@ -46,7 +47,7 @@ attributes = {
     "fortran build script": join(THIS_DIR, "Build_elastic.py"),
     "material type": ["mechanical"],
     "default material": True,
-    "material database": join(THIS_DIR, "elastic_mtl_database.py"),
+    "material database": join(THIS_DIR, "elastic_mtl_database.xml"),
     }
 
 class Elastic(ConstitutiveModelPrototype):
@@ -58,18 +59,11 @@ class Elastic(ConstitutiveModelPrototype):
         self.imported = True if self.code == "python" else imported
 
         # register parameters
-        self.register_parameter("LAM", 0, aliases=[])
-        self.register_parameter("G", 1, aliases=["MU", "G0", "SHMOD"])
-        self.register_parameter("E", 2, aliases=["YOUNGS"])
-        self.register_parameter("NU", 3, aliases=["POISSONS", "POISSONS RATIO"])
-        self.register_parameter("K", 4, aliases=["B0", "BKMOD"])
-        self.register_parameter("H", 5, aliases=["CONSTRAINED"])
-        self.register_parameter("KO", 6, aliases=[])
-        self.register_parameter("CL", 7, aliases=[])
-        self.register_parameter("CT", 8, aliases=[])
-        self.register_parameter("CO", 9, aliases=[])
-        self.register_parameter("CR", 10, aliases=[])
-        self.register_parameter("RHO", 11, aliases=["DENSITY"])
+        xml_obj = px.XMLParser(attributes["material database"])
+        params = sorted(xml_obj.parameters, key=lambda x: int(x['order']))
+        for idx, pm in enumerate(params):
+            aliases = [] if pm['aliases'] == '' else pm['aliases'].split(':')
+            self.register_parameter(pm['name'], idx, aliases=aliases)
         self.nprop = len(self.parameter_table.keys())
         pass
 
