@@ -242,18 +242,18 @@ def build_payette(argv):
             .format("\n".join([SPACE + x.replace(os.path.expanduser("~"), "~")
                                for x in search_dirs])))
         MATERIALS = get_payette_mtls(mtl_dirs, opts.mtllib, options)
-        pu.log_message(
-            "the following materials were found:\n{0}"
-            .format(SPACE + ", ".join(['"' + x + '"' for x in MATERIALS])),
-            beg="\n")
-        non_existent = MATERIALS.get("non existent", False)
-        if non_existent:
+        if MATERIALS:
+            pu.log_message(
+                "the following materials were found:\n{0}"
+                .format(SPACE + ", ".join(['"' + x + '"' for x in MATERIALS])),
+                beg="\n")
+        else:
             errors += 1
-            del MATERIALS["non existent"]
 
         # build the requested material libraries
         nproc = min(mp.cpu_count(), opts.NPROC)
-        errors += build_payette_mtls(nproc)
+        if MATERIALS:
+            errors += build_payette_mtls(nproc)
         # material libraries built, now write the
         # Source/Materials/Payette_installed_materials.py file containing all
         # materials
@@ -377,8 +377,9 @@ def write_payette_materials(payette_materials):
     all_materials = [payette_materials[x]["name"] for x in payette_materials]
     for material in [x for x in installed_materials]:
         if material not in all_materials:
-            pu.log_warning("installed material {0} not in payette_materials"
-                           .format(material))
+            pu.log_warning(
+                "installed material {0} not in payette_materials"
+                .format(material))
             installed_materials.remove(material)
         continue
 
@@ -412,17 +413,18 @@ def build_payette_mtls(nproc=1):
     # now build the materials
     requested_builds = [x for x in MATERIALS
                         if MATERIALS[x]["build requested"]]
-    if not requested_builds:
-        if VERBOSE:
+    if VERBOSE:
+        if not requested_builds:
             pu.log_warning("no material libraries to build")
 
-    if VERBOSE:
-        pu.log_message(
-            "the following materials were requested to be built:\n{0}"
-            .format(SPACE + ", ".join(['"' + x + '"' for x in requested_builds])),
-            beg="\n")
+        else:
+            pu.log_message(
+                "the following materials were requested to be built:\n{0}"
+                .format(SPACE + ", ".join(['"' + x + '"'
+                                           for x in requested_builds])),
+                beg="\n")
 
-        pu.log_message("building the requested material libraries", beg="\n")
+            pu.log_message("building the requested material libraries", beg="\n")
 
     # build the libraries
     nproc = min(nproc, len(requested_builds))
@@ -452,13 +454,13 @@ def build_payette_mtls(nproc=1):
                        if MATERIALS[x]["build requested"]
                        and MATERIALS[x]["build succeeded"]]
 
-    failed_materials=["a fake material"]
     if failed_materials:
         # errors = 55
         pu.log_warning(
             "the following materials WERE NOT built:\n{0}"
-            .format(SPACE + ", ".join(['"' + x + '"' for x in failed_materials])),
-            beg="\n")
+            .format(SPACE + "   " + ", ".join(['"' + x + '"'
+                                                for x in failed_materials])),
+            beg="\n", caller="anonymous")
 
     if built_materials:
         pu.log_message(
@@ -467,8 +469,7 @@ def build_payette_mtls(nproc=1):
             beg="\n")
 
     # remove cruft
-    for ftmp in [x for x in os.listdir(pc.PC_TOOLS)
-              if x.split(".")[-1] in ["so", "o"]]:
+    for ftmp in [x for x in os.listdir(pc.PC_TOOLS) if x.endswith(("so", "o"))]:
         os.remove(ftmp)
         continue
 
@@ -493,7 +494,7 @@ def _build_lib(material):
         MATERIALS[material]["build failed"] = True
         if VERBOSE:
             pu.log_warning("{0} skipped due to previous errors".format(libname),
-                           beg=SPACE)
+                           beg="\n" + SPACE)
 
     elif fort_build_script is None:
         MATERIALS[material]["build succeeded"] = True
@@ -520,15 +521,19 @@ def _build_lib(material):
             if build_error == 5 or build_error == 10 or build_error == 40:
                 pass
             elif build_error == 66:
-                pu.log_warning("{0}: missing attribute: build"
-                               .format(fort_build_script), beg="\n"+SPACE)
+                pu.log_warning(
+                    "build script {0} missing 'build' attribute"
+                    .format(os.path.basename(fort_build_script)),
+                    beg="\n" + SPACE)
             elif build_error == 20:
-                pu.log_warning("{0} extension module built, but not importable"
-                               .format(libname), beg="\n"+SPACE)
+                pu.log_warning(
+                    "{0} extension module built, but not importable"
+                    .format(libname), beg="\n" + SPACE)
             else:
-                msg = ("failed to build {0} extension module. see {1}"
-                       .format(libname, "build.echo"))
-                pu.log_warning(msg, beg="\n"+SPACE)
+                pu.log_warning(
+                    "failed to build {0} extension module. see {1}"
+                    .format(libname, "build.echo"),
+                    beg="\n" + SPACE)
 
         else:
             MATERIALS[material]["build succeeded"] = True
@@ -633,8 +638,8 @@ def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):
         # file is an interface file check attributes, define defaults
         name = attributes.get("name")
         if name is None:
-            pu.log_warning("No name attribute given in {0}, skipping"
-                           .format(py_file))
+            pu.log_warning(
+                "No name attribute given in {0}, skipping".format(py_file))
             continue
 
         name = name.replace(" ", "_").lower()
@@ -647,8 +652,8 @@ def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):
                            .format(py_file))
             continue
 
-        electromtl = bool([x for x in material_type if "electro" in x])
-        specialmtl = bool([x for x in material_type if "special" in x])
+        electromtl = any(["electro" in x for x in material_type])
+        specialmtl = any(["special" in x for x in material_type])
 
         if electromtl and "electromechanical" in options:
             requested_libs.append(name)
@@ -777,7 +782,6 @@ def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):
     for name in requested_libs:
         if name not in all_names:
             non_existent.append(name)
-            payette_materials["non existent"] = True
         continue
 
     if non_existent:

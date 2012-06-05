@@ -134,6 +134,7 @@ def report_error(message):
                                                        who_is_calling())
     if SIMLOG is not None:
         SIMLOG.write(message)
+    sys.stdout.flush()
     sys.stderr.write(message)
     return
 def report_and_raise_error(message, tracebacklimit=None, caller=None):
@@ -184,10 +185,17 @@ def log_warning(message, limit=False, caller=None, pre="WARNING: ",
 
     if caller is None:
         caller = who_is_calling()
-    message = ("{0}{1}{2} [reported by: {3}]{4}"
+    elif caller.lower() == "anonymous":
+        caller = ""
+
+    if caller:
+        caller = " [reported by: {0}]".format(caller)
+
+    message = ("{0}{1}{2}{3}{4}"
                .format(beg, pre, message, caller, end))
     if SIMLOG is not None:
         SIMLOG.write(message)
+    sys.stdout.flush()
     sys.stderr.write(message)
     return
 
@@ -541,6 +549,7 @@ class BuildError(Exception):
         # 66 = No build attribute
         self.message = message
         self.errno = errno
+        sys.stdout.flush()
         sys.stderr.write(message + "\n")
         pass
 

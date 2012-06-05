@@ -30,7 +30,7 @@
 
     <Units>SI</Units>
 
-    <Parameter name="LAM" order="0"  type="double" default="0" units="PRESSURE_UNITS" aliases="">
+    <Parameter name="LAM" order="0"  type="double" default="0" units="PRESSURE_UNITS">
       First Lame parameter = G(E-2G)/(3G-E) = K-2G/3
     </Parameter>
     <Parameter name="G"   order="1"  type="double" default="0" units="PRESSURE_UNITS" aliases="MU, G0, SHMOD, SHEAR MODULUS">
@@ -48,19 +48,19 @@
     <Parameter name="H"   order="5"  type="double" default="0" units="PRESSURE_UNITS" aliases="CONSTRAINED MODULUS">
       Constrained modulus = 2G+lam = 3K-2lam = K + 4G/3
     </Parameter>
-    <Parameter name="KO"  order="6"  type="double" default="0" units="NO_UNITS"       aliases="">
+    <Parameter name="KO"  order="6"  type="double" default="0" units="NO_UNITS"      >
       SIGy/SIGx in uniaxial strain = nu/(1-nu)
     </Parameter>
-    <Parameter name="CL"  order="7"  type="double" default="0" units="VELOCITY_UNITS" aliases="">
+    <Parameter name="CL"  order="7"  type="double" default="0" units="VELOCITY_UNITS">
       Longitudinal wave speed = sqrt(H/rho)
     </Parameter>
-    <Parameter name="CT"  order="8"  type="double" default="0" units="VELOCITY_UNITS" aliases="">
+    <Parameter name="CT"  order="8"  type="double" default="0" units="VELOCITY_UNITS">
       Shear (TRANSVERSE) wave speed = sqrt(G/rho)
     </Parameter>
-    <Parameter name="CO"  order="9"  type="double" default="0" units="VELOCITY_UNITS" aliases="">
+    <Parameter name="CO"  order="9"  type="double" default="0" units="VELOCITY_UNITS">
       Bulk/plastic wave speed = sqrt(K/rho)=SQRT(cl^2-4(ct^2)/3)
     </Parameter>
-    <Parameter name="CR"  order="10" type="double" default="0" units="VELOCITY_UNITS" aliases="">
+    <Parameter name="CR"  order="10" type="double" default="0" units="VELOCITY_UNITS">
       Thin rod elastic wave speed = sqrt(E/rho)
     </Parameter>
     <Parameter name="RHO" order="11" type="double" default="0" units="DENSITY_UNITS"  aliases="DENSITY">

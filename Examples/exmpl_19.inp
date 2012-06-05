@@ -19,7 +19,7 @@ begin simulation exmpl_19
   end boundary
 
   begin material
-    constitutive model plastic
+    constitutive model elastic
 
     # below we specify to use the "example_material" with the matlabel
     # keyword. With this keyword, Payette will search for this material's

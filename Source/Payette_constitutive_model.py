@@ -243,6 +243,9 @@ class ConstitutiveModelPrototype(object):
                                            "default value": default,
                                            "description": description,}
         self.parameter_table_idx_map[param_idx] = full_name
+
+        self.nprop += 1
+
         return
 
     def get_parameter_names_and_values(self, default=True):
