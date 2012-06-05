@@ -282,19 +282,17 @@ class ConstitutiveModelPrototype(object):
         # ui array
         ignored, not_parseable = [], []
         for param, param_val in self.user_input_params.items():
-            param_name = None
-            if param in self.parameter_table:
-                param_name = param
+            # %tjf: ignore units for now
+            if param.lower() == "units":
+                continue
+
+            for key, val in self.parameter_table.items():
+                if param.lower() in [param] + val["names"]:
+                    param_name = key
+                    break
+                continue
 
             else:
-                # look for alias
-                for key, val in self.parameter_table.items():
-                    if param.lower() in val["names"]:
-                        param_name = key
-                        break
-                    continue
-
-            if param_name is None:
                 ignored.append(param)
                 continue
 

@@ -25,6 +25,8 @@ import sys
 import os
 import xml.dom.minidom as xdom
 
+import Payette_utils as pu
+
 class XMLParser:
     """
     CLASS NAME
@@ -40,12 +42,12 @@ class XMLParser:
     """
     def __init__(self, file_name):
         """Parse an xml file that contains material parameter information.
-    
+
         Parameters
         ----------
-        mtldat_f : str
+        file_name : str
           path to xml material database file
-    
+
         Returns
         -------
         mm : dict
@@ -71,45 +73,49 @@ class XMLParser:
               Description of the material model the file is meant for.
         """
         if not os.path.isfile(file_name):
-            sys.exit( "Cannot parse file '{0}' because it does not exist.".
-                                                   format(file_name))
+            pu.report_and_raise_error(
+                "Cannot parse file '{0}' because it does not exist."
+                .format(file_name))
         self.file = file_name
 
 
         dom = xdom.parse(self.file)
-    
+
         # Get the root element (Should always be "MaterialModel")
         MaterialModel = dom.getElementsByTagName('MaterialModel')
         if len(MaterialModel) != 1:
-            sys.exit("Expected Root Element 'MaterialModel'")
+            pu.report_and_raise_error("Expected Root Element 'MaterialModel'")
         MaterialModel = MaterialModel[0]
-    
+
         #
         # Get the Name and Description of the model.
         #
         tmp = MaterialModel.getElementsByTagName('Name')
         if len(tmp) != 1:
-            sys.exit("Expected a 'Name' for the 'MaterialModel'.")
+            pu.report_and_raise_error(
+                "Expected a 'Name' for the 'MaterialModel'.")
         self.name = str(tmp[0].firstChild.data).strip()
-    
+
         tmp = MaterialModel.getElementsByTagName('Description')
         if len(tmp) != 1:
-            sys.exit("Expected a 'Description' for the 'MaterialModel'.")
+            pu.report_and_raise_error(
+                "Expected a 'Description' for the 'MaterialModel'.")
         self.description = str(tmp[0].firstChild.data).strip()
-    
+
         #
         # Get the ModelParameters block.
         #
         ModelParameters = dom.getElementsByTagName('ModelParameters')
         if len(ModelParameters) != 1:
-            sys.exit("Expected Element 'ModelParameters'")
+            pu.report_and_raise_error("Expected Element 'ModelParameters'")
         ModelParameters = ModelParameters[0]
 
         tmp = ModelParameters.getElementsByTagName('Units')
         if len(tmp) != 1:
-            sys.exit("Expected a 'Units' in the 'ModelParameters' element.")
+            pu.report_and_raise_error(
+                "Expected a 'Units' in the 'ModelParameters' element.")
         self.units = str(tmp[0].firstChild.data).strip()
-    
+
         #
         # Get the Model Parameters (Default).
         #
@@ -123,7 +129,7 @@ class XMLParser:
                 mval = str(parameter.attributes.item(idx).value).strip()
                 tmp[mname] = mval
             self.parameters.append(tmp)
-    
+
         #
         # Get the Material Parameterizations.
         #
@@ -136,7 +142,7 @@ class XMLParser:
                 tmp["description"] = str(material.firstChild.nodeValue).strip()
             except AttributeError:
                 tmp["description"] = None
-    
+
             for idx in range(0, material.attributes.length):
                 mname = str(material.attributes.item(idx).name).strip()
                 mval = str(material.attributes.item(idx).value).strip()
@@ -148,8 +154,6 @@ class XMLParser:
 
         Parameters
         ----------
-        mtldat_f : str
-          path to xml material database file
 
         Returns
         -------
@@ -166,14 +170,12 @@ class XMLParser:
 
     def get_material_parameterization(self, mat_name):
         """return the material parameterization for a given material name
-    
+
         Parameters
         ----------
-        mtldat_f : str
-          path to xml material database file
         mat_name : str
           name of the material to have the paramterization returned
-    
+
         Returns
         -------
         mtldat : list
@@ -182,17 +184,17 @@ class XMLParser:
           xml file says that it will be (likely all will be converted to float).
         """
         iam = "get_material_parameterizations"
-    
+
         # Every set of inputs needs a unit system.
         mtldat = [("Units", self.units)]
-    
+
         for mat in self.materials:
             if mat["name"].lower() == mat_name.lower():
                 break
         else:
-            sys.exit("Material '{0}' not found in '{1}'".
-                     format(material, mtldat_f))
-    
+            pu.report_and_raise_error(
+                "Material '{0}' not found in '{1}'".format(mat_name, self.file))
+
         for param in self.parameters:
             param_name = param["name"]
             param_val = mat.get(param_name)
@@ -201,7 +203,7 @@ class XMLParser:
             if param["type"] == "double":
                 param_val = float(param_val)
             mtldat.append((param_name, param_val))
-    
+
         return mtldat
 
 

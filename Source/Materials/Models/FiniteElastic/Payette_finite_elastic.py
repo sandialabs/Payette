@@ -46,7 +46,7 @@ attributes = {
     "fortran build script": join(THIS_DIR, "Build_finite_elastic.py"),
     "material type": ["mechanical"],
     "default material": True,
-    "material database": join(THIS_DIR, "finite_elastic_mtl_database.py"),
+    "material database": join(THIS_DIR, "finite_elastic_mtl_database.xml"),
     }
 
 

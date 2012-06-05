@@ -97,9 +97,9 @@ def who_is_calling():
         os.path.splitext(os.path.basename(stack[1]))[0], stack[3])
 
 
-def log_message(message, pre="INFO: ", end="\n", noisy=False):
+def log_message(message, pre="INFO: ", end="\n", noisy=False, beg=""):
     """Report message to screen and write to log file if open"""
-    message = "{0}{1}{2}".format(pre, message, end)
+    message = "{0}{1}{2}{3}".format(beg, pre, message, end)
     if SIMLOG is not None:
         SIMLOG.write(message)
     if noisy or ro.VERBOSITY > 0:
@@ -159,7 +159,8 @@ def __count_warning(wcount=[0], inquire=False, reset=False):
         return wcount[0]
     wcount[0] += 1
     return
-def log_warning(message, limit=False, caller=None):
+def log_warning(message, limit=False, caller=None, pre="WARNING: ",
+                beg="", end="\n"):
     """Report warning to screen and write to log file if open"""
 
     if ro.WARNING == "error":
@@ -183,7 +184,8 @@ def log_warning(message, limit=False, caller=None):
 
     if caller is None:
         caller = who_is_calling()
-    message = "WARNING: {0} [reported by: {1}]\n".format(message, caller)
+    message = ("{0}{1}{2} [reported by: {3}]{4}"
+               .format(beg, pre, message, caller, end))
     if SIMLOG is not None:
         SIMLOG.write(message)
     sys.stderr.write(message)
@@ -1176,9 +1178,7 @@ def parse_mtldb_file(mtldat_f, material=None):
 
     """
     fext = os.path.splitext(mtldat_f)[1]
-    if fext == ".py":
-        mtldat = parse_py_mtldb_file(mtldat_f, material=material)
-    elif fext == ".xml":
+    if fext == ".xml":
         xml_obj = px.XMLParser(mtldat_f)
         if material is None:
             mtldat = xml_obj.get_parameterized_materials()
@@ -1187,96 +1187,6 @@ def parse_mtldb_file(mtldat_f, material=None):
     else:
         report_and_raise_error(
             "mtldat file parsing not enabled for file type: " + fext)
-
-    return mtldat
-
-def parse_py_mtldb_file(mtldat_f, material=None):
-    """Parse the python material database file
-
-    Parameters
-    ----------
-    matlabel : str, optional
-      name of material
-
-    Returns
-    -------
-    mtldat : list
-      if material is not None:
-          list of tuples of (name, val) pairs for material parameter values
-      else:
-          list of tuples of (name, [aliase1, alias2,...]) pairs for valid
-          materials
-    """
-    py_mod, py_path = get_module_name_and_path(mtldat_f)
-    fobj, pathname, description = imp.find_module(py_mod, py_path)
-    py_module = imp.load_module(py_mod, fobj, pathname, description)
-    fobj.close()
-
-    try:
-        __all__ = getattr(py_module, "__all__")
-    except AttributeError:
-        report_and_raise_error(
-            "required attribute __all__ not found in {0}".format(mtldat_f))
-
-    if not isinstance(__all__, dict):
-        report_and_raise_error(
-            "__all__ in {0} must be a dictionary".format(mtldat_f))
-
-    if material is None:
-        # return a all materials and default values
-        materials = []
-        for mtl_nam in __all__:
-            names = [mtl_nam]
-            names.extend(__all__[mtl_nam])
-            try:
-                params = getattr(py_module, mtl_nam)
-            except AttributeError:
-                continue
-            mtldat = []
-            for key, val in params.items():
-                if key.lower() == "units":
-                    continue
-                mtldat.append((key, float(val)))
-            materials.append((names, mtldat))
-
-        return materials
-
-    # look for name of material in file
-    for name, aliases in __all__.items():
-        if material in aliases + [name]:
-            mtl_nam = name
-            break
-        continue
-
-    else:
-        report_and_raise_error(
-            "{0} not found in {1}".format(material, os.path.basename(mtldat_f)))
-
-    try:
-        params = getattr(py_module, mtl_nam)
-    except KeyError:
-        report_and_raise_error(
-            "{0} in __all__ but not in in {1}".format(material, mtldat_f))
-
-    mtldat = []
-    for key, val in params.items():
-        if key.lower() == "units":
-            # ultimately, we hope to use units, but for now we don't...
-            continue
-        try:
-            val = float(val)
-        except ValueError:
-            report_error(
-                "expected float for parameter {0} got {1}".format(key, val))
-            continue
-
-        mtldat.append((key, val))
-        continue
-
-    if error_count():
-        msg = ("stopping due to previous errors in {0} for material {1}"
-               .format(mtldat_f, material))
-        report_and_raise_error(msg, tracebacklimit=0)
 
     return mtldat
 

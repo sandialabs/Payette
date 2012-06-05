@@ -237,11 +237,15 @@ def build_payette(argv):
         for dirnam in mtl_dirs:
             if not any(x in dirnam for x in search_dirs):
                 search_dirs.append(dirnam)
-        pu.log_message("finding Payette materials from:\n{0}"
-                  .format("\n".join([SPACE + x for x in search_dirs])))
+        pu.log_message(
+            "finding Payette material model interface files from:\n{0}"
+            .format("\n".join([SPACE + x.replace(os.path.expanduser("~"), "~")
+                               for x in search_dirs])))
         MATERIALS = get_payette_mtls(mtl_dirs, opts.mtllib, options)
-        pu.log_message("Payette materials found:\n{0}"
-                  .format("\n".join([SPACE + x for x in MATERIALS.keys()])))
+        pu.log_message(
+            "the following materials were found:\n{0}"
+            .format(SPACE + ", ".join(['"' + x + '"' for x in MATERIALS])),
+            beg="\n")
         non_existent = MATERIALS.get("non existent", False)
         if non_existent:
             errors += 1
@@ -306,7 +310,7 @@ def test_run_payette(test):
                        "can be found", pre="")
         return 1
     else:
-        pu.endmes("runPayette [-h] executed normally\n")
+        pu.log_message("runPayette [-h] executed normally", pre="")
 
     if not test:
         return 0
@@ -331,7 +335,8 @@ def test_run_payette(test):
             pu.log_message(message, pre="")
         return 1
     else:
-        pu.endmes("testPayette [-k elastic -K kayenta] executed normally\n")
+        pu.log_message(
+            "testPayette [-k elastic -K kayenta] executed normally", pre="")
 
     return 0
 
@@ -342,9 +347,6 @@ def write_payette_materials(payette_materials):
     dictionary of installed models and model attributes
 
     """
-
-    pu.log_message("writing {0}".format("PAYETTE_ROOT" +
-                                   pc.PC_MTLS_FILE.split(pc.PC_ROOT)[1]))
 
     # get list of previously installed materials
     try:
@@ -387,15 +389,13 @@ def write_payette_materials(payette_materials):
             constitutive_models[key] = val
         continue
 
-    pu.begmes("writing constitutive model declarations", pre=SPACE,
-              verbose=VERBOSE)
+    pu.log_message(
+        "writing constitutive model information to: {0}"
+        .format("PAYETTE_ROOT" + pc.PC_MTLS_FILE.split(pc.PC_ROOT)[1]),
+        beg="\n")
     with open(pc.PC_MTLS_FILE, "wb") as fobj:
         pickle.dump(constitutive_models, fobj)
-    pu.endmes("constitutive model declarations written", verbose=VERBOSE)
-
-    pu.log_message(
-        "{0} written\n".format("PAYETTE_ROOT" +
-                               pc.PC_MTLS_FILE.split(pc.PC_ROOT)[1]))
+    pu.log_message("constitutive model information written")
     return
 
 
@@ -409,15 +409,20 @@ def build_payette_mtls(nproc=1):
 
     global VERBOSE
 
-    if VERBOSE:
-        pu.log_message("building Payette material libraries")
-
     # now build the materials
     requested_builds = [x for x in MATERIALS
                         if MATERIALS[x]["build requested"]]
     if not requested_builds:
         if VERBOSE:
-            pu.log_message("no material libraries to build", pre=SPACE)
+            pu.log_warning("no material libraries to build")
+
+    if VERBOSE:
+        pu.log_message(
+            "the following materials were requested to be built:\n{0}"
+            .format(SPACE + ", ".join(['"' + x + '"' for x in requested_builds])),
+            beg="\n")
+
+        pu.log_message("building the requested material libraries", beg="\n")
 
     # build the libraries
     nproc = min(nproc, len(requested_builds))
@@ -436,7 +441,7 @@ def build_payette_mtls(nproc=1):
         MATERIALS[item[0]] = item[1]
 
     if VERBOSE:
-        pu.log_message("Payette material libraries built\n")
+        pu.log_message("finished building the requested material libraries")
 
     failed_materials = [MATERIALS[x]["libname"]
                         for x in MATERIALS
@@ -447,14 +452,19 @@ def build_payette_mtls(nproc=1):
                        if MATERIALS[x]["build requested"]
                        and MATERIALS[x]["build succeeded"]]
 
+    failed_materials=["a fake material"]
     if failed_materials:
         # errors = 55
-        pu.log_warning("The following materials WERE NOT built:\n{0}\n"
-                       .format("\n".join([SPACE + x for x in failed_materials])))
+        pu.log_warning(
+            "the following materials WERE NOT built:\n{0}"
+            .format(SPACE + ", ".join(['"' + x + '"' for x in failed_materials])),
+            beg="\n")
 
     if built_materials:
-        pu.log_message("The following materials WERE built:\n{0}\n"
-                  .format("\n".join([SPACE + x for x in built_materials])))
+        pu.log_message(
+            "the following materials WERE built:\n{0}"
+            .format(SPACE + ", ".join(['"' + x + '"' for x in built_materials])),
+            beg="\n")
 
     # remove cruft
     for ftmp in [x for x in os.listdir(pc.PC_TOOLS)
@@ -477,17 +487,18 @@ def _build_lib(material):
     fort_build_script = MATERIALS[material]["fortran build script"]
     parse_err = MATERIALS[material]["parse error"]
     if VERBOSE:
-        pu.begmes("building {0}".format(libname), pre=SPACE)
+        pu.log_message("building {0}".format(libname), pre=SPACE, end="...   ")
 
     if parse_err:
         MATERIALS[material]["build failed"] = True
         if VERBOSE:
-            pu.endmes("{0} skipped due to previous errors".format(libname))
+            pu.log_warning("{0} skipped due to previous errors".format(libname),
+                           beg=SPACE)
 
     elif fort_build_script is None:
         MATERIALS[material]["build succeeded"] = True
         if VERBOSE:
-            pu.endmes("{0} built ".format(libname))
+            pu.log_message("{0} built ".format(libname), pre="")
 
     else:
         # import fortran build script
@@ -510,19 +521,19 @@ def _build_lib(material):
                 pass
             elif build_error == 66:
                 pu.log_warning("{0}: missing attribute: build"
-                               .format(fort_build_script))
+                               .format(fort_build_script), beg="\n"+SPACE)
             elif build_error == 20:
                 pu.log_warning("{0} extension module built, but not importable"
-                               .format(libname))
+                               .format(libname), beg="\n"+SPACE)
             else:
                 msg = ("failed to build {0} extension module. see {1}"
                        .format(libname, "build.echo"))
-                pu.log_warning(msg)
+                pu.log_warning(msg, beg="\n"+SPACE)
 
         else:
             MATERIALS[material]["build succeeded"] = True
             if VERBOSE:
-                pu.endmes("{0} built ".format(libname))
+                pu.log_message("{0} built ".format(libname), pre="")
 
         # remove bite compiled files
         try:
@@ -849,7 +860,7 @@ if __name__ == "__main__":
 
     ERROR, WARN = 0, 0
     if BUILD == 0:
-        pu.log_message("buildPayette succeeded\n")
+        pu.log_message("buildPayette succeeded", pre="\n", end="\n\n")
 
     elif BUILD == 55:
         WARN += 1

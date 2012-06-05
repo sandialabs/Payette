@@ -48,6 +48,7 @@ attributes = {
     "fortran build script": join(THIS_DIR, "Build_plastic.py"),
     "material type": ["mechanical"],
     "default material": True,
+    "material database": join(THIS_DIR, "plastic_mtl_database.xml"),
     }
 
 class Plastic(ConstitutiveModelPrototype):
@@ -68,7 +69,7 @@ class Plastic(ConstitutiveModelPrototype):
         self.register_parameter("KO", 6, aliases=[])
         self.register_parameter("CL", 7, aliases=[])
         self.register_parameter("CT", 8, aliases=[])
-        self.register_parameter("C0", 9, aliases=[])
+        self.register_parameter("CO", 9, aliases=[])
         self.register_parameter("CR", 10, aliases=[])
         self.register_parameter("RHO", 11, aliases=["DENSITY"])
         self.register_parameter("Y", 12, aliases=["Y0", "A1", "YIELD STRENGTH"])
