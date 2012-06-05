@@ -1179,10 +1179,11 @@ def parse_mtldb_file(mtldat_f, material=None):
     if fext == ".py":
         mtldat = parse_py_mtldb_file(mtldat_f, material=material)
     elif fext == ".xml":
+        xml_obj = px.XMLParser(mtldat_f)
         if material is None:
-            mtldat = px.get_parameterized_materials(mtldat_f)
+            mtldat = xml_obj.get_parameterized_materials()
         else:
-            mtldat = px.get_material_parameterization(mtldat_f, material)
+            mtldat = xml_obj.get_material_parameterization(material)
     else:
         report_and_raise_error(
             "mtldat file parsing not enabled for file type: " + fext)
@@ -1340,15 +1341,3 @@ def logmes(msg, pre="", end="\n", caller=None, verbose=True):
         "[called by: {0}]".format(who_is_calling()))
     warnings.warn(message)
     return log_message(msg)
-
-
-
-
-
-
-
-
-
-
-
-
