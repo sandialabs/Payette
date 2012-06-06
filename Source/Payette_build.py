@@ -245,7 +245,7 @@ def build_payette(argv):
         if MATERIALS:
             pu.log_message(
                 "the following materials were found:\n{0}"
-                .format(SPACE + ", ".join(['"' + x + '"' for x in MATERIALS])),
+                .format(SPACE + ", ".join(["'" + x + "'" for x in MATERIALS])),
                 beg="\n")
         else:
             errors += 1
@@ -420,7 +420,7 @@ def build_payette_mtls(nproc=1):
         else:
             pu.log_message(
                 "the following materials were requested to be built:\n{0}"
-                .format(SPACE + ", ".join(['"' + x + '"'
+                .format(SPACE + ", ".join(["'" + x + "'"
                                            for x in requested_builds])),
                 beg="\n")
 
@@ -465,7 +465,7 @@ def build_payette_mtls(nproc=1):
     if built_materials:
         pu.log_message(
             "the following materials WERE built:\n{0}"
-            .format(SPACE + ", ".join(['"' + x + '"' for x in built_materials])),
+            .format(SPACE + ", ".join(["'" + x + "'" for x in built_materials])),
             beg="\n")
 
     # remove cruft

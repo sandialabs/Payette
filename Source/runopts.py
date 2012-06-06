@@ -59,7 +59,12 @@ def set_command_line_options(opts):
 
     """
     module = sys.modules[__name__]
-    global_options = [x for x in dir(module) if "_" not in x and x != "sys"]
+    global_options = [x for x in dir(module) if x.isupper()]
+
+    for gopt in global_options:
+        val = getattr(module, gopt)
+        _register_default_option(gopt, val)
+        continue
 
     for opt in dir(opts):
         if opt.upper() in dir(module):

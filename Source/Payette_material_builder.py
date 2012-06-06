@@ -28,9 +28,10 @@ from copy import deepcopy
 from numpy.f2py import main as f2py
 
 import Payette_config as pc
-from Source.Payette_utils import get_module_name_and_path, BuildError
+import Source.Payette_utils as pu
+from Source.Payette_utils import BuildError as BuildError
 
-class MaterialBuilder():
+class MaterialBuilder(object):
 
     def __init__(self, name, libname, srcd, compiler_info,
                  sigf=None, incdirs=None, libdirs=None, libs=None):
@@ -169,7 +170,7 @@ class MaterialBuilder():
 
         # make sure the module is loadable
         try:
-            py_mod, py_path = get_module_name_and_path(self.libname)
+            py_mod, py_path = pu.get_module_name_and_path(self.libname)
             fp, pathname, description = imp.find_module(py_mod, py_path)
             build = imp.load_module(py_mod, fp, pathname, description)
             fp.close()

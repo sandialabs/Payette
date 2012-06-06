@@ -72,23 +72,29 @@ def test_payette(argv):
     usage = "usage: testPayette [options]"
     parser = optparse.OptionParser(usage=usage, version="testPayette 1.0")
     parser.add_option(
+        "-B",
+        dest="BUILTIN",
+        action="store_true",
+        default=False,
+        help=": Run only 'builtin' tests [default: %default]")
+    parser.add_option(
         "-k",
         dest="KEYWORDS",
         action="append",
         default=[],
-        help="keywords: [%default]")
+        help="filter in tests that match keyword (accumlated): [default: %default]")
     parser.add_option(
         "-K",
         dest="NOKEYWORDS",
         action="append",
         default=[],
-        help="keyword negation: [%default]")
+        help="filter out tests matching keyword (accumulated): [default: %default]")
     parser.add_option(
         "-t",
         dest="SPECTESTS",
         action="append",
         default=[],
-        help="specific tests to run, more than 1 collected: [%default]")
+        help="specific tests to run (accumulated) [default: %default]")
     parser.add_option(
         "-d",
         dest="BENCHDIRS",
@@ -163,6 +169,9 @@ def test_payette(argv):
     if args:
         sys.exit("ERROR: testPayette does not take any arguments")
 
+    if opts.switch is not None:
+        pu.log_warning("switching materials is an untested feature")
+
     # number of processors
     nproc = min(mp.cpu_count(), opts.nproc)
 
@@ -179,9 +188,11 @@ def test_payette(argv):
             pu.report_error("__test_dir__.py not found in {0}".format(dirnam))
         continue
     if pu.error_count():
-        sys.stderr.write("here i am")
         pu.report_and_raise_error("stopping due to previous errors",
                                   tracebacklimit=0)
+
+    if opts.BUILTIN:
+        opts.KEYWORDS = ["builtin"]
 
     t_start = time.time()
     conforming = None

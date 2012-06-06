@@ -27,9 +27,11 @@ import numpy as np
 import math
 import os
 import imp
+import warnings
 import Source.Payette_tensor as pt
 import Source.Payette_utils as pu
 import Source.runopts as ro
+import Source.Payette_xml_parser as px
 
 
 class ConstitutiveModelPrototype(object):
@@ -101,11 +103,26 @@ class ConstitutiveModelPrototype(object):
         pu.log_message("using {0} implementation of the '{1}' constitutive model"
                        .format(self.code, self.name))
 
-        # location of material data file - if any
-        self.mtldat_f = init_data.get("material database")
-        if self.mtldat_f is not None and not os.path.isfile(self.mtldat_f):
+        # location of control file - if any
+        self.control_file = init_data.get("control file")
+        if (self.control_file is not None
+            and not os.path.isfile(self.control_file)):
             pu.report_and_raise_error(
-                "material data file {0} not found".format(self.mtldat_f))
+                "control file {0} not found".format(self.control_file))
+
+        # ---------------------------------------------------------- DEPRECATED
+        self.mtldat_f = init_data.get("material database")
+        if self.mtldat_f is not None:
+            self.control_file = self.mtldat_f
+            message = (
+                "'material database' to be depricated, use a 'control file'"
+                "[called by: {0}]".format(pu.whoami()))
+            warnings.warn(message)
+
+            if not os.path.isfile(self.control_file):
+                pu.report_and_raise_error(
+                    "material data file {0} not found".format(self.control_file))
+        # ---------------------------------------------------------- DEPRECATED
 
         # specialized models
         mat_typ = init_data["material type"]
@@ -169,9 +186,18 @@ class ConstitutiveModelPrototype(object):
             pu.report_and_raise_error("iniatial Jacobian is empty")
 
         matdat.register_data("jacobian", "Matrix", init_val=self.J0)
-        if self.electric_field_model:
-            ro.set_global_option("EFIELD_SIM", True)
+        ro.set_global_option("EFIELD_SIM", self.electric_field_model)
 
+        return
+
+    def register_parameters_from_control_file(self):
+        """Register parameters from the control file """
+        xml_obj = px.XMLParser(self.control_file)
+        params = sorted(xml_obj.get_parameters(), key=lambda x: int(x["order"]))
+        for idx, pm in enumerate(params):
+            self.register_parameter(
+                pm["name"], idx, aliases=pm["aliases"], parseable=pm["parseable"])
+            continue
         return
 
     def register_parameter(self, param_name, param_idx,
@@ -340,7 +366,7 @@ class ConstitutiveModelPrototype(object):
             # @mswan{ -> the "material" part is what I had done before. The
             #            "matlabel" stuff would be new, if implemented
             if line[0] == "material" or line[0] == "matlabel":
-                if self.mtldat_f is None:
+                if self.control_file is None:
                     msg = ("requested matlabel but "+ self.name +
                            " does not provide a material data file")
                     pu.report_and_raise_error(msg)
@@ -351,7 +377,7 @@ class ConstitutiveModelPrototype(object):
                     pu.report_and_raise_error("empty matlabel encountered")
 
                 # matlabel found, now parse the file for names and values
-                mtldat = pu.parse_mtldb_file(self.mtldat_f, material=matlabel)
+                mtldat = pu.parse_mtldb_file(self.control_file, material=matlabel)
                 for name, val in mtldat:
                     self.user_input_params[name.upper()] = val
                     continue

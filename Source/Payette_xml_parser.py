@@ -136,6 +136,7 @@ class XMLParser:
         # Get the Material Parameterizations.
         #
         self.materials = []
+        self.matnames_and_aliases = []
         material_list = ModelParameters.getElementsByTagName('Material')
         for material in material_list:
             # If you just want to loop through the attributes:
@@ -149,7 +150,24 @@ class XMLParser:
                 mname = str(material.attributes.item(idx).name).strip()
                 mval = str(material.attributes.item(idx).value).strip()
                 tmp[mname] = mval
+                continue
+
+            if "name" not in tmp:
+                pu.report_and_raise_error(
+                    "no name given for a material in {0}"
+                    .format(os.path.basename(self.file_name)))
+
             self.materials.append(tmp)
+
+            # save the name and aliases
+            name = tmp.get("name")
+            aliases = [name.lower()]
+            aliases.extend([x.lower() for x in
+                            tmp.get("aliases", "").split(",") if x])
+            self.matnames_and_aliases.append((name, aliases))
+            continue
+
+        pass
 
     def get_parameterized_materials(self):
         """return the available materials as parsed by parse_xml()
@@ -190,8 +208,12 @@ class XMLParser:
         # Every set of inputs needs a unit system.
         mtldat = [("Units", self.units_system)]
 
-        for mat in self.materials:
-            if mat["name"].lower() == mat_name.lower():
+        for name, aliases in self.matnames_and_aliases:
+            mat_names = [x.lower()
+                         for x in (mat_name, mat_name.replace(" ", "_"))]
+            if any(x in mat_names for x in aliases):
+                mat_name = name
+                material = [x for x in self.materials if x["name"] == name][0]
                 break
         else:
             pu.report_and_raise_error(
@@ -199,7 +221,7 @@ class XMLParser:
 
         for param in self.parameters:
             param_name = param["name"]
-            param_val = mat.get(param_name)
+            param_val = material.get(param_name)
             if param_val is None:
                 param_val = param["default"]
             if param["type"] == "double":

@@ -1,20 +1,23 @@
-<!-- Material properties file for the elastic material -->
+<!-- Material properties file for the finite elastic material -->
 
 <MaterialModel>
-  <Name>Plastic</Name>
+  <Name>Finite Elastic</Name>
 
   <Description>
-    J2 plasticity model with combined isotropic and kinematic hardening
+    Finite elasticity material model that computes the Second Piola-Kirchhoff
+    stress from the Green-Lagrange finite strain tensor.
   </Description>
 
   <Owner>Tim Fuller (tjfulle@sandia.gov)</Owner>
 
   <Files>
     <Core>
-      plastic.f90
+      finite_elastic.f90
     </Core>
     <Interface type="payette">
-      Build_plastic.py Payette_plastic.py Payette_plastic.pyf
+      Build_finite_elastic.py
+      Payette_finite_elastic.py
+      Payette_finite_elastic.pyf
     </Interface>
   </Files>
 
@@ -24,8 +27,8 @@
 
 
   <ModelParameters>
-    <Key>plastic</Key>
-    <Aliases>elastic plastic, von mises</Aliases>
+    <Key>finite_elastic</Key>
+    <Aliases></Aliases>
 
     <Units>SI</Units>
 
@@ -65,22 +68,11 @@
     <Parameter name="RHO" order="11" type="double" default="0" units="DENSITY_UNITS"  aliases="DENSITY">
       Density
     </Parameter>
-    <Parameter name="Y"   order="12" type="double" default="0" units="PRESSURE_UNITS" aliases="Y0, A1, YIELD STRENGTH">
-      Yield strength in tension
-    </Parameter>
-    <Parameter name="A"   order="13" type="double" default="0" units="PRESSURE_UNITS">
-      Kinematic hardening parameter
-    </Parameter>
-    <Parameter name="C"   order="14" type="double" default="0" units="PRESSURE_UNITS">
-      Isotropic hardening parameter
-    </Parameter>
-    <Parameter name="M"   order="15" type="double" default="0" units="NO_UNITS"      >
-      Isotropic hardening parameter
-    </Parameter>
 
-    <Material name="AL_6061"   dist="unlimited" E="68.9e9"  NU="0.330" Y="276.e6" aliases="Aluminum"/>
-    <Material name="TIB2"      dist="unlimited" E="565e9"   NU="0.108" Y="1.8e9"  aliases="Titanium Diboride"/>
-    <Material name="TI_6AL_4V" dist="unlimited" E="113.8e9" NU="0.342" Y="880.e6" aliases="Titanium"/>
+    <Material name="AL_6061"   dist="unlimited" E="68.9E9"  NU="0.330" aliases="Aluminum"/>
+    <Material name="TIB2"      dist="unlimited" E="565E9"   NU="0.108" aliases="Titanium Diboride"/>
+    <Material name="TI_6AL_4V" dist="unlimited" E="113.8E9" NU="0.342" aliases="Titanium"/>
+    <Material name="PZT"       dist="unlimited" G="2.21199E10" K="9.05999E10" aliases="ISOTROPIC_PZT"/>
 
   </ModelParameters>
 

@@ -29,7 +29,6 @@ from Source.Payette_tensor import iso, dev
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Payette_config import PC_F2PY_CALLBACK
 from Toolset.elastic_conversion import compute_elastic_constants
-import Source.Payette_xml_parser as px
 
 try:
     import Source.Materials.Library.elastic as mtllib
@@ -47,7 +46,7 @@ attributes = {
     "fortran build script": join(THIS_DIR, "Build_elastic.py"),
     "material type": ["mechanical"],
     "default material": True,
-    "material database": join(THIS_DIR, "elastic_mtl_database.xml"),
+    "control file": join(THIS_DIR, "Elastic_control.xml"),
     }
 
 class Elastic(ConstitutiveModelPrototype):
@@ -59,11 +58,8 @@ class Elastic(ConstitutiveModelPrototype):
         self.imported = True if self.code == "python" else imported
 
         # register parameters
-        xml_obj = px.XMLParser(attributes["material database"])
-        params = sorted(xml_obj.get_parameters(), key=lambda x: int(x["order"]))
-        for idx, pm in enumerate(params):
-            self.register_parameter(pm["name"], idx,
-                                    aliases=pm["aliases"], parseable=pm["parseable"])
+        self.register_parameters_from_control_file()
+
         pass
 
     # public methods

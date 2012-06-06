@@ -14,7 +14,9 @@
       elastic.f90
     </Core>
     <Interface type="payette">
-      Build_elastic.py Payette_elastic.py Payette_elastic.pyf
+      Build_elastic.py
+      Payette_elastic.py
+      Payette_elastic.pyf
     </Interface>
   </Files>
 
@@ -69,6 +71,7 @@
     <Material name="AL_6061"   dist="unlimited" E="68.9e9"  NU="0.330" aliases="Aluminum"/>
     <Material name="TIB2"      dist="unlimited" E="565e9"   NU="0.108" aliases="Titanium Diboride"/>
     <Material name="TI_6AL_4V" dist="unlimited" E="113.8e9" NU="0.342" aliases="Titanium"/>
+    <Material name="PZT"       dist="unlimited" G="2.21199E10" K="9.05999E10" aliases="ISOTROPIC_PZT"/>
 
   </ModelParameters>
 

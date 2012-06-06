@@ -106,6 +106,10 @@ class Payette:
         except OSError:
             pass
 
+        # set up the logger for the simulation
+        pu.setup_logger(self.logfile)
+        pu.log_message("setting up simulation {0}".format(simname))
+
         # file name for the Payette restart file
         self.is_restart = False
 
@@ -158,10 +162,6 @@ class Payette:
 
             ro.set_global_option(attr, val)
             continue
-
-        # set up the logger for the simulation
-        pu.setup_logger(self.logfile)
-        pu.log_message("setting up simulation {0}".format(simname))
 
         if ro.CHECK_SETUP:
             exit("EXITING to check setup")
@@ -495,7 +495,7 @@ class Payette:
             retcode = pd.eos_driver(self)
 
         pu.log_message(
-            "{0} Payette simulation ran to completion".format(self.name))
+            "{0} Payette simulation ran to completion\n\n".format(self.name))
 
         if not ro.DISP:
             return retcode
@@ -752,6 +752,7 @@ def _parse_mtl_block(material_inp=None):
 
     # check for required input
     for item in material:
+        item = " ".join(item.split())
         if "constitutive model" in item:
             # line defines the constitutive model, get the name of the model
             # to be used
@@ -762,6 +763,11 @@ def _parse_mtl_block(material_inp=None):
             options = item[len("options"):].strip().split()
             if "fortran" in options:
                 user_options["code"] = "fortran"
+            continue
+
+        if "strength model" in item:
+            strength_model = item[len("strength model"):].strip().split()
+            user_options["strength model"] = strength_model
             continue
 
         user_params.append(item)
