@@ -1199,6 +1199,20 @@ def parse_mtldb_file(mtldat_f, material=None):
 
     return mtldat
 
+def get_super_classes(data):
+    """ return the super class name from data """
+
+    super_class_names = []
+    for super_class in data.super:
+        if super_class == "object":
+            continue
+        if isinstance(super_class, basestring):
+            super_class_names.append(super_class)
+        else:
+            super_class_names.append(super_class.name)
+        continue
+    return super_class_names
+
 # the following are being kept around for back compatibiltiy
 def parseToken(*args, **kwargs):
     message = (

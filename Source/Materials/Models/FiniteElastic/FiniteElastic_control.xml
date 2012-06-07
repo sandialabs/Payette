@@ -3,6 +3,8 @@
 <MaterialModel>
   <Name>Finite Elastic</Name>
 
+  <Type> Mechanical </Type>
+
   <Description>
     Finite elasticity material model that computes the Second Piola-Kirchhoff
     stress from the Green-Lagrange finite strain tensor.

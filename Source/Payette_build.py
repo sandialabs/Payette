@@ -30,8 +30,6 @@ Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
 M. Scot Swan, Sandia National Laboratories, mswan@sandia.gov
 
 """
-
-from __future__ import print_function
 import sys
 import imp
 import os
@@ -40,16 +38,18 @@ import subprocess as sbp
 import multiprocessing as mp
 import pyclbr
 import pickle
+from textwrap import fill as textfill
 
 import Payette_config as pc
 import Source.Payette_utils as pu
 from Source.Payette_utils import BuildError as BuildError
+import Source.runopts as ro
+import Source.Payette_xml_parser as px
 
 # --- module level constants
 SPACE = "      "  # spacing used for logs to console
 COMPILER_INFO = {}
 MATERIALS = {}
-VERBOSE = True
 BUILD_ERRORS = 0
 
 # python 3 compatibility
@@ -63,7 +63,7 @@ def build_payette(argv):
 
     """ create/build: material library files """
 
-    global COMPILER_INFO, MATERIALS, VERBOSE
+    global COMPILER_INFO, MATERIALS
 
     # *************************************************************************
     # -- command line option parsing
@@ -104,7 +104,7 @@ def build_payette(argv):
         "-v",
         dest="VERBOSITY",
         action="store",
-        default=1,
+        default=ro.VERBOSITY,
         type=int,
         help="Verbosity [default: %default]")
 
@@ -163,41 +163,47 @@ def build_payette(argv):
         write_summary_to_screen()
         sys.exit(0)
 
-    if not opts.VERBOSITY:
-        VERBOSE = False
+    ro.set_global_option("VERBOSITY", opts.VERBOSITY, default=True)
 
-    if VERBOSE:
-        pu.log_message(pc.PC_INTRO, pre="")
+    pu.log_message(pc.PC_INTRO, pre="")
 
     # determine if we build all materials, or just a selection
+    requested_materials = opts.mtllib
     if opts.DSC:
-        opts.mtllib.append("domain_switching_ceramic")
-
+        materials.append("domain_switching_ceramic")
     if opts.KMM:
-        opts.mtllib.append("kayenta")
-
+        materials.append("kayenta")
     if opts.LPC:
-        opts.mtllib.append("piezo_ceramic")
+        materials.append("piezo_ceramic")
+
+    # requested options
+    options = ["buildall"] if opts.BUILDALL else []
+    for option in opts.OPTIONS:
+        if "elec" in option:
+            options.append("electromechanical")
+        elif "spec" in option:
+            options.append("special")
+        else:
+            options.append(option)
+        continue
+
+    # directories to search for materials
+    mtl_dirs = pc.PC_MTLDIRS
+    for dirnam, dirs, files in [os.path.expanduser(x) for x in opts.MTLDIRS]:
+        mtl_dirs.append(dirnam)
+
+    # instantiate the BuildPayette object
+    build = BuildPayette(
+        search_directories=mtl_dirs, requested_materials=requested_materials,
+        options=options)
+    build.collect_all_materials()
+    sys.exit("here")
 
     if opts.FORCEREBUILD:
         try:
             os.remove(pc.PC_MTLS_FILE)
         except OSError:
             pass
-
-    # clean up options:
-    options = []
-    for option in opts.OPTIONS:
-        if "elec" in option:
-            options.append("electromechanical")
-        elif "special" in options:
-            options.append("special")
-        else:
-            options.append(option)
-        continue
-
-    if opts.BUILDALL:
-        options.append("buildall")
 
     # intro message
     pu.log_message("Building Payette\n")
@@ -214,41 +220,7 @@ def build_payette(argv):
     # compiler options to send to the fortran build scripts
     COMPILER_INFO = {"f2py": {"compiler": pc.PC_F2PY[0],
                               "options": f2pyopts}}
-
-    # check material directories
-    mtl_dirs = pc.PC_MTLDIRS
-    for dirnam in opts.MTLDIRS:
-        dirnam = os.path.expanduser(dirnam)
-        if not os.path.isdir(dirnam):
-            pu.report_error("material directory {0} not found".format(dirnam))
-        else:
-            mtl_dirs.append(dirnam)
-        continue
-
-    if pu.error_count():
-        pu.report_and_raise_error("stopping due to previous errors",
-                                  tracebacklimit=0)
-
     if not opts.nobuildlibs:
-
-        # get names of materials from Source/Materials
-        errors = 0
-        search_dirs = []
-        for dirnam in mtl_dirs:
-            if not any(x in dirnam for x in search_dirs):
-                search_dirs.append(dirnam)
-        pu.log_message(
-            "finding Payette material model interface files from:\n{0}"
-            .format("\n".join([SPACE + x.replace(os.path.expanduser("~"), "~")
-                               for x in search_dirs])))
-        MATERIALS = get_payette_mtls(mtl_dirs, opts.mtllib, options)
-        if MATERIALS:
-            pu.log_message(
-                "the following materials were found:\n{0}"
-                .format(SPACE + ", ".join(["'" + x + "'" for x in MATERIALS])),
-                beg="\n")
-        else:
-            errors += 1
 
         # build the requested material libraries
         nproc = min(mp.cpu_count(), opts.NPROC)
@@ -331,14 +303,175 @@ def test_run_payette(test):
         build_fail(message)
         message = ("please let the Payette developers know so a "
                    "fix can be found")
-        if VERBOSE:
-            pu.log_message(message, pre="")
+        pu.log_message(message, pre="")
         return 1
     else:
         pu.log_message(
             "testPayette [-k elastic -K kayenta] executed normally", pre="")
 
     return 0
+
+class BuildPayette(object):
+
+    def __init__(self, search_directories=None, requested_materials=None,
+                 options=None):
+
+        # verify each search directory exists
+        if search_directories is None:
+            raise BuildError("No search directories given.")
+        for directory in search_directories:
+            if not os.path.isdir(directory):
+                pu.report_error("search directory {0} not found"
+                                .format(directory))
+            continue
+        if pu.error_count():
+            raise BuildError("Stopping due to previous errors.")
+        self.search_directories = search_directories
+
+        # verify that materials were requested
+        if requested_materials is None:
+            raise BuildError("No materials requested to be built.")
+        self.requested_materials = requested_materials
+
+        if options is None:
+            options = []
+        self.options = options
+
+        pass
+
+    def collect_all_materials(self):
+        """Look through search directories for Payette materials"""
+
+        # tell the users which directories we'll be looking in
+        search_dirs = []
+        for dirnam in self.search_directories:
+            if not any(x in dirnam for x in search_dirs):
+                search_dirs.append(dirnam)
+            continue
+        pu.log_message(
+            "finding Payette material model interface files from:\n{0}"
+            .format("\n".join([SPACE + x.replace(os.path.expanduser("~"), "~")
+                               for x in search_dirs])))
+
+        self._get_payette_mtls()
+
+        pu.log_message(
+            "the following materials were found:\n{0}"
+            .format(textfill(", ".join([x for x in self.materials_to_build]),
+                             initial_indent=SPACE,
+                             subsequent_indent=SPACE)),
+            beg="\n")
+        return
+
+    def _get_payette_mtls(self):
+        """Read python files in Source/Materials and determine which are
+        interface files for material models. If they are, add them to the
+        payette_materials dictionary, along with their attributes
+
+        """
+
+        # determine if we want to build only select libraries
+        build_all = "buildall" in self.options
+        build_select = bool(self.requested_materials)
+
+        self.materials_to_build = {}
+        control_files = []
+        for directory in self.search_directories:
+            control_files.extend(
+                [os.path.join(directory, x) for x in os.listdir(directory)
+                 if x.endswith("_control.xml")])
+            continue
+
+        # go through list of python files in
+        for control_file in control_files:
+
+            xml_lib = px.XMLParser(control_file)
+            build_info = xml_lib.get_payette_build_info()
+            if build_info is None:
+                continue
+
+            name, aliases, material_type, interface, fortran_source = build_info
+            libname = name + pc.PC_EXT_MOD_FEXT
+
+            for fnam in interface:
+                build_script = fnam if fnam.startswith("Build_") else None
+
+            # all fortran models must give a fortran build script
+            if fortran_source and fort_build_script is None:
+                pu.log_warning(
+                    "Skipping material '{0}' because no build script was found"
+                    .format(name), pre=SPACE)
+
+            # check if the material model was derived from the constitutive
+            # model base class as required by Payette
+
+
+            mtl_dict = {
+                "name": name,
+                "libname": libname,
+                "fortran source": fortran_source,
+                "fortran build script": build_script,
+                "aliases": aliases,
+                "material type": material_type,
+                "material database": attributes.get('material database'),
+                "module": py_mod,
+                "file": py_file,
+                "class name": class_name,
+                "depends": depends,
+                "parse error": parse_err,
+                "build requested": False,  # by default, do not build the material
+                "build succeeded": False,
+                "build failed": False,
+                }
+
+            self.materials_to_build[name] = mtl_dict
+            del py_module
+
+            if buildall and name not in self.requested_materials:
+                self.requested_materials.append(name)
+
+            # decide if it should be built or not
+            if name not in self.requested_materials:
+                continue
+
+            # by this point, we have filtered out the materials we do not want to
+            # build, so request that it be built
+            self.materials_to_build[name]["build requested"] = True
+
+            continue
+
+        dependent_materials = [x for x in self.materials_to_build
+                               if self.materials_to_build[x]["depends"]]
+        if dependent_materials:
+            for material in dependent_materials:
+                depends_on = self.materials_to_build[material]["depends"]
+                # user has requested to build a material that depends on another.
+                # make sure that the other material exists
+                if depends_on not in self.materials_to_build:
+                    raise BuildError("{0} depends on {1} which was not found"
+                                     .format(material, depends_on), 25)
+
+                # if material was requested to be built, make sure the material it
+                # depends on is also built
+                if self.materials_to_build[material]["build requested"]:
+                    self.materials_to_build[depends_on]["build requested"] = True
+
+                continue
+
+        # the user may have requested to build a material that does not exist, let
+        # them know
+        all_names = [self.materials_to_build[x]["name"] for x in self.materials_to_build]
+        non_existent = []
+        for name in self.requested_materials:
+            if name not in all_names:
+                non_existent.append(name)
+            continue
+
+        if non_existent:
+            pu.log_warning("requested material[s] {0} not found"
+                           .format(", ".join(non_existent)))
+
+        return
 
 
 def write_payette_materials(payette_materials):
@@ -408,28 +541,26 @@ def build_payette_mtls(nproc=1):
 
     """
 
-    global VERBOSE
-
     # now build the materials
     requested_builds = [x for x in MATERIALS
                         if MATERIALS[x]["build requested"]]
-    if VERBOSE:
-        if not requested_builds:
-            pu.log_warning("no material libraries to build")
+    if not requested_builds:
+        pu.log_warning("no material libraries to build")
 
-        else:
-            pu.log_message(
-                "the following materials were requested to be built:\n{0}"
-                .format(SPACE + ", ".join(["'" + x + "'"
-                                           for x in requested_builds])),
-                beg="\n")
+    else:
+        pu.log_message(
+            "the following materials were requested to be built:\n{0}"
+            .format(textfill(", ".join([x for x in requested_builds]),
+                             initial_indent=SPACE,
+                             subsequent_indent=SPACE)),
+            beg="\n")
 
-            pu.log_message("building the requested material libraries", beg="\n")
+        pu.log_message("building the requested material libraries", beg="\n")
 
     # build the libraries
     nproc = min(nproc, len(requested_builds))
     if nproc > 1:
-        VERBOSE = False
+        ro.set_global_option("VERBOSITY", False)
         pool = mp.Pool(processes=nproc)
         build_results = pool.map(_build_lib, requested_builds)
         pool.close()
@@ -442,8 +573,10 @@ def build_payette_mtls(nproc=1):
     for item in build_results:
         MATERIALS[item[0]] = item[1]
 
-    if VERBOSE:
-        pu.log_message("finished building the requested material libraries")
+    # restore verbosity
+    ro.restore_default_options()
+
+    pu.log_message("finished building the requested material libraries")
 
     failed_materials = [MATERIALS[x]["libname"]
                         for x in MATERIALS
@@ -465,7 +598,9 @@ def build_payette_mtls(nproc=1):
     if built_materials:
         pu.log_message(
             "the following materials WERE built:\n{0}"
-            .format(SPACE + ", ".join(["'" + x + "'" for x in built_materials])),
+            .format(textfill(", ".join([x for x in built_materials]),
+                             initial_indent=SPACE,
+                             subsequent_indent=SPACE)),
             beg="\n")
 
     # remove cruft
@@ -487,19 +622,16 @@ def _build_lib(material):
     libname = MATERIALS[material]["libname"]
     fort_build_script = MATERIALS[material]["fortran build script"]
     parse_err = MATERIALS[material]["parse error"]
-    if VERBOSE:
-        pu.log_message("building {0}".format(libname), pre=SPACE, end="...   ")
+    pu.log_message("building {0}".format(libname), pre=SPACE, end="...   ")
 
     if parse_err:
         MATERIALS[material]["build failed"] = True
-        if VERBOSE:
-            pu.log_warning("{0} skipped due to previous errors".format(libname),
-                           beg="\n" + SPACE)
+        pu.log_warning("{0} skipped due to previous errors".format(libname),
+                       beg="\n" + SPACE)
 
     elif fort_build_script is None:
         MATERIALS[material]["build succeeded"] = True
-        if VERBOSE:
-            pu.log_message("{0} built ".format(libname), pre="")
+        pu.log_message("{0} built ".format(libname), pre="")
 
     else:
         # import fortran build script
@@ -537,8 +669,7 @@ def _build_lib(material):
 
         else:
             MATERIALS[material]["build succeeded"] = True
-            if VERBOSE:
-                pu.log_message("{0} built ".format(libname), pre="")
+            pu.log_message("{0} built ".format(libname), pre="")
 
         # remove bite compiled files
         try:
@@ -549,246 +680,6 @@ def _build_lib(material):
     return [material, MATERIALS[material]] # end of _build_lib
 
 
-def get_payette_mtls(mtl_dirs, requested_libs=None, options=None):
-
-    """Read python files in Source/Materials and determine which are interface
-    files for material models. If they are, add them to the payette_materials
-    dictionary, along with their attributes
-
-    """
-
-    if requested_libs is None:
-        requested_libs = []
-
-    if options is None:
-        options = []
-
-    # determine if we want to build only select libraries
-    build_select = bool(requested_libs)
-    buildall = "buildall" in options
-
-    def get_super_classes(data):
-
-        """ return the super class name from data """
-
-        super_class_names = []
-        for super_class in data.super:
-            if super_class == "object":
-                continue
-            if isinstance(super_class, basestring):
-                super_class_names.append(super_class)
-            else:
-                super_class_names.append(super_class.name)
-
-            continue
-        return super_class_names
-
-    payette_materials = {}
-    py_files = []
-    for mtl_dir in mtl_dirs:
-        for dirnam, dirs, files in os.walk(mtl_dir):
-            py_files.extend([os.path.join(dirnam, x)
-                             for x in files
-                             if x.endswith(".py")
-                             and "__init__.py" not in x
-                             and "Build_" not in x
-                             ])
-            continue
-        continue
-
-    # go through list of python files in
-    for py_file in py_files:
-
-        parse_err = False
-
-        py_mod, py_path = pu.get_module_name_and_path(py_file)
-        fobj, pathname, description = imp.find_module(py_mod, py_path)
-        py_module = imp.load_module(py_mod, fobj, pathname, description)
-        fobj.close()
-
-        attributes = getattr(py_module, "attributes", None)
-        if attributes is None or not isinstance(attributes, dict):
-            continue
-
-        # check if this is a payette material
-        payette_material = attributes.get("payette material")
-        if payette_material is None or not payette_material:
-            continue
-
-        # check if a constitutive model class is defined
-        class_data = pyclbr.readmodule(py_mod, path=py_path)
-
-        parent = class_data.get("Parent")
-        if parent is not None:
-            proto = parent.name
-        else:
-            proto = "ConstitutiveModelPrototype"
-
-        for name, data in class_data.items():
-            class_name = data.name
-            constitutive_model = proto in get_super_classes(data)
-            if constitutive_model:
-                break
-            continue
-
-        if not constitutive_model:
-            del py_module
-            continue
-
-        # file is an interface file check attributes, define defaults
-        name = attributes.get("name")
-        if name is None:
-            pu.log_warning(
-                "No name attribute given in {0}, skipping".format(py_file))
-            continue
-
-        name = name.replace(" ", "_").lower()
-        libname = attributes.get("libname", name + pc.PC_EXT_MOD_FEXT)
-
-        # material type
-        material_type = attributes.get("material type")
-        if material_type is None:
-            pu.log_warning("No material type attribute given in {0}, skipping"
-                           .format(py_file))
-            continue
-
-        electromtl = any(["electro" in x for x in material_type])
-        specialmtl = any(["special" in x for x in material_type])
-
-        if electromtl and "electromechanical" in options:
-            requested_libs.append(name)
-
-        if specialmtl and "special" in options:
-            requested_libs.append(name)
-
-        # default material?
-        default = attributes.get("default material", False)
-        if default and not build_select:
-            requested_libs.append(name)
-
-        # get aliases, they need to be a list of aliases
-        aliases = attributes.get("aliases", [])
-        if not isinstance(aliases, (list, tuple)):
-            aliases = [aliases]
-        aliases = [x.replace(" ", "_").lower() for x in aliases]
-
-        # models can be in one or more languages
-        model_code_types = attributes.get("code types")
-        if model_code_types is None:
-            pu.log_warning("Attribute 'code types' not found in {0}.attributes"
-                           .format(py_module))
-        elif not isinstance(model_code_types, tuple):
-            model_code_types = (model_code_types, )
-
-        # fortran model set up
-        if model_code_types is not None:
-            fortran_source = "fortran" in model_code_types
-        else:
-            # old way to be depricated
-            fortran_source = attributes.get("fortran source", False)
-            if fortran_source:
-                pu.log_warning(
-                    "Using depricated 'fortran source' in {0}.attributes"
-                    .format(py_mod))
-
-        fort_build_script = attributes.get("build script")
-        if fort_build_script is not None:
-            pu.log_warning(
-                "Using depricated 'build script' in {0}.attributes"
-                .format(py_mod))
-        else:
-            fort_build_script = attributes.get("fortran build script")
-        depends = attributes.get("depends")
-
-        # all fortran models must give a fortran build script
-        if fortran_source and fort_build_script is None:
-            parse_err = True
-            pu.log_warning(
-                "No fortran build script given for fortran source in "
-                "{0} for {1}".format(py_file, libname), pre=SPACE)
-
-        # unless it is not needed...
-        elif fort_build_script == "Not_Needed":
-            fort_build_script = None
-
-        # and the fortran build script must exist.
-        elif fort_build_script is not None:
-            if not os.path.isfile(fort_build_script):
-                parse_err = True
-                pu.log_warning("fortran build script {0} not found"
-                               .format(fort_build_script))
-
-        # collect all parts
-        #print("="*70)
-        #print(attributes)
-        #print("="*70)
-        mtl_dict = {
-            "name": name,
-            "libname": libname,
-            "fortran source": fortran_source,
-            "fortran build script": fort_build_script,
-            "aliases": aliases,
-            "material type": material_type,
-            "material database": attributes.get('material database'),
-            "module": py_mod,
-            "file": py_file,
-            "class name": class_name,
-            "depends": depends,
-            "parse error": parse_err,
-            "build requested": False,  # by default, do not build the material
-            "build succeeded": False,
-            "build failed": False,
-            }
-
-        payette_materials[name] = mtl_dict
-        # payette_materials[py_mod] = mtl_dict
-        del py_module
-
-        if buildall and name not in requested_libs:
-            requested_libs.append(name)
-
-        # decide if it should be built or not
-        if name not in requested_libs:
-            continue
-
-        # by this point, we have filtered out the materials we do not want to
-        # build, so request that it be built
-        payette_materials[name]["build requested"] = True
-
-        continue
-
-    dependent_materials = [x for x in payette_materials
-                           if payette_materials[x]["depends"]]
-    if dependent_materials:
-        for material in dependent_materials:
-            depends_on = payette_materials[material]["depends"]
-            # user has requested to build a material that depends on another.
-            # make sure that the other material exists
-            if depends_on not in payette_materials:
-                raise BuildError("{0} depends on {1} which was not found"
-                                 .format(material, depends_on), 25)
-
-            # if material was requested to be built, make sure the material it
-            # depends on is also built
-            if payette_materials[material]["build requested"]:
-                payette_materials[depends_on]["build requested"] = True
-
-            continue
-
-    # the user may have requested to build a material that does not exist, let
-    # them know
-    all_names = [payette_materials[x]["name"] for x in payette_materials]
-    non_existent = []
-    for name in requested_libs:
-        if name not in all_names:
-            non_existent.append(name)
-        continue
-
-    if non_existent:
-        pu.log_warning("requested material[s] {0} not found"
-                       .format(", ".join(non_existent)))
-
-    return payette_materials
 
 
 def build_fail(msg):
@@ -798,11 +689,10 @@ def build_fail(msg):
     msg = msg.split("\n")
     err = "BUILD FAILED"
     sss = r"*" * int((80 - len(err)) / 2)
-    if VERBOSE:
-        pu.log_message("\n\n{0} {1} {2}\n".format(sss, err, sss), pre="")
-        for line in msg:
-            pu.log_message("BUILD FAIL: {0}".format(line), pre="")
-        pu.log_message("\n\n", pre="")
+    pu.log_message("\n\n{0} {1} {2}\n".format(sss, err, sss), pre="")
+    for line in msg:
+        pu.log_message("BUILD FAIL: {0}".format(line), pre="")
+    pu.log_message("\n\n", pre="")
     return
 
 
@@ -842,19 +732,18 @@ def write_summary_to_screen():
     num_infiles = len([x for x in all_files if x.endswith(".inp")])
     num_pyfiles = len([x for x in all_files
                        if x.endswith(".py") or x.endswith(".pyf")])
-    if VERBOSE:
-        pu.log_message(pc.PC_INTRO, pre="")
-        pu.log_message("Summary of Project:", pre="")
-        pu.log_message("\tNumber of files in project:         {0:d}"
-                       .format(num_files), pre="")
-        pu.log_message("\tNumber of directories in project:   {0:d}"
-                       .format(num_dirs), pre="")
-        pu.log_message("\tNumber of input files in project:   {0:d}"
-                       .format(num_infiles), pre="")
-        pu.log_message("\tNumber of python files in project:  {0:d}"
-                       .format(num_pyfiles), pre="")
-        pu.log_message("\tNumber of lines of code in project: {0:d}"
-                       .format(num_lines), pre="")
+    pu.log_message(pc.PC_INTRO, pre="")
+    pu.log_message("Summary of Project:", pre="")
+    pu.log_message("\tNumber of files in project:         {0:d}"
+                   .format(num_files), pre="")
+    pu.log_message("\tNumber of directories in project:   {0:d}"
+                   .format(num_dirs), pre="")
+    pu.log_message("\tNumber of input files in project:   {0:d}"
+                   .format(num_infiles), pre="")
+    pu.log_message("\tNumber of python files in project:  {0:d}"
+                   .format(num_pyfiles), pre="")
+    pu.log_message("\tNumber of lines of code in project: {0:d}"
+                   .format(num_lines), pre="")
     return
 
 

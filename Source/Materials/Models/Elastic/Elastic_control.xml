@@ -3,6 +3,8 @@
 <MaterialModel>
   <Name>Elastic</Name>
 
+  <Type> Mechanical </Type>
+
   <Description>
     Linear elasticity material model
   </Description>
