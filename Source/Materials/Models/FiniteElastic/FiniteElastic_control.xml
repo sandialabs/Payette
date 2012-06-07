@@ -3,6 +3,8 @@
 <MaterialModel>
   <Name>Finite Elastic</Name>
 
+  <Type> Mechanical </Type>
+
   <Description>
     Finite elasticity material model that computes the Second Piola-Kirchhoff
     stress from the Green-Lagrange finite strain tensor.
@@ -13,6 +15,7 @@
   <Files>
     <Core>
       finite_elastic.f90
+      Payette_finite_elastic.py
     </Core>
     <Interface type="payette">
       Build_finite_elastic.py

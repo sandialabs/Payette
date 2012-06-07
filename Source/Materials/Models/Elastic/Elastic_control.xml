@@ -3,6 +3,8 @@
 <MaterialModel>
   <Name>Elastic</Name>
 
+  <Type> Mechanical </Type>
+
   <Description>
     Linear elasticity material model
   </Description>
@@ -12,6 +14,7 @@
   <Files>
     <Core>
       elastic.f90
+      Payette_elastic.py
     </Core>
     <Interface type="payette">
       Build_elastic.py

@@ -23,9 +23,13 @@
 
 import sys
 import os
+import xml.dom as xmldom
 import xml.dom.minidom as xdom
 
 import Payette_utils as pu
+
+class NotTextNodeError:
+    pass
 
 class XMLParser:
     """
@@ -72,35 +76,34 @@ class XMLParser:
             'Description' : str
               Description of the material model the file is meant for.
         """
+        file_name = os.path.realpath(file_name)
         if not os.path.isfile(file_name):
             pu.report_and_raise_error(
                 "Cannot parse file '{0}' because it does not exist."
                 .format(file_name))
         self.file = file_name
-
+        self.fdir = os.path.dirname(self.file)
 
         dom = xdom.parse(self.file)
 
         # Get the root element (Should always be "MaterialModel")
         MaterialModel = dom.getElementsByTagName('MaterialModel')
-        if len(MaterialModel) != 1:
+        if not MaterialModel:
             pu.report_and_raise_error("Expected Root Element 'MaterialModel'")
-        MaterialModel = MaterialModel[0]
+        self.MaterialModel = MaterialModel[0]
 
-        #
         # Get the Name and Description of the model.
-        #
-        tmp = MaterialModel.getElementsByTagName('Name')
-        if len(tmp) != 1:
+        Name = self.MaterialModel.getElementsByTagName('Name')
+        if not Name:
             pu.report_and_raise_error(
                 "Expected a 'Name' for the 'MaterialModel'.")
-        self.name = str(tmp[0].firstChild.data).strip()
+        self.name = str(Name[0].firstChild.data).strip()
 
-        tmp = MaterialModel.getElementsByTagName('Description')
-        if len(tmp) != 1:
+        Description = self.MaterialModel.getElementsByTagName('Description')
+        if not Description:
             pu.report_and_raise_error(
                 "Expected a 'Description' for the 'MaterialModel'.")
-        self.description = str(tmp[0].firstChild.data).strip()
+        self.description = str(Description[0].firstChild.data).strip()
 
         #
         # Get the ModelParameters block.
@@ -108,9 +111,9 @@ class XMLParser:
         ModelParameters = dom.getElementsByTagName('ModelParameters')
         if len(ModelParameters) != 1:
             pu.report_and_raise_error("Expected Element 'ModelParameters'")
-        ModelParameters = ModelParameters[0]
+        self.ModelParameters = ModelParameters[0]
 
-        tmp = ModelParameters.getElementsByTagName('Units')
+        tmp = self.ModelParameters.getElementsByTagName('Units')
         if len(tmp) != 1:
             pu.report_and_raise_error(
                 "Expected a 'Units' in the 'ModelParameters' element.")
@@ -120,7 +123,7 @@ class XMLParser:
         # Get the Model Parameters (Default).
         #
         self.parameters = []
-        Parameters = ModelParameters.getElementsByTagName('Parameter')
+        Parameters = self.ModelParameters.getElementsByTagName('Parameter')
         for parameter in Parameters:
             # If you just want to loop through the attributes:
             tmp = {"aliases": None, "parseable": True}
@@ -137,7 +140,7 @@ class XMLParser:
         #
         self.materials = []
         self.matnames_and_aliases = []
-        material_list = ModelParameters.getElementsByTagName('Material')
+        material_list = self.ModelParameters.getElementsByTagName('Material')
         for material in material_list:
             # If you just want to loop through the attributes:
             tmp = {}
@@ -231,5 +234,99 @@ class XMLParser:
         return mtldat
 
     def get_parameters(self):
+        """Return the parameters"""
         return self.parameters
 
+    def get_core_files(self):
+        """Parse MaterialModel for "Core" files"""
+        Files = self.MaterialModel.getElementsByTagName('Files')
+        if not Files:
+            pu.report_and_raise_error(
+                "Expected 'Files' for the 'MaterialModel'.")
+        Core = Files[0].getElementsByTagName("Core")
+        core_files = [
+            os.path.realpath(os.path.join(self.fdir, x.strip()))
+            for x in Core[0].firstChild.data.split()]
+        return core_files
+
+    def get_payette_interface_files(self):
+        """Parse MaterialModel for "Interface" files"""
+        Files = self.MaterialModel.getElementsByTagName('Files')
+        if not Files:
+            pu.report_and_raise_error(
+                "Expected 'Files' for the 'MaterialModel'.")
+        Interface =  Files[0].getElementsByTagName("Interface")
+        for idx, item in enumerate(Interface):
+            if item.attributes.item(0).value.lower() == "payette":
+                payette_interface = Interface[idx]
+                break
+            continue
+        else:
+            # not a Payette interface
+            return None
+
+        payette_interface_files = [
+            os.path.realpath(os.path.join(self.fdir, x.strip()))
+            for x in payette_interface.firstChild.data.split()]
+
+        return payette_interface_files
+
+    def get_payette_build_info(self):
+        """Parse MaterialModel for information needed by Payette build system"""
+
+        # Material model files
+        payette_interface = self.get_payette_interface_files()
+        if payette_interface is None:
+            return None
+        for item in payette_interface:
+            if not os.path.isfile(item):
+                pu.report_error(
+                    "payette interface file {0} not found".format(item))
+            continue
+        if pu.error_count():
+            pu.report_and_raise_error("stopping due to previous errors")
+
+        key, aliases, mat_type, src_types = self.get_payette_info()
+
+        return key, aliases, mat_type, payette_interface, src_types
+
+    def get_payette_info(self):
+        """Parse MaterialModel for information needed by Payette"""
+
+        # Material type
+        Type = self.MaterialModel.getElementsByTagName("Type")
+        if not Type:
+            material_type = None
+#            pu.report_and_raise_error(
+#                "Expected a 'Type' for the 'MaterialModel'.")
+        else:
+            material_type = str(Type[0].firstChild.data).strip()
+
+        # model keyword
+        Key = self.ModelParameters.getElementsByTagName('Key')
+        if not Key:
+            pu.report_and_raise_error(
+                "Expected a 'Key' in the 'ModelParameters' element.")
+        model_key = str(Key[0].firstChild.data).strip()
+
+        # model keyword aliases
+        Aliases = self.ModelParameters.getElementsByTagName('Aliases')
+        if not Aliases:
+            model_aliases = []
+        elif Aliases[0].firstChild is None:
+            model_aliases = []
+        else:
+            model_aliases = [x.strip().replace(" ", "_")
+                             for x in Aliases[0].firstChild.data.split(",")]
+
+        core_files = self.get_core_files()
+        source_types = []
+        for core_file in core_files:
+            if core_file.endswith((".f90", ".f", ".F")):
+                source_types.append("fortran")
+            elif core_file.endswith(".py"):
+                source_types.append("python")
+            else:
+                source_types.append(os.path.splitext(core_file)[1])
+
+        return model_key, model_aliases, material_type, source_types

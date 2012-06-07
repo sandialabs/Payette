@@ -21,7 +21,6 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from os.path import dirname, realpath, join
 from numpy import concatenate, array, zeros
 from math import sqrt
 
@@ -38,24 +37,11 @@ try:
 except:
     imported = False
 
-
-THIS_DIR = dirname(realpath(__file__))
-attributes = {
-    "payette material": True,
-    "name": "plastic",
-    "aliases": ["elastic plastic", "von mises"],
-    "code types": ("python", "fortran", ),
-    "fortran build script": join(THIS_DIR, "Build_plastic.py"),
-    "material type": ["mechanical"],
-    "default material": True,
-    "control file": join(THIS_DIR, "Plastic_control.xml"),
-    }
-
 class Plastic(ConstitutiveModelPrototype):
     """ Plasticity model. """
 
-    def __init__(self, *args, **kwargs):
-        super(Plastic, self).__init__(attributes, *args, **kwargs)
+    def __init__(self, control_file, *args, **kwargs):
+        super(Plastic, self).__init__(control_file, *args, **kwargs)
 
         self.imported = True if self.code == "python" else imported
 

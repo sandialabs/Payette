@@ -54,7 +54,7 @@ class ConstitutiveModelPrototype(object):
 
     """
 
-    def __init__(self, init_data, *args, **kwargs):
+    def __init__(self, control_file, *args, **kwargs):
         """Initialize the ConstitutiveModelPrototype object.
 
         The __init__ functions should be called by each constituve model that
@@ -62,18 +62,8 @@ class ConstitutiveModelPrototype(object):
 
         Parameters
         ----------
-        init_data : dict
-          keys
-          name : str
-            name of constitutive model
-          aliases : list
-            list of aliases
-          code types : tuple
-            tuple of types of code in which the model is implemented
-          default code : tuple
-            tuple of types of code in which the model is implemented
-          material type : list
-            type of material
+        control file : str
+          path to the material control file
         *args : list, optional
         **kwargs : dict, optional
           keys
@@ -82,20 +72,24 @@ class ConstitutiveModelPrototype(object):
 
         """
 
-        # pass init_data to class data
-        self.name = init_data["name"]
-        self.aliases = init_data["aliases"]
+        # location of control file - if any
+        self.control_file = control_file
+
+        # read in the control file
+        self.xml_obj = px.XMLParser(self.control_file)
+        info = self.xml_obj.get_payette_info()
+        self.name, self.aliases, mat_type, source_types = info
+
         if not isinstance(self.aliases, (list, tuple)):
             self.aliases = [self.aliases]
 
         # which code to use
-        code_types = init_data["code types"]
-        if not isinstance(code_types, (list, tuple)):
-            code_types = [code_types]
+        if not isinstance(source_types, (list, tuple)):
+            source_types = [source_types]
         self.code = kwargs.get("code")
         if self.code is None:
-            self.code = code_types[0]
-        elif self.code not in code_types:
+            self.code = source_types[0]
+        elif self.code not in source_types:
             pu.report_and_raise_error(
                 "requested code type {0} not supported by {1}"
                 .format(self.code, self.name))
@@ -103,31 +97,9 @@ class ConstitutiveModelPrototype(object):
         pu.log_message("using {0} implementation of the '{1}' constitutive model"
                        .format(self.code, self.name))
 
-        # location of control file - if any
-        self.control_file = init_data.get("control file")
-        if (self.control_file is not None
-            and not os.path.isfile(self.control_file)):
-            pu.report_and_raise_error(
-                "control file {0} not found".format(self.control_file))
-
-        # ---------------------------------------------------------- DEPRECATED
-        self.mtldat_f = init_data.get("material database")
-        if self.mtldat_f is not None:
-            self.control_file = self.mtldat_f
-            message = (
-                "'material database' to be depricated, use a 'control file'"
-                "[called by: {0}]".format(pu.whoami()))
-            warnings.warn(message)
-
-            if not os.path.isfile(self.control_file):
-                pu.report_and_raise_error(
-                    "material data file {0} not found".format(self.control_file))
-        # ---------------------------------------------------------- DEPRECATED
-
         # specialized models
-        mat_typ = init_data["material type"]
-        self.electric_field_model = "electromechanical" in mat_typ
-        self.eos_model = "eos" in mat_typ
+        self.electric_field_model = "electromechanical" in mat_type.lower()
+        self.eos_model = "eos" in mat_type.lower()
 
         # data to be initialized later
         self.registered_params = []
@@ -192,8 +164,8 @@ class ConstitutiveModelPrototype(object):
 
     def register_parameters_from_control_file(self):
         """Register parameters from the control file """
-        xml_obj = px.XMLParser(self.control_file)
-        params = sorted(xml_obj.get_parameters(), key=lambda x: int(x["order"]))
+        params = sorted(self.xml_obj.get_parameters(),
+                        key=lambda x: int(x["order"]))
         for idx, pm in enumerate(params):
             self.register_parameter(
                 pm["name"], idx, aliases=pm["aliases"], parseable=pm["parseable"])
