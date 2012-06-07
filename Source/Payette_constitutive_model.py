@@ -336,9 +336,6 @@ class ConstitutiveModelPrototype(object):
 
             # look for user specified materials from the material and matlabel
             # shortcuts
-
-            # @mswan{ -> the "material" part is what I had done before. The
-            #            "matlabel" stuff would be new, if implemented
             if line[0] == "material" or line[0] == "matlabel":
                 if self.control_file is None:
                     msg = ("requested matlabel but "+ self.name +
@@ -357,7 +354,6 @@ class ConstitutiveModelPrototype(object):
                     continue
 
                 continue
-            # }@mswan
 
             # the line is now of form
             #     line = [string, string, ..., string]
@@ -366,7 +362,12 @@ class ConstitutiveModelPrototype(object):
             name = "_".join(line[0:-1])
             val = line[-1]
             try:
-                val = float(val)
+                # Horrible band-aid for poorly formatted fortran output.
+                # when it meant 1.0E+100, it spit out 1.0+100
+                if val.endswith("+100"):
+                    val = float(val.replace("+100","E+100"))
+                else:
+                    val = float(val)
             except ValueError:
                 errors += 1
                 msg = ("could not convert {0} for parameter {1} to float"
