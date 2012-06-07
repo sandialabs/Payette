@@ -14,6 +14,7 @@
   <Files>
     <Core>
       plastic.f90
+      Payette_plastic.py
     </Core>
     <Interface type="payette">
       Build_plastic.py

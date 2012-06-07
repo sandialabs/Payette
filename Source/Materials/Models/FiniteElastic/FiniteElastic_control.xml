@@ -15,6 +15,7 @@
   <Files>
     <Core>
       finite_elastic.f90
+      Payette_finite_elastic.py
     </Core>
     <Interface type="payette">
       Build_finite_elastic.py

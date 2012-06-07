@@ -126,9 +126,10 @@ def __count_error(ecount=[0], inquire=False, reset=False):
         return ecount[0]
     ecount[0] += 1
     return
-def report_error(message):
+def report_error(message, count=True):
     """Report error to screen and write to log file if open"""
-    __count_error()
+    if count:
+        __count_error()
     stack = inspect.stack()[1]
     message = "ERROR: {0} [reported by: {1}]\n".format(message,
                                                        who_is_calling())
@@ -1148,14 +1149,17 @@ def get_constitutive_model(model_name):
     return constitutive_model
 
 
+def get_constitutive_model_control_file(model_name):
+    """ get the control file for the material """
+    constitutive_model = get_constitutive_model(model_name)
+    return constitutive_model["control file"]
+
+
 def get_constitutive_model_object(model_name):
     """ get the actual model object """
     constitutive_model = get_constitutive_model(model_name)
-    if constitutive_model is None:
-        report_and_raise_error("stopping due to previous errors",
-                               tracebacklimit=0)
-    py_mod = constitutive_model["module"]
-    py_path = [os.path.dirname(constitutive_model["file"])]
+    py_mod, py_path = get_module_name_and_path(
+        constitutive_model["interface file"])
     cls_nam = constitutive_model["class name"]
     fobj, pathname, description = imp.find_module(py_mod, py_path)
     py_module = imp.load_module(py_mod, fobj, pathname, description)

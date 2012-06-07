@@ -21,7 +21,6 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from os.path import dirname, join, realpath
 from numpy import array, zeros
 
 from Source.Payette_utils import log_warning, report_and_raise_error, log_message
@@ -37,18 +36,6 @@ except:
     imported = False
     pass
 
-THIS_DIR = dirname(realpath(__file__))
-attributes = {
-    "payette material": True,
-    "name": "finite_elastic",
-    "aliases": [],
-    "code types": ("python", "fortran"),
-    "fortran build script": join(THIS_DIR, "Build_finite_elastic.py"),
-    "material type": ["mechanical"],
-    "default material": True,
-    "control file": join(THIS_DIR, "FiniteElastic_control.xml"),
-    }
-
 
 class FiniteElastic(ConstitutiveModelPrototype):
     """ Finite elasticity model.
@@ -58,8 +45,8 @@ class FiniteElastic(ConstitutiveModelPrototype):
 
     """
 
-    def __init__(self, *args, **kwargs):
-        super(FiniteElastic, self).__init__(attributes, *args, **kwargs)
+    def __init__(self, control_file, *args, **kwargs):
+        super(FiniteElastic, self).__init__(control_file, *args, **kwargs)
 
         self.imported = True if self.code == "python" else imported
 

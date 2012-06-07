@@ -21,7 +21,6 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from os.path import dirname, join, realpath
 from numpy import array
 
 from Source.Payette_utils import parse_token, report_and_raise_error, log_message
@@ -35,22 +34,11 @@ except:
 
 from Payette_config import PC_F2PY_CALLBACK
 
-THIS_DIR = dirname(realpath(__file__))
-attributes = {
-    "payette material": False, # deactivated for now
-    "name": "elastic_plastic",
-    "code types": ("fortran", ),
-    "fortran build script": join(THIS_DIR, "Build_elastic_plastic.py"),
-    "aliases": ["inuced anisotropy"],
-    "material type": ["mechanical"],
-    "default material": True,
-    }
-
 class ElasticPlastic(ConstitutiveModelPrototype):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, control_file, *args, **kwargs):
 
-        super(ElasticPlastic, self).__init__(attributes, *args, **kwargs)
+        super(ElasticPlastic, self).__init__(control_file, *args, **kwargs)
 
         self.imported = imported
 

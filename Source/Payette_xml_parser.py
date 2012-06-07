@@ -82,7 +82,7 @@ class XMLParser:
                 "Cannot parse file '{0}' because it does not exist."
                 .format(file_name))
         self.file = file_name
-        fdir = os.path.dirname(file_name)
+        self.fdir = os.path.dirname(self.file)
 
         dom = xdom.parse(self.file)
 
@@ -111,9 +111,9 @@ class XMLParser:
         ModelParameters = dom.getElementsByTagName('ModelParameters')
         if len(ModelParameters) != 1:
             pu.report_and_raise_error("Expected Element 'ModelParameters'")
-        ModelParameters = ModelParameters[0]
+        self.ModelParameters = ModelParameters[0]
 
-        tmp = ModelParameters.getElementsByTagName('Units')
+        tmp = self.ModelParameters.getElementsByTagName('Units')
         if len(tmp) != 1:
             pu.report_and_raise_error(
                 "Expected a 'Units' in the 'ModelParameters' element.")
@@ -123,7 +123,7 @@ class XMLParser:
         # Get the Model Parameters (Default).
         #
         self.parameters = []
-        Parameters = ModelParameters.getElementsByTagName('Parameter')
+        Parameters = self.ModelParameters.getElementsByTagName('Parameter')
         for parameter in Parameters:
             # If you just want to loop through the attributes:
             tmp = {"aliases": None, "parseable": True}
@@ -140,7 +140,7 @@ class XMLParser:
         #
         self.materials = []
         self.matnames_and_aliases = []
-        material_list = ModelParameters.getElementsByTagName('Material')
+        material_list = self.ModelParameters.getElementsByTagName('Material')
         for material in material_list:
             # If you just want to loop through the attributes:
             tmp = {}
@@ -234,12 +234,23 @@ class XMLParser:
         return mtldat
 
     def get_parameters(self):
+        """Return the parameters"""
         return self.parameters
 
-    def get_payette_build_info(self):
-        """Parse MaterialModel for information needed by Payette build system"""
+    def get_core_files(self):
+        """Parse MaterialModel for "Core" files"""
+        Files = self.MaterialModel.getElementsByTagName('Files')
+        if not Files:
+            pu.report_and_raise_error(
+                "Expected 'Files' for the 'MaterialModel'.")
+        Core = Files[0].getElementsByTagName("Core")
+        core_files = [
+            os.path.realpath(os.path.join(self.fdir, x.strip()))
+            for x in Core[0].firstChild.data.split()]
+        return core_files
 
-        # Material model files
+    def get_payette_interface_files(self):
+        """Parse MaterialModel for "Interface" files"""
         Files = self.MaterialModel.getElementsByTagName('Files')
         if not Files:
             pu.report_and_raise_error(
@@ -254,9 +265,19 @@ class XMLParser:
             # not a Payette interface
             return None
 
-        payette_interface = [
-            os.path.join(fdir, x.strip())
+        payette_interface_files = [
+            os.path.realpath(os.path.join(self.fdir, x.strip()))
             for x in payette_interface.firstChild.data.split()]
+
+        return payette_interface_files
+
+    def get_payette_build_info(self):
+        """Parse MaterialModel for information needed by Payette build system"""
+
+        # Material model files
+        payette_interface = self.get_payette_interface_files()
+        if payette_interface is None:
+            return None
         for item in payette_interface:
             if not os.path.isfile(item):
                 pu.report_error(
@@ -265,31 +286,31 @@ class XMLParser:
         if pu.error_count():
             pu.report_and_raise_error("stopping due to previous errors")
 
-        Core = Files[0].getElementsByTagName("Core")
-        core_files = [
-            os.path.join(fdir, x.strip())
-            for x in Core[0].firstChild.data.split()]
-        fortran_source = any(
-            x.endswith((".f90", ".f", ".F")) for x in core_files)
+        key, aliases, mat_type, src_types = self.get_payette_info()
+
+        return key, aliases, mat_type, payette_interface, src_types
+
+    def get_payette_info(self):
+        """Parse MaterialModel for information needed by Payette"""
 
         # Material type
         Type = self.MaterialModel.getElementsByTagName("Type")
         if not Type:
-            self.material_type = None
+            material_type = None
 #            pu.report_and_raise_error(
 #                "Expected a 'Type' for the 'MaterialModel'.")
         else:
             material_type = str(Type[0].firstChild.data).strip()
 
         # model keyword
-        Key = ModelParameters.getElementsByTagName('Key')
+        Key = self.ModelParameters.getElementsByTagName('Key')
         if not Key:
             pu.report_and_raise_error(
                 "Expected a 'Key' in the 'ModelParameters' element.")
         model_key = str(Key[0].firstChild.data).strip()
 
         # model keyword aliases
-        Aliases = ModelParameters.getElementsByTagName('Aliases')
+        Aliases = self.ModelParameters.getElementsByTagName('Aliases')
         if not Aliases:
             model_aliases = []
         elif Aliases[0].firstChild is None:
@@ -298,5 +319,14 @@ class XMLParser:
             model_aliases = [x.strip().replace(" ", "_")
                              for x in Aliases[0].firstChild.data.split(",")]
 
-        return (model_key, model_aliases, material_type, payette_interface,
-                fortran_source)
+        core_files = self.get_core_files()
+        source_types = []
+        for core_file in core_files:
+            if core_file.endswith((".f90", ".f", ".F")):
+                source_types.append("fortran")
+            elif core_file.endswith(".py"):
+                source_types.append("python")
+            else:
+                source_types.append(os.path.splitext(core_file)[1])
+
+        return model_key, model_aliases, material_type, source_types

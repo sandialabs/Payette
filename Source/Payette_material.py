@@ -44,10 +44,11 @@ class Material:
         iam = "Material.__init__"
 
         # get the material's constitutive model object
+        control_file = pu.get_constitutive_model_control_file(model_name)
         cmod = pu.get_constitutive_model_object(model_name)
 
         # instantiate the constiutive model
-        self.constitutive_model = cmod(*args, **kwargs)
+        self.constitutive_model = cmod(control_file, *args, **kwargs)
 
         # check if the model was successfully imported
         if not self.constitutive_model.imported:
