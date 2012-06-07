@@ -58,6 +58,9 @@ def run_payette(argv, disp=0):
 
     iam = "runPayette"
 
+    # Make sure that everything is clean before we start
+    pu.reset_error_and_warnings()
+
     # ************************************************************************
     # -- command line option parsing
     usage = "usage: runPayette [options] <input file>"

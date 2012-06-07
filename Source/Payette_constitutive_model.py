@@ -78,7 +78,7 @@ class ConstitutiveModelPrototype(object):
         # read in the control file
         self.xml_obj = px.XMLParser(self.control_file)
         info = self.xml_obj.get_payette_info()
-        self.name, self.aliases, mat_type, source_types = info
+        self.name, self.aliases, self.material_type, source_types = info
 
         if not isinstance(self.aliases, (list, tuple)):
             self.aliases = [self.aliases]
@@ -98,8 +98,10 @@ class ConstitutiveModelPrototype(object):
                        .format(self.code, self.name))
 
         # specialized models
-        self.electric_field_model = "electromechanical" in mat_type.lower()
-        self.eos_model = "eos" in mat_type.lower()
+        if self.material_type is None:
+            self.material_type = "eos"
+        self.electric_field_model = "electromechanical" in self.material_type.lower()
+        self.eos_model = "eos" in self.material_type.lower()
 
         # data to be initialized later
         self.registered_params = []

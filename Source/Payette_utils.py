@@ -36,7 +36,6 @@ import warnings
 import Payette_config as pc
 import Source.Payette_extract as pe
 import Source.runopts as ro
-import Source.Payette_xml_parser as px
 
 if not os.path.isfile(os.path.join(
         os.path.dirname(os.path.realpath(__file__)),"../Payette_config.py")):
@@ -1134,9 +1133,8 @@ def _remove_all_comments(lines, cchars):
 def get_constitutive_model(model_name):
     """ get the constitutive model dictionary of model_name """
     constitutive_models = get_installed_models()
-
     for key, val in constitutive_models.items():
-        if model_name == key or model_name in val["aliases"]:
+        if model_name.lower() == key.lower() or model_name in val["aliases"]:
             constitutive_model = val
             break
         continue
@@ -1190,6 +1188,7 @@ def parse_mtldb_file(mtldat_f, material=None):
       list of tuples of (name, val) pairs
 
     """
+    import Source.Payette_xml_parser as px
     fext = os.path.splitext(mtldat_f)[1]
     if fext == ".xml":
         xml_obj = px.XMLParser(mtldat_f)

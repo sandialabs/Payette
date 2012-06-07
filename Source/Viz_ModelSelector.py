@@ -2,6 +2,7 @@ from traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Fl
 from traitsui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, InstanceEditor, ListEditor, Spring
 from traitsui.tabular_adapter import TabularAdapter
 import Payette_utils as pu
+import Payette_xml_parser as px
 
 from Viz_ModelData import PayetteModel, PayetteModelParameter, PayetteMaterial, PayetteMaterialParameter
 from Viz_ModelRunner import ModelRunner
@@ -19,15 +20,17 @@ class PayetteMaterialModelSelector(HasStrictTraits):
     def loadModels(self):
         data = pu.get_installed_models()
         for modelName in data.keys():
+            control_file = pu.get_constitutive_model_control_file(modelName)
             cmod = pu.get_constitutive_model_object(modelName)
+            cmod_obj = cmod(control_file)
 
             params = []
-            for param in cmod().get_parameter_names_and_values():
+            for param in cmod_obj.get_parameter_names_and_values():
                 params.append(
                     PayetteModelParameter(name = param[0], description = param[1], value = param[2])
                 )
 
-            model = PayetteModel(model_name = modelName, parameters = params, model_type = data[modelName]['material type'])
+            model = PayetteModel(model_name = modelName, parameters = params, model_type = [cmod_obj.material_type])
             self.models.append(model)
 
         self.selected_model = self.models[0]
@@ -44,9 +47,10 @@ class PayetteMaterialModelSelector(HasStrictTraits):
             return []
         
         materials = []
-        material_database = data[modelName]["material database"]
+        material_database = data[modelName]["control file"]
         if material_database is not None:
-            mats = pu.parse_mtldb_file(material_database)
+            xml_obj = px.XMLParser(material_database)
+            mats = xml_obj.get_parameterized_materials()
             for mat in mats:
                 names, params = mat
                 name = None
@@ -63,8 +67,10 @@ class PayetteMaterialModelSelector(HasStrictTraits):
                             else:
                                 aliases = n
                 parameters = []
-                for param in params:
+                for param in xml_obj.get_material_parameterization(mat[0]):
                     key, default = param
+                    if key == "Units":
+                        continue
                     parameters.append(PayetteMaterialParameter(name = key, default = default))
                 materials.append(PayetteMaterial(name = name, aliases = aliases, defaults = parameters))
 
