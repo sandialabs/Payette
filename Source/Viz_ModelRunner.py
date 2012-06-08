@@ -1,7 +1,10 @@
 import StringIO
 import sys
 
-from traits.api import HasStrictTraits, List, Instance
+try:
+    from traits.api import HasStrictTraits, List, Instance
+except ImportError:
+    from enthought.traits.api import HasStrictTraits, List, Instance
 
 import Source.Payette_run as pr
 from Viz_ModelData import PayetteModel
@@ -26,9 +29,9 @@ class ModelRunner(HasStrictTraits):
         begin simulation %s
           begin material
             constitutive model %s
-        
+
         """ % (material.model_name, material.model_name)
-            
+
         for p in material.parameters:
             result += "    %s = %s\n" % (p.name, p.value)
 
@@ -36,10 +39,11 @@ class ModelRunner(HasStrictTraits):
           end material
         """
 
-        if 'eos' in material.model_type:
+        model_type = str(material.model_type).lower()
+        if 'eos' in model_type:
             result += self.CreateEOSBoundaryInput(material)
 
-        if 'mechanical' in material.model_type:
+        elif 'mechanical' in model_type:
             result += self.CreateMechanicalBoundaryInput(material)
 
         result += """

@@ -256,6 +256,8 @@ PC_EXTRACTPAYETTE = (join(PC_TOOLS, "extractPayette"), PC_EXTRACT)
 
 PC_RUN = join(PC_SOURCE, "Payette_run.py")
 PC_RUNPAYETTE = (join(PC_TOOLS, "runPayette"), PC_RUN)
+VIZ_SELECTOR = join(PC_SOURCE, "Viz_ModelSelector.py")
+ERRORS += check_exists("VIZ_SELECTOR", VIZ_SELECTOR)
 
 PC_BUILD = join(PC_SOURCE, "Payette_build.py")
 PC_BUILDPAYETTE = (join(PC_TOOLS, "buildPayette"), PC_BUILD)
@@ -612,6 +614,16 @@ fi
             elif name in ("buildPayette", "extractPayette",):
                 fnew.write("{0} {1} $* 2>&1\n"
                            .format(PC_PYINT, py_file))
+
+            elif name in ("runPayette", ):
+                fnew.write(exit_msg)
+                fnew.write("args=$*\nargv=\nfor arg in ${args} ; do\n")
+                fnew.write('case "$arg" in\n')
+                fnew.write('"--gui") pyfile={0} ;;\n'.format(VIZ_SELECTOR))
+                fnew.write('*) argv="${argv} ${arg}"\n')
+                fnew.write('pyfile={0} ;;\n'.format(py_file))
+                fnew.write("esac\ndone\n")
+                fnew.write("{0} $pyfile $* 2>&1\n".format(PC_PYINT))
 
             else:
                 fnew.write(exit_msg)

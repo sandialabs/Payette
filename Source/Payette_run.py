@@ -49,17 +49,15 @@ import Source.runopts as ro
 
 
 def run_payette(argv, disp=0):
-
     """Main function for running a Payette job.
     Read the user inputs from argv, parse options, read user input, and run
     the jobs.
 
     """
 
-    iam = "runPayette"
-
     # Make sure that everything is clean before we start
     pu.reset_error_and_warnings()
+    ro.restore_default_options()
 
     # ************************************************************************
     # -- command line option parsing

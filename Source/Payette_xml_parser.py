@@ -321,8 +321,10 @@ class XMLParser:
 
         core_files = self.get_core_files()
         source_types = []
-        for core_file in core_files:
-            if core_file.endswith((".f90", ".f", ".F")):
+        for core_file in reversed(core_files):
+            if core_file.endswith((".h", ".H", ".Blk")):
+                continue
+            elif core_file.endswith((".f90", ".f", ".F")):
                 source_types.append("fortran")
             elif core_file.endswith(".py"):
                 source_types.append("python")

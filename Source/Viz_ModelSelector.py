@@ -1,6 +1,12 @@
-from traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant
-from traitsui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, InstanceEditor, ListEditor, Spring
-from traitsui.tabular_adapter import TabularAdapter
+try:
+    from traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant
+    from traitsui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, InstanceEditor, ListEditor, Spring
+    from traitsui.tabular_adapter import TabularAdapter
+except ImportError:
+    from enthought.traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant
+    from enthought.traits.ui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, InstanceEditor, ListEditor, Spring
+    from enthought.traits.ui.tabular_adapter import TabularAdapter
+
 import Payette_utils as pu
 import Payette_xml_parser as px
 
@@ -45,7 +51,7 @@ class PayetteMaterialModelSelector(HasStrictTraits):
         data = pu.get_installed_models()
         if modelName not in data:
             return []
-        
+
         materials = []
         material_database = data[modelName]["control file"]
         if material_database is not None:
@@ -74,7 +80,7 @@ class PayetteMaterialModelSelector(HasStrictTraits):
                     parameters.append(PayetteMaterialParameter(name = key, default = default))
                 materials.append(PayetteMaterial(name = name, aliases = aliases, defaults = parameters))
 
-        
+
         return materials
 
     def _run_button_fired(self, event):
