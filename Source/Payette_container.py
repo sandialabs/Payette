@@ -120,16 +120,15 @@ class Payette:
 
         # set up boundary and leg blocks
         if not self.material.eos_model:
-            boundary = pb.Boundary(user_input.get("boundary")["content"],
-                                   user_input.get("legs")["content"])
+            self.boundary = pb.Boundary(user_input.get("boundary")["content"],
+                                        user_input.get("legs")["content"])
         else:
-            boundary = pb.EOSBoundary(user_input.get("boundary")["content"],
-                                   user_input.get("legs")["content"])
+            self.boundary = pb.EOSBoundary(user_input.get("boundary")["content"],
+                                           user_input.get("legs")["content"])
 
-        self.t0 = boundary.initial_time
-        self.tf = boundary.termination_time
-        bcontrol = boundary.get_boundary_control_params()
-        lcontrol = boundary.get_leg_control_params()
+        self.t0 = self.boundary.initial_time
+        self.tf = self.boundary.termination_time
+        bcontrol = self.boundary.get_boundary_control_params()
 
         # set up the simulation data container and register obligatory data
         self.simdat = DataContainer(simname)
@@ -139,7 +138,6 @@ class Payette:
                                  init_val=0., plot_key="timestep")
         self.simdat.register_data("number of steps", "Scalar", init_val=0)
         self.simdat.register_data("leg number", "Scalar", init_val=0 )
-        self.simdat.register_data("leg data", "List", init_val=lcontrol)
 
         # check if user has specified simulation options directly in the input
         # file
@@ -177,31 +175,11 @@ class Payette:
 
         if not self.material.eos_model:
             # register data not needed by the eos models
-            self.simdat.register_static_data("emit", boundary.emit())
-            self.simdat.register_static_data("kappa", boundary.kappa())
-            self.simdat.register_static_data("screenout", boundary.screenout())
-            self.simdat.register_static_data("nprints", boundary.nprints())
-            self.simdat.register_static_data("legs", lcontrol)
+            self.simdat.register_static_data("emit", self.boundary.emit())
+            self.simdat.register_static_data("kappa", self.boundary.kappa())
+            self.simdat.register_static_data("screenout",
+                                             self.boundary.screenout())
 
-        else:
-            # register data that is needed by the EOS models
-            self.simdat.register_static_data("nprints", boundary.nprints())
-            self.simdat.register_static_data("input units",
-                                             boundary.input_units())
-            self.simdat.register_static_data("output_units",
-                                             boundary.output_units())
-            self.simdat.register_static_data("density_range",
-                                             boundary.density_range())
-            self.simdat.register_static_data("temperature_range",
-                                             boundary.temperature_range())
-            self.simdat.register_static_data("surface_increments",
-                                             boundary.surface_increments())
-            self.simdat.register_static_data("path_increments",
-                                             boundary.path_increments())
-            self.simdat.register_static_data("path_isotherm",
-                                             boundary.path_isotherm())
-            self.simdat.register_static_data("path_hugoniot",
-                                             boundary.path_hugoniot())
 
         # list of plot keys for all plotable data
         self.plot_keys = [x for x in self.simdat.plot_keys()]

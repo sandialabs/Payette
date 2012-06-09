@@ -64,8 +64,16 @@ def eos_driver(the_model, **kwargs):
 
     eos_model = material.constitutive_model
 
-    nprints = simdat.NPRINTS
-    rho_temp_pairs = simdat.get_data("leg data")
+    nprints = the_model.boundary.nprints()
+
+    # get boundary data
+    density_range = the_model.boundary.density_range()
+    temperature_range = the_model.boundary.temperature_range()
+    surface_increments = the_model.boundary.surface_increments()
+    path_increments = the_model.boundary.path_increments()
+    path_isotherm = the_model.boundary.path_isotherm()
+    path_hugoniot = the_model.boundary.path_hugoniot()
+    rho_temp_pairs = the_model.boundary.get_leg_control_params()
     simdir = the_model.simdir
     simnam = the_model.name
 
@@ -104,13 +112,13 @@ def eos_driver(the_model, **kwargs):
 ################################################################################
 ###############                     SURFACE                      ###############
 ################################################################################
-    if (simdat.SURFACE_INCREMENTS is not None and
-        simdat.DENSITY_RANGE is not None and
-        simdat.TEMPERATURE_RANGE is not None):
+    if (surface_increments is not None and
+        density_range is not None and
+        temperature_range is not None):
 
-        t_range = simdat.TEMPERATURE_RANGE
-        rho_range = simdat.DENSITY_RANGE
-        surf_incr = simdat.SURFACE_INCREMENTS
+        t_range = temperature_range
+        rho_range = density_range
+        surf_incr = surface_increments
 
         out_fnam = os.path.join(simdir, simnam + ".surface")
         out_fobj = open(out_fnam, "w")
@@ -160,14 +168,14 @@ def eos_driver(the_model, **kwargs):
 ###############                     ISOTHERM                     ###############
 ################################################################################
 
-    if (simdat.PATH_INCREMENTS is not None and
-        simdat.PATH_ISOTHERM is not None and
-        simdat.DENSITY_RANGE is not None):
+    if (path_increments is not None and
+        path_isotherm is not None and
+        density_range is not None):
 
         # isotherm = [density, temperature]
-        isotherm = simdat.PATH_ISOTHERM
-        rho_range = simdat.DENSITY_RANGE
-        path_incr = simdat.PATH_INCREMENTS
+        isotherm = path_isotherm
+        rho_range = density_range
+        path_incr = path_increments
 
         if not rho_range[0] <= isotherm[0] <= rho_range[1]:
             pu.report_and_raise_error(
@@ -220,16 +228,16 @@ def eos_driver(the_model, **kwargs):
 ###############                     HUGONIOT                     ###############
 ################################################################################
 
-    if (simdat.PATH_INCREMENTS is not None and
-        simdat.PATH_HUGONIOT is not None and
-        simdat.TEMPERATURE_RANGE is not None and
-        simdat.DENSITY_RANGE is not None):
+    if (path_increments is not None and
+        path_hugoniot is not None and
+        temperature_range is not None and
+        density_range is not None):
 
         # hugoniot = [density, temperature]
-        hugoniot = simdat.PATH_HUGONIOT
-        rho_range = simdat.DENSITY_RANGE
-        t_range = simdat.TEMPERATURE_RANGE
-        path_incr = simdat.PATH_INCREMENTS
+        hugoniot = path_hugoniot
+        rho_range = density_range
+        t_range = temperature_range
+        path_incr = path_increments
 
 
         if not rho_range[0] <= hugoniot[0] <= rho_range[1]:
@@ -379,7 +387,8 @@ def solid_driver(the_model, **kwargs):
 
     # --- data
     ileg = int(simdat.get_data("leg number"))
-    legs = simdat.get_data("leg data")[ileg:]
+    leg_control = the_model.boundary.get_leg_control_params()
+    legs = leg_control[ileg:]
     lnl = len(str(len(legs)))
     simsteps = simdat.get_data("number of steps")
     t_beg = simdat.get_data("time")
@@ -444,7 +453,8 @@ def solid_driver(the_model, **kwargs):
             except ValueError:
                 pass
 
-        nprints = simdat.NPRINTS if simdat.NPRINTS else nsteps
+        nprints = (the_model.boundary.nprints()
+                   if the_model.boundary.nprints() else nsteps)
         if simdat.EMIT == "sparse":
             nprints = min(10,nsteps)
         print_interval = max(1, int(nsteps / nprints))

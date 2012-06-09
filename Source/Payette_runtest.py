@@ -582,13 +582,13 @@ def _run_test(args):
     py_module = _get_test_module(test_py_file)
     test = py_module.Test()
     starttime = time.time()
-    try:
-        retcode = test.runTest()
-    except PayetteError as error:
-        retcode = test.failcode
-        pu.log_warning(error.message)
-    except:
-        pu.log_warning("got an exception!")
+#    try:
+    retcode = test.runTest()
+#    except PayetteError as error:
+#        retcode = test.failcode
+#        pu.log_warning(error.message)
+#    except:
+#        pu.log_warning("got an exception!")
 
     if opts.postprocess and os.path.isfile(test.outfile):
         pp.postprocess(test.outfile, verbosity=0)
