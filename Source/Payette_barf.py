@@ -127,6 +127,7 @@ class PayetteBarf(object):
 
         # get the constitutive model
         cmod = pu.get_constitutive_model_object(model_name)
+        cmod = cmod(pu.get_constitutive_model_control_file(model_name))
 
         message = self.barf["lines"][2].strip()
 

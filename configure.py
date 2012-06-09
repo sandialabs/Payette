@@ -265,9 +265,13 @@ PC_BUILDPAYETTE = (join(PC_TOOLS, "buildPayette"), PC_BUILD)
 PC_RUNTEST = join(PC_SOURCE, "Payette_runtest.py")
 PC_TESTPAYETTE = (join(PC_TOOLS, "testPayette"), PC_RUNTEST)
 
+PC_VIZ = join(PC_SOURCE, "Viz_ModelSelector.py")
+PC_VIZPAYETTE = (join(PC_TOOLS, "vizPayette"), PC_VIZ)
+
 PC_F2PY = (join(PC_TOOLS,"f2py"), None)
 PC_BUILT_EXES = {"runPayette": PC_RUNPAYETTE,
                  "testPayette": PC_TESTPAYETTE,
+                 "vizPayette": PC_VIZPAYETTE,
                  "buildPayette": PC_BUILDPAYETTE,
                  "cleanPayette": PC_CLEANPAYETTE,
                  "extractPayette": PC_EXTRACTPAYETTE,
