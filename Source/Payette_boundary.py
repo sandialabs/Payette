@@ -50,7 +50,7 @@ class Boundary(object):
             "ratfac": {"value": 1., "type": float},
             "emit": {"value": "all", "type": "choice",
                      "choices": ("all", "sparse",)},
-            "nprints": {"value": 1, "type": int},
+            "nprints": {"value": 0, "type": int},
             "screenout": {"value": False, "type": bool},
             }
 
