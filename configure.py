@@ -32,7 +32,6 @@ from distutils import sysconfig
 __version__ = "1.0.dev"
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
 
-
 def check_exists(itemnam, item):
 
     """ check if item exists on file system """
@@ -448,8 +447,16 @@ def configure_payette(argv):
         action="append",
         default=[],
         help="Additional directories to scan for materials [default: %default]")
+    parser.add_option(
+        "-B",
+        dest="DONTWRITEBYTECODE",
+        action="store_true",
+        default=sys.dont_write_bytecode,
+        help="Don't write bytecode files [default: %default]")
 
     opts = parser.parse_args(argv)[0]
+
+    sys.dont_write_bytecode = opts.DONTWRITEBYTECODE
 
     try:
         os.remove(PC_CONFIG_FILE)
@@ -535,6 +542,10 @@ def configure_payette(argv):
         if item in os.environ:
             ENV[item] = os.environ[item]
         continue
+    if sys.dont_write_bytecode:
+        ENV["PYTHONDONTWRITEBYTECODE"]="X"
+    else:
+        ENV["PYTHONDONTWRITEBYTECODE"]=""
 
     # make sure PC_ROOT is first on PYTHONPATH
     pypath = os.pathsep.join([PC_ROOT, PC_TOOLS] + PC_MTLDIRS)

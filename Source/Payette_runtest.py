@@ -72,7 +72,7 @@ def test_payette(argv):
     usage = "usage: testPayette [options]"
     parser = optparse.OptionParser(usage=usage, version="testPayette 1.0")
     parser.add_option(
-        "-B",
+        "--builtin",
         dest="BUILTIN",
         action="store_true",
         default=False,
