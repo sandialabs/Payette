@@ -38,6 +38,7 @@ import Source.Payette_input_parser as pip
 import Source.runopts as ro
 from Source.Payette_material import Material
 from Source.Payette_data_container import DataContainer
+from Source.Payette_boundary import BoundaryError as BoundaryError
 
 
 class PayetteError(Exception):
@@ -51,9 +52,17 @@ class PayetteError(Exception):
         else:
             sys.tracebacklimit = 10
 
+        # do not report who is calling. Sometimes other functions act as
+        # intermediaries to PayetteError and it is nice to leave them out of
+        # the "reported by" section
+        if caller == "anonymous":
+            reported_by = ""
+        else:
+            reported_by = "[reported by: {0}]".format(caller)
+
         self.message = (
-            "ERROR: {0} [reported by: {1}]"
-            .format(" ".join(x for x in message.split() if x), caller))
+            "ERROR: {0} {1}"
+            .format(" ".join(x for x in message.split() if x), reported_by))
 
         Exception.__init__(self, self.message)
 
@@ -149,10 +158,20 @@ class Payette:
             raise PayetteError(
                 "boundary and legs block not found for {0}"
                 .format(self.simname))
+
+        # solid and eos materials have different boundary classes
         if not self.material.eos_model:
-            self.boundary = pb.Boundary(boundary, legs)
+            Boundary = pb.Boundary
         else:
-            self.boundary = pb.EOSBoundary(boundary, legs)
+            Boundary = pb.EOSBoundary
+
+        try:
+            self.boundary = Boundary(boundary, legs)
+
+        except BoundaryError as error:
+            pu.report_and_raise_error(
+                "Boundary object failed with the following error:\n{0}"
+                .format(error.message), caller="anonymous")
 
         self.t0 = self.boundary.initial_time
         self.tf = self.boundary.termination_time
@@ -211,18 +230,17 @@ class Payette:
         # list of plot keys for all plotable data
         self.plot_keys = [x for x in self.simdat.plot_keys()]
         self.plot_keys.extend(self.matdat.plot_keys())
+        self.user_input.register_plot_keys(self.plot_keys)
 
         # get mathplot
-        self.mathplot_vars = _parse_mathplot_block(
-            self.user_input.get_block("mathplot"), self.plot_keys)
+        self.mathplot_vars = self.user_input.parse_mathplot_block()
 
         # get extraction
-        self.extraction_vars = _parse_extraction_block(
-            self.user_input.get_block("extraction"), self.plot_keys)
+        self.extraction_vars = self.user_input.parse_extraction_block()
 
         # get output block
-        self.out_vars, self.out_format, self.out_nam = _parse_output_block(
-            self.user_input.get_block("output"), self.plot_keys)
+        out_vars = self.user_input.parse_output_block()
+        self.out_vars, self.out_format, self.out_nam = out_vars
 
         self._setup_files()
 
@@ -510,6 +528,8 @@ class Payette:
     # public methods
     def run_job(self, *args, **kwargs):
         """run the job"""
+
+        # solid and eos materials have different drivers
         if not self.material.eos_model:
             driver = pd.solid_driver
 
@@ -518,26 +538,28 @@ class Payette:
 
         try:
             retcode = driver(self, restart=self.is_restart)
-        except PayetteError as e:
+        except PayetteError as error:
             if ro.DEBUG:
                 self.finish()
                 raise
 
             retcode = 66
             l = 79 # should be odd number
-            st, stsp = '*'*l + '\n', '*' + ' '*(l-2) + '*\n'
-            psf = 'Payette simulation failed'
-            ll = (l - len(psf) - 2)/2
-            psa = '*' + ' '*ll + psf + ' '*ll + '*\n'
-            head = st + stsp + psa + stsp + st
+            stars = "*" * (l + 2) + '\n'
+            stars_spaces = "*" + " " * (l) + '*\n'
+            psf = ("Payette simulation {0} failed"
+                   .format(self.name).center(l - 2))
+            ll = (l - len(psf)) / 2
+            psa = "*" + " " * ll + psf + " " * ll + "*\n"
+            head = stars + stars_spaces + psa + stars_spaces + stars
             message = (
                 head +
                 "Payette simulation {0} failed with the following message: "
-                .format(self.name) + "\n" + e.message + "\n")
+                .format(self.name) + "\n" + error.message + "\n")
             sys.stderr.write(message)
 
         if retcode == 0:
-            pu.log_message("{0} Payette simulation ran to completion"
+            pu.log_message("Payette simulation {0} ran to completion"
                            .format(self.name))
 
         if not ro.DISP:
@@ -637,119 +659,4 @@ def _parse_mtl_block(material_inp):
 
     return material
 
-
-def _parse_extraction_block(extraction, avail_keys):
-    """parse the extraction block of the input file"""
-    extraction_vars = []
-    if extraction is None:
-        return extraction_vars
-
-    for items in extraction:
-        for pat in ",;:":
-            items = items.replace(pat, " ")
-            continue
-        items = items.split()
-        for item in items:
-            if item[0] not in ("%", "@") and not item[0].isdigit():
-                msg = "unrecognized extraction request {0}".format(item)
-                pu.log_warning(msg)
-                continue
-
-            elif item[1:].lower() not in [x.lower() for x in avail_keys]:
-                msg = ("requested extraction variable {0} not found"
-                       .format(item))
-                pu.log_warning(msg)
-                continue
-
-            extraction_vars.append(item)
-
-        continue
-
-    return [x.upper() for x in extraction_vars]
-
-
-def _parse_mathplot_block(mathplot, avail_keys):
-    """parse the mathplot block of the input file"""
-
-    mathplot_vars = []
-    if mathplot is None:
-        return mathplot_vars
-
-    for item in mathplot:
-        for pat in ",;:":
-            item = item.replace(pat, " ")
-            continue
-        mathplot_vars.extend(item.split())
-        continue
-
-    bad_keys = [x for x in mathplot_vars if x.lower() not in
-                [y.lower() for y in avail_keys]]
-    if bad_keys:
-        msg = (
-            "requested mathplot variable{0:s} {1:s} not found"
-            .format("s" if len(bad_keys) > 1 else "", ", ".join(bad_keys)))
-        pu.log_warning(msg)
-
-    return [x.upper() for x in mathplot_vars if x not in bad_keys]
-
-
-def _parse_output_block(output, avail_keys):
-    """parse the output block of the input file"""
-
-    supported_formats = ("ascii", )
-    out_format = "ascii"
-    out_vars = []
-    if output is None:
-        return avail_keys, out_format, None
-
-    for item in output:
-        for pat in ",;:":
-            item = item.replace(pat, " ")
-            continue
-
-        _vars = [x.upper() for x in item.split()]
-        if "FORMAT" in _vars:
-            try:
-                idx = _vars.index("FORMAT")
-                out_format = _vars[idx+1].lower()
-            except IndexError:
-                pu.log_warning("format keyword found, but no format given")
-            continue
-
-        out_vars.extend(_vars)
-        continue
-
-    if out_format not in supported_formats:
-        raise PayetteError(
-            "output format {0} not supported, choose from {1}"
-            .format(out_format, ", ".join(supported_formats)))
-
-    if "ALL" in out_vars:
-        out_vars = avail_keys
-
-    bad_keys = [x for x in out_vars if x.lower() not in
-                [y.lower() for y in avail_keys]]
-    if bad_keys:
-        msg = (
-            "requested output variable{0:s} {1:s} not found"
-            .format("s" if len(bad_keys) > 1 else "", ", ".join(bad_keys)))
-        pu.log_warning(msg)
-
-    out_vars = [x.upper() for x in out_vars if x not in bad_keys]
-
-    if not out_vars:
-        raise PayetteError("no output variables found")
-
-    # remove duplicates
-    uniq = set(out_vars)
-    out_vars = [x for x in out_vars if x in uniq and not uniq.remove(x)]
-
-    if "TIME" not in out_vars:
-        out_vars.insert(0, "TIME")
-
-    elif out_vars.index("TIME") != 0:
-        out_vars.remove("TIME")
-        out_vars.insert(0, "TIME")
-
-    return out_vars, out_format, output["name"]
 

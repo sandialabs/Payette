@@ -586,8 +586,6 @@ def _run_test(args):
     except PayetteError as error:
         retcode = 66
         pu.log_warning(error.message)
-    except:
-        pu.log_warning("got an exception!")
 
     if opts.postprocess and os.path.isfile(test.outfile):
         pp.postprocess(test.outfile, verbosity=0)

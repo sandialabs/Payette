@@ -21,12 +21,13 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 import os, sys
+from Source.Payette_utils import who_is_calling
+import Source.runopts as ro
 
 
 class InputError(Exception):
     def __init__(self, message):
         sys.tracebacklimit = 0
-        from Source.Payette_utils import who_is_calling
         caller = who_is_calling()
         self.message = message + " [reported by {0}]".format(caller)
         super(InputError, self).__init__(self.message)
@@ -36,8 +37,8 @@ class InputParser(object):
 
     def __init__(self, user_input=None):
 
-        self.errors = 0
-        self.warnings = 0
+        self.input_errors = 0
+        self.input_warnings = 0
 
         if user_input is None:
             sys.exit("no user input sent to InputParser")
@@ -45,19 +46,23 @@ class InputParser(object):
         self.user_input = user_input
 
         # main container for holding all user input
+        self.plot_keys = None
         self.simkey = None
         self.input_set = []
         self.read_input()
 
         pass
 
-    def report_error(self, msg):
-        print "ERROR: {0}".format(msg)
-        self.errors += 1
+    def input_error(self, msg):
+        caller = who_is_calling()
+        sys.stderr.write("ERROR: {0} [reported by: {1}\n".format(msg, caller))
+        self.input_errors += 1
+        return
 
     def log_warning(self, msg):
         print "WARNING: {0}".format(msg)
-        self.warnings += 1
+        self.input_warnings += 1
+        return
 
     def read_input(self):
         """ read a list of user inputs and return """
@@ -72,7 +77,8 @@ class InputParser(object):
                              "optimization", "permutation", "enumeration",
                              "mathplot", "name", "content", "extraction",
                              "output")
-        incompatible_blocks = (("visualization", "optimization", "enumeration"),)
+        incompatible_blocks = (
+            ("visualization", "optimization", "enumeration"),)
 
         for input_set in input_sets:
 
@@ -85,7 +91,7 @@ class InputParser(object):
 
             simkey = input_set["simulation"]["name"]
             if not simkey:
-                self.report_error(
+                self.input_error(
                     'did not find simulation name.  Simulation block '
                     'must be of form:\n'
                     '\tbegin simulation <simulation name> ... end simulation')
@@ -96,13 +102,13 @@ class InputParser(object):
                           if x not in recognized_blocks]
 
             if bad_blocks:
-                self.report_error(
+                self.input_error(
                     "unrecognized blocks: {0}".format(", ".join(bad_blocks)))
 
             for item in incompatible_blocks:
                 bad_blocks = [x for x in input_set["simulation"] if x in item]
                 if len(bad_blocks) > 1:
-                    self.report_error(
+                    self.input_error(
                         "{0} blocks incompatible, choose one"
                         .format(", ".join(bad_blocks)))
                 continue
@@ -112,7 +118,10 @@ class InputParser(object):
 
             continue
 
-        if self.errors:
+        if self.input_errors:
+            raise InputError("stopping due to previous errors")
+
+        if ro.WARNING == "error" and self.input_warnings:
             raise InputError("stopping due to previous errors")
 
         return
@@ -432,6 +441,144 @@ class InputParser(object):
 
     def input_options(self):
         return self.input_set["content"]
+
+    def register_plot_keys(self, plot_keys):
+        if not isinstance(plot_keys, (list, tuple)):
+            plot_keys = [plot_keys]
+        self.plot_keys = plot_keys
+        return
+
+    def parse_output_block(self):
+        """parse the output block of the input file"""
+
+        if self.plot_keys is None:
+            raise InputError(
+                "Plot keys must be registered before parsing output block")
+
+        output = self.get_block("output")
+
+        supported_formats = ("ascii", )
+        out_format = "ascii"
+        out_vars = []
+        if output is None:
+            return self.plot_keys, out_format, None
+
+        for item in output:
+            for pat in ",;:":
+                item = item.replace(pat, " ")
+                continue
+
+            _vars = [x.upper() for x in item.split()]
+            if "FORMAT" in _vars:
+                try:
+                    idx = _vars.index("FORMAT")
+                    out_format = _vars[idx+1].lower()
+                except IndexError:
+                    self.log_warning(
+                        "format keyword found, but no format given")
+                continue
+
+            out_vars.extend(_vars)
+            continue
+
+        if out_format not in supported_formats:
+            raise InputError(
+                "output format {0} not supported, choose from {1}"
+                .format(out_format, ", ".join(supported_formats)))
+
+        if "ALL" in out_vars:
+            out_vars = self.plot_keys
+
+        bad_keys = [x for x in out_vars if x.lower() not in
+                    [y.lower() for y in self.plot_keys]]
+        if bad_keys:
+            self.log_warning(
+                "requested output variable{0:s} {1:s} not found"
+                .format("s" if len(bad_keys) > 1 else "", ", ".join(bad_keys)))
+
+        out_vars = [x.upper() for x in out_vars if x not in bad_keys]
+
+        if not out_vars:
+            raise InputError("no output variables found")
+
+        # remove duplicates
+        uniq = set(out_vars)
+        out_vars = [x for x in out_vars if x in uniq and not uniq.remove(x)]
+
+        if "TIME" not in out_vars:
+            out_vars.insert(0, "TIME")
+
+        elif out_vars.index("TIME") != 0:
+            out_vars.remove("TIME")
+            out_vars.insert(0, "TIME")
+
+        return out_vars, out_format, output["name"]
+
+    def parse_mathplot_block(self):
+        """parse the mathplot block of the input file"""
+
+        if self.plot_keys is None:
+            raise InputError(
+                "Plot keys must be registered before parsing output block")
+
+        mathplot_vars = []
+        mathplot = self.get_block("mathplot")
+
+        if mathplot is None:
+            return mathplot_vars
+
+        for item in mathplot:
+            for pat in ",;:":
+                item = item.replace(pat, " ")
+                continue
+            mathplot_vars.extend(item.split())
+            continue
+
+        bad_keys = [x for x in mathplot_vars if x.lower() not in
+                    [y.lower() for y in self.plot_keys]]
+        if bad_keys:
+            self.log_warning(
+                "requested mathplot variable{0:s} {1:s} not found"
+                .format("s" if len(bad_keys) > 1 else "", ", ".join(bad_keys)))
+
+        return [x.upper() for x in mathplot_vars if x not in bad_keys]
+
+
+    def parse_extraction_block(self):
+        """parse the extraction block of the input file"""
+
+        if self.plot_keys is None:
+            raise InputError(
+                "Plot keys must be registered before parsing extraction block")
+
+        extraction_vars = []
+        extraction = self.get_block("extraction")
+
+        if extraction is None:
+            return extraction_vars
+
+        for items in extraction:
+            for pat in ",;:":
+                items = items.replace(pat, " ")
+                continue
+            items = items.split()
+            for item in items:
+                if item[0] not in ("%", "@") and not item[0].isdigit():
+                    self.log_warning(
+                        "unrecognized extraction request {0}".format(item))
+                    continue
+
+                elif item[1:].lower() not in [x.lower() for x in self.plot_keys]:
+                    self.log_warning(
+                        "requested extraction variable {0} not found"
+                        .format(item))
+                    continue
+
+                extraction_vars.append(item)
+
+            continue
+
+        return [x.upper() for x in extraction_vars]
 
 
 def parse_user_input(raw_user_input, user_cchar=None):
