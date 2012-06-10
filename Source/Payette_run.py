@@ -410,11 +410,11 @@ def run_payette(argv, disp=0):
     ro.VERBOSITY = opts.verbosity
 
     if nproc > 1:
-        pu.log_warning("""\
-             Running with multiple processors.  Logging to the console
-             has been turned off.  If a job hangs, [ctrl-c] at the
-             console will not shut down Payette.  Instead, put the job
-             in the background with [ctrl-z] and then kill it""")
+        pu.log_warning("""
+    Running with multiple processors.  Logging to the console
+    has been turned off.  If a job hangs, [ctrl-c] at the
+    console will not shut down Payette.  Instead, put the job
+    in the background with [ctrl-z] and then kill it""")
 
     # loop through simulations and run them
     if timing:
@@ -422,19 +422,21 @@ def run_payette(argv, disp=0):
 
     if nproc > 1 and len(user_input_sets) > 1:
         pool = mp.Pool(processes=nproc)
-        pool.map(_run_job, job_inp)
+        retcodes = pool.map(_run_job, job_inp)
         pool.close()
         pool.join()
 
     else:
+        retcodes = []
         for job in job_inp:
-            _run_job(job)
+            retcodes.append(_run_job(job))
             continue
 
     if timing:
         print_final_timing_info(tim0)
 
-    return 0
+    retcode = 1 if any(retcodes) else 0
+    return retcode
 
 
 def _run_job(args):
