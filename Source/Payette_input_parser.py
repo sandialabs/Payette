@@ -55,6 +55,7 @@ class InputParser(object):
 
     def input_error(self, msg):
         caller = who_is_calling()
+        sys.stdout.flush()
         sys.stderr.write("ERROR: {0} [reported by: {1}\n".format(msg, caller))
         self.input_errors += 1
         return

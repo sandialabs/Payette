@@ -83,12 +83,11 @@ def log_message(message, pre="INFO: ", end="\n", noisy=False, beg=""):
     return
 
 
+# the following methods define error logging, counting
 def reset_error_and_warnings():
     __count_error(reset=True)
     __count_warning(reset=True)
     return
-
-# the following methods define error logging, counting
 def error_count():
     """Return the current number of errors"""
     return __count_error(inquire=True)
@@ -97,7 +96,6 @@ def __count_error(ecount=[0], inquire=False, reset=False):
     if reset:
         ecount = [0]
         return
-
     if inquire:
         return ecount[0]
     ecount[0] += 1
@@ -192,14 +190,14 @@ def parse_token(n, stringa, token=r'|'):
             if not stat:
                 x = ''
                 stat = True
-                pass
+
             if s != token:
                 x += s
             else:
                 parsed_string.append(str(x))
                 i += 1
                 stat = False
-                pass
+
             continue
         continue
     return parsed_string
@@ -297,7 +295,6 @@ class BuildError(Exception):
         self.errno = errno
         sys.stdout.flush()
         sys.stderr.write(message + "\n")
-        pass
 
     def __repr__(self):
         return self.__name__
@@ -317,22 +314,6 @@ def get_module_name(py_file):
     return get_module_name_and_path(py_file)[0]
 
 
-def begmes(msg, pre="", end="  ", verbose=True):
-    """ begin a message to stdout """
-    if not verbose:
-        return
-    print("{0}{1}...".format(pre, msg), end=end)
-    return
-
-
-def endmes(msg, pre="", end="\n", verbose=True):
-    """ end message to stdout """
-    if not verbose:
-        return
-    print("{0}{1}".format(pre, msg), end=end)
-    return
-
-
 def get_header(fpath):
     """Get the header of f
 
@@ -348,6 +329,7 @@ def get_header(fpath):
 
     """
     return linecache.getline(fpath, 1).split()
+
 
 def read_data(fpath):
     """Reads in a whitespace-delimed data file f with numpy.loadtxt.
@@ -462,7 +444,6 @@ def compute_rms_closest_point_residual(set1x, set1y, set2x, set2y):
 #    nrmsd = rmsd / dnom if dnom >= 2.e-16 else rmsd
 #    return rmsd, nrmsd
     return err, err/dd
-
 
 
 def compute_rms(set1x, set1y, set2x, set2y, step=1):
@@ -602,11 +583,9 @@ def compare_out_to_gold_rms(gold_f, out_f, to_skip=None):
 
     if not os.path.isfile(gold_f):
         report_error("gold file {0} not found".format(gold_f))
-        pass
 
     if not os.path.isfile(out_f):
         report_error("output file {0} not found".format(out_f))
-        pass
 
     if error_count():
         return error_count(), None, None
@@ -686,11 +665,9 @@ def compare_file_cols(file_1, file_2, cols=["all"]):
 
     if not os.path.isfile(file_1):
         report_error("file {0} not found".format(file_1))
-        pass
 
     if not os.path.isfile(file_2):
         report_error("file {0} not found".format(file_2))
-        pass
 
     if error_count():
         return error_count(), None, None
@@ -825,6 +802,7 @@ def parse_mtldb_file(mtldat_f, material=None):
 
     return mtldat
 
+
 def get_super_classes(data):
     """ return the super class name from data """
 
@@ -839,64 +817,3 @@ def get_super_classes(data):
         continue
     return super_class_names
 
-# the following are being kept around for back compatibiltiy
-def parseToken(*args, **kwargs):
-    message = (
-        "parseToken to be depricated, use parse_token "
-        "[called by: {0}]".format(who_is_calling()))
-    warnings.warn(message)
-    return parse_token(*args, **kwargs)
-def checkPythonVersion():
-    message = (
-        "checkPythonVersion to be depricated, use check_py_version "
-        "[called by: {0}]".format(who_is_calling()))
-    warnings.warn(message)
-    return check_py_version()
-def reportMessage(f, msg, pre="INFO: "):
-    message = (
-        "reportMessage to be depricated, use log_message "
-        "[called by: {0}]".format(who_is_calling()))
-    warnings.warn(message)
-    return log_message(msg)
-def migMessage(message):
-    message = (
-        "migMessage to be depricated, use log_message "
-        "[called by: {0}]".format(who_is_calling()))
-    warnings.warn(message)
-    return log_message(message)
-def reportError(iam, msg, tracebacklimit=None):
-    message = (
-        "reportError to be depricated, use report_and_raise_error "
-        "[called by: {0}]".format(who_is_calling()))
-    warnings.warn(message)
-    return report_and_raise_error(msg)
-def migError(msg):
-    message = (
-        "migError to be depricated, use report_and_raise_error "
-        "[called by: {0}]".format(who_is_calling()))
-    warnings.warn(message)
-    return report_and_raise_error(msg)
-def reportWarning(f, msg, limit=False):
-    message = (
-        "reportWarning to be depricated, use log_warning "
-        "[called by: {0}]".format(who_is_calling()))
-    warnings.warn(message)
-    return log_warning(msg, limit=limit)
-def logerr(msg, pre="", end="\n", caller=None):
-    message = (
-        "logerr to be depricated, use report_error "
-        "[called by: {0}]".format(who_is_calling()))
-    warnings.warn(message)
-    return report_error(msg)
-def logwrn(msg, pre="", end="\n", caller=None):
-    message = (
-        "logwrn to be depricated, use log_warning "
-        "[called by: {0}]".format(who_is_calling()))
-    warnings.warn(message)
-    return log_warning(msg)
-def logmes(msg, pre="", end="\n", caller=None, verbose=True):
-    message = (
-        "logmes to be depricated, use log_message "
-        "[called by: {0}]".format(who_is_calling()))
-    warnings.warn(message)
-    return log_message(msg)

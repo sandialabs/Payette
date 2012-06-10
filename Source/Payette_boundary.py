@@ -95,6 +95,7 @@ class Boundary(object):
         pass
 
     def log_warning(self, msg):
+        sys.stdout.flush()
         sys.stderr.write("WARNING: {0}\n".format(msg))
         self.boundary_warnings += 1
         return

@@ -396,7 +396,7 @@ class DataContainer:
                     retval = np.array(data[valtyp])
 
                 elif form == "MIG":
-                    retval = pt.toMig(data[valtyp])
+                    retval = pt.to_mig(data[valtyp])
 
                 elif form == "Matrix":
                     if typ == "Vector":
