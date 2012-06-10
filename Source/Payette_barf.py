@@ -57,7 +57,7 @@ import Payette_config as pc
 import Source.Payette_utils as pu
 import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr
-from Source.Payette_utils import PayetteError as PayetteError
+from Source.Payette_container import PayetteError as PayetteError
 
 
 class PayetteBarf(object):
