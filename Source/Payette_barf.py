@@ -57,6 +57,7 @@ import Payette_config as pc
 import Source.Payette_utils as pu
 import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr
+from Source.Payette_utils import PayetteError as PayetteError
 
 
 class PayetteBarf(object):
@@ -72,6 +73,7 @@ class PayetteBarf(object):
         self.barf = {}
         self.barf["lines"] = []
         for line in open(barf_file, "r").readlines():
+            line = " ".join(line.strip().split())
             if not line.split():
                 continue
             self.barf["lines"].append(line)
@@ -94,13 +96,7 @@ class PayetteBarf(object):
         # convert the barf file to a payette input
         self.payette_input = self._convert_to_payette()
 
-        # parse the input
-        input_dict = pu.read_input(self.payette_input)
-
-        # instantiate the Payette object
-        for key, val in input_dict.items():
-            the_model = pcntnr.Payette(key, val)
-            break
+        the_model = pcntnr.Payette(self.payette_input)
 
         # the model has been set up, now advance the stress and state variables
         # to where they need to be based on barf file
@@ -112,14 +108,17 @@ class PayetteBarf(object):
         matdat.advance_data("rate of deformation", self.barf["strain rate"])
         matdat.advance_data("extra variables", self.barf["extra variables"])
 
-        pdrvr.solid_driver(the_model)
-
+        try:
+            pdrvr.solid_driver(the_model)
+            message = "Code did not bomb"
+        except PayetteError as e:
+            message = ("Payette bombed with the following message:\n{0}"
+                       .format(e.message))
+        sys.exit(message)
         pass
 
     def get_barf_info(self):
         """Read the first line of the barf file and get info. """
-
-        iam = "PayetteBarf.get_barf_info(self)"
 
         # get the model name
         tmp = self.barf["lines"][0].lower().split()
@@ -143,8 +142,6 @@ class PayetteBarf(object):
 
     def read_barf_file(self):
         """ Read the barf file. """
-
-        iam = "PayetteBarf.read_barf_file(self)"
 
         dtime = eval(self.get_block("dt", block_delim=None)[0])
         parameters = self.parse_parameters(self.get_block("property"))
@@ -255,7 +252,10 @@ end simulation
                         block.append(line)
 
                     else:
-                        block.append(eval(line[place]))
+                        if line[place] == "NaN":
+                            block.append(np.nan)
+                        else:
+                            block.append(eval(line[place]))
 
                 continue
 

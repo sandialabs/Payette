@@ -22,6 +22,16 @@
 # DEALINGS IN THE SOFTWARE.
 import os, sys
 
+
+class InputError(Exception):
+    def __init__(self, message):
+        sys.tracebacklimit = 0
+        from Source.Payette_utils import who_is_calling
+        caller = who_is_calling()
+        self.message = message + " [reported by {0}]".format(caller)
+        super(InputError, self).__init__(self.message)
+
+
 class InputParser(object):
 
     def __init__(self, user_input=None):
@@ -48,10 +58,6 @@ class InputParser(object):
     def log_warning(self, msg):
         print "WARNING: {0}".format(msg)
         self.warnings += 1
-
-    def report_and_raise_error(self, msg, tracebacklimit=None):
-        sys.exit("ERROR: {0}".format(msg))
-        self.errors += 1
 
     def read_input(self):
         """ read a list of user inputs and return """
@@ -107,7 +113,7 @@ class InputParser(object):
             continue
 
         if self.errors:
-            sys.exit("stopping due to previous errors")
+            raise InputError("stopping due to previous errors")
 
         return
 
@@ -165,9 +171,8 @@ class InputParser(object):
                     block_typ = split_line[1]
 
                 except ValueError:
-                    self.report_and_raise_error(
-                        "encountered a begin directive with no block type",
-                        tracebacklimit=0)
+                    raise InputError(
+                        "encountered a begin directive with no block type")
 
                 # get the (optional) block name
                 try:
@@ -187,9 +192,9 @@ class InputParser(object):
 
                 else:
                     if block_typ in block[block_stack[0]]:
-                        self.report_and_raise_error(
-                            "duplicate block \"{0}\" encountered".format(block_typ),
-                            tracebacklimit=0)
+                        raise InputError(
+                            "duplicate block \"{0}\" encountered"
+                            .format(block_typ))
 
                     block[block_stack[0]][block_typ] = new_block[block_typ]
 
@@ -205,14 +210,13 @@ class InputParser(object):
                 try:
                     block_typ = split_line[1]
                 except ValueError:
-                    self.report_and_raise_error(
-                        "encountered a end directive with no block type",
-                        tracebacklimit=0)
+                    raise InputError(
+                        "encountered a end directive with no block type")
 
                 if block_stack[-1] != block_typ:
                     msg = ('unexpected "end {0}" directive, expected "end {1}"'
                            .format(block_typ, block_stack[-1]))
-                    self.report_and_raise_error(msg, tracebacklimit=0)
+                    raise InputError(msg)
 
                 # Remove this block from the block stack
                 block_stack.pop()
@@ -313,13 +317,11 @@ class InputParser(object):
                 # check if insert is given in file
                 idx_0, idx_f, block_insert = self._find_block(user_input, block)
                 if idx_0 is None:
-                    self.report_and_raise_error(
-                        "'use' block '{0:s}' not found".format(block),
-                        tracebacklimit=0)
+                    raise InputError(
+                        "'use' block '{0:s}' not found".format(block))
                 elif idx_f is None:
-                    self.report_and_raise_error(
-                        "end of 'use' block '{0:s}' not found".format(block),
-                        tracebacklimit=0)
+                    raise InputError(
+                        "end of 'use' block '{0:s}' not found".format(block))
 
                 used_blocks.append(block)
                 all_input.extend(block_insert)
@@ -329,9 +331,8 @@ class InputParser(object):
                 insert = " ".join(line.split()[1:])
 
                 if not os.path.isfile(insert):
-                    self.report_and_raise_error(
-                        "inserted file '{0:s}' not found".format(insert),
-                        tracebacklimit=0)
+                    raise InputError(
+                        "inserted file '{0:s}' not found".format(insert))
 
                 insert_lines = open(insert, "r").readlines()
                 all_input.extend(_remove_all_comments(insert_lines, cchars))
@@ -518,7 +519,7 @@ def replace_params_and_name(lines, name, param_names, param_vals):
     if not isinstance(param_vals, (list, tuple)):
         param_vals = [param_vals]
     if len(param_names) != len(param_vals):
-        pu.report_and_raise_error("len(param_names) != len(param_vals)")
+        raise InputError("len(param_names) != len(param_vals)")
 
     nreplaced = 0
     job_inp = []
@@ -539,6 +540,6 @@ def replace_params_and_name(lines, name, param_names, param_vals):
         job_inp.append(line)
         continue
     if nreplaced != len(param_names):
-        pu.report_and_raise_error("could not replace all requested params")
+        raise InputError("could not replace all requested params")
 
     return job_inp
