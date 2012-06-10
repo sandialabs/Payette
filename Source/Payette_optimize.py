@@ -37,6 +37,7 @@ from copy import deepcopy
 import Source.Payette_utils as pu
 import Source.Payette_container as pc
 import Source.Payette_extract as pe
+import Source.Payette_input_parser as pip
 import Source.runopts as ro
 import Toolset.KayentaParamConv as kpc
 
@@ -49,12 +50,14 @@ FNEWEXT = ".0x312.gold"
 class Optimize(object):
     r"""docstring -> needs to be completed """
 
-    def __init__(self, job, job_inp):
+    def __init__(self, input_lines):
         r""" Initialization """
 
         # get the optimization block
-        optimize = job_inp["optimization"]["content"]
-        del job_inp["optimization"]
+        job_inp = pip.InputParser(input_lines)
+        job = job_inp.get_simulation_key()
+
+        optimize = job_inp.get_block("optimization")
 
         # save Perturbate information to single "data" dictionary
         self.data = {}
@@ -62,19 +65,23 @@ class Optimize(object):
         self.data["verbosity"] = ro.VERBOSITY
         self.data["return level"] = ro.DISP
         self.data["fext"] = ".opt"
-        self.data["baseinp"] = job_inp
         self.data["options"] = []
+        self.shearfit = False
+
+        # fill the data with the optimization information
+        self.parse_optimization_block(optimize)
+
+        if not self.shearfit:
+            input_lines = job_inp.get_input_lines(skip="optimization")
+        self.data["baseinp"] = input_lines
 
         # set the loglevel to 0 for Payette simulation and save the payette
         # options to the data dictionary
         ro.set_global_option("VERBOSITY", 0, default=True)
 
-        # fill the data with the optimization information
-        self.parse_optimization_block(optimize)
-
-        if "shearfit" not in self.data["options"]:
+        if not self.shearfit:
             # check user input for required blocks
-            if "material" not in job_inp:
+            if not job_inp.has_block("material"):
                 pu.report_and_raise_error(
                     "material block not found in input file", tracebacklimit=0)
 
@@ -84,7 +91,7 @@ class Optimize(object):
         # check minimization variables
         self.check_min_parameters()
 
-        if "shearfit" in self.data["options"]:
+        if self.shearfit:
             self.init_shearfit()
 
         if self.data["verbosity"]:
@@ -189,8 +196,7 @@ class Optimize(object):
                        "ftol": self.data["tolerance"],
                        "disp": self.data["disp"],}
 
-        shearfit = "shearfit" in self.data["options"]
-        if shearfit:
+        if self.shearfit:
             fcn = rtxc
         else:
             fcn = func
@@ -201,7 +207,7 @@ class Optimize(object):
             )
 
         # optimum parameters found, write out final info
-        if shearfit:
+        if self.shearfit:
             a_params = self.data["a_params"]
             a_params[self.data["index array"]] = opt_params
             stren, peaki1, fslope, yslope = kpc.old_2_new(*a_params)
@@ -238,7 +244,7 @@ class Optimize(object):
                 fobj.write("{0} = {1:12.6E}\n".format(nam, opt_val))
                 continue
 
-            if shearfit:
+            if self.shearfit:
                 fobj.write("\nEquivalent new paramters:\n")
                 fobj.write("STREN = {0:12.6E}\n".format(stren))
                 fobj.write("PEAKI1 = {0:12.6E}\n".format(peaki1))
@@ -300,7 +306,6 @@ class Optimize(object):
         maxiter = 20
         tolerance = 1.e-4
         disp = False
-        shearfit = False
         optimize = {}
         fix = {}
 
@@ -317,7 +322,7 @@ class Optimize(object):
             continue
 
         if "shearfit" in self.data["options"]:
-            shearfit = True
+            self.shearfit = True
             opt_method = allowed_methods["cobyla"]
 
         # get method before other options
@@ -372,7 +377,7 @@ class Optimize(object):
                 key = item[1]
                 vals = item[2:]
 
-                if shearfit and key.lower() not in ("a1", "a2", "a3", "a4"):
+                if self.shearfit and key.lower() not in ("a1", "a2", "a3", "a4"):
                     pu.report_error("optimize variable "+ key +
                                     " not allowed with shearfit method")
 
@@ -413,7 +418,7 @@ class Optimize(object):
                 key = item[1]
                 vals = item[2:]
 
-                if shearfit and key.lower() not in ("a1", "a2", "a3", "a4"):
+                if self.shearfit and key.lower() not in ("a1", "a2", "a3", "a4"):
                     pu.report_error("fixed variable "+ key +
                                     " not allowed with shearfit method")
 
@@ -462,10 +467,10 @@ class Optimize(object):
             else:
                 gold_f = os.path.realpath(gold_f)
 
-        if not shearfit and not minimize["vars"]:
+        if not self.shearfit and not minimize["vars"]:
             pu.report_error("no parameters to minimize given")
 
-        if not shearfit and not optimize:
+        if not self.shearfit and not optimize:
             pu.report_error("no parameters to optimize given")
 
         for key, val in optimize.items():
@@ -482,7 +487,7 @@ class Optimize(object):
             pu.report_and_raise_error("stopping due to previous errors",
                                       tracebacklimit=0)
 
-        if shearfit:
+        if self.shearfit:
             # for shearfit, we optimize a1 - a4 by minimizing errror in rootj2
             # vs. i1 using the rtxc function. Therefore, the only minimization
             # variables needed are i1 and rootj2
@@ -540,29 +545,21 @@ class Optimize(object):
 
         """
 
-        if "shearfit" in self.data["options"]:
+        if self.shearfit:
             # for shearfit, we don't actually have to call Kayenta
             return
 
         # Remove from the material block the optimized parameters. Current
         # values will be inserted in to the material block for each run.
-        content = []
-        for line in self.data["baseinp"]["material"]["content"]:
-            key = line.strip().lower().split()[0]
-            if key in [x.lower() for x in self.data["optimize"]]:
-                continue
-            content.append(line)
-            continue
-        self.data["baseinp"]["material"]["content"] = content
-
-        # copy the job input and instantiate a Payette object
-        job_inp = deepcopy(self.data["baseinp"])
+        param_nams, initial_vals = [], []
         for key, val in self.data["optimize"].items():
-            init_val = val["initial value"]
-            job_inp["material"]["content"].append(
-                "{0} {1}".format(key, init_val))
+            param_nams.append(key)
+            initial_vals.append(val["initial value"])
+        job_inp = pip.replace_params_and_name(
+            self.data["baseinp"], self.data["basename"],
+            param_nams, initial_vals)
 
-        the_model = pc.Payette(self.data["basename"], job_inp)
+        the_model = pc.Payette(job_inp)
         param_table = the_model.material.constitutive_model.parameter_table
 
         # remove cruft
@@ -846,11 +843,9 @@ def func(xcall, xnams, data, base_dir, xgold):
     os.mkdir(job_dir)
     os.chdir(job_dir)
 
-    # instantiate the Payette object
-    job_inp = deepcopy(data["baseinp"])
-
     # replace the optimize variables with the updated and write params to file
     msg = []
+    param_nams, param_vals = [], []
     with open(os.path.join(job_dir, job + ".opt"), "w") as fobj:
         fobj.write("Parameters for iteration {0:d}\n".format(IOPT + 1))
         for idx, item in enumerate(zip(xnams, xcall)):
@@ -871,10 +866,14 @@ def func(xcall, xnams, data, base_dir, xgold):
                 return 1.e3
 
             pstr = "{0} = {1:12.6E}".format(nam, opt_val * FAC[idx])
-            job_inp["material"]["content"].append(pstr)
+            param_nams.append(nam)
+            param_vals.append(opt_val * FAC[idx])
             fobj.write(pstr + "\n")
             msg.append(pstr)
             continue
+
+    job_inp = pip.replace_params_and_name(data["baseinp"], job,
+                                          param_nams, param_vals)
 
     if data["verbosity"]:
         pu.log_message("Iteration {0:03d}, trial parameters: {1}"
@@ -882,7 +881,7 @@ def func(xcall, xnams, data, base_dir, xgold):
                        noisy=True)
 
     # instantiate Payette object
-    the_model = pc.Payette(job, job_inp)
+    the_model = pc.Payette(job_inp)
 
     # run the job
     solve = the_model.run_job()

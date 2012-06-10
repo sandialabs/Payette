@@ -30,8 +30,6 @@ Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
 M. Scot Swan, Sandia National Laboratories, mswan@sandia.gov
 
 """
-
-from __future__ import print_function
 import sys
 import os
 import pickle
@@ -45,6 +43,7 @@ import Source.Payette_utils as pu
 import Source.Payette_container as pcntnr
 import Source.Payette_optimize as po
 import Source.Payette_permutate as pp
+import Source.Payette_input_parser as pip
 import Source.runopts as ro
 
 
@@ -317,7 +316,7 @@ def run_payette(argv, disp=0):
 
         with open(rfile, "rb") as ftmp:
             the_model = pickle.load(ftmp)
-        user_input_dict = {"restart": the_model}
+        user_input_sets = (the_model,)
 
     else:
         # get a list of all input files, order of where to look for file f:
@@ -387,19 +386,19 @@ def run_payette(argv, disp=0):
             continue
 
         # read the user input
-        user_input_dict = pu.read_input(input_lines, opts.cchar)
-        if not user_input_dict:
+        user_input_sets = pip.parse_user_input(input_lines, opts.cchar)
+        if not user_input_sets:
             pu.report_and_raise_error(
                 "user input not found in {0:s}".format(", ".join(foundf)),
                 tracebacklimit=0)
+
     # ----------------------------------------------------- end: get user input
 
     # we have a list of user input.  now create a generator to send to _run_job
-    job_inp = ((key, user_input_dict[key], opts, restart, timing)
-                 for key in user_input_dict)
+    job_inp = ((item, opts, restart, timing) for item in user_input_sets)
 
     # number of processors
-    nproc = min(min(mp.cpu_count(), opts.nproc), len(user_input_dict))
+    nproc = min(min(mp.cpu_count(), opts.nproc), len(user_input_sets))
     opts.verbosity = opts.verbosity if nproc == 1 else 0
     ro.NPROC = nproc
     ro.VERBOSITY = opts.verbosity
@@ -415,7 +414,7 @@ def run_payette(argv, disp=0):
     if timing:
         tim0 = time.time()
 
-    if nproc > 1 and len(user_input_dict.keys()) > 1:
+    if nproc > 1 and len(user_input_sets) > 1:
         pool = mp.Pool(processes=nproc)
         pool.map(_run_job, job_inp)
         pool.close()
@@ -437,7 +436,7 @@ def _run_job(args):
     """ run each individual job """
 
     # pass passed args to local arguments
-    job_id, user_input, opts, restart, timing = args
+    user_input, opts, restart, timing = args
 
     if timing:
         tim0 = time.time()
@@ -447,16 +446,16 @@ def _run_job(args):
         the_model = user_input
         the_model.setup_restart()
 
-    elif "optimization" in user_input:
+    elif any("optimization" in x for x in user_input):
         # intantiate the Optimize object
-        the_model = po.Optimize(job_id, user_input)
+        the_model = po.Optimize(user_input)
 
-    elif 'permutation' in user_input:
+    elif any("permutation" in x for x in user_input):
         # intantiate the Optimize object
-        the_model = pp.Permutate(job_id, user_input)
+        the_model = pp.Permutate(user_input)
 
     else:
-        the_model = pcntnr.Payette(job_id, user_input)
+        the_model = pcntnr.Payette(user_input)
 
     # run the job
     if timing:

@@ -34,22 +34,22 @@ from itertools import izip, product
 
 import Source.Payette_utils as pu
 import Source.Payette_container as pc
+import Source.Payette_input_parser as pip
 import Source.runopts as ro
-
-
-FARGS = []
 
 
 class Permutate(object):
     r"""docstring -> needs to be completed """
 
-    def __init__(self, job, job_inp):
+    def __init__(self, input_lines):
 
         # extract the permutation block and delete it so that it is not read
         # again
-        permutate = job_inp["permutation"]["content"]
-        del job_inp["permutation"]
+        job_inp = pip.InputParser(input_lines)
+        job = job_inp.get_simulation_key()
 
+        permutate = job_inp.get_block("permutation")
+        input_lines = job_inp.get_input_lines(skip="permutation")
 
         # save Perturbate information to single "data" dictionary
         self.data = {}
@@ -58,7 +58,7 @@ class Permutate(object):
         self.data["return level"] = ro.DISP
         self.data["verbosity"] = ro.VERBOSITY
         self.data["fext"] = ".perm"
-        self.data["baseinp"] = job_inp
+        self.data["baseinp"] = input_lines
 
         # set verbosity to 0 for Payette simulation and save the payette
         # options to the data dictionary
@@ -109,8 +109,6 @@ class Permutate(object):
 
         """
 
-        global FARGS
-
         # make the directory to run the job
         cwd = os.path.realpath(os.getcwd())
         dnam = self.data["basename"] + self.data["fext"]
@@ -148,14 +146,16 @@ class Permutate(object):
         # handled better using something similar to scipy.optimize.py's
         # wrap_function, but that is not compatible with Pool.map.
         FARGS = [self.param_nams, self.data, base_dir, index_f]
+        args = ((x, self.param_nams, self.data, base_dir, index_f)
+                for x in self.param_ranges)
 
         nproc = min(mp.cpu_count(), self.data["nproc"])
         if nproc == 1:
-            map(func, self.param_ranges)
+            map(func, args)
 
         else:
             pool = mp.Pool(processes=nproc)
-            pool.map(func, self.param_ranges)
+            pool.map(func, args)
             pool.close()
             pool.join()
             del pool
@@ -371,22 +371,12 @@ class Permutate(object):
 
         """
 
-        # Remove from the material block the permutated parameters. Current
-        # values will be inserted in to the material block for each run.
-        content = []
-        for line in self.data["baseinp"]["material"]["content"]:
-            key = line.strip().lower().split()[0]
-            if key in [x.lower() for x in self.param_nams]:
-                continue
-            content.append(line)
-            continue
-        self.data["baseinp"]["material"]["content"] = content
+        job_inp = pip.replace_params_and_name(
+            self.data["baseinp"], self.data["basename"],
+            self.param_nams, self.initial_vals)
 
         # copy the job input and instantiate a Payette object
-        job_inp = deepcopy(self.data["baseinp"])
-        for key, val in zip(self.param_nams, self.initial_vals):
-            job_inp["material"]["content"].append("{0} {1}".format(key, val))
-        the_model = pc.Payette(self.data["basename"], job_inp)
+        the_model = pc.Payette(job_inp)
         param_table = the_model.material.constitutive_model.parameter_table
 
         # remove cruft
@@ -415,7 +405,7 @@ class Permutate(object):
         return
 
 
-def func(xcall):
+def func(args):
     r"""Objective function
 
     Creates a directory to run the current job, runs the job through Payette
@@ -424,7 +414,7 @@ def func(xcall):
 
     Parameters
     ----------
-    xcall : array_like
+    args : array_like
         Current values for permutated parameters
 
     Globals
@@ -439,18 +429,17 @@ def func(xcall):
 
     """
 
-    job_id = xcall[0]
-    xcall = xcall[1]
+    xcall, xnams, data, base_dir, index_f = args
+    job_id, xcall = xcall[0], xcall[1]
 
-    xnams, data, base_dir, index_f = FARGS
     job = data["basename"] + "." + job_id
 
     job_dir = os.path.join(base_dir, job)
     os.mkdir(job_dir)
     os.chdir(job_dir)
 
-    # instantiate the Payette object
-    job_inp = deepcopy(data["baseinp"])
+    # get the udpated input file
+    job_inp = pip.replace_params_and_name(data["baseinp"], job, xnams, xcall)
 
     # replace the visualize variables with the updated and write params to file
     msg = []
@@ -460,13 +449,12 @@ def func(xcall):
         for nam, val in zip(xnams, xcall):
             pstr = "{0} = {1:12.6E}".format(nam, val)
             istr.append('("{0}", {1:12.6E})'.format(nam, val))
-            job_inp["material"]["content"].append(pstr)
             fobj.write(pstr + "\n")
             msg.append(pstr)
             continue
 
     # write out the input file, not actually used, but nice to have
-    pu.write_input_file(job, job_inp, os.path.join(job_dir, job + ".inp"))
+    pu.write_input_file(job_inp, os.path.join(job_dir, job + ".inp"))
 
     if data["verbosity"]:
         pu.log_message("Running job {0:s}, parameters: {1}"
@@ -482,7 +470,7 @@ def func(xcall):
         fobj.write("}\n")
 
     # instantiate Payette object
-    the_model = pc.Payette(job, job_inp)
+    the_model = pc.Payette(job_inp)
 
     # run the job
     solve = the_model.run_job()

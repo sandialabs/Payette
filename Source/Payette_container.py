@@ -34,6 +34,7 @@ import Source.Payette_driver as pd
 import Source.Payette_utils as pu
 import Source.Payette_extract as pe
 import Source.Payette_boundary as pb
+import Source.Payette_input_parser as pip
 import Source.runopts as ro
 from Source.Payette_material import Material
 from Source.Payette_data_container import DataContainer
@@ -53,15 +54,16 @@ class Payette:
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     """
 
-    def __init__(self, simname, user_input):
+    def __init__(self, input_lines):
 
-        # save the user input
-        self.user_input = deepcopy(user_input)
+        # instantiate the user input object
+        self.input_lines = input_lines
+        self.user_input = pip.InputParser(input_lines)
 
         delete = not ro.KEEP
         self.simdir = os.getcwd()
 
-        self.name = simname
+        self.name = self.user_input.get_simulation_key()
         self._open_files = {}
 
         # default variables
@@ -71,13 +73,14 @@ class Payette:
 
         # check user input for required blocks
         req_blocks = ("material", )
+        input_blocks = self.user_input.input_blocks()
         for block in req_blocks:
-            if block not in user_input:
+            if block not in input_blocks:
                 pu.report_and_raise_error(
                     "{0} block not found in input file".format(block),
                     tracebacklimit=0)
 
-        tmpnam = os.path.join(self.simdir, simname + ".out")
+        tmpnam = os.path.join(self.simdir, self.name + ".out")
         if delete and os.path.isfile(tmpnam):
             os.remove(tmpnam)
 
@@ -85,7 +88,7 @@ class Payette:
             i = 0
             while True:
                 tmpnam = os.path.join(self.simdir,
-                                      "{0}.{1:d}.out".format(simname, i))
+                                      "{0}.{1:d}.out".format(self.name, i))
                 if os.path.isfile(tmpnam):
                     i += 1
                     if i > 100:
@@ -109,29 +112,38 @@ class Payette:
 
         # set up the logger for the simulation
         pu.setup_logger(self.logfile)
-        pu.log_message("setting up simulation {0}".format(simname))
+        pu.log_message("setting up simulation {0}".format(self.name))
 
         # file name for the Payette restart file
         self.is_restart = False
 
         # set up the material
-        self.material = _parse_mtl_block(user_input.get("material"))
+        material = self.user_input.get_block("material")
+        if material is None:
+            pu.report_and_raise_error(
+                "boundary and legs block not found for {0}"
+                .format(self.simname))
+        self.material = _parse_mtl_block(material)
         self.matdat = self.material.material_data()
 
         # set up boundary and leg blocks
+        boundary = self.user_input.get_block("boundary")
+        legs = self.user_input.get_block("legs")
+        if boundary is None or legs is None:
+            pu.report_and_raise_error(
+                "boundary and legs block not found for {0}"
+                .format(self.simname))
         if not self.material.eos_model:
-            self.boundary = pb.Boundary(user_input.get("boundary")["content"],
-                                        user_input.get("legs")["content"])
+            self.boundary = pb.Boundary(boundary, legs)
         else:
-            self.boundary = pb.EOSBoundary(user_input.get("boundary")["content"],
-                                           user_input.get("legs")["content"])
+            self.boundary = pb.EOSBoundary(boundary, legs)
 
         self.t0 = self.boundary.initial_time
         self.tf = self.boundary.termination_time
         bcontrol = self.boundary.get_boundary_control_params()
 
         # set up the simulation data container and register obligatory data
-        self.simdat = DataContainer(simname)
+        self.simdat = DataContainer(self.name)
         self.simdat.register_data("time", "Scalar",
                                  init_val=0., plot_key="time")
         self.simdat.register_data("time step", "Scalar",
@@ -141,8 +153,7 @@ class Payette:
 
         # check if user has specified simulation options directly in the input
         # file
-        for item in user_input["content"]:
-            self.user_input["content"].remove(item)
+        for item in self.user_input.input_options():
             for pat in ",;:":
                 item = item.replace(pat, " ")
                 continue
@@ -187,15 +198,15 @@ class Payette:
 
         # get mathplot
         self.mathplot_vars = _parse_mathplot_block(
-            user_input.get("mathplot"), self.plot_keys)
+            self.user_input.get_block("mathplot"), self.plot_keys)
 
         # get extraction
         self.extraction_vars = _parse_extraction_block(
-            user_input.get("extraction"), self.plot_keys)
+            self.user_input.get_block("extraction"), self.plot_keys)
 
         # get output block
         self.out_vars, self.out_format, self.out_nam = _parse_output_block(
-            user_input.get("output"), self.plot_keys)
+            self.user_input.get_block("output"), self.plot_keys)
 
         self._setup_files()
 
@@ -519,8 +530,7 @@ class Payette:
 
         if ro.WRITE_INPUT:
             pu.write_input_file(
-                self.name, self.user_input,
-                os.path.join(self.simdir, self.name + ".inp"))
+                self.user_input, os.path.join(self.simdir, self.name + ".inp"))
 
         return
 
@@ -529,7 +539,7 @@ class Payette:
         return self.simdat
 
 
-def _parse_mtl_block(material_inp=None):
+def _parse_mtl_block(material_inp):
     """ Read material block from input file, parse it, and create material
     object
 
@@ -548,7 +558,7 @@ def _parse_mtl_block(material_inp=None):
     if material_inp is None:
         return None
 
-    material = material_inp["content"]
+    material = material_inp
 
     model_name = None
     user_params = []
@@ -598,7 +608,7 @@ def _parse_extraction_block(extraction, avail_keys):
     if extraction is None:
         return extraction_vars
 
-    for items in extraction["content"]:
+    for items in extraction:
         for pat in ",;:":
             items = items.replace(pat, " ")
             continue
@@ -629,7 +639,7 @@ def _parse_mathplot_block(mathplot, avail_keys):
     if mathplot is None:
         return mathplot_vars
 
-    for item in mathplot["content"]:
+    for item in mathplot:
         for pat in ",;:":
             item = item.replace(pat, " ")
             continue
@@ -656,7 +666,7 @@ def _parse_output_block(output, avail_keys):
     if output is None:
         return avail_keys, out_format, None
 
-    for item in output["content"]:
+    for item in output:
         for pat in ",;:":
             item = item.replace(pat, " ")
             continue
