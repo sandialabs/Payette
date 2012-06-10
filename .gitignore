@@ -4,6 +4,7 @@ cleanPayette
 extractPayette
 f2py
 runPayette
+vizPayette
 testPayette
 pconfigure
 

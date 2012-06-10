@@ -624,6 +624,7 @@ fi
                 fnew.write("args=$*\nargv=\nfor arg in ${args} ; do\n")
                 fnew.write('case "$arg" in\n')
                 fnew.write('"--gui") pyfile={0} ;;\n'.format(VIZ_SELECTOR))
+                fnew.write('"-G") pyfile={0} ;;\n'.format(VIZ_SELECTOR))
                 fnew.write('*) argv="${argv} ${arg}"\n')
                 fnew.write('pyfile={0} ;;\n'.format(py_file))
                 fnew.write("esac\ndone\n")
