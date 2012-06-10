@@ -45,7 +45,6 @@ if not os.path.isfile(os.path.join(
 
 SIMLOG = None
 EPSILON = np.finfo(np.float).eps
-ACCLIM = .0001 / 100.
 
 
 '''

@@ -45,7 +45,7 @@ class PayetteError(Exception):
     def __init__(self, message, caller=None):
 
         if caller is None:
-            caller = who_is_calling()
+            caller = pu.who_is_calling()
 
         if not ro.DEBUG:
             sys.tracebacklimit = 0
@@ -146,19 +146,25 @@ class Payette:
         material = self.user_input.get_block("material")
         if material is None:
             raise PayetteError(
-                "boundary and legs block not found for {0}"
-                .format(self.simname))
+                "material block not found for {0}"
+                .format(self.name))
         self.material = _parse_mtl_block(material)
         self.matdat = self.material.material_data()
 
         # set up boundary and leg blocks
         boundary = self.user_input.get_block("boundary")
         legs = self.user_input.get_block("legs")
-        if boundary is None or legs is None:
+        if boundary is None:
             raise PayetteError(
-                "boundary and legs block not found for {0}"
-                .format(self.simname))
+                "boundary block not found for {0}"
+                .format(self.name))
 
+# @mswan: EOS does not require legs?
+#        if legs is None:
+#            raise PayetteError(
+#                "legs block not found for {0}"
+#                .format(self.name))
+#
         # solid and eos materials have different boundary classes
         if not self.material.eos_model:
             Boundary = pb.Boundary
@@ -175,7 +181,6 @@ class Payette:
 
         self.t0 = self.boundary.initial_time
         self.tf = self.boundary.termination_time
-        bcontrol = self.boundary.get_boundary_control_params()
 
         # set up the simulation data container and register obligatory data
         self.simdat = DataContainer(self.name)
@@ -538,6 +543,7 @@ class Payette:
 
         try:
             retcode = driver(self, restart=self.is_restart)
+
         except PayetteError as error:
             if ro.DEBUG:
                 self.finish()

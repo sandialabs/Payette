@@ -33,6 +33,9 @@ import Source.Payette_tensor as pt
 import Source.runopts as ro
 
 
+EPSILON = np.finfo(np.float).eps
+
+
 def newton(material, simdat, matdat):
     '''
     NAME
@@ -110,7 +113,7 @@ def newton(material, simdat, matdat):
 
     l_nzc = len(nzc)
     sig_dif = np.zeros(l_nzc)
-    tol1, tol2 = pu.EPSILON, math.sqrt(pu.EPSILON)
+    tol1, tol2 = EPSILON, math.sqrt(EPSILON)
     maxit1, maxit2, depsmax, converged = 20, 30, 0.2, 0
 
     # --- Check if strain increment is too large

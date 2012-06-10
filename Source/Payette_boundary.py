@@ -24,8 +24,6 @@ import math
 import sys
 import numpy as np
 
-import Payette_utils as pu
-
 
 class BoundaryError(Exception):
     def __init__(self, message):
@@ -97,7 +95,7 @@ class Boundary(object):
         pass
 
     def log_warning(self, msg):
-        print "WARNING: {0}".format(msg)
+        sys.stderr.write("WARNING: {0}\n".format(msg))
         self.boundary_warnings += 1
         return
 
@@ -379,7 +377,7 @@ class Boundary(object):
                     # given by axis of rotation x and angle of rotation theta
                     rot, lstretch = np.linalg.qr(defgrad)
                     rstretch = np.dot(rot.T, defgrad)
-                    if np.max(np.abs(rot - np.eye(3))) > pu.EPSILON:
+                    if np.max(np.abs(rot - np.eye(3))) > np.finfo(np.float).eps:
                         msg = ("rotation encountered in leg {0}. "
                                .format(leg_no) +
                                "rotations are not yet supported")
@@ -693,12 +691,6 @@ class Boundary(object):
 
 
 
-    def get_leg_control_params(self):
-        return self.lcontrol
-
-    def get_boundary_control_params(self):
-        return self.bcontrol
-
     def kappa(self):
         return self.bcontrol["kappa"]["value"]
 
@@ -711,17 +703,24 @@ class Boundary(object):
     def screenout(self):
         return self.bcontrol["screenout"]["value"]
 
+    def get_leg_control_params(self):
+        return self.lcontrol
+
+    def get_boundary_control_params(self):
+        return self.bcontrol
+
 
 class EOSBoundary(object):
     """The EOS boundary class"""
 
     def __init__(self, boundary=None, legs=None):
+
         if boundary is None:
             raise BoundaryError("boundary block not found")
-
-        if legs is None:
-            raise BoundaryError("legs block not found")
-
+# @mswan: legs not needed?
+#        if legs is None:
+#            raise BoundaryError("legs block not found")
+#
         self.boundary = boundary
         self.legs = legs
 
@@ -761,7 +760,7 @@ class EOSBoundary(object):
         for item in self.boundary:
             for char in "=,;":
                 item = item.replace(char, " ")
-            item = " ".join(item.split())
+            item = " ".join(item.split()).split()
             kwd = " ".join(item[0:2]).lower()
 
             if "nprints" in kwd:
@@ -769,14 +768,14 @@ class EOSBoundary(object):
                 self.bcontrol["nprints"]["value"] = int(val)
 
             elif kwd == "input units":
-                val = items[2]
+                val = item[2]
                 choices = self.bcontrol[kwd]["choices"]
                 if val.upper() not in choices:
                     raise BoundaryError("Unrecognized input unit system.")
                 self.bcontrol[kwd]["value"] = val
 
             elif kwd == "output units":
-                val = items[2]
+                val = item[2]
                 choices = self.bcontrol[kwd]["choices"]
                 if val.upper() not in choices:
                     raise BoundaryError("Unrecognized output unit system.")
@@ -797,8 +796,8 @@ class EOSBoundary(object):
                 self.bcontrol[kwd]["value"] = sorted(val)
 
             elif kwd == "surface increments":
-                n_incr = int("".join(item[2:3]))
-                if n_incr <= 0:
+                val = int("".join(item[2:3]))
+                if val <= 0:
                     raise BoundaryError(
                         "Number of surface increments must be positive non-zero.")
                 self.bcontrol[kwd]["value"] = val
@@ -806,6 +805,13 @@ class EOSBoundary(object):
             elif kwd == "path increments":
                 val = int(item[2])
                 self.bcontrol[kwd]["value"] = val
+
+            elif kwd not in self.bcontrol:
+                kwd, val = kwd
+                try:
+                    self.user_control_options[kwd] = eval(val)
+                except (TypeError, ValueError):
+                    self.user_control_options[kwd] = val
 
             continue
 
@@ -861,11 +867,22 @@ class EOSBoundary(object):
         """Parse the eos legs block"""
         # parse parameters. If multiple declarations, use the last.
         # --- LEGS
-        for tok in self.legs:
-            vals = [float(x) for x in tok.split()]
+
+        if self.legs is None:
+            return
+
+        # @mswan, I am just making this up...
+        # the legs block of an eos simulation contains density/temperature
+        # pairs of the form:
+        #
+        #       rho tmpr
+        for item in self.legs:
+            item = item.strip().split()
+            vals = [float(x) for x in item]
             if len(vals) != 2:
                 raise BoundaryError(
-                    "unacceptable entry in legs:\n" + tok)
+                    "legs must be of form rho tmpr, got: {0}"
+                    .format(" ".join(item)))
             self.lcontrol.append(vals)
             continue
 
@@ -897,4 +914,16 @@ class EOSBoundary(object):
 
     def path_hugoniot(self):
         return self.bcontrol["path hugoniot"]["value"]
+
+    def rho_temp_pairs(self):
+        # @mswan
+        # is this correct?
+        return self.lcontrol
+
+    def get_leg_control_params(self):
+        return self.lcontrol
+
+    def get_boundary_control_params(self):
+        return self.bcontrol
+
 

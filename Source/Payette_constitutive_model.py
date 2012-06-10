@@ -469,7 +469,7 @@ class ConstitutiveModelPrototype(object):
         """
 
         # local variables
-        epsilon = 2.2e-16
+        epsilon = np.finfo(np.float).eps
         nzc = matdat.get_data("prescribed stress components")
         l_nzc = len(nzc)
         deps, j_sub = math.sqrt(epsilon), np.zeros((l_nzc, l_nzc))

@@ -34,6 +34,9 @@ import Source.runopts as ro
 
 np.set_printoptions(precision=4)
 
+ACCLIM = .0001 / 100.
+EPSILON = np.finfo(np.float).eps
+
 def eos_driver(the_model, **kwargs):
     """
     NAME
@@ -73,7 +76,7 @@ def eos_driver(the_model, **kwargs):
     path_increments = the_model.boundary.path_increments()
     path_isotherm = the_model.boundary.path_isotherm()
     path_hugoniot = the_model.boundary.path_hugoniot()
-    rho_temp_pairs = the_model.boundary.get_leg_control_params()
+    rho_temp_pairs = the_model.boundary.rho_temp_pairs()
     simdir = the_model.simdir
     simnam = the_model.name
 
@@ -131,13 +134,14 @@ def eos_driver(the_model, **kwargs):
             for temp in np.linspace(t_range[0], t_range[1], surf_incr):
                 idx += 1
                 if idx%int(surf_incr**2/float(nprints)) == 0:
-                    pu.log_message("Surface step {0}/{1}".format(idx,surf_incr**2))
+                    pu.log_message(
+                        "Surface step {0}/{1}".format(idx, surf_incr ** 2))
                 # convert to CGSEV from MKSK
                 tmprho = rho/1000.0
                 tmptemp = K2eV*temp
 
-                eos_model.evaluate_eos(simdat, matdat,
-                                       rho = tmprho, temp = tmptemp)
+                eos_model.evaluate_eos(
+                    simdat, matdat, rho=tmprho, temp=tmptemp)
 
                 # Write the headers if this is the first time through
                 if not DEJAVU:
@@ -653,7 +657,7 @@ def solid_driver(the_model, **kwargs):
                     dnom = max(np.max(np.abs(eps_int)), 0.)
                     dnom = dnom if dnom != 0. else 1.
                     rel_diff = max_diff / dnom
-                    if rel_diff > pu.ACCLIM:
+                    if rel_diff > ACCLIM:
                         msg = ("E differs from prdef excessively at end of step "
                                "{0} of leg {1} with a percent difference of {2:f}"
                                .format(n, lnum, rel_diff * 100.))
@@ -672,7 +676,7 @@ def solid_driver(the_model, **kwargs):
                     dnom = max(np.max(np.abs(F_int)), 0.)
                     dnom = dnom if dnom != 0. else 1.
                     rel_diff = max_diff / dnom
-                    if rel_diff > pu.ACCLIM:
+                    if rel_diff > ACCLIM:
                         msg = ("F differs from prdef excessively at end of "
                                "step {0:d} with relative diff {1:2f}%"
                                .format(n, rel_diff * 100.))
@@ -713,9 +717,9 @@ def solid_driver(the_model, **kwargs):
                                    "leg matches prescribed strain")
                 eps_tmp = matdat.get_data("strain")
                 max_diff = np.max(np.abs(eps_tmp - eps_end))
-                dnom = np.max(eps_end) if np.max(eps_end) >= pu.EPSILON else 1.
+                dnom = np.max(eps_end) if np.max(eps_end) >= EPSILON else 1.
                 rel_diff = max_diff / dnom
-                if rel_diff > pu.ACCLIM:
+                if rel_diff > ACCLIM:
                     msg = ("E differs from prdef excessively at end of "
                            "leg {0} with relative diff {1:2f}%"
                            .format(lnum, rel_diff * 100.))
@@ -731,9 +735,9 @@ def solid_driver(the_model, **kwargs):
                                    "deformation gradient")
                 F_tmp = matdat.get_data("deformation gradient")
                 max_diff = np.max(np.abs(F_tmp - F_end)) / np.max(np.abs(F_end))
-                dnom = np.max(F_end) if np.max(F_end) >= pu.EPSILON else 1.
+                dnom = np.max(F_end) if np.max(F_end) >= EPSILON else 1.
                 rel_diff = max_diff / dnom
-                if rel_diff > pu.ACCLIM:
+                if rel_diff > ACCLIM:
                     msg = ("F differs from prdef excessively at end of "
                            "leg {0:d} with relative diff {1:2f}%"
                            .format(lnum, rel_diff * 100.))

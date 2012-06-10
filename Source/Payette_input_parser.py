@@ -60,7 +60,7 @@ class InputParser(object):
         return
 
     def log_warning(self, msg):
-        print "WARNING: {0}".format(msg)
+        sys.stderr.write("WARNING: {0}\n".format(msg))
         self.input_warnings += 1
         return
 
