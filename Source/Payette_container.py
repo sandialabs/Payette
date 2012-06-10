@@ -520,6 +520,7 @@ class Payette:
             retcode = driver(self, restart=self.is_restart)
         except PayetteError as e:
             if ro.DEBUG:
+                self.finish()
                 raise
 
             retcode = 66

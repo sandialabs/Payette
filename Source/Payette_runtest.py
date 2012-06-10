@@ -50,7 +50,7 @@ import Source.Payette_utils as pu
 import Source.Payette_notify as pn
 from Source.Payette_test import find_tests
 import Toolset.postprocess as pp
-from Source.Payette_utils import PayetteError as PayetteError
+from Source.Payette_container import PayetteError as PayetteError
 
 # --- module level variables
 CWD = os.getcwd()
@@ -581,13 +581,13 @@ def _run_test(args):
     py_module = _get_test_module(test_py_file)
     test = py_module.Test()
     starttime = time.time()
-#    try:
-    retcode = test.runTest()
-#    except PayetteError as error:
-#        retcode = test.failcode
-#        pu.log_warning(error.message)
-#    except:
-#        pu.log_warning("got an exception!")
+    try:
+        retcode = test.runTest()
+    except PayetteError as error:
+        retcode = 66
+        pu.log_warning(error.message)
+    except:
+        pu.log_warning("got an exception!")
 
     if opts.postprocess and os.path.isfile(test.outfile):
         pp.postprocess(test.outfile, verbosity=0)
