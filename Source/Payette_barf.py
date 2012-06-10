@@ -169,20 +169,19 @@ class PayetteBarf(object):
 
         if len(strain_rate) != 6:
             pu.report_and_raise_error(
-                "len(strain_rate) = {0} != 6".format(len(strain_rate)),
-                tracebacklimit=0)
+                "len(strain_rate) = {0} != 6".format(len(strain_rate)))
         else:
             self.barf["strain rate"] = np.array(strain_rate)
 
         if len(stress) != 6:
             pu.report_and_raise_error(
-                "len(stress) = {0} != 6".format(len(stress)), tracebacklimit=0)
+                "len(stress) = {0} != 6".format(len(stress)))
         else:
             self.barf["stress"] = np.array(stress)
 
         if not dtime:
             pu.report_and_raise_error(
-                "invalid timestep {0}".format(dtime), tracebacklimit=0)
+                "invalid timestep {0}".format(dtime))
         else:
             self.barf["time step"] = dtime
 

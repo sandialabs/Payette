@@ -46,7 +46,6 @@ import Source.Payette_permutate as pp
 import Source.Payette_input_parser as pip
 import Source.runopts as ro
 
-
 def run_payette(argv, disp=0):
     """Main function for running a Payette job.
     Read the user inputs from argv, parse options, read user input, and run
@@ -133,10 +132,10 @@ def run_payette(argv, disp=0):
         default=ro.SQA,
         help="Run additional verification/sqa checks [default: %default]")
     parser.add_option(
-        "-d", "--debug",
+        "-d", "--dbg", "--debug",
         dest="debug",
         action="store_true",
-        default=ro.DBG,
+        default=ro.DEBUG,
         help="Global debug flag [default: %default]")
     parser.add_option(
         "-s", "--strict",
@@ -219,6 +218,12 @@ def run_payette(argv, disp=0):
         choices=["warn", "error", "all"],
         default=ro.WARNING,
         help="warning level [default: %default]")
+    parser.add_option(
+        "--test-error",
+        dest="testerror",
+        action="store_true",
+        default=ro.TESTERROR,
+        help="test raising error [default: %default]")
 
     # parse the command line arguments
     (opts, args) = parser.parse_args(argv)
@@ -389,13 +394,14 @@ def run_payette(argv, disp=0):
         user_input_sets = pip.parse_user_input(input_lines, opts.cchar)
         if not user_input_sets:
             pu.report_and_raise_error(
-                "user input not found in {0:s}".format(", ".join(foundf)),
-                tracebacklimit=0)
+                "user input not found in {0:s}".format(", ".join(foundf)))
 
     # ----------------------------------------------------- end: get user input
 
     # we have a list of user input.  now create a generator to send to _run_job
-    job_inp = ((item, opts, restart, timing) for item in user_input_sets)
+    nsyms = len(user_input_sets) - 1
+    job_inp = ((item, opts, restart, timing, idx==nsyms)
+               for idx, item in enumerate(user_input_sets))
 
     # number of processors
     nproc = min(min(mp.cpu_count(), opts.nproc), len(user_input_sets))
@@ -436,7 +442,7 @@ def _run_job(args):
     """ run each individual job """
 
     # pass passed args to local arguments
-    user_input, opts, restart, timing = args
+    user_input, opts, restart, timing, last = args
 
     if timing:
         tim0 = time.time()
@@ -469,7 +475,10 @@ def _run_job(args):
         retcode = solve
 
     if retcode != 0:
-        sys.stderr.write("ERROR: simulation failed")
+        sys.stderr.write("ERROR: simulation failed\n")
+
+    if not last:
+        sys.stderr.write("\n")
 
     if timing:
         tim2 = time.time()
@@ -515,8 +524,7 @@ if __name__ == "__main__":
 
     if not os.path.isfile(pc.PC_MTLS_FILE):
         pu.report_and_raise_error(
-            "buildPayette must be executed before tests can be run",
-            tracebacklimit=0)
+            "buildPayette must be executed before tests can be run")
 
     ARGV = sys.argv[1:]
 

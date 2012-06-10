@@ -29,10 +29,10 @@ import Payette_utils as pu
 class Boundary(object):
     def __init__(self, boundary=None, legs=None):
         if boundary is None:
-            pu.report_and_raise_error("boundary block not found", tracebacklimit=0)
+            pu.report_and_raise_error("boundary block not found")
 
         if legs is None:
-            pu.report_and_raise_error("legs block not found", tracebacklimit=0)
+            pu.report_and_raise_error("legs block not found")
 
         self.boundary = boundary
         self.legs = legs
@@ -116,8 +116,7 @@ class Boundary(object):
                 kwd, val = item.split()
             except ValueError:
                 pu.report_and_raise_error(
-                    "boundary control items must be key = val pairs",
-                    tracebacklimit=0)
+                    "boundary control items must be key = val pairs")
 
             if kwd.lower() not in self.bcontrol:
                 try:
@@ -133,8 +132,7 @@ class Boundary(object):
                     if val not in choices:
                         pu.report_and_raise_error(
                             "{0} must be one of {1}, got {2}"
-                            .format(kwd, ", ".join(choices), val),
-                            tracebacklimit=0)
+                            .format(kwd, ", ".join(choices), val))
                 else:
                     val = kwd_type(val)
                     val_min = self.bcontrol[kwd].get("min")
@@ -243,8 +241,7 @@ class Boundary(object):
                            self.leg_table_data["col_idxs"][1:]]
                 except ValueError:
                     pu.report_and_raise_error(
-                        "syntax error in leg {0}".format(leg[0]),
-                        tracebacklimit=0)
+                        "syntax error in leg {0}".format(leg[0]))
 
             else:
 
@@ -255,8 +252,7 @@ class Boundary(object):
                 if len(leg) < 5:
                     pu.report_and_raise_error(
                         "leg {0} input must be of form:".format(leg[0]) +
-                        "\n       leg number, time, steps, type, c[ij]",
-                        tracebacklimit=0)
+                        "\n       leg number, time, steps, type, c[ij]")
 
                 # get the leg number, time, steps
                 leg_no = int(leg[0])
@@ -264,8 +260,7 @@ class Boundary(object):
                 leg_steps = int(self.stepstar * float(leg[2]))
                 if ileg != 0 and leg_steps == 0:
                     pu.report_and_raise_error(
-                        "leg number {0} has no steps".format(leg_no),
-                        tracebacklimit=0)
+                        "leg number {0} has no steps".format(leg_no))
 
                 # get the control type
                 control = leg[3].strip()
@@ -276,8 +271,7 @@ class Boundary(object):
                     cij = [float(eval(y)) for y in leg[4:]]
                 except ValueError:
                     pu.report_and_raise_error(
-                        "syntax error in leg {0}".format(leg[0]),
-                        tracebacklimit=0)
+                        "syntax error in leg {0}".format(leg[0]))
 
             # control should be a group of letters describing what type of
             # control type the leg is. valid options are:
@@ -293,7 +287,7 @@ class Boundary(object):
                 msg = ("leg control parameters can only be one of "
                        "[{0}] got {1} for leg number {2:d}"
                        .format(allwd_cntrl, control, leg_no))
-                pu.report_and_raise_error(msg, tracebacklimit=0)
+                pu.report_and_raise_error(msg)
 
             lcntrl = [int(x) for x in control]
 
@@ -307,8 +301,7 @@ class Boundary(object):
             if len(lcntrl) != len(cij):
                 pu.report_and_raise_error(
                     "length of leg control != number of control "
-                    "items in leg {0:d}".format(leg_no),
-                    tracebacklimit=0)
+                    "items in leg {0:d}".format(leg_no))
 
             # separate out electric fields from deformations
             ef, hold, efcntrl = [], [], []
@@ -330,7 +323,7 @@ class Boundary(object):
             if len(lcntrl) != len(cij):
                 msg = ("final length of leg control != number of "
                        "control items in leg {0:d}".format(leg_no))
-                pu.report_and_raise_error(msg, tracebacklimit=0)
+                pu.report_and_raise_error(msg)
 
             # make sure that the lcntrl is consistent with the limitations set
             # by Payette
@@ -346,13 +339,13 @@ class Boundary(object):
                            "are allowed with deformation gradient "
                            "control in leg {0:d}, got {1}"
                            .format(leg_no, control))
-                    pu.report_and_raise_error(msg, tracebacklimit=0)
+                    pu.report_and_raise_error(msg)
 
                 # user must specify all 9 components
                 elif len(cij) != 9:
                     msg = ("all 9 components of deformation gradient "
                            "must be specified for leg {0:d}".format(leg_no))
-                    pu.report_and_raise_error(msg, tracebacklimit=0)
+                    pu.report_and_raise_error(msg)
 
                 else:
                     # check for valid deformation
@@ -364,7 +357,7 @@ class Boundary(object):
                         msg = ("inadmissible deformation gradient in leg "
                                "{0:d} gave a Jacobian of {1:f}"
                                .format(leg_no, jac))
-                        pu.report_and_raise_error(msg, tracebacklimit=0)
+                        pu.report_and_raise_error(msg)
 
                     # convert defgrad to strain E with associated rotation
                     # given by axis of rotation x and angle of rotation theta
@@ -374,7 +367,7 @@ class Boundary(object):
                         msg = ("rotation encountered in leg {0}. "
                                .format(leg_no) +
                                "rotations are not yet supported")
-                        pu.report_and_raise_error(msg, tracebacklimit=0)
+                        pu.report_and_raise_error(msg)
 
             elif 8 in reduced_lcntrl:
                 # displacement control check
@@ -385,13 +378,13 @@ class Boundary(object):
                     msg = ("only components of displacment are allowed "
                            "with displacment control in leg {0:d}, got {1}"
                            .format(leg_no, control))
-                    pu.report_and_raise_error(msg, tracebacklimit=0)
+                    pu.report_and_raise_error(msg)
 
                 # must specify all components
                 elif len(cij) != 3:
                     msg = ("all 3 components of displacement must "
                            "be specified for leg {0:d}".format(leg_no))
-                    pu.report_and_raise_error(msg, tracebacklimit=0)
+                    pu.report_and_raise_error(msg)
 
                 # convert displacments to strains
                 # Seth-Hill generalized strain is defined
@@ -417,8 +410,7 @@ class Boundary(object):
                 # only one strain value given -> volumetric strain
                 ev = cij[0] * self.efac
                 if kappa * ev + 1. < 0.:
-                    pu.report_and_raise_error("1 + kappa*ev must be positive",
-                                              tracebacklimit=0)
+                    pu.report_and_raise_error("1 + kappa*ev must be positive")
 
                 if kappa == 0.:
                     eij = ev / 3.
@@ -444,8 +436,7 @@ class Boundary(object):
 
                     if kappa * cij[idx] + 1. < 0.:
                         pu.report_and_raise_error(
-                            "1 + kappa*c[{0:d}] must be positive".format(idx),
-                            tracebacklimit=0)
+                            "1 + kappa*c[{0:d}] must be positive".format(idx))
 
                 elif cntrl_type == 4:
                     # adjust stress
@@ -500,7 +491,7 @@ class Boundary(object):
             if time_f < time_0:
                 msg = ("time must be monotonic from {0:d} to {1:d}"
                        .format(leg[0] - 1, leg[0]))
-                pu.report_and_raise_error(msg, tracebacklimit=0)
+                pu.report_and_raise_error(msg)
 
             time_0 = time_f
             continue
@@ -580,7 +571,7 @@ class Boundary(object):
         if t_typ not in self.allowed_time_specifier:
             msg = ("requested bad time type {0} in {1}, expected one of [{2}]"
                    .format(t_typ, leg, ", ".join(self.allowed_time_specifier)))
-            pu.report_and_raise_error(msg, tracebacklimit=0)
+            pu.report_and_raise_error(msg)
 
         col_spec = [x for x in leg[2:] if "from" in x or "column" in x]
 
@@ -589,8 +580,7 @@ class Boundary(object):
             use_typ = " ".join(leg[2:])
             if use_typ not in self.allowed_legs:
                 pu.report_and_raise_error(
-                    "requested bad control type {0}".format(use_typ),
-                    tracebacklimit=0)
+                    "requested bad control type {0}".format(use_typ))
 
             col_idxs = range(self.allowed_legs[use_typ]["len"] + 1)
 
@@ -601,14 +591,13 @@ class Boundary(object):
             # using <dt, time> <deftyp> columns ...
             msg = ("expected {0} <deftyp> from columns ..., got {1}"
                    .format(t_typ, leg))
-            pu.report_and_raise_error(msg, tracebacklimit=0)
+            pu.report_and_raise_error(msg)
 
         else:
             use_typ = " ".join(leg[2:leg.index(col_spec[0])])
             if use_typ not in self.allowed_legs:
                 pu.report_and_raise_error(
-                    "requested bad control type {0}".format(use_typ),
-                    tracebacklimit=0)
+                    "requested bad control type {0}".format(use_typ))
 
             # now we need to find the column indexes
             col_idxs = " ".join(leg[leg.index(col_spec[-1]) + 1:])
@@ -629,8 +618,7 @@ class Boundary(object):
                     # of form: from columns 1:6, 7 -> not allowed
                     pu.report_and_raise_error(
                         "bad column range specifier in: '{0}'"
-                        .format(" ".join(leg)),
-                        tracebacklimit=0)
+                        .format(" ".join(leg)))
 
                 elif len(tmpl) == 4:
                     # of form: from columns 1, 2:7
@@ -639,16 +627,14 @@ class Boundary(object):
             if col_idxs.count(":") > 1:
                 # only one range allowed
                 pu.report_and_raise_error(
-                    "only one column range supported".format(use_typ),
-                    tracebacklimit=0)
+                    "only one column range supported".format(use_typ))
 
             col_idxs = col_idxs.split()
             if len(col_idxs) == 1 and not [x for x in col_idxs if ":" in x]:
                 # of form: from columns 8 -> not allowed
                 pu.report_and_raise_error(
                     "not enough columns specified in: '{0}'"
-                    .format(" ".join(leg)),
-                    tracebacklimit=0)
+                    .format(" ".join(leg)))
 
             elif len(col_idxs) == 1 and [x for x in col_idxs if ":" in x]:
                 # of form: from columns 2:8
@@ -661,8 +647,7 @@ class Boundary(object):
                     # of form: from columns 2:8, 1 -> not allowed
                     pu.report_and_raise_error(
                         "bad column range specifier in: '{0}'"
-                        .format(" ".join(leg)),
-                        tracebacklimit=0)
+                        .format(" ".join(leg)))
                 else:
                     # of form: from columns 1, 2:8
                     tmp = col_idxs[1].split(":")
@@ -674,8 +659,7 @@ class Boundary(object):
 
             # we have now parsed the first line, assemble leg_ing
             if len(col_idxs) > self.allowed_legs[use_typ]["len"] + 1:
-                pu.report_and_raise_error("too many columns specified",
-                                          tracebacklimit=0)
+                pu.report_and_raise_error("too many columns specified")
 
         # we have exhausted all ways of specifying columns that I can think
         # of, save the info and return
@@ -717,12 +701,10 @@ class EOSBoundary(object):
 
     def __init__(self, boundary=None, legs=None):
         if boundary is None:
-            pu.report_and_raise_error("boundary block not found",
-                                      tracebacklimit=0)
+            pu.report_and_raise_error("boundary block not found")
 
         if legs is None:
-            pu.report_and_raise_error("legs block not found",
-                                      tracebacklimit=0)
+            pu.report_and_raise_error("legs block not found")
 
         self.boundary = boundary
         self.legs = legs
@@ -774,40 +756,35 @@ class EOSBoundary(object):
                 val = items[2]
                 choices = self.bcontrol[kwd]["choices"]
                 if val.upper() not in choices:
-                    pu.report_and_raise_error("Unrecognized input unit system.",
-                                              tracebacklimit=0)
+                    pu.report_and_raise_error("Unrecognized input unit system.")
                 self.bcontrol[kwd]["value"] = val
 
             elif kwd == "output units":
                 val = items[2]
                 choices = self.bcontrol[kwd]["choices"]
                 if val.upper() not in choices:
-                    pu.report_and_raise_error("Unrecognized output unit system.",
-                                              tracebacklimit=0)
+                    pu.report_and_raise_error("Unrecognized output unit system.")
                 self.bcontrol[kwd]["value"] = val
 
             elif kwd == "density range":
                 val = [float(x) for x in item[2:4]]
                 if len(val) != 2 or val[0] == val[1]:
                     pu.report_and_raise_error(
-                        "Unacceptable density range in boundary block.",
-                        tracebacklimit=0)
+                        "Unacceptable density range in boundary block.")
                 self.bcontrol[kwd]["value"] = sorted(val)
 
             elif kwd == "temperature range":
                 val = [float(x) for x in item[2:4]]
                 if len(val) != 2 or val[0] == val[1]:
                     pu.report_and_raise_error(
-                        "Unacceptable temperature range in boundary block.",
-                        tracebacklimit=0)
+                        "Unacceptable temperature range in boundary block.")
                 self.bcontrol[kwd]["value"] = sorted(val)
 
             elif kwd == "surface increments":
                 n_incr = int("".join(item[2:3]))
                 if n_incr <= 0:
                     pu.report_and_raise_error(
-                        "Number of surface increments must be positive non-zero.",
-                        tracebacklimit=0)
+                        "Number of surface increments must be positive non-zero.")
                 self.bcontrol[kwd]["value"] = val
 
             elif kwd == "path increments":
@@ -821,13 +798,13 @@ class EOSBoundary(object):
             msg = ("Missing 'input units XYZ' keyword in boundary block.\n"
                    "Please include that line with one of the following\n"
                    "unit systems:\n" + "\n".join(self.allowed_unit_systems))
-            pu.report_and_raise_error(msg, tracebacklimit=0)
+            pu.report_and_raise_error(msg)
 
         if self.bcontrol["output units"] is None:
             msg = ("Missing 'output units XYZ' keyword in boundary block.\n"
                    "Please include that line with one of the following\n"
                    "unit systems:\n" + "\n".join(self.allowed_unit_systems))
-            pu.report_and_raise_error(msg, tracebacklimit=0)
+            pu.report_and_raise_error(msg)
 
         # the following depend on the density and temperature ranges that were
         # previously read and parsed.
@@ -847,8 +824,7 @@ class EOSBoundary(object):
                 bad_rho = not rho_0 <= isotherm[0] <= rho_f
                 bad_temp = not tmpr_0 <= isotherm[1] <= tmpr_f
                 if len(isotherm) != 2 or bad_rho or bad_temp:
-                    pu.report_and_raise_error("Bad initial state for isotherm.",
-                                              tracebacklimit=0)
+                    pu.report_and_raise_error("Bad initial state for isotherm.")
                 self.bcontrol[kwd]["value"] = isotherm
 
 
@@ -858,8 +834,7 @@ class EOSBoundary(object):
                 bad_rho = not rho_0 <= hugoniot[0] <= rho_f
                 bad_temp = not tmpr_0 <= hugoniot[1] <= tmpr_f
                 if len(hugoniot) != 2 or bad_rho or bad_temp:
-                    report_and_raise_error("Bad initial state for hugoniot.",
-                                           tracebacklimit=0)
+                    report_and_raise_error("Bad initial state for hugoniot.")
                 self.bcontrol[kwd]["value"] = hugoniot
 
             continue
@@ -874,7 +849,7 @@ class EOSBoundary(object):
             vals = [float(x) for x in tok.split()]
             if len(vals) != 2:
                 pu.report_and_raise_error(
-                    "unacceptable entry in legs:\n" + tok, tracebacklimit=0)
+                    "unacceptable entry in legs:\n" + tok)
             self.lcontrol.append(vals)
             continue
 

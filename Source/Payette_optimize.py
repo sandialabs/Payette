@@ -83,7 +83,7 @@ class Optimize(object):
             # check user input for required blocks
             if not job_inp.has_block("material"):
                 pu.report_and_raise_error(
-                    "material block not found in input file", tracebacklimit=0)
+                    "material block not found in input file")
 
         # check the optimization variables
         self.check_params()
@@ -149,8 +149,7 @@ class Optimize(object):
 
                 idir += 1
                 if idir > 100:
-                    pu.report_and_raise_error(
-                        "max number of dirs", tracebacklimit=0)
+                    pu.report_and_raise_error("max number of dirs")
             os.rename(base_dir, copy_dir)
 
         if self.data["verbosity"]:
@@ -337,8 +336,7 @@ class Optimize(object):
                         "invalid method {0}".format(item[1].lower()))
 
         if pu.error_count():
-            pu.report_and_raise_error(
-                "stopping due to previous errors", tracebacklimit=0)
+            pu.report_and_raise_error("stopping due to previous errors")
 
         # now get the rest
         for item in opt_block:
@@ -484,8 +482,7 @@ class Optimize(object):
                 pu.report_error("cannot fix and optimize {0}".format(key))
 
         if pu.error_count():
-            pu.report_and_raise_error("stopping due to previous errors",
-                                      tracebacklimit=0)
+            pu.report_and_raise_error("stopping due to previous errors")
 
         if self.shearfit:
             # for shearfit, we optimize a1 - a4 by minimizing errror in rootj2
@@ -499,8 +496,7 @@ class Optimize(object):
                 continue
 
             if pu.error_count():
-                pu.report_and_raise_error(
-                    "stopping due to previous errors", tracebacklimit=0)
+                pu.report_and_raise_error("stopping due to previous errors")
 
             head = list(set([x.lower() for x in sorted(pu.get_header(gold_f))]))
             if head != ["i1", "rootj2"]:
@@ -512,7 +508,7 @@ class Optimize(object):
                 if sigcnt < 3:
                     pu.report_and_raise_error(
                         "{0} does not contain sufficient information to "
-                        "compute I1 and ROOTJ2".format(gold_f), tracebacklimit=0)
+                        "compute I1 and ROOTJ2".format(gold_f))
 
                 # user gave file with sig11, sig22, ..., it needs to be
                 # converted to i1 and rootj2
@@ -579,8 +575,7 @@ class Optimize(object):
                 .format(", ".join(not_in)))
 
         if pu.error_count():
-            pu.report_and_raise_error("exiting due to previous errors",
-                                      tracebacklimit=0)
+            pu.report_and_raise_error("exiting due to previous errors")
 
         return
 
@@ -609,7 +604,7 @@ class Optimize(object):
         if extraction:
             pu.report_and_raise_error(
                 "error extracting minimization variables from {0}"
-                .format(self.data["gold file"]), tracebacklimit=0)
+                .format(self.data["gold file"]))
 
         return
 
@@ -783,8 +778,7 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
             continue
 
         if pu.error_count():
-            pu.report_and_raise_error(
-                "ERROR: Resolve previous errors", tracebacklimit=0)
+            pu.report_and_raise_error("ERROR: Resolve previous errors")
 
         cons = lcons + ucons
 
@@ -805,7 +799,7 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
 
     else:
         pu.report_and_raise_error(
-            "ERROR: Unrecognized method {0}".format(method), tracebacklimit=0)
+            "ERROR: Unrecognized method {0}".format(method))
 
     return xopt * FAC
 
@@ -894,13 +888,12 @@ def func(xcall, xnams, data, base_dir, xgold):
         retcode = solve
 
     if retcode != 0:
-        pu.report_and_raise_error("simulation failed", tracebacklimit=0)
+        pu.report_and_raise_error("simulation failed")
 
     # extract minimization variables from the simulation output
     out_f = os.path.join(job_dir, job + ".out")
     if not os.path.isfile(out_f):
-        pu.report_and_raise_error("out file {0} not created".format(out_f),
-                                  tracebacklimit=0)
+        pu.report_and_raise_error("out file {0} not created".format(out_f))
 
     exargs = [out_f, "--silent", "--xout"]
     if data["minimize"]["abscissa"] is not None:
@@ -917,7 +910,7 @@ def func(xcall, xnams, data, base_dir, xgold):
         errors = pu.compare_file_cols(xgold, xout)
 
     if errors[0]:
-       pu.report_and_raise_error("Resolve previous errors", tracebacklimit=0)
+       pu.report_and_raise_error("Resolve previous errors")
 
     error = math.sqrt(np.sum(errors[1] ** 2) / float(len(errors[1])))
     error = np.amax(np.abs(errors[1]))
@@ -1063,7 +1056,7 @@ def get_rtj2_vs_i1(fpath):
     if sig11 is None or sig22 is None or sig33 is None:
         pu.report_and_raise_error(
             "insufficient information in {0} to compute I1 and ROOTJ2"
-            .format(gold_f), tracebacklimit=0)
+            .format(gold_f))
 
     if sig12 is None:
         sig12 = np.zeros(len(sig11))

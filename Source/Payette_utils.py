@@ -40,8 +40,7 @@ import Source.runopts as ro
 if not os.path.isfile(os.path.join(
         os.path.dirname(os.path.realpath(__file__)),"../Payette_config.py")):
     report_and_raise_error(
-        "Payette_config.py must be written by configure.py",
-        tracebacklimit=0)
+        "Payette_config.py must be written by configure.py")
 
 
 SIMLOG = None
@@ -61,27 +60,6 @@ PURPOSE
 AUTHORS
    Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
 '''
-
-
-class PayetteError(Exception):
-    def __init__(self, msg, tracebacklimit=None):
-
-        if tracebacklimit is not None:
-            sys.tracebacklimit = tracebacklimit
-
-        self.message = msg
-
-        l = 79 # should be odd number
-        st, stsp = '*'*l + '\n', '*' + ' '*(l-2) + '*\n'
-        psf = 'Payette simulation failed'
-        ll = (l - len(psf) - 2)/2
-        psa = '*' + ' '*ll + psf + ' '*ll + '*\n'
-        head = '\n\n' + st + stsp + psa + stsp + st
-
-        Exception.__init__(self, head + self.message)
-
-    def __repr__(self):
-        return "PayetteError"
 
 
 def whoami():
@@ -139,14 +117,10 @@ def report_error(message, count=True):
     return
 def report_and_raise_error(message, tracebacklimit=None, caller=None):
     """Report and raise an error"""
-    __count_error()
-
     if caller is None:
         caller = who_is_calling()
-
-    message = ("ERROR: {0} [reported by: {1}]"
-               .format(" ".join(x for x in message.split() if x), caller))
-    raise PayetteError(message, tracebacklimit)
+    from Source.Payette_container import PayetteError as PayetteError
+    raise PayetteError(message, caller=caller)
 
 
 # the following methods define warning logging, counting
@@ -431,16 +405,14 @@ def compute_rms_closest_point_residual(set1x, set1y, set2x, set2y):
     lset1x, lset1y, lset2x, lset2y = [len(x)
                                       for x in [set1x, set1y, set2x, set2y]]
     if lset1x != lset1y:
-        report_and_raise_error("len(set1x) != len(set1y)", tracebacklimit=0)
+        report_and_raise_error("len(set1x) != len(set1y)")
     if lset2x != lset2y:
-        report_and_raise_error("len(set2x) != len(set2y)", tracebacklimit=0)
+        report_and_raise_error("len(set2x) != len(set2y)")
 
     if lset1x < 2:
-        report_and_raise_error("set1 must have at least two points.",
-                               tracebacklimit=0)
+        report_and_raise_error("set1 must have at least two points.")
     if lset2x < 1:
-        report_and_raise_error("set2 must have at least one point.",
-                               tracebacklimit=0)
+        report_and_raise_error("set2 must have at least one point.")
 
     dx = max(set1x)-min(set1x)
     dy = max(set1y)-min(set1y)
@@ -536,10 +508,9 @@ def compute_rms(set1x, set1y, set2x, set2y, step=1):
     lset1x, lset1y, lset2x, lset2y = [len(x)
                                       for x in [set1x, set1y, set2x, set2y]]
     if lset1x != lset1y:
-        report_and_raise_error("len(set1x) != len(set1y)",
-                               tracebacklimit=0)
+        report_and_raise_error("len(set1x) != len(set1y)")
     if lset2x != lset2y:
-        report_and_raise_error("len(set2x) != len(set2y)", tracebacklimit=0)
+        report_and_raise_error("len(set2x) != len(set2y)")
 
     # Use a shortcut if the lengths of the x and y data sets are the same.
     # Also, before using the shortcut, do a quick check by computing the RMS
@@ -818,8 +789,12 @@ def get_constitutive_model_object(model_name):
 
 def get_installed_models():
     """ return a list of all installed models """
-    with open(pc.PC_MTLS_FILE, "rb") as fobj:
-        constitutive_models = pickle.load(fobj)
+    try:
+        with open(pc.PC_MTLS_FILE, "rb") as fobj:
+            constitutive_models = pickle.load(fobj)
+    except IOError:
+        report_and_raise_error("buildPayette must be executed to build the "
+                               "installed materials database file")
     return constitutive_models
 
 

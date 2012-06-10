@@ -179,7 +179,7 @@ def eos_driver(the_model, **kwargs):
 
         if not rho_range[0] <= isotherm[0] <= rho_range[1]:
             pu.report_and_raise_error(
-                "initial isotherm density not within range", tracebacklimit=0)
+                "initial isotherm density not within range")
 
         out_fnam = os.path.join(simdir, simnam + ".isotherm")
         out_fobj = open(out_fnam, "w")
@@ -242,11 +242,10 @@ def eos_driver(the_model, **kwargs):
 
         if not rho_range[0] <= hugoniot[0] <= rho_range[1]:
             report_and_raise_error(
-                "initial hugoniot density not within range", tracebacklimit=0)
+                "initial hugoniot density not within range")
         if not t_range[0] <= hugoniot[1] <= t_range[1]:
             report_and_raise_error(
-                "initial hugoniot temperature not within range",
-                tracebacklimit=0)
+                "initial hugoniot temperature not within range")
 
         out_fnam = os.path.join(simdir, simnam + ".hugoniot")
         out_fobj = open(out_fnam, "w")
@@ -379,7 +378,7 @@ def solid_driver(the_model, **kwargs):
     # --- simulation data
     simdat = the_model.simulation_data()
 
-    if ro.DBG:
+    if ro.DEBUG:
         pdb = __import__('pdb')
 
     # --- options
@@ -749,4 +748,6 @@ def solid_driver(the_model, **kwargs):
         continue # continue to next leg
     # ----------------------------------------------------- end{processing leg}
 
+    if ro.TESTERROR:
+        pu.report_and_raise_error("Testing error raising")
     return 0

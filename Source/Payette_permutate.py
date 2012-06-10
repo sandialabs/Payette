@@ -126,8 +126,7 @@ class Permutate(object):
 
                 idir += 1
                 if idir > 100:
-                    pu.report_and_raise_error("max number of dirs",
-                                              tracebacklimit=0)
+                    pu.report_and_raise_error("max number of dirs")
             os.rename(base_dir, copy_dir)
 
         if self.data["verbosity"]:
@@ -324,8 +323,7 @@ class Permutate(object):
             continue
 
         if pu.error_count():
-            pu.report_and_raise_error("quiting due to previous errors",
-                                      tracebacklimit=0)
+            pu.report_and_raise_error("quiting due to previous errors")
 
         # check for conflicting options
         for item in self.conflicting_options:
@@ -333,7 +331,7 @@ class Permutate(object):
             if len(conflict) - 1:
                 pu.report_and_raise_error(
                     "conflicting options \"{0}\" ".format(", ".join(conflict)) +
-                    "given in permuation block", tracebacklimit=0)
+                    "given in permuation block")
 
         if self.method is None:
             self.method = "zip"
@@ -345,8 +343,7 @@ class Permutate(object):
             if len(set([len(x) for x in param_ranges])) - 1:
                 pu.report_and_raise_error(
                     "number of permutations must be the same for "
-                    "all permutated parameters when using method: [zip]",
-                    tracebacklimit=0)
+                    "all permutated parameters when using method: [zip]")
             param_ranges = zip(*param_ranges)
 
         nruns = len(param_ranges)
@@ -397,8 +394,7 @@ class Permutate(object):
                 .format(", ".join(not_in)))
 
         if pu.error_count():
-            pu.report_and_raise_error("exiting due to previous errors",
-                                      tracebacklimit=0)
+            pu.report_and_raise_error("exiting due to previous errors")
 
         the_model.finish()
 

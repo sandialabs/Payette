@@ -883,8 +883,7 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
                 pu.report_error("test directory {0} not found".format(test_dir))
             continue
         if errors:
-            pu.report_and_raise_error("stopping due to previous errors",
-                                      tracebacklimit=0)
+            pu.report_and_raise_error("stopping due to previous errors")
     else:
         test_dirs = [pc.PC_TESTS]
 

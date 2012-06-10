@@ -40,6 +40,24 @@ from Source.Payette_material import Material
 from Source.Payette_data_container import DataContainer
 
 
+class PayetteError(Exception):
+    def __init__(self, message, caller=None):
+
+        if caller is None:
+            caller = who_is_calling()
+
+        if not ro.DEBUG:
+            sys.tracebacklimit = 0
+        else:
+            sys.tracebacklimit = 10
+
+        self.message = (
+            "ERROR: {0} [reported by: {1}]"
+            .format(" ".join(x for x in message.split() if x), caller))
+
+        Exception.__init__(self, self.message)
+
+
 class Payette:
     """
     CLASS NAME
@@ -76,9 +94,8 @@ class Payette:
         input_blocks = self.user_input.input_blocks()
         for block in req_blocks:
             if block not in input_blocks:
-                pu.report_and_raise_error(
-                    "{0} block not found in input file".format(block),
-                    tracebacklimit=0)
+                raise PayetteError(
+                    "{0} block not found in input file".format(block))
 
         tmpnam = os.path.join(self.simdir, self.name + ".out")
         if delete and os.path.isfile(tmpnam):
@@ -92,9 +109,8 @@ class Payette:
                 if os.path.isfile(tmpnam):
                     i += 1
                     if i > 100:
-                        pu.report_and_raise_error(
-                            "max number of output files exceeded",
-                            tracebacklimit=0)
+                        raise PayetteError(
+                            "max number of output files exceeded")
 
                     else:
                         continue
@@ -120,7 +136,7 @@ class Payette:
         # set up the material
         material = self.user_input.get_block("material")
         if material is None:
-            pu.report_and_raise_error(
+            raise PayetteError(
                 "boundary and legs block not found for {0}"
                 .format(self.simname))
         self.material = _parse_mtl_block(material)
@@ -130,7 +146,7 @@ class Payette:
         boundary = self.user_input.get_block("boundary")
         legs = self.user_input.get_block("legs")
         if boundary is None or legs is None:
-            pu.report_and_raise_error(
+            raise PayetteError(
                 "boundary and legs block not found for {0}"
                 .format(self.simname))
         if not self.material.eos_model:
@@ -495,13 +511,33 @@ class Payette:
     def run_job(self, *args, **kwargs):
         """run the job"""
         if not self.material.eos_model:
-            retcode = pd.solid_driver(self, restart=self.is_restart)
+            driver = pd.solid_driver
 
         else:
-            retcode = pd.eos_driver(self)
+            driver = pd.eos_driver
 
-        pu.log_message(
-            "{0} Payette simulation ran to completion\n\n".format(self.name))
+        try:
+            retcode = driver(self, restart=self.is_restart)
+        except PayetteError as e:
+            if ro.DEBUG:
+                raise
+
+            retcode = 66
+            l = 79 # should be odd number
+            st, stsp = '*'*l + '\n', '*' + ' '*(l-2) + '*\n'
+            psf = 'Payette simulation failed'
+            ll = (l - len(psf) - 2)/2
+            psa = '*' + ' '*ll + psf + ' '*ll + '*\n'
+            head = st + stsp + psa + stsp + st
+            message = (
+                head +
+                "Payette simulation {0} failed with the following message: "
+                .format(self.name) + "\n" + e.message + "\n")
+            sys.stderr.write(message)
+
+        if retcode == 0:
+            pu.log_message("{0} Payette simulation ran to completion"
+                           .format(self.name))
 
         if not ro.DISP:
             return retcode
@@ -589,8 +625,7 @@ def _parse_mtl_block(material_inp):
 
     if model_name is None:
         # constitutive model not given, exit
-        pu.report_and_raise_error("no constitutive model in material block",
-                                  tracebacklimit=0)
+        raise PayetteError("no constitutive model in material block")
 
     # constitutive model given, now see if it is available, here we replace
     # spaces with _ in all model names and convert to lower case
@@ -684,7 +719,7 @@ def _parse_output_block(output, avail_keys):
         continue
 
     if out_format not in supported_formats:
-        pu.report_and_raise_error(
+        raise PayetteError(
             "output format {0} not supported, choose from {1}"
             .format(out_format, ", ".join(supported_formats)))
 
@@ -702,7 +737,7 @@ def _parse_output_block(output, avail_keys):
     out_vars = [x.upper() for x in out_vars if x not in bad_keys]
 
     if not out_vars:
-        pu.report_and_raise_error("no output variables found")
+        raise PayetteError("no output variables found")
 
     # remove duplicates
     uniq = set(out_vars)

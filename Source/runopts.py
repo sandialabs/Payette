@@ -11,7 +11,7 @@ import sys
 DISP = False
 VERBOSITY = 3
 SQA = False
-DBG = False
+DEBUG = False
 STRICT = False
 NORESTART = False
 NOWRITEPROPS = False
@@ -24,6 +24,7 @@ NPROC = 1
 CHECK_SETUP = False
 WRITE_INPUT = False
 WARNING = "warn"
+TESTERROR = False
 
 # not set through command line
 EFIELD_SIM = False

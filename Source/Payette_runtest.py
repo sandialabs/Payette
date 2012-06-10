@@ -188,8 +188,7 @@ def test_payette(argv):
             pu.report_error("__test_dir__.py not found in {0}".format(dirnam))
         continue
     if pu.error_count():
-        pu.report_and_raise_error("stopping due to previous errors",
-                                  tracebacklimit=0)
+        pu.report_and_raise_error("stopping due to previous errors")
 
     if opts.BUILTIN:
         opts.KEYWORDS = ["builtin"]
@@ -239,7 +238,7 @@ def test_payette(argv):
 
     if errors and not opts.IGNOREERROR:
         pu.report_and_raise_error(
-            "fix nonconforming benchmarks before continuing", tracebacklimit=0)
+            "fix nonconforming benchmarks before continuing")
 
     pu.log_message("Found {0} Payette tests in {1:.2f}s."
                    .format(len(conforming), t_find), end="\n\n",
@@ -271,7 +270,7 @@ def test_payette(argv):
         return 0
 
     if not conforming:
-        pu.report_and_raise_error("No tests found", tracebacklimit=0)
+        pu.report_and_raise_error("No tests found")
 
     # start the timer
     t_start = time.time()
@@ -761,8 +760,7 @@ if __name__ == "__main__":
 
     if not os.path.isfile(pc.PC_MTLS_FILE):
         pu.report_and_raise_error(
-            "buildPayette must be executed before tests can be run",
-            tracebacklimit=0)
+            "buildPayette must be executed before tests can be run")
 
     ARGV = sys.argv[1:]
     if "--profile" in ARGV:
