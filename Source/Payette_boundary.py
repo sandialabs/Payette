@@ -790,10 +790,7 @@ class EOSBoundary(object):
 
         if boundary is None:
             raise BoundaryError("boundary block not found")
-# @mswan: legs not needed?
-#        if legs is None:
-#            raise BoundaryError("legs block not found")
-#
+
         self.boundary = boundary
         self.legs = legs
 
@@ -943,7 +940,6 @@ class EOSBoundary(object):
         if self.legs is None:
             return
 
-        # @mswan, I am just making this up...
         # the legs block of an eos simulation contains density/temperature
         # pairs of the form:
         #
@@ -1084,8 +1080,6 @@ class EOSBoundary(object):
 
     def rho_temp_pairs(self):
         """Unfinished docstring"""
-        # @mswan
-        # is this correct?
         return self.lcontrol
 
     def get_leg_control_params(self):

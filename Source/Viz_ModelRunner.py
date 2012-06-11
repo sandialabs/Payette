@@ -3,7 +3,9 @@ import sys
 
 try:
     from traits.api import HasStrictTraits, List, Instance
+
 except ImportError:
+    # support for MacPorts install of enthought tools
     from enthought.traits.api import HasStrictTraits, List, Instance
 
 import Source.Payette_run as pr

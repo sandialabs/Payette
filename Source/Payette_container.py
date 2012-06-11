@@ -159,12 +159,11 @@ class Payette:
                 "boundary block not found for {0}"
                 .format(self.name))
 
-# @mswan: EOS does not require legs?
-#        if legs is None:
-#            raise PayetteError(
-#                "legs block not found for {0}"
-#                .format(self.name))
-#
+        if not self.material.eos_model and legs is None:
+            raise PayetteError(
+                "legs block not found for {0}"
+                .format(self.name))
+
         # solid and eos materials have different boundary classes
         if not self.material.eos_model:
             Boundary = pb.Boundary

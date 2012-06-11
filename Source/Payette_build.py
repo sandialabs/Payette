@@ -48,9 +48,6 @@ import Source.Payette_xml_parser as px
 
 # --- module level constants
 SPACE = "      "  # spacing used for logs to console
-COMPILER_INFO = {}
-MATERIALS = {}
-BUILD_ERRORS = 0
 
 # python 3 compatibility
 try:
@@ -62,8 +59,6 @@ except NameError:
 def build_payette(argv):
 
     """ create/build: material library files """
-
-    global COMPILER_INFO, MATERIALS
 
     # *************************************************************************
     # -- command line option parsing
@@ -163,11 +158,11 @@ def build_payette(argv):
     # determine if we build all materials, or just a selection
     requested_materials = opts.mtllib
     if opts.DSC:
-        materials.append("domain_switching_ceramic")
+        requested_materials.append("domain_switching_ceramic")
     if opts.KMM:
-        materials.append("kayenta")
+        requested_materials.append("kayenta")
     if opts.LPC:
-        materials.append("piezo_ceramic")
+        requested_materials.append("piezo_ceramic")
 
     # force a rebuild by wiping the existing installed materials file
     if opts.FORCEREBUILD:
@@ -481,8 +476,6 @@ class BuildPayette(object):
 def _build_lib(args):
 
     """ build the material library for payette_material """
-
-    global BUILD_ERRORS
 
     material, material_data, compiler_info = args
 

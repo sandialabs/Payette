@@ -2,7 +2,9 @@ try:
     from traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant
     from traitsui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, InstanceEditor, ListEditor, Spring
     from traitsui.tabular_adapter import TabularAdapter
+
 except ImportError:
+    # support for MacPorts install of enthought tools
     from enthought.traits.api import (
         HasStrictTraits, List, Instance, String,
         BaseInt, Int, Float, Bool, Property, Button, Constant)
