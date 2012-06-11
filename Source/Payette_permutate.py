@@ -35,6 +35,7 @@ from itertools import izip, product
 import Source.Payette_utils as pu
 import Source.Payette_container as pc
 import Source.Payette_input_parser as pip
+import Source.Payette_multi_index as pmi
 import Source.runopts as ro
 
 
@@ -47,6 +48,9 @@ class Permutate(object):
         # again
         job_inp = pip.InputParser(input_lines)
         job = job_inp.get_simulation_key()
+        if "simdir" in job_inp.input_options() or ro.SIMDIR is not None:
+            pu.report_and_raise_error(
+                "cannot specify simdir for permutation jobs")
 
         permutate = job_inp.get_block("permutation")
         input_lines = job_inp.get_input_lines(skip="permutation")
@@ -137,15 +141,12 @@ class Permutate(object):
         os.chdir(base_dir)
 
         # open up the index file
-        index_f = os.path.join(base_dir, "index.py")
-        with open(index_f, "w") as fobj:
-            fobj.write("index = {}\n")
+        self.index = pmi.MultiIndex(base_dir)
 
         # Save additional arguments to func in the global FARGS. This would be
         # handled better using something similar to scipy.optimize.py's
         # wrap_function, but that is not compatible with Pool.map.
-        FARGS = [self.param_nams, self.data, base_dir, index_f]
-        args = ((x, self.param_nams, self.data, base_dir, index_f)
+        args = ((x, self.param_nams, self.data, base_dir, self.index)
                 for x in self.param_ranges)
 
         nproc = min(mp.cpu_count(), self.data["nproc"])
@@ -179,7 +180,8 @@ class Permutate(object):
     def finish(self):
         r""" finish up the permutation job """
 
-        pass
+        self.index.write_index_file()
+        return
 
     def get_params(self, permutation_block):
         r"""Get the required permutation information.
@@ -415,7 +417,7 @@ def func(args):
 
     Globals
     -------
-    FARGS : array_like
+    args : array_like
         Additional arguments. The use of FARGS is mandated by Pool.map's
         inability to map over more than one argument.
 
@@ -425,7 +427,7 @@ def func(args):
 
     """
 
-    xcall, xnams, data, base_dir, index_f = args
+    xcall, xnams, data, base_dir, index = args
     job_id, xcall = xcall[0], xcall[1]
 
     job = data["basename"] + "." + job_id
@@ -439,28 +441,23 @@ def func(args):
 
     # replace the visualize variables with the updated and write params to file
     msg = []
-    istr = []
+    variables = {}
     with open(os.path.join(job_dir, job + data["fext"]), "w") as fobj:
         fobj.write("Parameters for job {0}\n".format(job_id))
         for nam, val in zip(xnams, xcall):
             pstr = "{0} = {1:12.6E}".format(nam, val)
-            istr.append('("{0}", {1:12.6E})'.format(nam, val))
+            variables[nam] = val
             fobj.write(pstr + "\n")
             msg.append(pstr)
             continue
 
     if data["verbosity"]:
         pu.log_message("Running job {0:s}, parameters: {1}"
-                       .format(job_id, ", ".join(msg)),
-                       noisy=True)
+                       .format(job_id, ", ".join(msg)), noisy=True)
 
     # write to the index file
-    with open(index_f, "a") as fobj:
-        fobj.write('index[{0:d}] = {{'.format(int(job_id)))
-        fobj.write('"name": "{0}", '.format(job))
-        fobj.write('"directory": "{0}", '.format(job_dir))
-        fobj.write('"permutated variables": ({0})'.format(", ".join(istr)))
-        fobj.write("}\n")
+    index.store_job_info(job_id, name=job, directory=job_dir,
+                         variables=variables)
 
     # instantiate Payette object
     the_model = pc.Payette(job_inp)

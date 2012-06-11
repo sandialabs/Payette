@@ -175,30 +175,61 @@ class InputParser(object):
         return
 
     def _parse_user_options(self):
-        """get user options"""
+        """Parse the input file for user specified options
+
+        Any items in the simulation block of an input file that are not in any
+        other blocks are considered user specified options.
+
+        Parameters
+        ----------
+        self : class instance
+
+        Updates
+        -------
+        self.user_options : dict
+          key:val pairs of user options
+
+        Notes
+        -----
+        If a user option is give in the form
+
+            key = val
+
+        we save the key:val pairs.  However, if given as
+
+            key
+
+        we save key:True.
+
+        """
         for item in self.input_set["content"]:
-            for pat in ",;:":
+
+            # replace , ; : = with " " (space) and split
+            for pat in ",;:=":
                 item = item.replace(pat, " ")
                 continue
             item = item.strip().split()
 
             if len(item) == 1:
+                # only keyword given, value is True
                 key = item[0]
                 val = True
 
             else:
+                # key and value given.  Determine key and value
                 key = item[0]
                 val = "_".join(item[1:])
 
                 try:
                     val = eval(val)
+
                 except (NameError, TypeError, SyntaxError):
                     val = str(val)
 
+            # save key:val pairs
             self.user_options[key] = val
             continue
         return
-
 
     def _parse_input_lines(self):
         """Read the user input, inserting files if encountered

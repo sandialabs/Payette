@@ -39,6 +39,7 @@ import Source.Payette_container as pc
 import Source.Payette_extract as pe
 import Source.Payette_input_parser as pip
 import Source.runopts as ro
+import Source.Payette_multi_index as pmi
 import Toolset.KayentaParamConv as kpc
 
 # Module level variables
@@ -56,6 +57,10 @@ class Optimize(object):
         # get the optimization block
         job_inp = pip.InputParser(input_lines)
         job = job_inp.get_simulation_key()
+
+        if "simdir" in job_inp.input_options() or ro.SIMDIR is not None:
+            pu.report_and_raise_error(
+                "cannot specify simdir for permutation jobs")
 
         optimize = job_inp.get_block("optimization")
 
@@ -159,6 +164,9 @@ class Optimize(object):
         os.mkdir(base_dir)
         os.chdir(base_dir)
 
+        # open up the index file
+        self.index = pmi.MultiIndex(base_dir)
+
         # copy gold file to base_dir
         gold_f = os.path.join(
             base_dir, os.path.basename(self.data["gold file"]))
@@ -188,7 +196,7 @@ class Optimize(object):
             continue
 
         # set up args and call optimzation routine
-        opt_args = [opt_nams, self.data, base_dir, xgold]
+        opt_args = [opt_nams, self.data, base_dir, xgold, self.index]
         opt_method = self.data["optimization method"]["method"]
         opt_options = {"maxiter": self.data["maximum iterations"],
                        "xtol": self.data["tolerance"],
@@ -261,6 +269,7 @@ class Optimize(object):
     def finish(self):
         r""" finish up the optimization job """
 
+        print "here i am"
         global IOPT, FAC, FNEWEXT
 
         # remove any temporary files
@@ -272,6 +281,8 @@ class Optimize(object):
         IOPT = -1
         FAC = []
         FNEWEXT = ".0x312.gold"
+
+        self.index.write_index_file()
 
         return
 
@@ -804,7 +815,7 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
     return xopt * FAC
 
 
-def func(xcall, xnams, data, base_dir, xgold):
+def func(xcall, xnams, data, base_dir, xgold, index):
 
     r"""Objective function
 
@@ -840,6 +851,7 @@ def func(xcall, xnams, data, base_dir, xgold):
     # replace the optimize variables with the updated and write params to file
     msg = []
     param_nams, param_vals = [], []
+    variables = {}
     with open(os.path.join(job_dir, job + ".opt"), "w") as fobj:
         fobj.write("Parameters for iteration {0:d}\n".format(IOPT + 1))
         for idx, item in enumerate(zip(xnams, xcall)):
@@ -862,6 +874,7 @@ def func(xcall, xnams, data, base_dir, xgold):
             pstr = "{0} = {1:12.6E}".format(nam, opt_val * FAC[idx])
             param_nams.append(nam)
             param_vals.append(opt_val * FAC[idx])
+            variables[nam] = opt_val * FAC[idx]
             fobj.write(pstr + "\n")
             msg.append(pstr)
             continue
@@ -873,6 +886,10 @@ def func(xcall, xnams, data, base_dir, xgold):
         pu.log_message("Iteration {0:03d}, trial parameters: {1}"
                        .format(IOPT + 1, ", ".join(msg)),
                        noisy=True)
+
+    # write to the index file
+    index.store_job_info(IOPT, name=job, directory=job_dir,
+                         variables=variables)
 
     # instantiate Payette object
     the_model = pc.Payette(job_inp)
@@ -924,7 +941,7 @@ def func(xcall, xnams, data, base_dir, xgold):
     return error
 
 
-def rtxc(xcall, xnams, data, base_dir, xgold):
+def rtxc(xcall, xnams, data, base_dir, xgold, index):
     """The Kayenta limit function
 
     Evaluates the Kayenta limit function
