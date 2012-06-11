@@ -18,7 +18,7 @@ class Test(PayetteTest):
         self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
         self.keywords = ["medium", "verification", "elastic",
                          "uniaxial strain", "builtin"]
-        self.runcommand = ["runPayette","--no-writeprops","--no-restart",self.infile]
+        self.runcommand = ["runPayette","--no-writeprops",self.infile]
         self.material = "elastic"
 
         self.owner = 'Tim Fuller'

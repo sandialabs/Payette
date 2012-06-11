@@ -65,6 +65,8 @@ class InputParser(object):
         self.parsed_user_input = None
         self._read_input()
 
+        self._parse_user_options()
+
     def input_error(self, msg):
         """Warn user of input error
 
@@ -170,6 +172,20 @@ class InputParser(object):
             raise InputError("stopping due to previous errors")
 
         return
+
+    def _parse_user_options(self):
+        """get user options"""
+        self.user_options = {}
+        for option in self.input_set["content"]:
+
+            option = option.strip().split()
+            if len(option) == 1:
+                self.user_options[option[0]] = True
+            else:
+                self.user_options[option[0]] = " ".join(option[1:])
+            continue
+        return
+
 
     def _parse_input_lines(self):
         """Read the user input, inserting files if encountered
@@ -473,6 +489,17 @@ class InputParser(object):
     def input_options(self):
         """Get the input options"""
         return self.input_set["content"]
+
+    def get_option(self, option):
+        try:
+            return self.user_options[option]
+
+        except KeyError:
+            key = [x for x in self.user_options
+                   if x.lower() == option.lower()]
+            if key:
+                return self.user_options[key[0]]
+            return None
 
     def register_plot_keys(self, plot_keys):
         """Register the plot keys to the InputParser class"""

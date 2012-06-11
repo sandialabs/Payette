@@ -6,7 +6,6 @@
 
 begin simulation exmpl_6
   nowriteprops
-  norestart
 
   begin boundary
     kappa = 0

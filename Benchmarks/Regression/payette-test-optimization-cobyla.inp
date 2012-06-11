@@ -1,6 +1,5 @@
 begin simulation payette-test-optimization-cobyla
 nowriteprops
-norestart
 begin boundary
 kappa = 0
 tstar = 1.

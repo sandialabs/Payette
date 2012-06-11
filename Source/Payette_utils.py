@@ -705,13 +705,13 @@ def compare_file_cols(file_1, file_2, cols=["all"]):
     return 0, np.array(anrmsd), np.array(armsd)
 
 
-def write_input_file(inp_lines, inp_f):
+def write_input_file(user_input_obj, inp_f):
     """ from an input dictionary, write the input file
 
     Parameters
     ----------
-    inp_lines : list
-        The input lines
+    user_input_obj : class instance
+      instance of InputParser object
 
     inp_f : str
         Path to input file to be written
@@ -722,8 +722,11 @@ def write_input_file(inp_lines, inp_f):
 
     """
 
+    inp_lines = user_input_obj.get_input_lines()
     with open(inp_f, "w") as fobj:
         for line in inp_lines:
+            if "simdir" in line.lower():
+                continue
             fobj.write(line + "\n")
             continue
     return

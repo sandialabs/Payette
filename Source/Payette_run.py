@@ -145,10 +145,10 @@ def run_payette(argv, disp=0):
         help=("Do not use approximations to update kinematic "
                 "quantities (slow) [default: %default]"))
     parser.add_option(
-        "--no-restart",
-        dest="norestart",
+        "--write-restart",
+        dest="writerestart",
         action="store_true",
-        default=ro.NORESTART,
+        default=ro.WRITERESTART,
         help="Do not save restart files [default: %default]")
     parser.add_option(
         "--no-writeprops",
@@ -533,14 +533,15 @@ if __name__ == "__main__":
     if "--profile" in ARGV:
         PROFILE = True
         ARGV.remove("--profile")
-        import cProfile
+        import profile
     else:
         PROFILE = False
 
     if PROFILE:
         CMD = "run_payette(ARGV)"
         PROF = "payette.prof"
-        cProfile.runctx(CMD, globals(), locals(), PROF)
+#        profile.runctx(CMD, globals(), locals(), PROF)
+        profile.run(CMD)
         PAYETTE = 0
     else:
         PAYETTE = run_payette(ARGV)

@@ -88,7 +88,21 @@ class Payette:
         self.user_input = pip.InputParser(input_lines)
 
         delete = not ro.KEEP
+
+        # directory to run simulation
         self.simdir = os.getcwd()
+        simdir = self.user_input.get_option("simdir")
+        if simdir is not None:
+            self.simdir = os.path.join(self.simdir, simdir)
+
+        if not os.path.isdir(self.simdir):
+            try:
+                os.makedirs(self.simdir)
+            except OSError:
+                raise PayetteError(
+                    "cannot create simulation directory: {0}"
+                    .format(self.simdir))
+
 
         self.name = self.user_input.get_simulation_key()
         self._open_files = {}
@@ -216,7 +230,7 @@ class Payette:
         if ro.CHECK_SETUP:
             exit("EXITING to check setup")
 
-        if not ro.NORESTART:
+        if ro.WRITERESTART:
             self.restart_file = os.path.splitext(self.outfile)[0] + ".prf"
 
         # write out properties
@@ -326,7 +340,8 @@ class Payette:
         """write the material parameters to a file"""
         cmod = self.material.constitutive_model
         params = cmod.get_parameter_names_and_values(default=False)
-        with open(self.name + ".props", "w" ) as fobj:
+        props_f = os.path.join(self.simdir, self.name + ".props")
+        with open(props_f, "w" ) as fobj:
             for param, desc, val in params:
                 fobj.write("{0:s} ={1:12.5E}\n".format(param, val))
                 continue
@@ -592,7 +607,7 @@ class Payette:
         if self.extraction_vars:
             self._write_extraction()
 
-        if ro.WRITE_INPUT:
+        if ro.WRITE_INPUT or self.simdir != os.getcwd():
             pu.write_input_file(
                 self.user_input, os.path.join(self.simdir, self.name + ".inp"))
 
