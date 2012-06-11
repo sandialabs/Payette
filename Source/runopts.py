@@ -25,6 +25,7 @@ CHECK_SETUP = False
 WRITE_INPUT = False
 WARNING = "warn"
 TESTERROR = False
+SIMDIR = None
 
 # not set through command line
 EFIELD_SIM = False

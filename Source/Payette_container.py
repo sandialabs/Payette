@@ -89,11 +89,20 @@ class Payette:
 
         delete = not ro.KEEP
 
+        # check if user has specified simulation options directly in the input
+        # file
+        for attr, val in self.user_input.input_options().items():
+            ro.set_global_option(attr, val)
+            continue
+
         # directory to run simulation
         self.simdir = os.getcwd()
-        simdir = self.user_input.get_option("simdir")
-        if simdir is not None:
-            self.simdir = os.path.join(self.simdir, simdir)
+        if ro.SIMDIR is not None:
+            if ro.SIMDIR[0] == "/":
+                # user gave full path to simdir, use it
+                self.simdir = ro.SIMDIR
+            else:
+                self.simdir = os.path.join(self.simdir, ro.SIMDIR)
 
         if not os.path.isdir(self.simdir):
             try:
@@ -204,29 +213,6 @@ class Payette:
         self.simdat.register_data("number of steps", "Scalar", init_val=0)
         self.simdat.register_data("leg number", "Scalar", init_val=0 )
 
-        # check if user has specified simulation options directly in the input
-        # file
-        for item in self.user_input.input_options():
-            for pat in ",;:":
-                item = item.replace(pat, " ")
-                continue
-            item = item.split()
-
-            if len(item) == 1:
-                item.append("True")
-
-            attr = item[0]
-            val = "_".join(item[1:])
-
-            try:
-                val = eval(val)
-
-            except (NameError, TypeError):
-                val = str(val)
-
-            ro.set_global_option(attr, val)
-            continue
-
         if ro.CHECK_SETUP:
             exit("EXITING to check setup")
 
@@ -236,6 +222,8 @@ class Payette:
         # write out properties
         if not ro.NOWRITEPROPS:
             self._write_mtl_params()
+
+        self.write_input = ro.WRITE_INPUT or self.simdir != os.getcwd()
 
         if not self.material.eos_model:
             # register data not needed by the eos models
@@ -607,15 +595,43 @@ class Payette:
         if self.extraction_vars:
             self._write_extraction()
 
-        if ro.WRITE_INPUT or self.simdir != os.getcwd():
-            pu.write_input_file(
-                self.user_input, os.path.join(self.simdir, self.name + ".inp"))
+        if self.write_input:
+            self.write_input_file()
 
         return
 
     def simulation_data(self):
         """return the simulation simdat object"""
         return self.simdat
+
+    def write_input_file(self):
+        """ from an input dictionary, write the input file
+
+        Parameters
+        ----------
+        user_input_obj : class instance
+          instance of InputParser object
+
+        inp_f : str
+            Path to input file to be written
+
+        Returns
+        -------
+        None
+
+        """
+
+        inp_lines = self.user_input.get_input_lines()
+        inp_f = os.path.join(self.simdir, self.name + ".inp")
+        with open(inp_f, "w") as fobj:
+            for line in inp_lines:
+                if "simdir" in line.lower():
+                    continue
+                fobj.write(line + "\n")
+                continue
+        return
+
+
 
 
 def _parse_mtl_block(material_inp):

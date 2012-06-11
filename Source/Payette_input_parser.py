@@ -65,6 +65,7 @@ class InputParser(object):
         self.parsed_user_input = None
         self._read_input()
 
+        self.user_options = {}
         self._parse_user_options()
 
     def input_error(self, msg):
@@ -175,14 +176,26 @@ class InputParser(object):
 
     def _parse_user_options(self):
         """get user options"""
-        self.user_options = {}
-        for option in self.input_set["content"]:
+        for item in self.input_set["content"]:
+            for pat in ",;:":
+                item = item.replace(pat, " ")
+                continue
+            item = item.strip().split()
 
-            option = option.strip().split()
-            if len(option) == 1:
-                self.user_options[option[0]] = True
+            if len(item) == 1:
+                key = item[0]
+                val = True
+
             else:
-                self.user_options[option[0]] = " ".join(option[1:])
+                key = item[0]
+                val = "_".join(item[1:])
+
+                try:
+                    val = eval(val)
+                except (NameError, TypeError, SyntaxError):
+                    val = str(val)
+
+            self.user_options[key] = val
             continue
         return
 
@@ -488,7 +501,7 @@ class InputParser(object):
 
     def input_options(self):
         """Get the input options"""
-        return self.input_set["content"]
+        return self.user_options
 
     def get_option(self, option):
         try:

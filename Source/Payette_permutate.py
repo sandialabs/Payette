@@ -449,9 +449,6 @@ def func(args):
             msg.append(pstr)
             continue
 
-    # write out the input file, not actually used, but nice to have
-    pu.write_input_file(job_inp, os.path.join(job_dir, job + ".inp"))
-
     if data["verbosity"]:
         pu.log_message("Running job {0:s}, parameters: {1}"
                        .format(job_id, ", ".join(msg)),
@@ -467,6 +464,9 @@ def func(args):
 
     # instantiate Payette object
     the_model = pc.Payette(job_inp)
+
+    # write out the input file, not actually used, but nice to have
+    the_model.write_input = True
 
     # run the job
     solve = the_model.run_job()

@@ -157,6 +157,12 @@ def run_payette(argv, disp=0):
         default=ro.NOWRITEPROPS,
         help="Do not write checked parameters [default: %default]")
     parser.add_option(
+        "--simdir",
+        dest="simdir",
+        action="store",
+        default=ro.SIMDIR,
+        help="Directory to run simulation [default: {0}]".format(os.getcwd()))
+    parser.add_option(
         "-T", "--use-table",
         dest="use_table",
         action="store_true",

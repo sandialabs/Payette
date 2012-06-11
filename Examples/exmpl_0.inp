@@ -41,7 +41,6 @@
 # command line options to runPayette
 
 begin simulation exmpl_0
-
   begin boundary
 
     # The boundary block tells Payette the load/deformation path to drive the
