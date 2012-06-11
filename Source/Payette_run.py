@@ -215,7 +215,7 @@ def run_payette(argv, disp=0):
         dest="warning",
         type="choice",
         action="store",
-        choices=["warn", "error", "all"],
+        choices=["ignore", "warn", "error", "all"],
         default=ro.WARNING,
         help="warning level [default: %default]")
     parser.add_option(

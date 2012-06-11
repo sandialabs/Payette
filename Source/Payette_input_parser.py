@@ -20,20 +20,32 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+
+"""Main payette input parsing class definitions"""
+
 import os, sys
 from Source.Payette_utils import who_is_calling
 import Source.runopts as ro
 
 
 class InputError(Exception):
+    """InputParser exception class"""
     def __init__(self, message):
-        sys.tracebacklimit = 0
+        if not ro.DEBUG:
+            sys.tracebacklimit = 0
         caller = who_is_calling()
         self.message = message + " [reported by {0}]".format(caller)
         super(InputError, self).__init__(self.message)
 
 
 class InputParser(object):
+    """Payette input class
+
+    Raises
+    ------
+    InputError
+
+    """
 
     def __init__(self, user_input=None):
 
@@ -48,12 +60,24 @@ class InputParser(object):
         # main container for holding all user input
         self.plot_keys = None
         self.simkey = None
-        self.input_set = []
-        self.read_input()
-
-        pass
+        self.input_set = None
+        self.input_sets = None
+        self.parsed_user_input = None
+        self._read_input()
 
     def input_error(self, msg):
+        """Warn user of input error
+
+        Calculations are not stopped, the error just relayed to user.
+        self.errors is incremented.
+
+        Parameters
+        ----------
+        self : class instance
+        msg : str
+          The message to print
+
+        """
         caller = who_is_calling()
         sys.stdout.flush()
         sys.stderr.write("ERROR: {0} [reported by: {1}\n".format(msg, caller))
@@ -61,19 +85,38 @@ class InputParser(object):
         return
 
     def log_warning(self, msg):
+        """Warn user of something
+
+        Calculations are not stopped, the warning just relayed to user.
+        self.warnings is incremented.
+
+        Parameters
+        ----------
+        self : class instance
+        msg : str
+          The message to print
+
+        """
+        if ro.WARNING == "ignore":
+            return
         sys.stderr.write("WARNING: {0}\n".format(msg))
         self.input_warnings += 1
         return
 
-    def read_input(self):
+    def _read_input(self):
         """ read a list of user inputs and return """
 
         # get all of the input blocks for the file
-        input_lines = self._get_input_lines(self.user_input)
-        input_sets = self._get_blocks(input_lines)
+        self._parse_input_lines()
+        self._get_blocks()
 
-        # input_sets contains a list of all blocks in the file, parse it to make
-        # sure that a simulation is given
+        nsims = len([x for x in self.input_sets if "simulation" in x])
+        if nsims > 1:
+            print self.input_sets
+            raise InputError("Too many input sets encountered")
+
+        # input_sets contains a list of all blocks in the file, parse it to
+        # make sure that a simulation is given
         recognized_blocks = ("simulation", "boundary", "legs", "material",
                              "optimization", "permutation", "enumeration",
                              "mathplot", "name", "content", "extraction",
@@ -81,13 +124,14 @@ class InputParser(object):
         incompatible_blocks = (
             ("visualization", "optimization", "enumeration"),)
 
-        for input_set in input_sets:
+        for input_set in self.input_sets:
 
             if "simulation" not in input_set:
                 keys = ", ".join(input_set.keys())
-                self.log_warning(
-                    "expected to find a simulation block but found: {0}"
-                    .format(keys))
+                if ro.WARNING == "all":
+                    self.log_warning(
+                        "expected to find a simulation block but found: {0}"
+                        .format(keys))
                 continue
 
             simkey = input_set["simulation"]["name"]
@@ -127,7 +171,92 @@ class InputParser(object):
 
         return
 
-    def _get_blocks(self, user_input):
+    def _parse_input_lines(self):
+        """Read the user input, inserting files if encountered
+
+        Parameters
+        ----------
+        user_input : list
+            New line separated list of the input file
+        cchars : list
+            List of comment characters
+
+        Returns
+        -------
+        all_input : list
+            All of the read input, including inserted files
+
+        """
+
+        raw_user_input = self.user_input
+        insert_kws = ("insert", "include")
+
+        cchars = ("#", "$")
+        used_blocks = []
+        self.parsed_user_input = []
+        iline = 0
+
+        user_input = _remove_all_comments(raw_user_input, cchars)
+
+        # infinite loop for reading the input file and getting all inserted
+        # files
+        while True:
+
+            # if we have gone through one time, reset user_input to be
+            # self.parsed_user_input and run through again until all inserted
+            # files have been read in
+            if iline == len(user_input):
+                if [x for x in self.parsed_user_input
+                    if x.split()[0] in insert_kws]:
+                    user_input = [x for x in self.parsed_user_input]
+                    self.parsed_user_input = []
+                    iline = 0
+                else:
+                    break
+
+            # get the next line of input
+            line = user_input[iline]
+
+            # check for internal "use" directives
+            if line.split()[0] == "use":
+                block = " ".join(line.split()[1:])
+                # check if insert is given in file
+                idx_0, idx_f, block_insert = _find_block(user_input, block)
+                if idx_0 is None:
+                    raise InputError(
+                        "'use' block '{0:s}' not found".format(block))
+                elif idx_f is None:
+                    raise InputError(
+                        "end of 'use' block '{0:s}' not found".format(block))
+
+                used_blocks.append(block)
+                self.parsed_user_input.extend(block_insert)
+
+            # check for inserts
+            elif line.split()[0] in insert_kws:
+                insert = " ".join(line.split()[1:])
+
+                if not os.path.isfile(insert):
+                    raise InputError(
+                        "inserted file '{0:s}' not found".format(insert))
+
+                insert_lines = open(insert, "r").readlines()
+                self.parsed_user_input.extend(
+                    _remove_all_comments(insert_lines, cchars))
+
+            else:
+                self.parsed_user_input.append(line)
+
+            iline += 1
+
+            continue
+
+        for block in list(set(used_blocks)):
+            self.parsed_user_input = remove_block(self.parsed_user_input, block)
+
+        return
+
+    def _get_blocks(self):
         """ Find all input blocks in user_input.
 
         Input blocks are blocks of instructions in
@@ -162,7 +291,7 @@ class InputParser(object):
         block_stack = []
         block = {}
 
-        for iline, line in enumerate(user_input):
+        for line in self.parsed_user_input:
 
             split_line = line.strip().lower().split()
 
@@ -170,10 +299,11 @@ class InputParser(object):
                 continue
 
             if split_line[0] == "begin":
-                # Encountered a new block. Before continuing, we need to decide
-                # what to do with it. Possibilities are:
+                # Encountered a new block. Before continuing, we need to
+                # decide what to do with it. Possibilities are:
                 #
-                #    1. Start a new block dictionary if this block is not nested
+                #    1. Start a new block dictionary if this block is not
+                #    nested
                 #    2. Append this block to the previous if it is nested
 
                 # get the block type
@@ -215,8 +345,8 @@ class InputParser(object):
 
             elif split_line[0] == "end":
 
-                # Reached the end of a block. Make sure that it is the end of the
-                # most current block.
+                # Reached the end of a block. Make sure that it is the end of
+                # the most current block.
                 try:
                     block_typ = split_line[1]
                 except ValueError:
@@ -252,123 +382,25 @@ class InputParser(object):
 
         block_tree.append(block)
 
-        return block_tree
+        self.input_sets = block_tree
+        return
 
-    def _remove_block(self, input_lines, block):
-        """ remove the requested block from input_lines """
-        idx_0, idx_f, lines = self._find_block(input_lines, block)
-        del input_lines[idx_0:idx_f + 1]
-        return input_lines
 
-    def _find_block(self, input_lines, block):
-        """ find block in input_lines """
-        block_lines = []
-        idx_0, idx_f = None, None
-        for idx, line in enumerate(input_lines):
-            sline = line.split()
-            if sline[0].lower() == "begin":
-                if sline[1] == block:
-                    idx_0 = idx
-            elif sline[0].lower() == "end":
-                if sline[1] == block:
-                    idx_f = idx
-            continue
-
-        if idx_0 is not None and idx_f is not None:
-            block_lines = input_lines[idx_0 + 1:idx_f]
-
-        return idx_0, idx_f, block_lines
-
-    def _get_input_lines(self, raw_user_input):
-        """Read the user input, inserting files if encountered
-
-        Parameters
-        ----------
-        user_input : list
-            New line separated list of the input file
-        cchars : list
-            List of comment characters
-
-        Returns
-        -------
-        all_input : list
-            All of the read input, including inserted files
-
-        """
-
-        insert_kws = ("insert", "include")
-
-        cchars = ("#", "$")
-        used_blocks = []
-        all_input = []
-        iline = 0
-
-        user_input = _remove_all_comments(raw_user_input, cchars)
-
-        # infinite loop for reading the input file and getting all inserted files
-        while True:
-
-            # if we have gone through one time, reset user_input to be all_input
-            # and run through again until all inserted files have been read in
-            if iline == len(user_input):
-                if [x for x in all_input if x.split()[0] in insert_kws]:
-                    user_input = [x for x in all_input]
-                    all_input = []
-                    iline = 0
-                else:
-                    break
-
-            # get the next line of input
-            line = user_input[iline]
-
-            # check for internal "use" directives
-            if line.split()[0] == "use":
-                block = " ".join(line.split()[1:])
-                # check if insert is given in file
-                idx_0, idx_f, block_insert = self._find_block(user_input, block)
-                if idx_0 is None:
-                    raise InputError(
-                        "'use' block '{0:s}' not found".format(block))
-                elif idx_f is None:
-                    raise InputError(
-                        "end of 'use' block '{0:s}' not found".format(block))
-
-                used_blocks.append(block)
-                all_input.extend(block_insert)
-
-            # check for inserts
-            elif line.split()[0] in insert_kws:
-                insert = " ".join(line.split()[1:])
-
-                if not os.path.isfile(insert):
-                    raise InputError(
-                        "inserted file '{0:s}' not found".format(insert))
-
-                insert_lines = open(insert, "r").readlines()
-                all_input.extend(_remove_all_comments(insert_lines, cchars))
-
-            else:
-                all_input.append(line)
-
-            iline += 1
-
-            continue
-
-        for block in list(set(used_blocks)):
-            all_input = self._remove_block(all_input, block)
-
-        return all_input
 
     def get_input_set(self):
+        """return the input_set dict"""
         return self.input_set
 
     def get_simulation_key(self):
+        """The simulation key (name)"""
         return self.simkey
 
     def input_blocks(self):
+        """All blocks in input file"""
         return self.input_set.keys()
 
     def get_block(self, block_name):
+        """Get block block_name from input blocks"""
         block = self.input_set.get(block_name)
         if block is None:
             for input_block in self.input_blocks():
@@ -380,17 +412,16 @@ class InputParser(object):
         return block["content"]
 
     def set_block(self, block_name, content):
+        """Set the value of an input block"""
         self.input_set[block_name]["content"] = content
         return
 
-    def remove_block(self, block_name):
-        del self.input_set[block_name]
-        return
-
     def has_block(self, block_name):
+        """True if has block block_name, else False"""
         return block_name in self.input_set
 
     def get_input_lines(self, skip=None):
+        """Get the input lines"""
 
         if skip is None:
             skip = []
@@ -398,7 +429,6 @@ class InputParser(object):
             skip = [skip]
 
         req_blocks = ("material", "boundary", "legs")
-        inp_dict = self.input_set
         input_lines = []
 
         # simulation block
@@ -441,9 +471,11 @@ class InputParser(object):
         return input_lines
 
     def input_options(self):
+        """Get the input options"""
         return self.input_set["content"]
 
     def register_plot_keys(self, plot_keys):
+        """Register the plot keys to the InputParser class"""
         if not isinstance(plot_keys, (list, tuple)):
             plot_keys = [plot_keys]
         self.plot_keys = plot_keys
@@ -551,6 +583,7 @@ class InputParser(object):
         if self.plot_keys is None:
             raise InputError(
                 "Plot keys must be registered before parsing extraction block")
+        low_keys = [x.lower() for x in self.plot_keys]
 
         extraction_vars = []
         extraction = self.get_block("extraction")
@@ -569,7 +602,7 @@ class InputParser(object):
                         "unrecognized extraction request {0}".format(item))
                     continue
 
-                elif item[1:].lower() not in [x.lower() for x in self.plot_keys]:
+                elif item[1:].lower() not in low_keys:
                     self.log_warning(
                         "requested extraction variable {0} not found"
                         .format(item))
@@ -583,7 +616,7 @@ class InputParser(object):
 
 
 def parse_user_input(raw_user_input, user_cchar=None):
-    """unfinish docstring """
+    """unfinished docstring """
     cchars = ['#','$']
     # comment characters
     if user_cchar is not None:
@@ -647,17 +680,6 @@ def _remove_all_comments(lines, cchars):
     return stripped_lines
 
 
-def remove_block(lines, block_name):
-    for iline, line in enumerate(lines):
-        line = " ".join(line.strip().lower().split())
-        if "begin {0}".format(block_name.lower()) in line:
-            idx_0 = iline
-        elif "end {0}".format(block_name.lower()) in line:
-            idx_f = iline + 1
-        continue
-    return lines[:idx_0] + lines[idx_f:]
-
-
 def replace_params_and_name(lines, name, param_names, param_vals):
     """Repace the values of parameter names in lines with those in param_vals
 
@@ -691,3 +713,31 @@ def replace_params_and_name(lines, name, param_names, param_vals):
         raise InputError("could not replace all requested params")
 
     return job_inp
+
+
+def _find_block(input_lines, block):
+    """ find block in input_lines """
+    block_lines = []
+    idx_0, idx_f = None, None
+    for idx, line in enumerate(input_lines):
+        sline = line.split()
+        if sline[0].lower() == "begin":
+            if sline[1] == block:
+                idx_0 = idx
+        elif sline[0].lower() == "end":
+            if sline[1] == block:
+                idx_f = idx
+        continue
+
+    if idx_0 is not None and idx_f is not None:
+        block_lines = input_lines[idx_0 + 1:idx_f]
+
+    return idx_0, idx_f, block_lines
+
+
+def remove_block(input_lines, block):
+    """ remove the requested block from input_lines """
+    idx_0, idx_f, lines = _find_block(input_lines, block)
+    del input_lines[idx_0:idx_f + 1]
+    return input_lines
+

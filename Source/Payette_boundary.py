@@ -1,7 +1,7 @@
 # The MIT License
-
+#
 # Copyright (c) 2011 Tim Fuller
-
+#
 # License for the specific language governing rights and limitations under
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -9,10 +9,10 @@
 # the rights to use, copy, modify, merge, publish, distribute, sublicense,
 # and/or sell copies of the Software, and to permit persons to whom the
 # Software is furnished to do so, subject to the following conditions:
-
+#
 # The above copyright notice and this permission notice shall be included
 # in all copies or substantial portions of the Software.
-
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
 # OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
@@ -20,12 +20,17 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+
+"""Main Payette boundary class definitions"""
+
 import math
 import sys
 import numpy as np
 
+import Source.runopts as ro
 
 class BoundaryError(Exception):
+    """Boundar exception class"""
     def __init__(self, message):
         from Source.Payette_utils import who_is_calling
         caller = who_is_calling()
@@ -34,6 +39,14 @@ class BoundaryError(Exception):
 
 
 class Boundary(object):
+    """Payette boundary class
+
+    Raises
+    ------
+    BoundaryError
+
+    """
+
     def __init__(self, boundary=None, legs=None):
         if boundary is None:
             raise BoundaryError("boundary block not found")
@@ -41,10 +54,14 @@ class Boundary(object):
         if legs is None:
             raise BoundaryError("legs block not found")
 
-        self.boundary_warnings = 0
-
+        # passed values
         self.boundary = boundary
         self.legs = legs
+
+        # defaults
+        self.boundary_warnings = 0
+        self.initial_time = None
+        self.termination_time = None
 
         self.bcontrol = {
             "kappa": {"value": 0., "type": float},
@@ -70,6 +87,7 @@ class Boundary(object):
         self.effac = 1.
         self.dfac = 1.
         self.stepstar = 1.
+        self.ratfac = 1.
 
         # parse the boundary block
         self.user_control_options = {}
@@ -86,15 +104,24 @@ class Boundary(object):
             "displacement": {"num": 8, "len": 3},
             "vstrain": {"num": 2, "len": 1}}
         self.allowed_time_specifier = ["time", "dt"]
+        self.leg_table_data = None
         self.lcontrol = []
         self.table_input = False
 
         # parse the legs block
         self.parse_legs_block()
 
-        pass
-
     def log_warning(self, msg):
+        """Log warning to stderr
+
+        Parameters
+        ----------
+        msg : str
+          message to be printed to stderr
+
+        """
+        if ro.WARNING == "ignore":
+            return
         sys.stdout.flush()
         sys.stderr.write("WARNING: {0}\n".format(msg))
         self.boundary_warnings += 1
@@ -171,9 +198,10 @@ class Boundary(object):
         # All electric fields are multiplied by effac=ampl*efstar
         # All displacements are multiplied by dfac=ampl*dstar
         # All times are multiplied by tfac=abs(ampl)*tstar/ratfac
-        # From these formulas, note that AMPL may be used to increase or decrease
-        # the peak strain without changing the strain rate. ratfac is the
-        # multiplier on strain rate and stress rate.
+
+        # From these formulas, note that AMPL may be used to increase or
+        # decrease the peak strain without changing the strain rate. ratfac is
+        # the multiplier on strain rate and stress rate.
         ampl = self.bcontrol["ampl"]["value"]
         tstar = self.bcontrol["tstar"]["value"]
         self.ratfac = self.bcontrol["ratfac"]["value"]
@@ -193,7 +221,9 @@ class Boundary(object):
         return
 
     def parse_legs_block(self):
-        """Parse the legs block of the user input"""
+        """Parse the legs block of the user input
+
+        """
         stress_control = False
         kappa = self.kappa()
 
@@ -216,7 +246,7 @@ class Boundary(object):
             # lcntrl: mechanical control
             # efcntrl: electric field control
             # cij: values of deformation
-            # ef: electric field values
+            # efield: electric field values
 
             leg = " ".join(leg.replace(",", " ").split())
             leg = leg.split()
@@ -271,7 +301,7 @@ class Boundary(object):
 
                 # get the leg number, time, steps
                 leg_no = int(leg[0])
-                leg_t = self.tfac * float(leg[1])
+                leg_t = float(self.tfac * float(leg[1]))
                 leg_steps = int(self.stepstar * float(leg[2]))
                 if ileg != 0 and leg_steps == 0:
                     raise BoundaryError(
@@ -319,16 +349,16 @@ class Boundary(object):
                     "items in leg {0:d}".format(leg_no))
 
             # separate out electric fields from deformations
-            ef, hold, efcntrl = [], [], []
+            efield, hold, efcntrl = [], [], []
             for idx, cntrl_type in enumerate(lcntrl):
                 if cntrl_type == 6:
-                    ef.append(cij[idx])
+                    efield.append(cij[idx])
                     hold.append(idx)
                     efcntrl.append(cntrl_type)
                 continue
 
             # make sure electric field has length 3
-            ef.extend([0.] * (3 - len(ef)))
+            efield.extend([0.] * (3 - len(efield)))
             efcntrl.extend([6] * (3 - len(efcntrl)))
 
             # remove electric field values from cij
@@ -377,7 +407,6 @@ class Boundary(object):
                     # convert defgrad to strain E with associated rotation
                     # given by axis of rotation x and angle of rotation theta
                     rot, lstretch = np.linalg.qr(defgrad)
-                    rstretch = np.dot(rot.T, defgrad)
                     if np.max(np.abs(rot - np.eye(3))) > np.finfo(np.float).eps:
                         msg = ("rotation encountered in leg {0}. "
                                .format(leg_no) +
@@ -423,20 +452,25 @@ class Boundary(object):
             if lcntrl == [2]:
 
                 # only one strain value given -> volumetric strain
-                ev = cij[0] * self.efac
-                if kappa * ev + 1. < 0.:
+                evol = cij[0] * self.efac
+                if kappa * evol + 1. < 0.:
                     raise BoundaryError("1 + kappa*ev must be positive")
 
                 if kappa == 0.:
-                    eij = ev / 3.
+                    eij = evol / 3.
 
                 else:
-                    eij = ((kappa * ev + 1.) ** (1. / 3.) - 1.) / kappa
+                    eij = ((kappa * evol + 1.) ** (1. / 3.) - 1.) / kappa
 
                 lcntrl = [2, 2, 2]
                 cij = [eij, eij, eij]
                 efac_hold = self.efac
                 self.efac = 1.0
+
+            # fill in cij and lcntrl so that their lengths are always 9
+            # the electric field control is added to the end of lcntrl
+            cij.extend([0.] * (6 - len(cij)) + efield)
+            lcntrl.extend([0] * (6 - len(lcntrl)) + efcntrl)
 
             # we have read in all controled items and checked them, now we
             # adjust them based on user input
@@ -472,15 +506,9 @@ class Boundary(object):
             except NameError:
                 pass
 
-            # fill in cij and lcntrl so that their lengths are always 9
-            cij.extend([0.] * (9 - len(cij)))
-            lcntrl.extend([0] * (9 - len(lcntrl)))
-
             # append leg control
-            # the electric field control is added to the end of lcntrl
             self.lcontrol.append(
-                [int(leg_no), float(leg_t), int(leg_steps),
-                 lcntrl + efcntrl, np.array(cij + ef)])
+                [leg_no, leg_t, leg_steps, lcntrl, np.array(cij)])
 
             continue
 
@@ -690,24 +718,68 @@ class Boundary(object):
 
         return
 
-
-
     def kappa(self):
+        """kappa, the Seth-Hill strain measure identifier.
+
+        Parameters
+        ----------
+        self : class instance
+          Boundary class instance
+
+        Returns
+        -------
+        kappa : float
+          Seth-Hill strain measure identifier
+
+        """
         return self.bcontrol["kappa"]["value"]
 
     def emit(self):
+        """Specifier of how much info to print during simulation
+
+        If emit is "sparse" very little information is printed
+        If emit is "all" a lot more is printed
+
+        Parameters
+        ----------
+        self : class instance
+          Boundary class instance
+
+        Returns
+        -------
+        emit : str
+
+        """
         return self.bcontrol["emit"]["value"]
 
     def nprints(self):
+        """Number of times to print to screen during a boundary leg
+
+        If nprints in zero, use default
+
+        Parameters
+        ----------
+        self : class instance
+          Boundary class instance
+
+        Returns
+        -------
+        nprints : int
+          Number of times to print to screen during simulation leg if nonzero
+
+        """
         return self.bcontrol["nprints"]["value"]
 
     def screenout(self):
+        """Unfinished docstring"""
         return self.bcontrol["screenout"]["value"]
 
     def get_leg_control_params(self):
+        """Unfinished docstring"""
         return self.lcontrol
 
     def get_boundary_control_params(self):
+        """Unfinished docstring"""
         return self.bcontrol
 
 
@@ -751,8 +823,6 @@ class EOSBoundary(object):
         # no initial or termination time explicitly set for EOS simulations
         self.initial_time = None
         self.termination_time = None
-
-        pass
 
     def parse_boundary_block(self):
         """parse the eos boundary block"""
@@ -800,7 +870,8 @@ class EOSBoundary(object):
                 val = int("".join(item[2:3]))
                 if val <= 0:
                     raise BoundaryError(
-                        "Number of surface increments must be positive non-zero.")
+                        "Number of surface increments must be "
+                        "positive non-zero.")
                 self.bcontrol[kwd]["value"] = val
 
             elif kwd == "path increments":
@@ -857,7 +928,7 @@ class EOSBoundary(object):
                 bad_rho = not rho_0 <= hugoniot[0] <= rho_f
                 bad_temp = not tmpr_0 <= hugoniot[1] <= tmpr_f
                 if len(hugoniot) != 2 or bad_rho or bad_temp:
-                    report_and_raise_error("Bad initial state for hugoniot.")
+                    raise BoundaryError("Bad initial state for hugoniot.")
                 self.bcontrol[kwd]["value"] = hugoniot
 
             continue
@@ -890,41 +961,137 @@ class EOSBoundary(object):
         return
 
     def nprints(self):
+        """Number of times to print to screen during a boundary leg
+
+        If nprints in zero, use default
+
+        Parameters
+        ----------
+        self : class instance
+          Boundary class instance
+
+        Returns
+        -------
+        nprints : int
+          Number of times to print to screen during simulation leg if nonzero
+
+        """
         return self.bcontrol["nprints"]["value"]
 
     def input_units(self):
+        """Unit system in which parameters are given
+
+        Parameters
+        ----------
+        self : class instance
+          Boundary class instance
+
+        Returns
+        -------
+        input_units : str
+          The unit system
+
+        """
         return self.bcontrol["input units"]["value"]
 
     def output_units(self):
+        """Unit system in which results are given
+
+        Parameters
+        ----------
+        self : class instance
+          Boundary class instance
+
+        Returns
+        -------
+        output_units : str
+          The unit system
+
+        """
         return self.bcontrol["output units"]["value"]
 
     def density_range(self):
+        """Range of densities
+
+        Parameters
+        ----------
+        self : class instance
+          Boundary class instance
+
+        Returns
+        -------
+        density_range : array_like
+          The density range
+
+        """
         return self.bcontrol["density range"]["value"]
 
     def temperature_range(self):
+        """Range of temperatures
+
+        Parameters
+        ----------
+        self : class instance
+          Boundary class instance
+
+        Returns
+        -------
+        temperature_range : array_like
+          The temperature range
+
+        """
         return self.bcontrol["temperature range"]["value"]
 
     def surface_increments(self):
+        """Number of surface increments
+
+        Parameters
+        ----------
+        self : class instance
+          Boundary class instance
+
+        Returns
+        -------
+        surface_increments : int
+          Number of surface increments to compute
+
+        """
         return self.bcontrol["surface increments"]["value"]
 
     def path_increments(self):
+        """Number of path increments
+
+        Parameters
+        ----------
+        self : class instance
+          Boundary class instance
+
+        Returns
+        -------
+        path_increments : int
+          Number of path increments to compute
+
+        """
         return self.bcontrol["path increments"]["value"]
 
     def path_isotherm(self):
+        """Unfinished docstring"""
         return self.bcontrol["path isotherm"]["value"]
 
     def path_hugoniot(self):
+        """Unfinished docstring"""
         return self.bcontrol["path hugoniot"]["value"]
 
     def rho_temp_pairs(self):
+        """Unfinished docstring"""
         # @mswan
         # is this correct?
         return self.lcontrol
 
     def get_leg_control_params(self):
+        """Unfinished docstring"""
         return self.lcontrol
 
     def get_boundary_control_params(self):
+        """Unfinished docstring"""
         return self.bcontrol
-
-

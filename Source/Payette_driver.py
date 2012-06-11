@@ -531,7 +531,7 @@ def solid_driver(the_model, **kwargs):
                 F_end[i] = prdef[i]
 
             # electric field
-            elif ro.EFIELD_SIM and (i >= 9 and ltype[i] == 6):
+            elif ro.EFIELD_SIM and (i >= 6 and ltype[i] == 6):
                 efld_end[i - 9] = prdef[i]
 
             continue

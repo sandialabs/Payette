@@ -140,6 +140,9 @@ def log_warning(message, limit=False, caller=None, pre="WARNING: ",
 
     __count_warning()
 
+    if ro.WARNING == "ignore":
+        return
+
     if limit and ro.WARNING != "all":
         max_warn = 1000
         wcount = warn_count()
