@@ -904,7 +904,7 @@ class EOSBoundary(object):
         for item in self.boundary:
             for char in "=,;":
                 item = item.replace(char, " ")
-            item = " ".join(item.split())
+            item = item.split()
             kwd = " ".join(item[0:2]).lower()
             if kwd not in ("path isotherm", "path hugoniot",):
                 continue
