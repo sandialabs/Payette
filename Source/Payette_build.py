@@ -45,7 +45,6 @@ except ImportError:
 
 import Payette_config as pc
 import Source.Payette_utils as pu
-from Source.Payette_utils import BuildError as BuildError
 import Source.runopts as ro
 import Source.Payette_xml_parser as px
 import Source.Payette_model_index as pmi
@@ -212,6 +211,30 @@ def build_payette(argv):
     build.write_installed_materials_file()
 
     return build.errors
+
+
+class BuildError(Exception):
+    def __init__(self, message, errno=0):
+        # errno:
+        # 1: bad input files
+        # 2: f2py failed
+        #  5 = environmental variable not found (not error)
+        # 10 = source files/directories not found
+        # 35 = Extension module not imported
+        # 40 = Bad/no sigfile
+        # 66 = No build attribute
+        caller = pu.who_is_calling()
+        self.message = message + " [reported by {0}]".format(caller)
+        self.errno = errno
+        super(BuildError, self).__init__(self.message)
+
+
+    def __repr__(self):
+        return self.__name__
+
+    def __str__(self):
+        return self.message
+
 
 
 class BuildPayette(object):
@@ -450,8 +473,11 @@ class BuildPayette(object):
         for material, info in self.materials_to_build.items():
             if not info["built"]:
                 model_index.remove_model(material)
-            elif material not in model_index.constitutive_models():
-                model_index.store(material, **info)
+            else:
+                model_index.store(
+                    material, info["libname"], info["class name"],
+                    info["interface file"], info["control file"],
+                    info["aliases"])
             continue
         model_index.dump()
         return
@@ -479,12 +505,12 @@ def _build_lib(args):
     build = imp.load_module(py_mod, fobj, pathname, description)
     fobj.close()
 
-#        try:
-    build = build.Build(material, libname, compiler_info)
-    build_error = build.build_extension_module()
+    try:
+        build = build.Build(material, libname, compiler_info)
+        build_error = build.build_extension_module()
 
-#        except BuildError as error:
-#            build_error = error.errno
+    except BuildError as error:
+        build_error = error.errno
 
     if build_error:
         if build_error == 5 or build_error == 10 or build_error == 40:

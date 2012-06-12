@@ -282,27 +282,6 @@ def flatten(x):
         continue
     return result
 
-class BuildError(Exception):
-    def __init__(self, message, errno=0):
-        # errno:
-        # 1: bad input files
-        # 2: f2py failed
-        #  5 = environmental variable not found (not error)
-        # 10 = source files/directories not found
-        # 35 = Extension module not imported
-        # 40 = Bad/no sigfile
-        # 66 = No build attribute
-        self.message = message
-        self.errno = errno
-        sys.stdout.flush()
-        sys.stderr.write(message + "\n")
-
-    def __repr__(self):
-        return self.__name__
-
-    def __str__(self):
-        return self.message
-
 
 def get_module_name_and_path(py_file):
     """ return module name and path as list """

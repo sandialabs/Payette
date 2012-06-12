@@ -82,9 +82,30 @@ class ModelIndex(object):
         """return the installed constitutive models dict"""
         return self._installed_constitutive_models.keys()
 
-    def store(self, key, **kwargs):
-        """Store all kwargs in to the index dict"""
-        self._installed_constitutive_models[key] = kwargs
+    def store(self, name, libname, clsname, intrfc, cntrl, aliases):
+        """Store all kwargs in to the index dict
+
+        Parameters
+        ----------
+        name : str
+          material name
+        libname : str
+          library name
+        clsname : str
+          material class name
+        intrfc : str
+          absolute path to interface file
+        cntrl : str
+          absolute path to .xml control file
+        aliases : list
+          list of alternative names for the model
+        """
+
+        self._installed_constitutive_models[name] = {
+            "libname": libname, "class name": clsname,
+            "interface file": intrfc, "control file": cntrl,
+            "aliases": aliases}
+
         return
 
     def dump(self):

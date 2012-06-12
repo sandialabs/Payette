@@ -29,7 +29,7 @@ from numpy.f2py import main as f2py
 
 import Payette_config as pc
 import Source.Payette_utils as pu
-from Source.Payette_utils import BuildError as BuildError
+from Source.Payette_build import BuildError as BuildError
 
 class MaterialBuilder(object):
 
@@ -100,14 +100,15 @@ class MaterialBuilder(object):
         fcn = "build_extension_module_with_f2py"
 
         if not self.source_files:
-            BuildError("no source files sent to {0}".format(fcn),1)
+            raise BuildError("no source files sent to {0}".format(fcn),1)
 
         elif not isinstance(self.source_files, list):
             self.source_files = [self.source_files]
 
         for srcf in self.source_files:
             if not os.path.isfile(srcf):
-                BuildError("{0}: source file {1} not found".format(fcn,srcf),1)
+                raise BuildError(
+                    "{0}: source file {1} not found".format(fcn,srcf),1)
             continue
 
         # remove extension module files if they exist
