@@ -15,10 +15,14 @@ module tensor_toolkit
   real(kind=fp), parameter :: zero= 0._dk, one=1._dk, two=2._dk, three=3._dk
   real(kind=fp), parameter :: four=4._dk, five=5._dk, six= 6._dk
   real(kind=fp), parameter :: third=one/three, half=one/two
-  real(kind=fp), parameter :: root2=sqrt(two),root3=sqrt(three),root6=sqrt(six)
+  real(kind=fp), parameter :: root2=1.41421356237309504880168872420969807856967_dk
+  real(kind=fp), parameter :: root3=1.73205080756887729352744634150587236694280_dk
+  real(kind=fp), parameter :: root6=2.44948974278317809819728407470589139196595_dk
   real(kind=fp), parameter :: toor2=one/root2,toor3=one/root3,toor6=one/root6
-  real(kind=fp), parameter :: root23=sqrt(two/three), root32=sqrt(three/two)
-  real(kind=fp), parameter :: pi=acos(-one), piover6=pi/six
+  real(kind=fp), parameter :: root23=0.816496580927726032732428024901963797322_dk
+  real(kind=fp), parameter :: root32=1.224744871391589049098642037352945695983_dk
+  real(kind=fp), parameter :: pi=3.1415926535897932384626433832795028841971694_dk
+  real(kind=fp), parameter :: piover6=pi/six
 
   real(kind=fp), parameter, dimension(6) :: &
        delta = (/one, one, one, zero, zero, zero/), &
@@ -156,7 +160,7 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    integer job
+    integer :: job
     real(kind=fp), dimension(6) :: x, dd66x6
     real(kind=fp), dimension(6, 6) :: a
     !.......................................................................local

@@ -57,6 +57,7 @@ import Payette_config as pc
 import Source.Payette_utils as pu
 import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr
+import Source.Payette_model_index as pmi
 from Source.Payette_container import PayetteError as PayetteError
 
 
@@ -78,6 +79,8 @@ class PayetteBarf(object):
                 continue
             self.barf["lines"].append(line)
             continue
+
+        self.model_index = pmi.ModelIndex()
 
         # get the barf info
         self.get_barf_info()
@@ -125,8 +128,8 @@ class PayetteBarf(object):
         model_name, version = tmp[0], tmp[2]
 
         # get the constitutive model
-        cmod = pu.get_constitutive_model_object(model_name)
-        cmod = cmod(pu.get_constitutive_model_control_file(model_name))
+        cmod = self.model_index.constitutive_model_object(model_name)
+        cmod = cmod(self.model_index.control_file(model_name))
 
         message = self.barf["lines"][2].strip()
 

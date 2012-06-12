@@ -11,6 +11,10 @@ pconfigure
 # Backups
 *~
 
+# Junk
+tmp
+foo
+
 # documentation auxilary
 Documents/Documentation/_build/html/_downloads/payette_v-*.tar.gz
 Payette*.tar.gz
@@ -38,9 +42,6 @@ Toolset/__found_tests__.py
 *.a
 Examples/test/*
 Examples/test
-
-# junk
-foo
 
 # Payette configuration files
 Payette_config.py

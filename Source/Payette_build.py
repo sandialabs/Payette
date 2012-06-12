@@ -45,9 +45,9 @@ except ImportError:
 
 import Payette_config as pc
 import Source.Payette_utils as pu
-from Source.Payette_utils import BuildError as BuildError
 import Source.runopts as ro
 import Source.Payette_xml_parser as px
+import Source.Payette_model_index as pmi
 
 # --- module level constants
 SPACE = "      "  # spacing used for logs to console
@@ -169,10 +169,7 @@ def build_payette(argv):
 
     # force a rebuild by wiping the existing installed materials file
     if opts.FORCEREBUILD:
-        try:
-            os.remove(pc.PC_MTLS_FILE)
-        except OSError:
-            pass
+        pmi.remove_index_file()
 
     # directories to search for materials
     search_directories = []
@@ -214,6 +211,30 @@ def build_payette(argv):
     build.write_installed_materials_file()
 
     return build.errors
+
+
+class BuildError(Exception):
+    def __init__(self, message, errno=0):
+        # errno:
+        # 1: bad input files
+        # 2: f2py failed
+        #  5 = environmental variable not found (not error)
+        # 10 = source files/directories not found
+        # 35 = Extension module not imported
+        # 40 = Bad/no sigfile
+        # 66 = No build attribute
+        caller = pu.who_is_calling()
+        self.message = message + " [reported by {0}]".format(caller)
+        self.errno = errno
+        super(BuildError, self).__init__(self.message)
+
+
+    def __repr__(self):
+        return self.__name__
+
+    def __str__(self):
+        return self.message
+
 
 
 class BuildPayette(object):
@@ -444,34 +465,21 @@ class BuildPayette(object):
         """
 
         # get list of previously installed materials
-        try:
-            constitutive_models = pickle.load(open(pc.PC_MTLS_FILE, "rb"))
-        except IOError:
-            constitutive_models = {}
-        installed_materials = constitutive_models.keys()
+        model_index = pmi.ModelIndex()
 
         # remove materials that failed to build from constitutive models, and
         # add materials that were built to constitutive models, if not already
         # in.
         for material, info in self.materials_to_build.items():
             if not info["built"]:
-                try:
-                    del constitutive_models[material]
-                except KeyError:
-                    pass
-
-            elif material not in constitutive_models:
-                constitutive_models[material] = info
-
+                model_index.remove_model(material)
+            else:
+                model_index.store(
+                    material, info["libname"], info["class name"],
+                    info["interface file"], info["control file"],
+                    info["aliases"])
             continue
-
-        pu.log_message(
-            "writing constitutive model information to: {0}"
-            .format("PAYETTE_ROOT" + pc.PC_MTLS_FILE.split(pc.PC_ROOT)[1]),
-            beg="\n")
-        with open(pc.PC_MTLS_FILE, "wb") as fobj:
-            pickle.dump(constitutive_models, fobj)
-        pu.log_message("constitutive model information written")
+        model_index.dump()
         return
 
 
@@ -497,12 +505,12 @@ def _build_lib(args):
     build = imp.load_module(py_mod, fobj, pathname, description)
     fobj.close()
 
-#        try:
-    build = build.Build(material, libname, compiler_info)
-    build_error = build.build_extension_module()
+    try:
+        build = build.Build(material, libname, compiler_info)
+        build_error = build.build_extension_module()
 
-#        except BuildError as error:
-#            build_error = error.errno
+    except BuildError as error:
+        build_error = error.errno
 
     if build_error:
         if build_error == 5 or build_error == 10 or build_error == 40:

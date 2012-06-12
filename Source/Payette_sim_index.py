@@ -24,7 +24,8 @@
 optimization simulations
 
 """
-import os
+import os, sys
+
 try:
     import cPickle as pickle
 except ImportError:
@@ -45,7 +46,9 @@ class SimulationIndexError(Exception):
 
 
 class SimulationIndex(object):
+    """Class for indexing simulatons run for permutation and optimization jobs
 
+    """
     def __init__(self, base_dir):
         """Initialize the SimulationIndex object
 

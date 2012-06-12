@@ -13,7 +13,7 @@ except ImportError:
         InstanceEditor, ListEditor, Spring)
     from enthought.traits.ui.tabular_adapter import TabularAdapter
 
-import Payette_utils as pu
+import Payette_model_index as pmi
 import Payette_xml_parser as px
 
 from Viz_ModelData import PayetteModel, PayetteModelParameter, PayetteMaterial, PayetteMaterialParameter
@@ -24,16 +24,16 @@ class PayetteMaterialModelSelector(HasStrictTraits):
     selected_model = Instance(PayetteModel)
     none_constant = Constant("None")
     run_button = Button("Run Material Model")
+    model_index = pmi.ModelIndex()
 
     def __init__(self, **traits):
         HasStrictTraits.__init__(self, **traits)
         self.loadModels()
 
     def loadModels(self):
-        data = pu.get_installed_models()
-        for modelName in data.keys():
-            control_file = pu.get_constitutive_model_control_file(modelName)
-            cmod = pu.get_constitutive_model_object(modelName)
+        for modelName in self.model_index.constitutive_models():
+            control_file = self.model_index.control_file(modelName)
+            cmod = self.model_index.constitutive_model_object(modelName)
             cmod_obj = cmod(control_file)
 
             params = []
@@ -54,12 +54,11 @@ class PayetteMaterialModelSelector(HasStrictTraits):
         info.materials = self.loadModelMaterials(info.model_name)
 
     def loadModelMaterials(self, modelName):
-        data = pu.get_installed_models()
-        if modelName not in data:
+        if modelName not in self.model_index.constitutive_models():
             return []
 
         materials = []
-        material_database = data[modelName]["control file"]
+        material_database = self.model_index.control_file(modelName)
         if material_database is not None:
             xml_obj = px.XMLParser(material_database)
             mats = xml_obj.get_parameterized_materials()

@@ -237,6 +237,10 @@ class XMLParser:
         """Return the parameters"""
         return self.parameters
 
+    def get_sorted_parameters(self):
+        return sorted(self.get_parameters(),
+                      key=lambda x: int(x["order"]))
+
     def get_core_files(self):
         """Parse MaterialModel for "Core" files"""
         Files = self.MaterialModel.getElementsByTagName('Files')
@@ -332,3 +336,4 @@ class XMLParser:
                 source_types.append(os.path.splitext(core_file)[1])
 
         return model_key, model_aliases, material_type, source_types
+
