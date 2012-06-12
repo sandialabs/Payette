@@ -23,8 +23,11 @@
 
 import os
 import sys
-import pickle
 import numpy as np
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 import Source.Payette_iterative_solvers as citer
 import Source.Payette_kinematics as pk

@@ -39,7 +39,7 @@ import Source.Payette_container as pc
 import Source.Payette_extract as pe
 import Source.Payette_input_parser as pip
 import Source.runopts as ro
-import Source.Payette_multi_index as pmi
+import Source.Payette_sim_index as psi
 import Toolset.KayentaParamConv as kpc
 
 # Module level variables
@@ -165,7 +165,7 @@ class Optimize(object):
         os.chdir(base_dir)
 
         # open up the index file
-        self.index = pmi.MultiIndex(base_dir)
+        self.index = psi.SimulationIndex(base_dir)
 
         # copy gold file to base_dir
         gold_f = os.path.join(
@@ -269,7 +269,6 @@ class Optimize(object):
     def finish(self):
         r""" finish up the optimization job """
 
-        print "here i am"
         global IOPT, FAC, FNEWEXT
 
         # remove any temporary files
@@ -282,7 +281,7 @@ class Optimize(object):
         FAC = []
         FNEWEXT = ".0x312.gold"
 
-        self.index.write_index_file()
+        self.index.dump()
 
         return
 
@@ -888,8 +887,8 @@ def func(xcall, xnams, data, base_dir, xgold, index):
                        noisy=True)
 
     # write to the index file
-    index.store_job_info(IOPT, name=job, directory=job_dir,
-                         variables=variables)
+    kwargs = {"name": job, "directory": job_dir, "variables": variables}
+    index.store(int(IOPT), **kwargs)
 
     # instantiate Payette object
     the_model = pc.Payette(job_inp)

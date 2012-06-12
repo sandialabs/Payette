@@ -25,61 +25,79 @@ optimization simulations
 
 """
 import os
-import pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 from Source.Payette_utils import who_is_calling
 import Source.runopts as ro
 
 
-class MultiIndexError(Exception):
-    """MultiIndex exception class"""
+class SimulationIndexError(Exception):
+    """SimulationIndex exception class"""
     def __init__(self, message):
         if not ro.DEBUG:
             sys.tracebacklimit = 0
         caller = who_is_calling()
         self.message = message + " [reported by {0}]".format(caller)
-        super(MultiIndexError, self).__init__(self.message)
+        super(SimulationIndexError, self).__init__(self.message)
 
 
-class MultiIndex(object):
+class SimulationIndex(object):
 
-    def __init__(self, base_dir, mode="binary"):
+    def __init__(self, base_dir):
+        """Initialize the SimulationIndex object
 
+        Parameters
+        ----------
+        base_dir : str
+          Path to directory where simulations are run, the index file will be
+          dumped to this directory.
+        mode : str
+          Mode for file type.  Currently, only binary is supported.
+
+        """
+
+        # check existence of base directory
         if not os.path.isdir(base_dir):
-            raise MultiIndexError("base_dir not found")
+            raise SimulationIndexError("base_dir not found")
 
-        if mode == "binary":
-            self.write_mode = "wb"
-            self.read_mode = "rb"
-
-        else:
-            raise MultiIndexError("unrecognized mode")
-
+        # default index file name
         self.index_file = os.path.join(base_dir, "index.pkl")
 
         # initialize class data
         self.index = {}
-        self.index_read_from_file = {}
+        self.loaded_index = {}
 
-    def store_job_info(self, key, **kwargs):
+        # load the index file if it exists
+        if os.path.isfile(self.index_file):
+            self.load()
+
+    def store(self, key, **kwargs):
+        """Store all kwargs in to the index dict"""
         self.index[key] = kwargs
         return
 
-    def write_index_file(self, key=None, name=None, directory=None,
-                         variables=None):
-        with open(self.index_file, self.write_mode) as fobj:
+    def dump(self):
+        """Dump self.index to a file"""
+        # dup the index file
+        with open(self.index_file, "wb") as fobj:
             pickle.dump(self.index, fobj)
-
-    def read_index_file(self):
-        # read in the index file
-        if not os.path.isfile(self.index_file):
-            raise MultiIndexError("index file {0} not found"
-                                  .format(self.index_file))
-
-        self.index_read_from_file = pickle.load(
-            open(self.index_file, self.read_mode))
-
         return
 
-    def get_index_dict(self):
-        return self.index_read_from_file
+    def load(self):
+        """Load the index file"""
+        # check existence of file
+        if not os.path.isfile(self.index_file):
+            raise SimulationIndexError("index file {0} not found"
+                                       .format(self.index_file))
+        # load it in
+        self.loaded_index = pickle.load(open(self.index_file, "rb"))
+        return self.loaded_index
+
+    def get_index(self):
+        """Get the index file"""
+        if not self.loaded_index:
+            self.load()
+        return self.loaded_index

@@ -35,7 +35,7 @@ from itertools import izip, product
 import Source.Payette_utils as pu
 import Source.Payette_container as pc
 import Source.Payette_input_parser as pip
-import Source.Payette_multi_index as pmi
+import Source.Payette_sim_index as psi
 import Source.runopts as ro
 
 
@@ -141,7 +141,7 @@ class Permutate(object):
         os.chdir(base_dir)
 
         # open up the index file
-        self.index = pmi.MultiIndex(base_dir)
+        self.index = psi.SimulationIndex(base_dir)
 
         # Save additional arguments to func in the global FARGS. This would be
         # handled better using something similar to scipy.optimize.py's
@@ -176,11 +176,10 @@ class Permutate(object):
         else:
             return {"retcode": retcode}
 
-
     def finish(self):
         r""" finish up the permutation job """
 
-        self.index.write_index_file()
+        self.index.dump()
         return
 
     def get_params(self, permutation_block):
@@ -305,7 +304,8 @@ class Permutate(object):
                     p_range = ", ".join(vals[vals.index("sequence") + 1:])
                     p_range = eval("{0}([{1}])".format("np.array", p_range))
 
-                # default: same as sequence above, but without the "sequence" kw
+                # default: same as sequence above, but without the "sequence"
+                # kw
                 else:
                     p_range = ", ".join(vals)
                     p_range = eval("{0}([{1}])".format("np.array", p_range))
@@ -456,8 +456,8 @@ def func(args):
                        .format(job_id, ", ".join(msg)), noisy=True)
 
     # write to the index file
-    index.store_job_info(job_id, name=job, directory=job_dir,
-                         variables=variables)
+    kwargs = {"name": job, "directory": job_dir, "variables": variables}
+    index.store(int(job_id), **kwargs)
 
     # instantiate Payette object
     the_model = pc.Payette(job_inp)
