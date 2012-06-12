@@ -5,7 +5,6 @@
 
 begin simulation exmpl_18
   nowriteprops
-  norestart
 
   # insert the material_001 block found elsewhere in this file. This example
   # is a bit contrived, but if a file has several simulations, all with the

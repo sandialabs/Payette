@@ -36,6 +36,8 @@ Toolset/__found_tests__.py
 *.so
 *.o
 *.a
+Examples/test/*
+Examples/test
 
 # junk
 foo

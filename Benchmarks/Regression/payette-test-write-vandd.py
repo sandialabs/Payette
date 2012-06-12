@@ -20,7 +20,7 @@ class Test(PayetteTest):
         self.tables = [self.name + ".dtable", self.name + ".vtable"]
         self.keywords = ["builtin", "payette", "regression",
                          "fast", "vtable", "dtable"]
-        self.runcommand = ["runPayette", "--no-writeprops", "--no-restart",
+        self.runcommand = ["runPayette", "--no-writeprops",
                            "--write-vandd", self.infile]
         self.material = "elastic"
 

@@ -65,6 +65,9 @@ class InputParser(object):
         self.parsed_user_input = None
         self._read_input()
 
+        self.user_options = {}
+        self._parse_user_options()
+
     def input_error(self, msg):
         """Warn user of input error
 
@@ -169,6 +172,63 @@ class InputParser(object):
         if ro.WARNING == "error" and self.input_warnings:
             raise InputError("stopping due to previous errors")
 
+        return
+
+    def _parse_user_options(self):
+        """Parse the input file for user specified options
+
+        Any items in the simulation block of an input file that are not in any
+        other blocks are considered user specified options.
+
+        Parameters
+        ----------
+        self : class instance
+
+        Updates
+        -------
+        self.user_options : dict
+          key:val pairs of user options
+
+        Notes
+        -----
+        If a user option is give in the form
+
+            key = val
+
+        we save the key:val pairs.  However, if given as
+
+            key
+
+        we save key:True.
+
+        """
+        for item in self.input_set["content"]:
+
+            # replace , ; : = with " " (space) and split
+            for pat in ",;:=":
+                item = item.replace(pat, " ")
+                continue
+            item = item.strip().split()
+
+            if len(item) == 1:
+                # only keyword given, value is True
+                key = item[0]
+                val = True
+
+            else:
+                # key and value given.  Determine key and value
+                key = item[0]
+                val = "_".join(item[1:])
+
+                try:
+                    val = eval(val)
+
+                except (NameError, TypeError, SyntaxError):
+                    val = str(val)
+
+            # save key:val pairs
+            self.user_options[key] = val
+            continue
         return
 
     def _parse_input_lines(self):
@@ -472,7 +532,18 @@ class InputParser(object):
 
     def input_options(self):
         """Get the input options"""
-        return self.input_set["content"]
+        return self.user_options
+
+    def get_option(self, option):
+        try:
+            return self.user_options[option]
+
+        except KeyError:
+            key = [x for x in self.user_options
+                   if x.lower() == option.lower()]
+            if key:
+                return self.user_options[key[0]]
+            return None
 
     def register_plot_keys(self, plot_keys):
         """Register the plot keys to the InputParser class"""

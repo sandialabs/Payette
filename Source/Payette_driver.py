@@ -23,8 +23,11 @@
 
 import os
 import sys
-import pickle
 import numpy as np
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 import Source.Payette_iterative_solvers as citer
 import Source.Payette_kinematics as pk
@@ -415,7 +418,7 @@ def solid_driver(the_model, **kwargs):
             pu.log_message("using table values for prescribed deformations")
         if ro.TESTRESTART and not restart:
             pu.log_message("testing restart capability")
-        if not ro.NORESTART:
+        if ro.WRITERESTART:
             pu.log_message("restart file will be generated")
         if ro.WRITE_VANDD_TABLE:
             pu.log_message("velocity and displacement tables will be generated")
@@ -701,7 +704,7 @@ def solid_driver(the_model, **kwargs):
         # advances time must come after writing the v & d tables above
         t_beg = t_end
 
-        if not ro.NORESTART:
+        if ro.WRITERESTART:
             with open(the_model.restart_file, 'wb') as fobj:
                 pickle.dump(the_model, fobj, 2)
 

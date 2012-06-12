@@ -12,7 +12,6 @@ begin simulation exmpl_1
   # runPayette, but can be specified in the file.
 
   nowriteprops
-  norestart
 
   begin boundary
     kappa = 0

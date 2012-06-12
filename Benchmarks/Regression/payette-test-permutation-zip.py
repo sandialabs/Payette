@@ -15,7 +15,7 @@ class Test(PayetteTest):
         self.infile = "{0}.inp".format(os.path.join(self.tdir, self.name))
         self.keywords = ["builtin", "medium", "regression", "elastic", "using",
                          "insert", "permutation", "zip"]
-        self.runcommand = ["runPayette", "--no-writeprops", "--no-restart",
+        self.runcommand = ["runPayette", "--no-writeprops",
                            self.infile]
         self.material = "elastic"
         self.aux_files = [os.path.join(self.tdir, "regression_tests.tbl"), ]

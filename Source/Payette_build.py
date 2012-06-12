@@ -37,8 +37,11 @@ import optparse
 import subprocess as sbp
 import multiprocessing as mp
 import pyclbr
-import pickle
 from textwrap import fill as textfill
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 import Payette_config as pc
 import Source.Payette_utils as pu

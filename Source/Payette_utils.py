@@ -705,30 +705,6 @@ def compare_file_cols(file_1, file_2, cols=["all"]):
     return 0, np.array(anrmsd), np.array(armsd)
 
 
-def write_input_file(inp_lines, inp_f):
-    """ from an input dictionary, write the input file
-
-    Parameters
-    ----------
-    inp_lines : list
-        The input lines
-
-    inp_f : str
-        Path to input file to be written
-
-    Returns
-    -------
-    None
-
-    """
-
-    with open(inp_f, "w") as fobj:
-        for line in inp_lines:
-            fobj.write(line + "\n")
-            continue
-    return
-
-
 def get_constitutive_model(model_name):
     """ get the constitutive model dictionary of model_name """
     constitutive_models = get_installed_models()

@@ -19,7 +19,7 @@ class Test(PayetteTest):
         self.keywords = ["medium", "verification", "finite_elastic",
                          "uniaxial_strain", "builtin"]
         self.runcommand = ["runPayette", "--no-writeprops",
-                           "--no-restart", self.infile]
+                            self.infile]
         self.material = "finite_elastic"
 
         self.owner = 'Tim Fuller'
