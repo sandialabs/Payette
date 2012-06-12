@@ -348,8 +348,8 @@ class ConstitutiveModelPrototype(object):
                     pu.report_and_raise_error("empty matlabel encountered")
 
                 # matlabel found, now parse the file for names and values
-                mtldat = pu.parse_mtldb_file(self.control_file, material=matlabel)
-                for name, val in mtldat:
+                self.material_data = self.parse_mtldb_file(material=matlabel)
+                for name, val in self.material_data:
                     self.user_input_params[name.upper()] = val
                     continue
 
@@ -514,6 +514,30 @@ class ConstitutiveModelPrototype(object):
         matdat.unstash_data("rate of deformation")
 
         return j_sub
+
+    def parse_mtldb_file(material=None):
+        """Parse the material database file
+
+        Parameters
+        ----------
+        material : str, optional
+          name of material
+
+        Returns
+        -------
+        mtldat : list
+          list of tuples of (name, val) pairs
+
+        """
+        import Source.Payette_xml_parser as px
+        xml_obj = px.XMLParser(self.control_file)
+        if material is None:
+            mtldat = xml_obj.get_parameterized_materials()
+        else:
+            mtldat = xml_obj.get_material_parameterization(material)
+
+        return mtldat
+
 
     # The methods below are going to be depricated in favor of
     # under_score_separated names. We keep them here for compatibility.

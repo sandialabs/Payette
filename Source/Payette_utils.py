@@ -29,9 +29,7 @@ import math
 import linecache
 import numpy as np
 import pickle
-import imp
 import inspect
-import warnings
 
 import Payette_config as pc
 import Source.Payette_extract as pe
@@ -703,83 +701,6 @@ def compare_file_cols(file_1, file_2, cols=["all"]):
         continue
 
     return 0, np.array(anrmsd), np.array(armsd)
-
-
-def get_constitutive_model(model_name):
-    """ get the constitutive model dictionary of model_name """
-    constitutive_models = get_installed_models()
-    for key, val in constitutive_models.items():
-        if model_name.lower() == key.lower() or model_name in val["aliases"]:
-            constitutive_model = val
-            break
-        continue
-
-    else:
-        report_and_raise_error(
-            "constitutive model {0} not found, installed models are: {1}"
-            .format(model_name, ", ".join(constitutive_models)))
-
-    return constitutive_model
-
-
-def get_constitutive_model_control_file(model_name):
-    """ get the control file for the material """
-    constitutive_model = get_constitutive_model(model_name)
-    return constitutive_model["control file"]
-
-
-def get_constitutive_model_object(model_name):
-    """ get the actual model object """
-    constitutive_model = get_constitutive_model(model_name)
-    py_mod, py_path = get_module_name_and_path(
-        constitutive_model["interface file"])
-    cls_nam = constitutive_model["class name"]
-    fobj, pathname, description = imp.find_module(py_mod, py_path)
-    py_module = imp.load_module(py_mod, fobj, pathname, description)
-    fobj.close()
-    cmod = getattr(py_module, cls_nam)
-    del py_module
-    return cmod
-
-
-def get_installed_models():
-    """ return a list of all installed models """
-    try:
-        with open(pc.PC_MTLS_FILE, "rb") as fobj:
-            constitutive_models = pickle.load(fobj)
-    except IOError:
-        report_and_raise_error("buildPayette must be executed to build the "
-                               "installed materials database file")
-    return constitutive_models
-
-
-def parse_mtldb_file(mtldat_f, material=None):
-    """Parse the material database file
-
-    Parameters
-    ----------
-    material : str, optional
-      name of material
-
-    Returns
-    -------
-    mtldat : list
-      list of tuples of (name, val) pairs
-
-    """
-    import Source.Payette_xml_parser as px
-    fext = os.path.splitext(mtldat_f)[1]
-    if fext == ".xml":
-        xml_obj = px.XMLParser(mtldat_f)
-        if material is None:
-            mtldat = xml_obj.get_parameterized_materials()
-        else:
-            mtldat = xml_obj.get_material_parameterization(material)
-    else:
-        report_and_raise_error(
-            "mtldat file parsing not enabled for file type: " + fext)
-
-    return mtldat
 
 
 def get_super_classes(data):

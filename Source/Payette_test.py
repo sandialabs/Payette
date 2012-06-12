@@ -30,6 +30,7 @@ import math
 import subprocess
 import time
 import pickle
+import pyclbr
 
 if __name__ == "__main__":
     thisd = os.path.dirname(os.path.realpath(__file__))
@@ -38,6 +39,7 @@ if __name__ == "__main__":
 
 import Payette_config as pc
 import Source.Payette_utils as pu
+import Source.Payette_model_index as pmi
 
 speed_kws = ["fast", "medium", "long"]
 type_kws = ["verification", "validation", "prototype", "regression"]
@@ -67,6 +69,16 @@ class TestLogger(object):
     def error(self, caller, message):
         self.write("ERROR: {0} [reported by {1}]".format(message, caller))
         pass
+
+
+class PayetteTestError(Exception):
+    """ModelIndex exception class"""
+    def __init__(self, message):
+        sys.tracebacklimit = 0
+        caller = pu.who_is_calling()
+        self.message = message + " [reported by {0}]".format(caller)
+        super(PayetteTestError, self).__init__(self.message)
+
 
 
 class PayetteTest(object):
@@ -114,13 +126,13 @@ class PayetteTest(object):
             return 0
 
         if not self.name:
-            pu.report_error("no name given for test", caller=iam)
+            pu.report_error("no name given for test")
 
         if not self.tdir:
-            pu.report_error("no test directory given for test", caller=iam)
+            pu.report_error("no test directory given for test")
 
         if not self.keywords:
-            pu.report_error("no keywords given", caller=iam)
+            pu.report_error("no keywords given")
 
         if not isinstance(self.keywords, (list, tuple)):
             pu.report_error(
@@ -258,7 +270,7 @@ class PayetteTest(object):
             pass
 
         if not found:
-            pu.report_error("executable {0} not found".format(exenam), caller=iam)
+            pu.report_error("executable {0} not found".format(exenam))
             return None, self.failcode
 
         cmd[0] = exenam
@@ -856,7 +868,7 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
 
     """
 
-    import pyclbr
+    model_index = pmi.ModelIndex()
 
     iam = "find_tests"
 
@@ -1024,10 +1036,8 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
 
         # we've gotten this far, so the test was requested, now check if the
         # material model used in the test is installed
-        with open(pc.PC_MTLS_FILE, "rb") as fobj:
-            constitutive_models = pickle.load(fobj)
         if test.material is not None:
-            if constitutive_models.get(test.material) is None:
+            if test.material not in model_index.constitutive_models():
                 pu.log_warning(
                     "material model" + " '" + test.material + "' " +
                     "required by" + " '" + test.name + "' " +

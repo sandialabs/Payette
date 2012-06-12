@@ -48,6 +48,7 @@ import Source.Payette_utils as pu
 from Source.Payette_utils import BuildError as BuildError
 import Source.runopts as ro
 import Source.Payette_xml_parser as px
+import Source.Payette_model_index as pmi
 
 # --- module level constants
 SPACE = "      "  # spacing used for logs to console
@@ -169,10 +170,7 @@ def build_payette(argv):
 
     # force a rebuild by wiping the existing installed materials file
     if opts.FORCEREBUILD:
-        try:
-            os.remove(pc.PC_MTLS_FILE)
-        except OSError:
-            pass
+        pmi.remove_index_file()
 
     # directories to search for materials
     search_directories = []
@@ -444,34 +442,18 @@ class BuildPayette(object):
         """
 
         # get list of previously installed materials
-        try:
-            constitutive_models = pickle.load(open(pc.PC_MTLS_FILE, "rb"))
-        except IOError:
-            constitutive_models = {}
-        installed_materials = constitutive_models.keys()
+        model_index = pmi.ModelIndex()
 
         # remove materials that failed to build from constitutive models, and
         # add materials that were built to constitutive models, if not already
         # in.
         for material, info in self.materials_to_build.items():
             if not info["built"]:
-                try:
-                    del constitutive_models[material]
-                except KeyError:
-                    pass
-
-            elif material not in constitutive_models:
-                constitutive_models[material] = info
-
+                model_index.remove_model(material)
+            elif material not in model_index.constitutive_models():
+                model_index.store(material, **info)
             continue
-
-        pu.log_message(
-            "writing constitutive model information to: {0}"
-            .format("PAYETTE_ROOT" + pc.PC_MTLS_FILE.split(pc.PC_ROOT)[1]),
-            beg="\n")
-        with open(pc.PC_MTLS_FILE, "wb") as fobj:
-            pickle.dump(constitutive_models, fobj)
-        pu.log_message("constitutive model information written")
+        model_index.dump()
         return
 
 

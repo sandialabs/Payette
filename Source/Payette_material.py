@@ -27,6 +27,7 @@ import numpy as np
 
 import Payette_config as pc
 import Source.Payette_utils as pu
+import Source.Payette_model_index as pmi
 from Source.Payette_data_container import DataContainer
 
 
@@ -44,8 +45,9 @@ class Material:
         iam = "Material.__init__"
 
         # get the material's constitutive model object
-        control_file = pu.get_constitutive_model_control_file(model_name)
-        cmod = pu.get_constitutive_model_object(model_name)
+        self.model_index = pmi.ModelIndex()
+        control_file = self.model_index.control_file(model_name)
+        cmod = self.model_index.constitutive_model_object(model_name)
 
         # instantiate the constiutive model
         self.constitutive_model = cmod(control_file, *args, **kwargs)
