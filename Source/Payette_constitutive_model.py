@@ -166,8 +166,7 @@ class ConstitutiveModelPrototype(object):
 
     def register_parameters_from_control_file(self):
         """Register parameters from the control file """
-        params = sorted(self.xml_obj.get_parameters(),
-                        key=lambda x: int(x["order"]))
+        params = self.xml_obj.get_sorted_parameters()
         for idx, pm in enumerate(params):
             self.register_parameter(
                 pm["name"], idx, aliases=pm["aliases"], parseable=pm["parseable"])
@@ -365,7 +364,7 @@ class ConstitutiveModelPrototype(object):
                 # Horrible band-aid for poorly formatted fortran output.
                 # when it meant 1.0E+100, it spit out 1.0+100
                 if val.endswith("+100"):
-                    val = float(val.replace("+100","E+100"))
+                    val = float(val.replace("+100", "E+100"))
                 else:
                     val = float(val)
             except ValueError:
@@ -515,7 +514,7 @@ class ConstitutiveModelPrototype(object):
 
         return j_sub
 
-    def parse_mtldb_file(material=None):
+    def parse_mtldb_file(self, material=None):
         """Parse the material database file
 
         Parameters
