@@ -85,6 +85,13 @@ class UnitManager:
                "INV_TIME_UNITS":  [0,  0, -1,  0,  0,  0,  0],
               "VISCOSITY_UNITS": [-1,  1, -1,  0,  0,  0,  0],
                  "VOLUME_UNITS":  [3,  0,  0,  0,  0,  0,  0],
+                     # Suggested Lambda Units
+                 "LENGTH_UNITS":  [1,  0,  0,  0,  0,  0,  0],
+                   "MASS_UNITS":  [0,  1,  0,  0,  0,  0,  0],
+                   "TIME_UNITS":  [0,  0,  1,  0,  0,  0,  0],
+                   "RATE_UNITS":  [0,  0, -1,  0,  0,  0,  0],
+   "SQUARED_INV_PRESSURE_UNITS":  [2, -2, -4,  0,  0,  0,  0],
+              "STIFFNESS_UNITS": [-2,  1, -2,  0,  0,  0,  0], #PRESSURE_UNITS/LENGTH_UNITS
                      # non-base
                      "position":  [1,  0,  0,  0,  0,  0,  0],
                      "velocity":  [1,  0, -1,  0,  0,  0,  0],
