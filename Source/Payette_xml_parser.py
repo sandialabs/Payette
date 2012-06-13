@@ -25,11 +25,19 @@ import sys
 import os
 import xml.dom as xmldom
 import xml.dom.minidom as xdom
+from textwrap import fill as textfill
 
 import Payette_utils as pu
 
 class NotTextNodeError:
     pass
+
+class XMLParserError(Exception):
+    def __init__(self, message):
+        caller = pu.who_is_calling()
+        self.message = message + " [reported by {0}]".format(caller)
+        super(XMLParserError, self).__init__(self.message)
+
 
 class XMLParser:
     """
@@ -78,7 +86,7 @@ class XMLParser:
         """
         file_name = os.path.realpath(file_name)
         if not os.path.isfile(file_name):
-            pu.report_and_raise_error(
+            raise XMLParserError(
                 "Cannot parse file '{0}' because it does not exist."
                 .format(file_name))
         self.file = file_name
@@ -89,19 +97,18 @@ class XMLParser:
         # Get the root element (Should always be "MaterialModel")
         MaterialModel = dom.getElementsByTagName('MaterialModel')
         if not MaterialModel:
-            pu.report_and_raise_error("Expected Root Element 'MaterialModel'")
+            raise XMLParserError("Expected Root Element 'MaterialModel'")
         self.MaterialModel = MaterialModel[0]
 
         # Get the Name and Description of the model.
         Name = self.MaterialModel.getElementsByTagName('Name')
         if not Name:
-            pu.report_and_raise_error(
-                "Expected a 'Name' for the 'MaterialModel'.")
+            raise XMLParserError("Expected a 'Name' for the 'MaterialModel'.")
         self.name = str(Name[0].firstChild.data).strip()
 
         Description = self.MaterialModel.getElementsByTagName('Description')
         if not Description:
-            pu.report_and_raise_error(
+            raise XMLParserError(
                 "Expected a 'Description' for the 'MaterialModel'.")
         self.description = str(Description[0].firstChild.data).strip()
 
@@ -110,12 +117,12 @@ class XMLParser:
         #
         ModelParameters = dom.getElementsByTagName('ModelParameters')
         if len(ModelParameters) != 1:
-            pu.report_and_raise_error("Expected Element 'ModelParameters'")
+            raise XMLParserError("Expected Element 'ModelParameters'")
         self.ModelParameters = ModelParameters[0]
 
         tmp = self.ModelParameters.getElementsByTagName('Units')
         if len(tmp) != 1:
-            pu.report_and_raise_error(
+            raise XMLParserError(
                 "Expected a 'Units' in the 'ModelParameters' element.")
         self.units_system = str(tmp[0].firstChild.data).strip()
 
@@ -156,7 +163,7 @@ class XMLParser:
                 continue
 
             if "name" not in tmp:
-                pu.report_and_raise_error(
+                raise XMLParserError(
                     "no name given for a material in {0}"
                     .format(os.path.basename(self.file_name)))
 
@@ -219,8 +226,11 @@ class XMLParser:
                 material = [x for x in self.materials if x["name"] == name][0]
                 break
         else:
-            pu.report_and_raise_error(
-                "Material '{0}' not found in '{1}'".format(mat_name, self.file))
+            raise XMLParserError(
+                "Material '{0}' not in '{1}', available materials are:\n{2}"
+                .format(mat_name, os.path.basename(self.file),
+                        textfill(", ".join([x["name"] for x in self.materials])))
+                )
 
         for param in self.parameters:
             param_name = param["name"]
@@ -245,7 +255,7 @@ class XMLParser:
         """Parse MaterialModel for "Core" files"""
         Files = self.MaterialModel.getElementsByTagName('Files')
         if not Files:
-            pu.report_and_raise_error(
+            raise XMLParserError(
                 "Expected 'Files' for the 'MaterialModel'.")
         Core = Files[0].getElementsByTagName("Core")
         core_files = [
@@ -257,7 +267,7 @@ class XMLParser:
         """Parse MaterialModel for "Interface" files"""
         Files = self.MaterialModel.getElementsByTagName('Files')
         if not Files:
-            pu.report_and_raise_error(
+            raise XMLParserError(
                 "Expected 'Files' for the 'MaterialModel'.")
         Interface =  Files[0].getElementsByTagName("Interface")
         for idx, item in enumerate(Interface):
@@ -284,11 +294,9 @@ class XMLParser:
             return None
         for item in payette_interface:
             if not os.path.isfile(item):
-                pu.report_error(
+                raise XMLParserError(
                     "payette interface file {0} not found".format(item))
             continue
-        if pu.error_count():
-            pu.report_and_raise_error("stopping due to previous errors")
 
         key, aliases, mat_type, src_types = self.get_payette_info()
 
@@ -301,7 +309,7 @@ class XMLParser:
         Type = self.MaterialModel.getElementsByTagName("Type")
         if not Type:
             material_type = None
-#            pu.report_and_raise_error(
+#            raise XMLParserError(
 #                "Expected a 'Type' for the 'MaterialModel'.")
         else:
             material_type = str(Type[0].firstChild.data).strip()
@@ -309,7 +317,7 @@ class XMLParser:
         # model keyword
         Key = self.ModelParameters.getElementsByTagName('Key')
         if not Key:
-            pu.report_and_raise_error(
+            raise XMLParserError(
                 "Expected a 'Key' in the 'ModelParameters' element.")
         model_key = str(Key[0].firstChild.data).strip()
 

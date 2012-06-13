@@ -32,6 +32,7 @@ import Source.Payette_tensor as pt
 import Source.Payette_utils as pu
 import Source.runopts as ro
 import Source.Payette_xml_parser as px
+from Source.Payette_xml_parser import XMLParserError as XMLParserError
 
 
 class ConstitutiveModelPrototype(object):
@@ -531,9 +532,15 @@ class ConstitutiveModelPrototype(object):
         import Source.Payette_xml_parser as px
         xml_obj = px.XMLParser(self.control_file)
         if material is None:
-            mtldat = xml_obj.get_parameterized_materials()
+            try:
+                mtldat = xml_obj.get_parameterized_materials()
+            except XMLParserError as error:
+                pu.report_and_raise_error(error.message)
         else:
-            mtldat = xml_obj.get_material_parameterization(material)
+            try:
+                mtldat = xml_obj.get_material_parameterization(material)
+            except XMLParserError as error:
+                pu.report_and_raise_error(error.message)
 
         return mtldat
 

@@ -24,6 +24,7 @@ from __future__ import print_function
 import os,sys
 
 from Source.Payette_material_builder import MaterialBuilder
+from Source.Payette_build import BuildError as BuildError
 
 class Build(MaterialBuilder):
 
@@ -46,9 +47,10 @@ class Build(MaterialBuilder):
         self.source_files = [os.path.join(self.source_directory, x)
                              for x in srcs]
 
-        self.build_extension_module_with_f2py()
+        try:
+            retval = self.build_extension_module_with_f2py()
+        except BuildError as error:
+            sys.stderr.write("ERROR: {0}".format(error.message))
+            retval = error.errno
 
-        return 0
-
-if __name__ == '__main__':
-    sys.exit("Script must be called through buildPayette")
+        return retval

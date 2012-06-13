@@ -48,6 +48,7 @@ import Source.Payette_utils as pu
 import Source.runopts as ro
 import Source.Payette_xml_parser as px
 import Source.Payette_model_index as pmi
+from Source.Payette_xml_parser import XMLParserError as XMLParserError
 
 # --- module level constants
 SPACE = "      "  # spacing used for logs to console
@@ -311,7 +312,12 @@ class BuildPayette(object):
         # specification
         for control_file in control_files:
             xml_lib = px.XMLParser(control_file)
-            build_info = xml_lib.get_payette_build_info()
+            build_info = None
+            try:
+                build_info = xml_lib.get_payette_build_info()
+            except XMLParserError as error:
+                pu.log_warning(error.message)
+
             if build_info is None:
                 continue
 
@@ -432,8 +438,9 @@ class BuildPayette(object):
         if failed:
             pu.log_warning(
                 "the following materials WERE NOT built:\n{0}"
-                .format(SPACE + "   " + ", ".join(['"' + x + '"'
-                                                    for x in failed])),
+                .format(textfill(", ".join([x for x in failed]),
+                                 initial_indent=SPACE,
+                                 subsequent_indent=SPACE)),
                 beg="\n", caller="anonymous")
 
         if built:
@@ -599,25 +606,25 @@ if __name__ == "__main__":
 
     WARN, ERROR = 0, 0
     if BUILD == 0:
-        pu.log_message("buildPayette succeeded", pre="\n", end="\n\n")
+        sys.stderr.write("\nINFO: buildPayette succeeded\n")
 
     elif BUILD < 0:
         WARN += 1
-        pu.log_warning("buildPayette failed to build one or "
-                       "more material libraries\n")
+        sys.stderr.write("\nWARNING: buildPayette failed to build one or "
+                         "more material libraries\n")
 
     elif BUILD > 0:
         ERROR += 1
-        pu.report_error("buildPayette failed\n")
+        sys.stderr.write("\nERROR: buildPayette failed\n")
 
     if not ERROR and not WARN:
-        pu.log_message("Enjoy Payette!", pre="")
+        sys.stderr.write("\nEnjoy Payette!\n")
 
     elif WARN:
-        pu.log_message("You've been warned, tread lightly!", pre="")
+        sys.stderr.write("\nYou've been warned, tread lightly!\n")
 
     else:
-        pu.log_message("Better luck next time!", pre="")
+        sys.stderr.write("\nBetter luck next time!\n")
 
     sys.exit(BUILD)
 

@@ -26,6 +26,7 @@ import os,sys
 
 import Payette_config as pc
 from Source.Payette_material_builder import MaterialBuilder
+from Source.Payette_build import BuildError as BuildError
 
 class Build(MaterialBuilder):
 
@@ -50,6 +51,10 @@ class Build(MaterialBuilder):
         self.source_files.append(os.path.join(pc.PC_FORTRAN,
                                               "tensor_toolkit.f90"))
 
-        self.build_extension_module_with_f2py()
+        try:
+            retval = self.build_extension_module_with_f2py()
+        except BuildError as error:
+            sys.stderr.write("ERROR: {0}".format(error.message))
+            retval = error.errno
 
-        return 0
+        return retval
