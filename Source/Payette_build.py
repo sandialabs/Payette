@@ -523,6 +523,7 @@ def _build_lib(args):
         build_error = build.build_extension_module()
 
     except BuildError as error:
+        pu.log_message(error.message)
         build_error = error.errno
 
     if build_error:

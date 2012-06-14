@@ -107,9 +107,11 @@ class MaterialBuilder(object):
 
         for srcf in self.source_files:
             if not os.path.isfile(srcf):
-                raise BuildError(
-                    "{0}: source file {1} not found".format(fcn,srcf),1)
+                pu.report_error("source file {0} not found".format(srcf))
             continue
+
+        if pu.error_count():
+            raise BuildError("Stopping due to previous errors.", 10)
 
         # remove extension module files if they exist
         for d in [self.source_directory, pc.PC_MTLS_LIBRARY]:
