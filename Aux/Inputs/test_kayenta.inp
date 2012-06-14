@@ -170,9 +170,10 @@ end boundary
 begin material
   constitutive model kayenta
   rho 2700
-  yield strength 200.e6
-  shmod 26.e9
-  bkmod 76.e9
+  free01 = 2
+  a1 200.e6
+  g0 26.e9
+  b0 76.e9
 end material
 
 end simulation

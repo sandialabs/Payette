@@ -262,6 +262,13 @@ class ConstitutiveModelPrototype(object):
             table[idx] = [param, desc, val]
         return table
 
+    def parameter_index(self, name):
+        for key, val in self.parameter_table.items():
+            if name.lower() in val["names"]:
+                return val["ui pos"]
+        else:
+            return None
+
     def get_parameter_names(self, aliases=False):
         """Returns a list of parameter names, and optionally aliases"""
         param_names = [None] * self.nprop

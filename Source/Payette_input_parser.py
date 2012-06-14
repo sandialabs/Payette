@@ -215,19 +215,24 @@ class InputParser(object):
                 key = item[0]
                 val = True
 
+            elif item[0].lower() == "write" and item[1].lower() == "input":
+                key = "WRITE_INPUT"
+                val = True
+
             else:
                 # key and value given.  Determine key and value
                 key = item[0]
                 val = "_".join(item[1:])
 
                 try:
-                    val = eval(val)
+                    val = float(val)
 
-                except (NameError, TypeError, SyntaxError):
+                except (NameError, TypeError, SyntaxError, ValueError):
                     val = str(val)
 
             # save key:val pairs
             self.user_options[key] = val
+
             continue
         return
 
@@ -526,7 +531,7 @@ class InputParser(object):
                 input_lines.append(item)
                 continue
             input_lines.append("end {0}".format(key))
-            input_lines.append("end simulation")
+        input_lines.append("end simulation")
 
         return input_lines
 
@@ -720,6 +725,9 @@ def parse_user_input(raw_user_input, user_cchar=None):
             continue
 
         continue
+
+    if current_input and "end simulation" not in current_input[-1]:
+        sys.exit("end of simulation '{0}' not found".format(current_input[0]))
 
     # check for the end of each simulation and insert 'use' blocks
     for idx, item in enumerate(all_inputs):
