@@ -300,6 +300,7 @@ class BuildPayette(object):
         """
 
         # determine if we want to build only select libraries
+        all_mtls = []
         self.materials_to_build = {}
         control_files = []
         for directory in self.search_directories:
@@ -322,14 +323,15 @@ class BuildPayette(object):
                 continue
 
             name, aliases, material_type, interface, source_types = build_info
+            all_mtls.append(name)
             if name in self.materials_to_build:
                 pu.log_warning(
                     "Duplicate material name {0}, skipping".format(name))
                 continue
             libname = name + pc.PC_EXT_MOD_FEXT
 
-            if (self.requested_materials
-                and name not in self.requested_materials):
+            if (self.requested_materials and
+                name.lower() not in [x.lower() for x in self.requested_materials]):
                 continue
 
             # check for interface file
@@ -339,7 +341,7 @@ class BuildPayette(object):
                 and os.path.basename(x).endswith(".py")]
             if not interface_file:
                 pu.log_warning(
-                    "Skipping material '{0}' because not interface file was found"
+                    "Skipping material '{0}' because no interface file was found"
                     .format(name))
                 continue
             interface_file = interface_file[0]
@@ -393,8 +395,12 @@ class BuildPayette(object):
         non_existent = [x for x in self.requested_materials
                         if x not in self.materials_to_build]
         if non_existent:
-            pu.log_warning("requested material[s] {0} not found"
-                            .format(", ".join(non_existent)))
+            pu.log_warning("Requested material[s] {0} not found. "
+                           .format(", ".join(non_existent)) +
+                           "Valid materials are:\n{0}"
+                           .format(textfill(", ".join([x for x in all_mtls]),
+                                 initial_indent=SPACE,
+                                 subsequent_indent=SPACE)))
         return
 
     def build_libraries(self, nproc=1):
