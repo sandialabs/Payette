@@ -736,11 +736,22 @@ def _copy_mathematica_nbs(mathnbs, destdir):
 
 def _switch_materials(files, switch):
     """switch materials"""
-    pat, repl = re.compile(switch[0], re.I|re.M), switch[1].lower()
+    #pat, repl = re.compile(switch[0], re.I|re.M), switch[1].lower()
+    #for fname in files:
+    #    lines = open(fname, "r").read()
+    #    with open(fname, "w") as fobj:
+    #        fobj.write(pat.sub(repl, lines))
+    #    continue
+    pat, repl = switch[0].lower(), switch[1].lower()
     for fname in files:
-        lines = open(fname, "r").read()
+        lines = open(fname, "r").readlines()
         with open(fname, "w") as fobj:
-            fobj.write(pat.sub(repl, lines))
+            for line in lines:
+                test_line = " ".join(line.lower().split())
+                if "constitutive model" in test_line and pat in test_line:
+                    line = "constitutive model {0}\n".format(repl)
+                fobj.write(line)
+                continue
         continue
     return
 

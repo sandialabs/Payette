@@ -29,7 +29,7 @@ import optparse
 from distutils import sysconfig
 
 
-__version__ = "1.0.dev"
+__version__ = "1.0.1"
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
 
 def check_exists(itemnam, item):
