@@ -886,15 +886,15 @@ def func(xcall, xnams, data, base_dir, xgold, index):
                        .format(IOPT + 1, ", ".join(msg)),
                        noisy=True)
 
-    # write to the index file
-    kwargs = {"name": job, "directory": job_dir, "variables": variables}
-    index.store(int(IOPT), **kwargs)
-
     # instantiate Payette object
     the_model = pc.Payette(job_inp)
 
     # run the job
     solve = the_model.run_job()
+
+    # store the data to the index
+    index.store(int(IOPT), the_model.name, the_model.simdir,
+                variables, the_model.outfile)
 
     the_model.finish()
 

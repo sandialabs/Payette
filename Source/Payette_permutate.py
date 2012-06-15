@@ -455,10 +455,6 @@ def func(args):
         pu.log_message("Running job {0:s}, parameters: {1}"
                        .format(job_id, ", ".join(msg)), noisy=True)
 
-    # write to the index file
-    kwargs = {"name": job, "directory": job_dir, "variables": variables}
-    index.store(int(job_id), **kwargs)
-
     # instantiate Payette object
     the_model = pc.Payette(job_inp)
 
@@ -467,6 +463,10 @@ def func(args):
 
     # run the job
     solve = the_model.run_job()
+
+    # store the data to the index
+    index.store(job_id, the_model.name, the_model.simdir,
+                variables, the_model.outfile)
 
     the_model.finish()
 

@@ -49,25 +49,41 @@ class SimulationIndex(object):
     """Class for indexing simulatons run for permutation and optimization jobs
 
     """
-    def __init__(self, base_dir):
+    def __init__(self, base_dir=None, index_file=None):
         """Initialize the SimulationIndex object
 
         Parameters
         ----------
-        base_dir : str
-          Path to directory where simulations are run, the index file will be
-          dumped to this directory.
+        name : str
+
+          Path to directory, or file, where simulations are run, the index file
+          will be dumped to this directory.
+
         mode : str
           Mode for file type.  Currently, only binary is supported.
 
         """
 
-        # check existence of base directory
-        if not os.path.isdir(base_dir):
-            raise SimulationIndexError("base_dir not found")
+        if index_file is not None and base_dir is not None:
+            raise SimulationIndexError(
+                "Specify one of base_dir or index_file, not both")
 
-        # default index file name
-        self.index_file = os.path.join(base_dir, "index.pkl")
+        # check existence of base directory
+        elif base_dir is not None:
+            if not os.path.isdir(base_dir):
+                raise SimulationIndexError("base_dir not found")
+            else:
+                # default index file name
+                self.index_file = os.path.join(base_dir, "index.pkl")
+        elif index_file is not None:
+            if not os.path.isfile(index_file):
+                raise SimulationIndexError("index_file not found")
+            else:
+                # default index file name
+                self.index_file = index_file
+        else:
+            raise SimulationIndexError(
+                "One of base_dir or index_file must be specified")
 
         # initialize class data
         self.index = {}
@@ -77,9 +93,11 @@ class SimulationIndex(object):
         if os.path.isfile(self.index_file):
             self.load()
 
-    def store(self, key, **kwargs):
+    def store(self, key, name, job_dir, variables, outfile):
         """Store all kwargs in to the index dict"""
-        self.index[key] = kwargs
+        self.index[key] = {
+            "name": name, "directory": job_dir, "variables": variables,
+            "outfile": outfile}
         return
 
     def dump(self):
@@ -104,3 +122,6 @@ class SimulationIndex(object):
         if not self.loaded_index:
             self.load()
         return self.loaded_index
+
+    def output_files(self):
+        return [v["outfile"] for k, v in self.loaded_index.items()]
