@@ -1,6 +1,6 @@
 try:
     from traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant
-    from traitsui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, InstanceEditor, ListEditor, Spring
+    from traitsui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, InstanceEditor, ListEditor, Spring, Action, Handler
     from traitsui.tabular_adapter import TabularAdapter
 
 except ImportError:
@@ -19,10 +19,36 @@ import Payette_xml_parser as px
 from Viz_ModelData import PayetteModel, PayetteModelParameter, PayetteMaterial, PayetteMaterialParameter
 from Viz_ModelRunner import ModelRunner
 
+class PayetteInputStringPreview(HasStrictTraits):
+    class ISPHandler(Handler):
+        def _run(self, info):
+            preview = info.ui.context['object']
+            preview.runner.RunInputString(preview.input_string)
+
+        def _close(self, info):
+            info.ui.dispose()
+
+    input_string = String
+    runner = Instance(ModelRunner)
+
+    trait_view = View(
+        VGroup(
+            Item('input_string', style='custom', show_label=False),
+        ),
+        buttons=[Action(name='Close', action='_close'), Action(name='Running', action='_run')],
+        handler=ISPHandler(),
+        width=800,
+        height=600,
+        resizable=True
+    )
+
 class PayetteMaterialModelSelector(HasStrictTraits):
     models = List(Instance(PayetteModel))
     selected_model = Instance(PayetteModel)
+    simulation_name = String
+    auto_generated = Bool(True)
     none_constant = Constant("None")
+    show_button = Button("Show Input File")
     run_button = Button("Run Material Model")
     model_index = pmi.ModelIndex()
 
@@ -43,6 +69,7 @@ class PayetteMaterialModelSelector(HasStrictTraits):
                 )
 
             model = PayetteModel(model_name = modelName, parameters = params, model_type = [cmod_obj.material_type])
+            model.on_trait_change(self.update_sim_name, 'selected_material')
             self.models.append(model)
 
         self.selected_model = self.models[0]
@@ -52,6 +79,16 @@ class PayetteMaterialModelSelector(HasStrictTraits):
             return
 
         info.materials = self.loadModelMaterials(info.model_name)
+
+    def _simulation_name_changed(self, info):
+        self.auto_generated = False
+
+    def update_sim_name(self):
+        if self.auto_generated:
+            if self.selected_model is not None and self.selected_model.selected_material is not None:
+                self.simulation_name = self.selected_model.model_name + "_" + self.selected_model.selected_material.name
+            # A trick to reset the flag, since _simulation_name_changed() is called first
+            self.auto_generated = True
 
     def loadModelMaterials(self, modelName):
         if modelName not in self.model_index.constitutive_models():
@@ -89,9 +126,15 @@ class PayetteMaterialModelSelector(HasStrictTraits):
         return materials
 
     def _run_button_fired(self, event):
-        print event
-        runner = ModelRunner(material_models=[self.selected_model])
+        runner = ModelRunner(simulation_name=self.simulation_name, material_models=[self.selected_model])
         runner.RunModels()
+
+    def _show_button_fired(self, event):
+        runner = ModelRunner(simulation_name=self.simulation_name, material_models=[self.selected_model])
+        input_string = runner.CreateModelInputString(self.selected_model)
+        preview = PayetteInputStringPreview(input_string=input_string, runner=runner)
+        preview.configure_traits()
+        
 
     view = View(
         VGroup(
@@ -138,8 +181,10 @@ class PayetteMaterialModelSelector(HasStrictTraits):
                 ),
                 show_border = True,
             ),
+            Item('simulation_name', style="simple"),
             HGroup(
                 Spring(),
+                Item('show_button', show_label = False, enabled_when="selected_model is not None"),
                 Item('run_button', show_label = False, enabled_when="selected_model is not None"),
                 show_border = True
             )

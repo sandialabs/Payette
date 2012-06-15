@@ -2,23 +2,28 @@ import StringIO
 import sys
 
 try:
-    from traits.api import HasStrictTraits, List, Instance
+    from traits.api import HasStrictTraits, List, Instance, String
 
 except ImportError:
     # support for MacPorts install of enthought tools
-    from enthought.traits.api import HasStrictTraits, List, Instance
+    from enthought.traits.api import HasStrictTraits, List, Instance, String
 
 import Source.Payette_run as pr
 from Viz_ModelData import PayetteModel
 
 class ModelRunner(HasStrictTraits):
+    simulation_name = String
     material_models = List(Instance(PayetteModel))
 
     def RunModels(self):
         for material in self.material_models:
             inputString = self.CreateModelInputString(material)
 
-            output = StringIO.StringIO()
+            self.RunInputString(inputString)
+
+
+    def RunInputString(self, inputString):
+            #output = StringIO.StringIO()
 
             oldout = sys.stdout
             #sys.stdout = output
@@ -27,19 +32,16 @@ class ModelRunner(HasStrictTraits):
 
 
     def CreateModelInputString(self, material):
-        result = """
-        begin simulation %s
-          begin material
-            constitutive model %s
-
-        """ % (material.model_name, material.model_name)
+        result = (
+            "begin simulation %s\n"
+            "  begin material\n"
+            "    constitutive model %s\n"
+        % (self.simulation_name, material.model_name))
 
         for p in material.parameters:
             result += "    %s = %s\n" % (p.name, p.value)
 
-        result += """
-          end material
-        """
+        result += "  end material\n"
 
         model_type = str(material.model_type).lower()
         if 'eos' in model_type:
@@ -48,9 +50,7 @@ class ModelRunner(HasStrictTraits):
         elif 'mechanical' in model_type:
             result += self.CreateMechanicalBoundaryInput(material)
 
-        result += """
-        end simulation
-        """
+        result += "end simulation\n"
         return result
 
     def CreateEOSBoundaryInput(self, material):
@@ -63,26 +63,26 @@ class ModelRunner(HasStrictTraits):
             elif p.name == "R0":
                 R0 = float(p.value)*1000.0
 
-        result = """
-          begin boundary
-
-            nprints 5
-
-            input units MKSK
-            output units MKSK
-
-            density range %f %f
-            temperature range %f %f
-
-            surface increments %d
-
-            path increments %d
-        """ % (material.eos_boundary.min_density,
+        result = (
+            "  begin boundary\n"
+            "\n"
+            "    nprints 5\n"
+            "\n"
+            "    input units MKSK\n"
+            "    output units MKSK\n"
+            "\n"
+            "    density range %f %f\n"
+            "    temperature range %f %f\n"
+            "\n"
+            "    surface increments %d\n"
+            "\n"
+            "    path increments %d\n"
+            % (material.eos_boundary.min_density,
                material.eos_boundary.max_density,
                material.eos_boundary.min_temperature,
                material.eos_boundary.max_temperature,
                material.eos_boundary.surface_increments,
-               material.eos_boundary.path_increments)
+               material.eos_boundary.path_increments))
 
         if material.eos_boundary.isotherm:
             result += "    path isotherm %f %f\n" % (R0, T0)
@@ -91,28 +91,36 @@ class ModelRunner(HasStrictTraits):
         if material.eos_boundary.hugoniot:
             result += "    path hugoniot %f %f\n" % (R0, T0)
 
-        result += """
-          end boundary
-        """
+        result += "  end boundary\n"
 
         return result
 
     def CreateMechanicalBoundaryInput(self, material):
-        result = """
-          begin boundary
-            kappa = 0.
-            begin legs
-        """
+        result = (
+            "  begin boundary\n"
+            "    kappa = 0.\n"
+            "    tstar = %f\n"
+            "    fstar = %f\n"
+            "    sstar = %f\n"
+            "    dstar = %f\n"
+            "    estar = %f\n"
+            "    efstar = %f\n"
+            "    ampl = %f\n"
+            "    ratfac = %f\n"
+            "    begin legs\n"
+            % (material.TSTAR, material.FSTAR, material.SSTAR, material.DSTAR,
+               material.ESTAR, material.EFSTAR, material.AMPL, material. RATFAC)
+        )
 
         leg_num = 0
         for leg in material.legs:
             result += "      %d %f %d %s %s\n" % (leg_num, leg.time, leg.nsteps, leg.types, leg.components)
             leg_num += 1
 
-        result += """
-            end legs
-          end boundary
-        """
+        result += (
+            "    end legs\n"
+            "  end boundary\n"
+        )
         return result
 
 
