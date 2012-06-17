@@ -485,7 +485,7 @@ def _run_job(args):
     if retcode != 0:
         sys.stderr.write("ERROR: simulation failed\n")
 
-    if not last:
+    if ro.VERBOSITY and not last:
         sys.stderr.write("\n")
 
     if timing:

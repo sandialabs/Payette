@@ -133,12 +133,12 @@ class XMLParser:
         Parameters = self.ModelParameters.getElementsByTagName('Parameter')
         for parameter in Parameters:
             # If you just want to loop through the attributes:
-            tmp = {"aliases": None, "parseable": True}
+            tmp = {"aliases": [], "parseable": True}
             for idx in range(0, parameter.attributes.length):
                 mname = str(parameter.attributes.item(idx).name).strip()
                 mval = str(parameter.attributes.item(idx).value).strip()
                 tmp[mname] = mval
-            if tmp["aliases"] is not None:
+            if tmp["aliases"]:
                 tmp["aliases"] = [x.strip() for x in tmp["aliases"].split(",")]
             self.parameters.append(tmp)
 
@@ -190,8 +190,6 @@ class XMLParser:
         mtldat : list
           list of tuples of (name, description) pairs for parameterized materials
         """
-        iam = "get_parameterized_materials"
-
         mtldat = []
         for mat in self.materials:
             mtldat.append([mat["name"], mat["description"]])
@@ -213,8 +211,6 @@ class XMLParser:
           materials. The variable 'param_val' will be of whatever type the
           xml file says that it will be (likely all will be converted to float).
         """
-        iam = "get_material_parameterizations"
-
         # Every set of inputs needs a unit system.
         mtldat = [("Units", self.units_system)]
 
@@ -234,8 +230,11 @@ class XMLParser:
 
         for param in self.parameters:
             param_name = param["name"]
-            param_val = material.get(param_name)
-            if param_val is None:
+            for param_key in [param_name] + param["aliases"]:
+                param_val = material.get(param_key)
+                if param_val is not None:
+                    break
+            else:
                 param_val = param["default"]
             if param["type"] == "double":
                 param_val = float(param_val)

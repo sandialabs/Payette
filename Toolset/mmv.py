@@ -17,6 +17,8 @@ usage: {0} <{{file,dir}}.out> <@COLUMN1> <@COLUMN2>""".format(exename)
 
 import Source.Payette_sim_index as psi
 
+verbose = False
+
 try:
     from chaco.api import ArrayPlotData, Plot, DataLabel
     from chaco.tools.api import PanTool, ZoomTool
@@ -150,7 +152,8 @@ class swan:
             linreg_y.append(self.timepoints[idx][1][0])
         if len(self.data) > 1:
             linreg = ss.linregress(linreg_x,linreg_y)
-            print("y = {0:.5e}*x + {1:.5e}".format(linreg[0],linreg[1]))
+            if verbose:
+                print("y = {0:.5e}*x + {1:.5e}".format(linreg[0],linreg[1]))
 
 swan_db = swan()
 my_time = swan_db.data[0][0]

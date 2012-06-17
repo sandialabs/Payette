@@ -531,13 +531,16 @@ class Boundary(object):
                 continue
 
             time_f = leg[1]
-            if time_f < time_0:
+            if time_f <= time_0:
                 msg = ("time must be monotonic from {0:d} to {1:d}"
                        .format(leg[0] - 1, leg[0]))
                 raise BoundaryError(msg)
 
             time_0 = time_f
-            continue
+
+        if not ileg:
+            raise BoundaryError("Only one time step found.")
+
         self.termination_time = time_f
 
         return

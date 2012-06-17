@@ -10,7 +10,7 @@ except ImportError:
         BaseInt, Int, Float, Bool, Property, Button, Constant)
     from enthought.traits.ui.api import (
         View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor,
-        InstanceEditor, ListEditor, Spring)
+        InstanceEditor, ListEditor, Spring, Action, Handler)
     from enthought.traits.ui.tabular_adapter import TabularAdapter
 
 import Payette_model_index as pmi
@@ -134,7 +134,7 @@ class PayetteMaterialModelSelector(HasStrictTraits):
         input_string = runner.CreateModelInputString(self.selected_model)
         preview = PayetteInputStringPreview(input_string=input_string, runner=runner)
         preview.configure_traits()
-        
+
 
     view = View(
         VGroup(

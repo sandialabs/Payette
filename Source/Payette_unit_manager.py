@@ -72,19 +72,26 @@ class UnitManager:
               "discrete amount":  [0,  0,  0,  0,  1,  0,  0],
              "electric current":  [0,  0,  0,  0,  0,  1,  0],
            "luminous intensity":  [0,  0,  0,  0,  0,  0,  1],
-                     # Lambda units
-                     "NO_UNITS":  [0,  0,  0,  0,  0,  0,  0],
+                     # Common Lambda and Alegra units
                 "DENSITY_UNITS": [-3,  1,  0,  0,  0,  0,  0],
             "TEMPERATURE_UNITS":  [0,  0,  0,  1,  0,  0,  0],
                "VELOCITY_UNITS":  [1,  0, -1,  0,  0,  0,  0],
           "SPECIFIC_HEAT_UNITS":  [2,  0, -2, -1,  0,  0,  0],
         "SPECIFIC_ENERGY_UNITS":  [2,  0, -2,  0,  0,  0,  0],
                "PRESSURE_UNITS": [-1,  1, -2,  0,  0,  0,  0],
+              "VISCOSITY_UNITS": [-1,  1, -1,  0,  0,  0,  0],
+                 "VOLUME_UNITS":  [3,  0,  0,  0,  0,  0,  0],
+                     # Lambda units
+                     "NO_UNITS":  [0,  0,  0,  0,  0,  0,  0],
            "INV_PRESSURE_UNITS":  [1, -1,  2,  0,  0,  0,  0],
         "INV_TEMPERATURE_UNITS":  [0,  0,  0, -1,  0,  0,  0],
                "INV_TIME_UNITS":  [0,  0, -1,  0,  0,  0,  0],
-              "VISCOSITY_UNITS": [-1,  1, -1,  0,  0,  0,  0],
-                 "VOLUME_UNITS":  [3,  0,  0,  0,  0,  0,  0],
+                     # Alegra units
+         "NONDIMENSIONAL_UNTIS":  [0,  0,  0,  0,  0,  0,  0],
+           "PRESSURE_INV_UNITS":  [1, -1,  2,  0,  0,  0,  0],
+   "PRESSURE_OVER_LENGTH_UNITS": [-2,  1, -2,  0,  0,  0,  0],
+        "PRESSURE_INV_UNITS_SQ":  [2, -2, -4,  0,  0,  0,  0],
+               "TIME_INV_UNITS":  [0,  0, -1,  0,  0,  0,  0],
                      # Suggested Lambda Units
                  "LENGTH_UNITS":  [1,  0,  0,  0,  0,  0,  0],
                    "MASS_UNITS":  [0,  1,  0,  0,  0,  0,  0],
@@ -92,6 +99,8 @@ class UnitManager:
                    "RATE_UNITS":  [0,  0, -1,  0,  0,  0,  0],
    "SQUARED_INV_PRESSURE_UNITS":  [2, -2, -4,  0,  0,  0,  0],
               "STIFFNESS_UNITS": [-2,  1, -2,  0,  0,  0,  0], #PRESSURE_UNITS/LENGTH_UNITS
+                     # Not specified
+                "NOT_SPECIFIED":  [0,  0,  0,  0,  0,  0,  0],
                      # non-base
                      "position":  [1,  0,  0,  0,  0,  0,  0],
                      "velocity":  [1,  0, -1,  0,  0,  0,  0],

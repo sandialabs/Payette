@@ -12,9 +12,11 @@ begin simulation exmpl_13
     kappa = 0
     tstar = 1.
     ampl = 1
+    stepstar = 100
     begin legs
-      using time, strain, from columns 1, 3:8
-      insert exmpls.tbl
+      using time, strain
+      0 0 0 0 0 0 0
+      1 .1 0 0 0 0 0
     end legs
   end boundary
 
@@ -32,8 +34,8 @@ begin simulation exmpl_13
 
     # below we specify which parameters to permutation
     method zip # [zip] {zip, combination}
-    permutate K, range = (125.e9, 150.e9, 10) # [] {range, sequence}
-    permutate G, range = (45.e9, 57.e9, 10)
+    permutate K, range = (100.e9, 200.e9, 10) # [] {range, sequence}
+    permutate G, range = (40.e9, 60.e9, 10)
 
   end permutation
 
