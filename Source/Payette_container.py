@@ -268,8 +268,8 @@ class Payette:
         # math1 is a file containing user inputs, and locations of simulation
         # output for mathematica to use
         cmod = self.material.constitutive_model
-        user_params = cmod.get_parameter_names_and_values()
-        adjusted_params = cmod.get_parameter_names_and_values(default=False)
+        user_params = cmod.get_parameter_names_and_values(version="unmodified")
+        adjusted_params = cmod.get_parameter_names_and_values(version="modified")
         with open(math1, "w") as fobj:
             # write out user given input
             for name, desc, val in user_params:

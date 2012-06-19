@@ -248,16 +248,32 @@ class ConstitutiveModelPrototype(object):
 
         return
 
-    def get_parameter_names_and_values(self, default=True):
+    def get_parameter_names_and_values(self, default=True, version=None):
         """Returns a 2D list of names and values
                [ ["name",  "description",  val],
                  ["name2", "description2", val2],
                  [...] ]
         """
         table = [None] * self.nprop
+        if version is None:
+            if default:
+                version = "default"
+            else:
+                version = "modified"
+
+        if version not in ("default", "unmodified", "modified",):
+            pu.report_and_raise_error(
+                "unrecognized version {0}".format(version))
+
         for param, param_dict in self.parameter_table.items():
             idx = param_dict["ui pos"]
-            val = param_dict["default value"] if default else self.ui[idx]
+            if version == "default":
+                val = param_dict["default value"]
+            elif version == "modified":
+                val = self.ui[idx]
+            else:
+                val = self.ui0[idx]
+
             desc = param_dict["description"]
             table[idx] = [param, desc, val]
         return table
