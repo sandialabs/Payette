@@ -679,6 +679,10 @@ def _parse_mtl_block(material_inp):
             user_options["strength model"] = strength_model
             continue
 
+        elif "track element" in item:
+            user_options["track element"] = True
+            continue
+
         user_params.append(item)
         continue
 

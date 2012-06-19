@@ -170,7 +170,8 @@ class ConstitutiveModelPrototype(object):
         params = self.xml_obj.get_sorted_parameters()
         for idx, pm in enumerate(params):
             self.register_parameter(
-                pm["name"], idx, aliases=pm["aliases"], parseable=pm["parseable"])
+                pm["name"], idx, aliases=pm["aliases"],
+                default=pm["default"], parseable=pm["parseable"])
             continue
         return
 
