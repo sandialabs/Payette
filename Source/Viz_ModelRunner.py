@@ -10,6 +10,8 @@ except ImportError:
 
 import Source.Payette_run as pr
 from Viz_ModelData import PayetteModel
+from Viz_ModelPlot import create_Viz_ModelPlot
+import os
 
 class ModelRunner(HasStrictTraits):
     simulation_name = String
@@ -24,12 +26,17 @@ class ModelRunner(HasStrictTraits):
 
     def RunInputString(self, inputString):
             #output = StringIO.StringIO()
-
+            
             oldout = sys.stdout
             #sys.stdout = output
             pr.run_payette(["--input-str", inputString])
             sys.stdout = oldout
-
+            self.CreatePlotWindow()
+            
+    def CreatePlotWindow(self):
+            out_file = os.path.join(os.getcwd(), self.simulation_name + ".out")
+            if os.path.isfile(out_file):
+               create_Viz_ModelPlot(self.simulation_name, out_file)
 
     def CreateModelInputString(self, material):
         result = (
