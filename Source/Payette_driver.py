@@ -23,6 +23,7 @@
 
 import os
 import sys
+import math
 import numpy as np
 try:
     import cPickle as pickle
@@ -629,6 +630,11 @@ def solid_driver(the_model, **kwargs):
                                        "gradient from table")
                     matdat.advance_data("deformation gradient", F_int)
 
+            # udpate density
+            dev = pt.trace(matdat.get_data("rate of deformation")) * dt
+            rho_old = simdat.get_data("payette density")
+            simdat.advance_data("payette density", rho_old * math.exp(-dev))
+
             # update material state
             material.update_state(simdat, matdat)
 
@@ -640,6 +646,7 @@ def solid_driver(the_model, **kwargs):
             matdat.store_data("pressure", -(sig[0] + sig[1] + sig[2]) / 3.)
 
             matdat.advance_all_data()
+            simdat.advance_all_data()
 
             # --- write state to file
             if (nsteps-n)%print_interval == 0:

@@ -212,6 +212,9 @@ class Payette:
                                  init_val=0., plot_key="timestep")
         self.simdat.register_data("number of steps", "Scalar", init_val=0)
         self.simdat.register_data("leg number", "Scalar", init_val=0 )
+        self.simdat.register_data(
+            "payette density", "Scalar",
+            init_val=self.material.initial_density(), plot_key="PRHO")
 
         if ro.CHECK_SETUP:
             exit("EXITING to check setup")

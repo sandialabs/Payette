@@ -418,3 +418,7 @@ def dev(arga):
 def iso(arga):
     """ isotropic part of symmetric second order tensor arga """
     return ddp(arga, I6) / 3. * I6
+
+def trace(arga):
+    """trace of the second order tensor arga"""
+    return ddp(arga, I6)

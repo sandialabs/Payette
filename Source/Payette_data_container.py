@@ -30,6 +30,7 @@ import math
 import numpy as np
 import scipy.linalg
 import time
+from copy import deepcopy
 
 import Source.Payette_utils as pu
 import Source.Payette_tensor as pt
@@ -79,7 +80,6 @@ class DataContainer:
                         plotable
         """
 
-        iam = "{0}.register_data(self,name,**kwargs)".format(self.name)
         if (name in self.data_container or
             name.upper() in self.data_container or
             name.lower() in self.data_container):
@@ -279,6 +279,7 @@ class DataContainer:
                                      "type": typ,
                                      "shape": shape,
                                      "value": value,
+                                     "previous value": old_value,
                                      "old value": old_value,
                                      "stashed value": old_value,
                                      "constant": constant,
@@ -289,7 +290,6 @@ class DataContainer:
 
     def unregister_data(self, name):
         """ unregister data with the data container """
-        iam = "unregister_data"
         try:
             del self.data_container[name]
         except KeyError:
@@ -298,8 +298,6 @@ class DataContainer:
 
     def register_xtra_vars(self, nxtra, names, keys, values):
         """ register extra data with the data container """
-
-        iam = "{0}.register_xtra_vars".format(self.name)
 
         if self.extra_vars_registered:
             pu.report_and_raise_error(
@@ -350,10 +348,9 @@ class DataContainer:
 
         return self.static_data_container.get(name)
 
-    def get_data(self, name, stash=False, cur=False, form="Array"):
+    def get_data(self, name, stash=False, cur=False,
+                 previous=False, form="Array"):
         """ return simulation_data[name][valtyp] """
-
-        iam = "{0}.get_data(self,name)".format(self.name)
 
         idx = None
         if name in self.plot_key_map:
@@ -368,6 +365,8 @@ class DataContainer:
             valtyp = "stashed value"
         elif cur:
             valtyp = "value"
+        elif previous:
+            valtyp = "previous value"
         else:
             valtyp = "old value"
 
@@ -437,8 +436,6 @@ class DataContainer:
 
         """ store the simulation data """
 
-        iam = "{0}.store_data(self,name,newval)".format(self.name)
-
         if old and stash:
             pu.report_and_raise_error("can only store old or stash not both")
 
@@ -461,6 +458,7 @@ class DataContainer:
             return
 
         data = self.data_container.get(name)
+
         if data is None:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
                    .format(name, self.name, ", ".join(self.data_container.keys())))
@@ -494,28 +492,29 @@ class DataContainer:
                     "len Tensor data {0} != 9".format(name))
 
             # store the newval
-            data[valtyp] = np.array(newval)
+            newval = np.array(newval)
 
         elif typ == "List":
-            data[valtyp] = [x for x in newval]
+            newval = [x for x in newval]
 
         elif typ == "Integer Array":
-            data[valtyp] = np.array([x for x in newval],dtype=int)
+            newval = np.array([x for x in newval],dtype=int)
 
         elif typ == "Array":
-            data[valtyp] = np.array(newval)
+            newval = np.array(newval)
 
         else:
             # store the scalar variable
-            data[valtyp] = newval
+            newval = newval
 
+        # transfer oldvalue to previous and save new
+        data["previous value"] = deepcopy(data["value"])
+        data[valtyp] = newval
         return
 
     def stash_data(self, name, cur=False):
 
         """ stash "old value" in "stashed value" """
-
-        iam = "{0}.stash_data(self,name,newval)".format(self.name)
 
         # handle extra variables
         if name == "extra variables":
@@ -538,8 +537,6 @@ class DataContainer:
     def unstash_data(self, name):
 
         """ unstash "value" from "stashed value" """
-
-        iam = "{0}.unstash_data(self,name,newval)".format(self.name)
 
         # handle extra variables
         if name == "extra variables":
@@ -571,8 +568,6 @@ class DataContainer:
 
     def advance_data(self, name, value=None):
         """ advance "value" to "old value" """
-
-        iam = "{0}.advance_data(self,name)".format(self.name)
 
         if name == "extra variables":
             if value is not None:
@@ -626,8 +621,6 @@ class DataContainer:
 
     def get_plot_name(self, name, idx=None):
 
-        iam = "get_plot_name"
-
         if name in self.plot_key_map:
             plot_key = name
             plot_name = self.plot_key_map[plot_key]["plot name"]
@@ -652,8 +645,6 @@ class DataContainer:
 
     def dump_data(self,name):
         """ return self.data_container[name] """
-
-        iam = "{0}.dump_data(self)".format(self.name)
 
         if "extra variables" in name:
             ex_vars = {}

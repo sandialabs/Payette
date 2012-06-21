@@ -27,6 +27,7 @@ parameters using Payette.
 
 import os
 import sys
+import shutil
 import numpy as np
 import multiprocessing as mp
 from copy import deepcopy
@@ -117,7 +118,13 @@ class Permutate(object):
         cwd = os.path.realpath(os.getcwd())
         dnam = self.data["basename"] + self.data["fext"]
         base_dir = os.path.join(cwd, dnam)
-        if os.path.isdir(base_dir):
+        if not ro.KEEP:
+            try:
+                shutil.rmtree(base_dir)
+            except OSError:
+                pass
+
+        elif os.path.isdir(base_dir):
             idir = 0
             dir_id = ".{0:03d}".format(idir)
             copy_dir = os.path.join(cwd, dnam + dir_id)

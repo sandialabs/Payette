@@ -69,6 +69,9 @@ Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
         self.eos_model = self.constitutive_model.eos_model
         self.material_type = self.constitutive_model.material_type
 
+        # density
+        self._initial_density = 1.
+
         # initialize material data container
         self.matdat = DataContainer(self.constitutive_model.name)
         self.extra_vars_registered = False
@@ -188,3 +191,6 @@ Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
     def jacobian(self, simdat, matdat):
         """return the material Jacobian matrix"""
         return self.constitutive_model.jacobian(simdat, matdat)
+
+    def initial_density(self):
+        return self.constitutive_model.initial_density()
