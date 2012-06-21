@@ -163,16 +163,6 @@ class ConstitutiveModelPrototype(object):
         matdat.register_data("jacobian", "Matrix", init_val=self.J0)
         ro.set_global_option("EFIELD_SIM", self.electric_field_model)
 
-        # get the initial density
-        for name, info in self.parameter_table.items():
-            names = info["names"]
-            if "density" in names and self.ui0[info["ui pos"]] > 0.:
-                self._initial_density = self.ui0[info["ui pos"]]
-                break
-            continue
-        else:
-            self._initial_density = 1.
-
         return
 
     def register_parameters_from_control_file(self):
@@ -580,7 +570,12 @@ class ConstitutiveModelPrototype(object):
 
     def initial_density(self):
         """return the initial density"""
-        return self._initial_density
+        for name, info in self.parameter_table.items():
+            names = info["names"]
+            if "density" in names and self.ui0[info["ui pos"]] > 0.:
+                return self.ui0[info["ui pos"]]
+            continue
+        return 1.
 
     # The methods below are going to be depricated in favor of
     # under_score_separated names. We keep them here for compatibility.
