@@ -579,7 +579,8 @@ class Payette:
             return retcode
 
         else:
-            return {"retcode": retcode}
+            return {"retcode": retcode,
+                    "output file": self.outfile}
 
     def finish(self):
         """finish up"""
