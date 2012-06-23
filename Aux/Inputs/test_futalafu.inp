@@ -1,0 +1,36 @@
+begin simulation futalafu
+use boundary_001
+begin material
+  constitutive model futalafu
+  matlabel = copper
+  a = 2.e10
+  b = 0.02
+  gf = .002
+  sf = 30
+  yf = 5.196e6
+end material
+end simulation
+
+$$$$$$$$begin simulation plastic
+$$$$$$$$use boundary_001
+$$$$$$$$begin material
+$$$$$$$$  constitutive model plastic
+$$$$$$$$  matlabel = copper
+$$$$$$$$end material
+$$$$$$$$end simulation
+
+begin boundary_001
+begin boundary
+  kappa = 0
+  tstar = 1.
+  ampl = 1
+  estar = .02
+  begin legs
+    0 0 0   222222  0 0 0 0 0 0
+    1 1 1000 222222 1 0 0 0 0 0
+    2 2 1000 222222 0 0 0 0 0 0
+    3 3 1000 222222 -1 0 0 0 0 0
+#    2 2 1000 222222  2  .5  .5 0 0 0
+  end legs
+end boundary
+end boundary_001

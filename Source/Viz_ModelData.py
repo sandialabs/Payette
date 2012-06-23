@@ -7,10 +7,10 @@ except ImportError:
     # support for MacPorts install of enthought tools
     from enthought.traits.api import (
         HasStrictTraits, List, Instance, String, BaseInt, Int,
-        Float, Bool, Property, Button, Constant, Enum)
+        Float, Bool, Property, Button, Constant, Enum, Event)
     from enthought.traits.ui.api import (
         View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor,
-        InstanceEditor, ListEditor, Spring)
+        InstanceEditor, ListEditor, Spring, TableEditor, ObjectColumn)
     from enthought.traits.ui.tabular_adapter import TabularAdapter
 
 import random

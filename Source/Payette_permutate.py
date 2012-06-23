@@ -59,11 +59,15 @@ class Permutate(object):
         # save Perturbate information to single "data" dictionary
         self.data = {}
         self.data["basename"] = job
-        self.data["nproc"] = ro.NPROC
         self.data["return level"] = ro.DISP
         self.data["verbosity"] = ro.VERBOSITY
         self.data["fext"] = ".perm"
         self.data["baseinp"] = input_lines
+
+        # number of processors
+        nproc = int(job_inp.get_option("nproc")
+                    if job_inp.get_option("nproc") is not None else ro.NPROC)
+        self.data["nproc"] = nproc
 
         # set verbosity to 0 for Payette simulation and save the payette
         # options to the data dictionary
@@ -158,15 +162,17 @@ class Permutate(object):
 
         nproc = min(mp.cpu_count(), self.data["nproc"])
         if nproc == 1:
-            map(func, args)
+            results = [func(job) for arg in args]
 
         else:
             pool = mp.Pool(processes=nproc)
-            pool.map(func, args)
+            results = pool.map(func, args)
             pool.close()
             pool.join()
             del pool
 
+        for result in results:
+            self.index.store(*result)
         os.chdir(cwd)
 
         if self.data["verbosity"]:
@@ -473,9 +479,6 @@ def func(args):
     solve = the_model.run_job()
 
     # store the data to the index
-    index.store(job_id, the_model.name, the_model.simdir,
-                variables, the_model.outfile)
-
     the_model.finish()
 
     if ro.DISP:
@@ -489,6 +492,7 @@ def func(args):
     # go back to the base_dir
     os.chdir(base_dir)
 
-    return 0
+    return job_id, the_model.name, the_model.simdir, variables, the_model.outfile
+
 
 

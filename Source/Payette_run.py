@@ -412,7 +412,6 @@ def run_payette(argv, disp=0):
     # number of processors
     nproc = min(min(mp.cpu_count(), opts.nproc), len(user_input_sets))
     opts.verbosity = opts.verbosity if nproc == 1 else 0
-    ro.NPROC = nproc
     ro.VERBOSITY = opts.verbosity
 
     if nproc > 1:

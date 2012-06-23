@@ -39,6 +39,7 @@ Toolset/__found_tests__.py
 *.dtable
 *.so
 *.o
+*.mod
 *.a
 Examples/test/*
 Examples/test

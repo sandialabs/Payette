@@ -1,3 +1,4 @@
+import os
 import linecache
 import Source.Payette_utils as pu
 import Source.Payette_sim_index as psi
@@ -167,7 +168,7 @@ def create_Viz_ModelPlot(window_name, **kwargs):
             "specify either an output or index file, not both")
 
     if index_file is not None:
-        sim_index = psi.SimulationIndex(index_file=arg)
+        sim_index = psi.SimulationIndex(index_file=index_file)
         output_files = sim_index.output_files()
         not_found = [x for x in output_files if not os.path.isfile(x)]
         if not_found:

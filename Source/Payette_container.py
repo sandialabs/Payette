@@ -29,6 +29,7 @@ import sys
 import math
 import numpy as np
 from copy import deepcopy
+from textwrap import fill as textfill
 
 import Source.Payette_driver as pd
 import Source.Payette_utils as pu
@@ -161,6 +162,15 @@ class Payette:
         # set up the logger for the simulation
         pu.setup_logger(self.logfile)
         pu.log_message("setting up simulation {0}".format(self.name))
+
+        # write description
+        pu.write_to_simlog("Description: ")
+        description = (
+            "  None" if self.user_input.get_block("description") is None
+            else textfill(" ".join(self.user_input.get_block("description")),
+                          initial_indent="  ", subsequent_indent="  "))
+        pu.write_to_simlog(description)
+
 
         # file name for the Payette restart file
         self.is_restart = False
@@ -631,7 +641,7 @@ class Payette:
         inp_f = os.path.join(self.simdir, self.name + ".inp")
         with open(inp_f, "w") as fobj:
             for line in inp_lines:
-                if "simdir" in line.lower():
+                if "simdir" in line.lower() or "write input" in line.lower():
                     continue
                 fobj.write(line + "\n")
                 continue

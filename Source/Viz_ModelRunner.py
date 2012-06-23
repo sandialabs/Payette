@@ -33,7 +33,8 @@ class ModelRunner(HasStrictTraits):
         # tjf: run_payette can be invoked with disp=1 and then it returns a
         # tjf: dictionary with some extra information. I pass that extra
         # tjf: information to the CreatePlotWindow method.
-        siminfo = pr.run_payette(["--input-str", inputString], disp=1)[0]
+        cmd = ["--input-str={0}".format(inputString)]
+        siminfo = pr.run_payette(cmd, disp=1)[0]
         sys.stdout = oldout
         self.CreatePlotWindow(siminfo)
 
@@ -81,7 +82,7 @@ class ModelRunner(HasStrictTraits):
         for p in material.parameters:
             if p.distribution == '+/-':
                 val = float(p.specified)
-                mult = p.percent / 100.0 
+                mult = p.percent / 100.0
                 result += "    permutate %s, sequence = (%s, %s, %s)\n" % (
                     p.name, val - val * mult, val, val + val * mult)
             elif p.distribution == 'Range':
