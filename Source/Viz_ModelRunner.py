@@ -1,5 +1,6 @@
 import StringIO
 import sys
+import random
 
 try:
     from traits.api import HasStrictTraits, List, Instance, String
@@ -23,12 +24,12 @@ class ModelRunner(HasStrictTraits):
 
 
     def RunInputString(self, inputString):
-            #output = StringIO.StringIO()
+        #output = StringIO.StringIO()
 
-            oldout = sys.stdout
-            #sys.stdout = output
-            pr.run_payette(["--input-str", inputString])
-            sys.stdout = oldout
+        oldout = sys.stdout
+        #sys.stdout = output
+        pr.run_payette(["--input-str", inputString])
+        sys.stdout = oldout
 
 
     def CreateModelInputString(self, material):
@@ -39,7 +40,7 @@ class ModelRunner(HasStrictTraits):
         % (self.simulation_name, material.model_name))
 
         for p in material.parameters:
-            result += "    %s = %s\n" % (p.name, p.value)
+            result += "    %s = %s\n" % (p.name, p.default)
 
         result += "  end material\n"
 
@@ -50,8 +51,57 @@ class ModelRunner(HasStrictTraits):
         elif 'mechanical' in model_type:
             result += self.CreateMechanicalBoundaryInput(material)
 
+        result += self.CreatePermutation(material)
+
         result += "end simulation\n"
         return result
+
+    def CreatePermutation(self, material):
+        needsPermutation = False
+        for p in material.parameters:
+            if p.distribution != 'Specified':
+                needsPermutation = True
+
+        if not needsPermutation:
+            return ""
+
+        result = ("  begin permutation\n"
+                  "    method %s\n"
+                 % material.permutation_method.lower())
+        for p in material.parameters:
+            if p.distribution == '+/-':
+                val = float(p.specified)
+                mult = p.percent / 100.0 
+                result += "    permutate %s, sequence = (%s, %s, %s)\n" % (
+                    p.name, val - val * mult, val, val + val * mult)
+            elif p.distribution == 'Range':
+                result += "    permutate %s, range = (%s, %s, %s)\n" % (
+                    p.name, p.minimum, p.maximum, p.samples)
+            elif p.distribution == 'Uniform':
+                vals = []
+                for i in range(p.samples):
+                    vals.append(random.uniform(p.minimum, p.maximum))
+                result += "    permutate %s, sequence = %s\n" % (p.name, str(tuple(vals)))
+            elif p.distribution == 'Gaussian':
+                vals = []
+                for i in range(p.samples):
+                    vals.append(random.normalvariate(p.mean, p.std_dev))
+                result += "    permutate %s, sequence = %s\n" % (p.name, str(tuple(vals)))
+            elif p.distribution == 'AbsGaussian':
+                vals = []
+                for i in range(p.samples):
+                    vals.append(abs(random.normalvariate(p.mean, p.std_dev)))
+                result += "    permutate %s, sequence = %s\n" % (p.name, str(tuple(vals)))
+            elif p.distribution == 'Weibull':
+                vals = []
+                for i in range(p.samples):
+                    vals.append(random.weibullvariate(p.scale, p.shape))
+                result += "    permutate %s, sequence = %s\n" % (p.name, str(tuple(vals)))
+
+        result += "  end permutation\n"
+
+        return result
+
 
     def CreateEOSBoundaryInput(self, material):
         # XXX Need a less hardcoded way to do this
@@ -59,9 +109,9 @@ class ModelRunner(HasStrictTraits):
         R0 = 0.0
         for p in material.parameters:
             if p.name == "T0":
-                T0 = float(p.value)/0.861738573E-4
+                T0 = float(p.default)/0.861738573E-4
             elif p.name == "R0":
-                R0 = float(p.value)*1000.0
+                R0 = float(p.default)*1000.0
 
         result = (
             "  begin boundary\n"

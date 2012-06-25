@@ -65,7 +65,8 @@ class PayetteMaterialModelSelector(HasStrictTraits):
             params = []
             for param in cmod_obj.get_parameter_names_and_values():
                 params.append(
-                    PayetteModelParameter(name = param[0], description = param[1], value = param[2])
+                    PayetteModelParameter(name = param[0], description = param[1], distribution = 'Specified',
+                                          specified = param[2])
                 )
 
             model = PayetteModel(model_name = modelName, parameters = params, model_type = [cmod_obj.material_type])

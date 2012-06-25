@@ -1,6 +1,6 @@
 try:
-    from traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant, Enum
-    from traitsui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, InstanceEditor, ListEditor, Spring
+    from traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant, Enum, Event
+    from traitsui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, TableEditor, InstanceEditor, ListEditor, Spring, ObjectColumn
     from traitsui.tabular_adapter import TabularAdapter
 
 except ImportError:
@@ -12,6 +12,8 @@ except ImportError:
         View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor,
         InstanceEditor, ListEditor, Spring)
     from enthought.traits.ui.tabular_adapter import TabularAdapter
+
+import random
 
 class TraitPositiveInteger(BaseInt):
 
@@ -29,13 +31,95 @@ class TraitPositiveInteger(BaseInt):
 class PayetteModelParameter(HasStrictTraits):
     name = String
     description = String
-    value = String("0")
+    distribution = Enum('Specified', '+/-', 'Range', 'Uniform', 'Gaussian', 'AbsGaussian', 'Weibull')
+    value = Property
+    default = Property
+    specified = String("0")
+    percent = Float(10.0)
+    minimum = Float(0.0)
+    maximum = Float(1.0)
+    mean = Float(0.0)
+    std_dev = Float(1.0)
+    scale = Float(1.0)
+    shape = Float(1.0)
+    samples = Int(10)
 
-class PayetteModelParameterAdapter(TabularAdapter):
-    columns = [('Parameter', 'name'), ('Value', 'value')]
+    def _get_value(self):
+        if self.distribution == 'Specified':
+            return self.specified
+        elif self.distribution == '+/-':
+            return "%s +/- %s%%" % (self.specified, self.percent)
+        elif self.distribution == 'Range':
+            return "Range(start = %s, end = %s, steps = %d)" % (self.minimum, self.maximum, self.samples)
+        elif self.distribution == 'Uniform':
+            return "Uniform(min = %s, max = %s, N = %d)" % (self.minimum, self.maximum, self.samples)
+        elif self.distribution == 'Gaussian':
+            return "Gaussian(mean = %s, std. dev = %s, N = %d)" % (self.mean, self.std_dev, self.samples)
+        elif self.distribution == 'AbsGaussian':
+            return "Abs. Gaussian(mean = %s, std. dev = %s, N = %d)" % (self.mean, self.std_dev, self.samples)
+        elif self.distribution == 'Weibull':
+            return "Weibull(scale = %s, shape = %s, N = %d)" % (self.scale, self.shape, self.samples)
+        return "#ERR"
 
-    def get_tooltip (self, object, trait, row, column):
-        return object.get(trait)[trait][row].description
+    def _get_default(self):
+        if self.distribution == 'Specified':
+            return self.specified
+        elif self.distribution == '+/-':
+            return self.specified
+        elif self.distribution == 'Range':
+            return self.minimum
+        elif self.distribution == 'Uniform':
+            return self.minimum
+        elif self.distribution == 'Gaussian':
+            return self.mean
+        elif self.distribution == 'AbsGaussian':
+            return self.mean
+        elif self.distribution == 'Weibull':
+            return random.weibullvariate(self.scale, self.shape)
+        return 0.0
+
+    edit_view = View(
+        Item('name', label='Parameter', style='readonly'),
+        Item('description', style='readonly'),
+        Item('distribution'),
+        Group(
+            VGroup(
+                Item('specified', label='Value'),
+                visible_when="distribution == 'Specified'"
+            ),
+            VGroup(
+                Item('specified', label='Value'),
+                Item('percent'),
+                visible_when="distribution == '+/-'"
+            ),
+            VGroup(
+                Item('minimum', label='Start'),
+                Item('maximum', label='End'),
+                Item('samples', label='Steps'),
+                visible_when="distribution == 'Range'"
+            ),
+            VGroup(
+                Item('minimum', label='Min'),
+                Item('maximum', label='Max'),
+                Item('samples'),
+                visible_when="distribution == 'Uniform'"
+            ),
+            VGroup(
+                Item('mean'),
+                Item('std_dev'),
+                Item('samples'),
+                visible_when="distribution == 'Gaussian' or distribution == 'AbsGaussian'"
+            ),
+            VGroup(
+                Item('scale'),
+                Item('shape'),
+                Item('samples'),
+                visible_when="distribution == 'Weibull'"
+            ),
+            layout='tabbed'
+        ),
+        buttons=['OK','Cancel']
+    )
 
 class PayetteMaterialParameter(HasStrictTraits):
     name = String
@@ -102,6 +186,8 @@ class PayetteModel(HasStrictTraits):
                         'Spherical Strain', 'Uniaxial Stress',
                         'Biaxial Stress', 'Spherical Stress')
     legs = List(PayetteLeg, [PayetteLeg()])
+    permutation_method = Enum('Zip', 'Combine')
+    cell = Event
 
     def __init__(self, **traits):
         HasStrictTraits.__init__(self, **traits)
@@ -116,13 +202,9 @@ class PayetteModel(HasStrictTraits):
         for default in info.defaults:
             for param in self.parameters:
                 if param.name == default.name:
-                    param.value = default.default
+                    param.distribution = 'Specified'
+                    param.specified = default.default
                     break
-
-        # Dumb workaround to get the list to update, I'm sure there's a better way
-        params = self.parameters
-        self.parameters = []
-        self.parameters = params
 
     def update_density(self, param):
         def do_update():
@@ -136,6 +218,9 @@ class PayetteModel(HasStrictTraits):
                 self.eos_boundary.auto_density = True
 
         return do_update
+
+    def _cell_fired(self, info):
+        info[0].configure_traits()
 
     def _leg_defaults_changed(self, info):
         if info == 'Uniaxial Strain':
@@ -176,12 +261,19 @@ class PayetteModel(HasStrictTraits):
 
     param_view = View(
         UItem('parameters',
-            editor      = TabularEditor(
-                show_titles = True,
-                selected    = 'selected_parameter',
-                editable    = True,
-                adapter     = PayetteModelParameterAdapter()),
-        )
+            editor      = TableEditor (
+                auto_size   = False,
+                reorderable = False,
+                sortable    = True,
+                click       = 'cell',
+                columns     = [
+                    ObjectColumn(name='name', editable=False, width=0.3),
+                    ObjectColumn(name='value', editable=False, width=0.7, horizontal_alignment='right')
+                ],
+            )
+        ),
+        Label('Permutation Method'),
+        UItem('permutation_method', style='custom')
     )
 
     material_view = View(
