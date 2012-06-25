@@ -428,21 +428,26 @@ def run_payette(argv, disp=0):
 
     if nproc > 1 and len(user_input_sets) > 1:
         pool = mp.Pool(processes=nproc)
-        retcodes = pool.map(_run_job, job_inp)
+        return_info = pool.map(_run_job, job_inp)
         pool.close()
         pool.join()
 
     else:
-        retcodes = []
+        return_info = []
         for job in job_inp:
-            retcodes.append(_run_job(job))
+            return_info.append(_run_job(job))
             continue
 
     if timing:
         print_final_timing_info(tim0)
 
-    retcode = 1 if any(retcodes) else 0
-    return retcode
+    retcode = 1 if any(x["retcode"] for x in return_info) else 0
+
+    if __name__ == "__main__" or not opts.disp:
+        # if run from the command line, just return retcode
+        return retcode
+
+    return return_info
 
 
 def _run_job(args):
@@ -499,7 +504,10 @@ def _run_job(args):
     the_model.finish()
     del the_model
 
-    return retcode
+    if not opts.disp:
+        return {"retcode": retcode}
+
+    return solve
 
 
 def print_timing_info(tim0, tim1, tim2, name=None):

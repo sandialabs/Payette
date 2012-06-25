@@ -269,7 +269,8 @@ class Optimize(object):
         if not self.data["return level"]:
             return retcode
         else:
-            return {"retcode": retcode}
+            return {"retcode": retcode,
+                    "index file": self.index.index_file}
 
     def finish(self):
         r""" finish up the optimization job """

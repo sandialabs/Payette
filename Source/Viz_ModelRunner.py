@@ -11,6 +11,8 @@ except ImportError:
 
 import Source.Payette_run as pr
 from Viz_ModelData import PayetteModel
+from Viz_ModelPlot import create_Viz_ModelPlot
+import os
 
 class ModelRunner(HasStrictTraits):
     simulation_name = String
@@ -25,12 +27,20 @@ class ModelRunner(HasStrictTraits):
 
     def RunInputString(self, inputString):
         #output = StringIO.StringIO()
-
         oldout = sys.stdout
         #sys.stdout = output
-        pr.run_payette(["--input-str", inputString])
-        sys.stdout = oldout
 
+        # tjf: run_payette can be invoked with disp=1 and then it returns a
+        # tjf: dictionary with some extra information. I pass that extra
+        # tjf: information to the CreatePlotWindow method.
+        siminfo = pr.run_payette(["--input-str", inputString], disp=1)[0]
+        sys.stdout = oldout
+        self.CreatePlotWindow(siminfo)
+
+    def CreatePlotWindow(self, siminfo):
+        # siminfo is a dictionary containing extra output information from the
+        # simulation. Pass it directly to create_Viz_ModelPlot
+        create_Viz_ModelPlot(self.simulation_name, **siminfo)
 
     def CreateModelInputString(self, material):
         result = (
