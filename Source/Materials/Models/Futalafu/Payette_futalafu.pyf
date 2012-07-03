@@ -20,8 +20,8 @@ python module futalafu ! in
     interface  ! in :futalafu
         subroutine futalafu_calc(nblk,ninsv,dt,ui,sig,d,sv)
             use payette__user__routines
-            integer, parameter :: nprop=44
-            integer, parameter :: nsv=15
+            integer, parameter :: nprop=48
+            integer, parameter :: nsv=20
             integer, intent(in) :: ninsv
             real*8 intent(in) :: dt
             real*8 dimension(nprop),intent(in) :: ui
@@ -35,8 +35,8 @@ python module futalafu ! in
         end subroutine futalafu_calc
         subroutine futalafu_chk(ui) ! in :diamm:.//diamm_mig.F
             use payette__user__routines
-            integer, parameter :: nprop=44
-            integer, parameter :: nsv=15
+            integer, parameter :: nprop=48
+            integer, parameter :: nsv=20
             real*8 dimension(nprop),intent(in,out) :: ui
             intent(callback) report_and_raise_error
             external report_and_raise_error
@@ -45,8 +45,8 @@ python module futalafu ! in
         end subroutine futalafu_chk
         subroutine futalafu_rxv(ui,nx,namea,keya,rinit,iadvct)
             use payette__user__routines
-            integer, parameter :: nprop=44
-            integer, parameter :: nsv=15
+            integer, parameter :: nprop=48
+            integer, parameter :: nsv=20
             integer,parameter :: mxn=nsv*80
             integer,parameter :: mxk=nsv*10
             integer intent(out) :: nx

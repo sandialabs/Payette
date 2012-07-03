@@ -63,69 +63,73 @@
     <Parameter name="SF"   order="10" type="double" default="0" units="NO_UNITS">
       Fail speed
     </Parameter>
-    <Parameter name="FREE01"   order="11" type="double" default="0" units="NO_UNITS"> </Parameter>
-    <Parameter name="EOSID"   order="12"  type="double" default="0" units="NO_UNITS">
+    <Parameter name="FREE05"   order="11" type="double" default="0" units="NO_UNITS"> </Parameter>
+    <Parameter name="FREE04"   order="12" type="double" default="0" units="NO_UNITS"> </Parameter>
+    <Parameter name="FREE03"   order="13" type="double" default="0" units="NO_UNITS"> </Parameter>
+    <Parameter name="FREE02"   order="14" type="double" default="0" units="NO_UNITS"> </Parameter>
+    <Parameter name="FREE01"   order="15" type="double" default="0" units="NO_UNITS"> </Parameter>
+    <Parameter name="EOSID"   order="16"  type="double" default="0" units="NO_UNITS">
       Equation of state ID.
     </Parameter>
-    <Parameter name="R0" order="13" type="double" default="0" units="DENSITY_UNITS"  aliases="DENSITY, RHO">
+    <Parameter name="R0" order="17" type="double" default="0" units="DENSITY_UNITS"  aliases="DENSITY, RHO">
       Density
     </Parameter>
-    <Parameter name="T0" order="14" type="double" default="298" units="TEMPERATURE_UNITS">
+    <Parameter name="T0" order="18" type="double" default="298" units="TEMPERATURE_UNITS">
       initial temperature
     </Parameter>
-    <Parameter name="CS" order="15" type="double" default="0.0" units="VELOCITY_UNITS">
+    <Parameter name="CS" order="19" type="double" default="0.0" units="VELOCITY_UNITS">
       initial soundspeed
     </Parameter>
-    <Parameter name="S1" order="16" type="double" default="0.0" units="NO_UNITS">
+    <Parameter name="S1" order="20" type="double" default="0.0" units="NO_UNITS">
       linear us/up coefficient
     </Parameter>
-    <Parameter name="GRPAR" order="17" type="double" default="0.0" units="NO_UNITS">
+    <Parameter name="GRPAR" order="21" type="double" default="0.0" units="NO_UNITS">
       Gruneisen parameter
     </Parameter>
-    <Parameter name="CV" order="18" type="double" default="0.0" units="SPECIFIC_HEAT_UNITS" aliases="SPHT">
+    <Parameter name="CV" order="22" type="double" default="0.0" units="SPECIFIC_HEAT_UNITS" aliases="SPHT">
       specific heat
     </Parameter>
-    <Parameter name="EOS01" order="19" type="double" default="0.0" units="SPECIFIC_ENERGY_UNITS" aliases="ESFTMG">
+    <Parameter name="EOS01" order="23" type="double" default="0.0" units="SPECIFIC_ENERGY_UNITS" aliases="ESFTMG">
       shift in energy fit
     </Parameter>
-    <Parameter name="EOS02" order="20" type="double" default="0.0" units="DENSITY_UNITS" aliases="RPMG">
+    <Parameter name="EOS02" order="24" type="double" default="0.0" units="DENSITY_UNITS" aliases="RPMG">
       initial porous density
     </Parameter>
-    <Parameter name="EOS03" order="21" type="double" default="0.0" units="PRESSURE_UNITS" aliases="PSMG">
+    <Parameter name="EOS03" order="25" type="double" default="0.0" units="PRESSURE_UNITS" aliases="PSMG">
       crushup pressure
     </Parameter>
-    <Parameter name="EOS04" order="22" type="double" default="0.0" units="PRESSURE_UNITS" aliases="PEMG">
+    <Parameter name="EOS04" order="26" type="double" default="0.0" units="PRESSURE_UNITS" aliases="PEMG">
       pressure at elastic limit
     </Parameter>
-    <Parameter name="EOS05" order="23" type="double" default="0.0" units="VELOCITY_UNITS" aliases="CEMG">
+    <Parameter name="EOS05" order="27" type="double" default="0.0" units="VELOCITY_UNITS" aliases="CEMG">
       soundspeed of foam
     </Parameter>
-    <Parameter name="EOS06" order="24" type="double" default="0.0" units="NO_UNITS" aliases="NSUBMG">
+    <Parameter name="EOS06" order="28" type="double" default="0.0" units="NO_UNITS" aliases="NSUBMG">
       subcycle factor
     </Parameter>
-    <Parameter name="EOS07" order="25" type="double" default="0.0" units="NO_UNITS" aliases="S2MG">
+    <Parameter name="EOS07" order="29" type="double" default="0.0" units="NO_UNITS" aliases="S2MG">
       quadratic us/up coefficient
     </Parameter>
-    <Parameter name="EOS08" order="26" type="double" default="1.0" units="NO_UNITS" aliases="TYPMG">
+    <Parameter name="EOS08" order="30" type="double" default="1.0" units="NO_UNITS" aliases="TYPMG">
       type indicator
     </Parameter>
-    <Parameter name="EOS09" order="27" type="double" default="0.0" units="VELOCITY_UNITS" aliases="BMG"></Parameter>
-    <Parameter name="EOS10" order="28" type="double" default="1.0" units="NO_UNITS" aliases="XBMG"></Parameter>
-    <Parameter name="EOS11" order="29" type="double" default="1.0" units="NO_UNITS" aliases="NBMG"></Parameter>
-    <Parameter name="EOS12" order="30" type="double" default="2.0" units="NO_UNITS" aliases="PWRMG"></Parameter>
-    <Parameter name="DC01" order="31" type="double" default="0.0" units="NO_UNITS"></Parameter>
-    <Parameter name="DC02" order="32" type="double" default="0.0" units="NO_UNITS"></Parameter>
-    <Parameter name="DC03" order="33" type="double" default="0.0" units="NO_UNITS"></Parameter>
-    <Parameter name="DC04" order="34" type="double" default="0.0" units="NO_UNITS"></Parameter>
-    <Parameter name="DC05" order="35" type="double" default="0.0" units="NO_UNITS"></Parameter>
-    <Parameter name="DC06" order="36" type="double" default="0.0" units="NO_UNITS"></Parameter>
-    <Parameter name="DC07" order="37" type="double" default="0.0" units="NO_UNITS"></Parameter>
-    <Parameter name="DC08" order="38" type="double" default="0.0" units="NO_UNITS"></Parameter>
-    <Parameter name="DC09" order="39" type="double" default="0.0" units="NO_UNITS"></Parameter>
-    <Parameter name="DC10" order="40" type="double" default="0.0" units="NO_UNITS"></Parameter>
-    <Parameter name="DC11" order="41" type="double" default="0.0" units="NO_UNITS"></Parameter>
-    <Parameter name="DC12" order="42" type="double" default="0.0" units="NO_UNITS"></Parameter>
-    <Parameter name="DC13" order="43" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="EOS09" order="31" type="double" default="0.0" units="VELOCITY_UNITS" aliases="BMG"></Parameter>
+    <Parameter name="EOS10" order="32" type="double" default="1.0" units="NO_UNITS" aliases="XBMG"></Parameter>
+    <Parameter name="EOS11" order="33" type="double" default="1.0" units="NO_UNITS" aliases="NBMG"></Parameter>
+    <Parameter name="EOS12" order="34" type="double" default="2.0" units="NO_UNITS" aliases="PWRMG"></Parameter>
+    <Parameter name="DC01" order="35" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC02" order="36" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC03" order="37" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC04" order="38" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC05" order="39" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC06" order="40" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC07" order="41" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC08" order="42" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC09" order="43" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC10" order="44" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC11" order="45" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC12" order="46" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC13" order="47" type="double" default="0.0" units="NO_UNITS"></Parameter>
 
     <!-- Parameterized materials -->
     <Material name="steel" dist="uur" Y="1.650000E+08" CV="1.000000E+04" GRPAR="1.650000E+00" EOSID="1." R0="7.850000E+03" CS="5.883510E+03" NU=".2939"/>

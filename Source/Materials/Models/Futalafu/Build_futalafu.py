@@ -53,7 +53,7 @@ class Build(MaterialBuilder):
             [os.path.join(pc.PC_FORTRAN, "tensor_toolkit.f90"),
              eos_file])
 
-        f_srcs = ["futalafu.f90"]
+        f_srcs = ["futalafu_mod.f90", "futalafu.f90"]
         self.source_files.extend([os.path.join(self.source_directory, x)
                                   for x in f_srcs])
 

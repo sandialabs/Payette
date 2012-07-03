@@ -22,77 +22,26 @@
 ! DEALINGS IN THE SOFTWARE.
 
 
-!*******************************************************************************!
-
-module futalafu_constants
-  integer, parameter :: dk=selected_real_kind(14)
-
-  ! parameter pointers
-  integer, parameter :: ipk = 1
-  integer, parameter :: ipmu = 2
-  integer, parameter :: ipnu = 3
-  integer, parameter :: ipy0 = 4
-  integer, parameter :: ipa = 5
-  integer, parameter :: ipc0 = 6
-  integer, parameter :: ipc1 = 7
-  integer, parameter :: ipc2 = 8
-  integer, parameter :: ipyf = 9
-  integer, parameter :: ipgf = 10
-  integer, parameter :: ipsf = 11
-  integer, parameter :: ipf01 = 12
-  integer, parameter :: ipeosid = 13
-  integer, parameter :: ipr0 = 14
-  integer, parameter :: ipt0 = 15
-  integer, parameter :: ipcs = 16
-  integer, parameter :: ipcv = 19
-
-  ! state variable pointers
-  integer, parameter :: nsv=15
-  integer, parameter :: kgam = 1
-  integer, parameter :: kepv = 2
-  integer, parameter :: kdam = 3
-  integer, parameter :: kbs = 3
-  integer, parameter :: kbsxx = kbs+1
-  integer, parameter :: kbsyy = kbs+2
-  integer, parameter :: kbszz = kbs+3
-  integer, parameter :: kbsxy = kbs+4
-  integer, parameter :: kbsyz = kbs+5
-  integer, parameter :: kbsxz = kbs+6
-  integer, parameter :: ktherm = kbsxz
-  integer, parameter :: kenrgy = ktherm+1
-  integer, parameter :: ktmpr = ktherm+2
-  integer, parameter :: krho = ktherm+3
-  integer, parameter :: kmech = ktherm+3
-  integer, parameter :: kr = kmech+1
-  integer, parameter :: kz = kmech+2
-  integer, parameter :: kyld = nsv
-
-  ! numbers
-  real(kind=dk), parameter :: half=.5_dk
-  real(kind=dk), parameter :: zero=0._dk, one=1._dk, two=2._dk
-  real(kind=dk), parameter :: three=3._dk, six=6._dk, ten=10._dk
-
-end module futalafu_constants
-
+!*****************************************************************************!
 
 subroutine futalafu_chk(ui)
-  !*****************************************************************************!
+  !***************************************************************************!
   !
   ! Checks validity of user inputs
   ! Sets defaults for unspecified user input.
   ! Adjusts user input to be self-consistent.
   !
-  !*****************************************************************************!
+  !***************************************************************************!
   use futalafu_constants
   implicit none
-  !....................................................................parameters
-  !........................................................................passed
+  !..................................................................parameters
+  !......................................................................passed
   real(kind=dk), dimension (*) :: ui
-  !.........................................................................local
+  !.......................................................................local
   logical :: eosmod
   character*12 iam
   parameter(iam='futalafu_chk' )
-  ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ futalafu_chk
+  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ futalafu_chk
   ! pass parameters to local variables
   eosmod = ui(ipeosid) /= zero
 
@@ -140,7 +89,7 @@ subroutine futalafu_chk(ui)
      call faterr(iam, "Failed strength YF must be non-negative")
   end if
   if(ui(ipsf) <= zero) ui(ipsf) = ten
-  if(ui(ipgf) <= zero) ui(ipgf) = 1.d60
+  if(ui(ipgf) <= zero) ui(ipgf) = huge(one)
 
   ! poisson's ratio
   ui(ipnu) = (three * ui(ipk) - two * ui(ipmu)) / (six * ui(ipk) + two * ui(ipmu))
@@ -154,11 +103,11 @@ subroutine futalafu_chk(ui)
 end subroutine futalafu_chk
 
 
-!*******************************************************************************!
+!*****************************************************************************!
 
 
 subroutine futalafu_rxv(ui, nx, namea, keya, rinit, iadvct)
-  !*****************************************************************************!
+  !***************************************************************************!
   ! Request extra variables and set defaults
   !
   ! This subroutine creates lists of the internal state variables needed for
@@ -169,116 +118,105 @@ subroutine futalafu_rxv(ui, nx, namea, keya, rinit, iadvct)
   ! for each internal state variable.
   !
   ! called by: host code after all input data have been checked
-  !*****************************************************************************!
+  !***************************************************************************!
   use futalafu_constants
   implicit none
 
-  !....................................................................parameters
-  integer, parameter :: mmcn=50, mmck=10, mnunit=7
-  integer, parameter :: mmcna=nsv*mmcn, mmcka=nsv*mmck
-  !........................................................................passed
-  integer :: nx
-  integer, dimension(*) :: iadvct
+  !..................................................................parameters
+  integer(kind=ik), parameter :: mmcn=50, mmck=10, mnunit=7
+  integer(kind=ik), parameter :: mmcna=nxtra*mmcn, mmcka=nxtra*mmck
+  !......................................................................passed
+  integer(kind=ik) :: nx
+  integer(kind=ik), dimension(*) :: iadvct
   real(kind=dk), dimension(*) :: ui, rinit
   character*1 namea(*), keya(*)
 
-  !.........................................................................local
-  character*(mmcn) name(nsv)
-  character*(mmck) key(nsv)
-  ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ futalafu_rxv
+  !.......................................................................local
+  integer(kind=ik) :: ij, i
+  character*(mmcn) name(nxtra)
+  character*(mmck) key(nxtra)
+  character(1) :: char
+  character(2), dimension(6) :: symmap=(/"11", "22", "33", "12", "23", "13"/)
+  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ futalafu_rxv
 
   call logmes('#---- requesting futalafu extra variables')
 
-  rinit(1:nsv) = zero
+  rinit(1:nxtra) = zero
 
   nx = 0
+
   ! distortional plastic strain
-  nx = nx+1
+  nx = nx + 1
   name(nx) = 'distortional plastic strain'
   key(nx) = 'GAM'
   iadvct(nx) = 0        ! input and output
 
   ! plastic volume strain
-  nx = nx+1
+  nx = nx + 1
   name(nx) = 'plastic volume strain'
   key(nx) = 'EPV'
   iadvct(nx) = 0        ! input and output
 
   ! damage
-  nx = nx+1
+  nx = nx + 1
   name(nx) = 'damage'
   key(nx) = 'DAM'
   iadvct(nx) = 0        ! input and output
 
   ! -- back stress
-  nx=nx+1
-  name(nx)='11 component of back stress'
-  key(nx)='BSIG11'
-  iadvct(nx) = 1
-
-  nx=nx+1
-  name(nx)='22 component of back stress'
-  key(nx)='BSIG22'
-  iadvct(nx) = 1
-
-  nx=nx+1
-  name(nx)='33 component of back stress'
-  key(nx)='BSIG33'
-  iadvct(nx) = 1
-
-  nx=nx+1
-  name(nx)='12 component of back stress'
-  key(nx)='BSIG12'
-  iadvct(nx) = 1
-
-  nx=nx+1
-  name(nx)='23 component of back stress'
-  key(nx)='BSIG23'
-  iadvct(nx) = 1
-
-  nx=nx+1
-  name(nx)='13 component of back stress'
-  key(nx)='BSIG13'
-  iadvct(nx) = 1
+  do ij = 1, 6
+     nx = nx + 1
+     name(nx) = symmap(ij)//' component of back stress'
+     key(nx) = 'BSIG'//symmap(ij)
+     iadvct(nx) = 1
+  end do
 
   ! specific energy
-  nx=nx+1
-  name(nx)='Specific energy'
-  key(nx)='ENRGY'
+  nx = nx + 1
+  name(nx) = 'Specific energy'
+  key(nx) = 'ENRGY'
   iadvct(nx) = 1
-  rinit(nx)=ui(ipcv) * ui(ipt0)
+  rinit(nx) = ui(ipcv) * ui(ipt0)
 
   ! temperature
-  nx=nx+1
-  name(nx)='Temperature'
-  key(nx)='TMPR'
+  nx = nx + 1
+  name(nx) = 'Temperature'
+  key(nx) = 'TMPR'
   iadvct(nx) = 1
-  rinit(nx)=ui(ipt0)
+  rinit(nx) = ui(ipt0)
 
   ! density
-  nx=nx+1
-  name(nx)='Density'
-  key(nx)='RHO'
+  nx = nx + 1
+  name(nx) = 'Density'
+  key(nx) = 'RHO'
   iadvct(nx) = 1
-  rinit(nx)=ui(ipr0)
+  rinit(nx) = ui(ipr0)
 
   ! magnitude of deviatoric stress
-  nx=nx+1
-  name(nx)="Magnitude of deviatoric stress"
-  key(nx)="R"
+  nx = nx + 1
+  name(nx) = "Magnitude of deviatoric stress"
+  key(nx) = "R"
   iadvct(nx) = 1
 
   ! magnitude of hydrostatic stress
-  nx=nx+1
-  name(nx)="Magnitude of hydrostatic stress"
-  key(nx)="Z"
+  nx = nx + 1
+  name(nx) = "Magnitude of hydrostatic stress"
+  key(nx) = "Z"
   iadvct(nx) = 1
 
   ! yield surface flag
-  nx=nx+1
-  name(nx)="Yield flag"
-  key(nx)="YLD"
+  nx = nx + 1
+  name(nx) = "Yield flag"
+  key(nx) = "YLD"
   iadvct(nx) = 1
+
+  free: do i = 1, 5
+     nx = nx + 1
+     write(char, "(I1)") i
+     name(nx) = "Free variable "//char
+     key(nx) = "FREE0"//char
+     iadvct(nx) = 1
+  end do free
 
   call tokens(nx, name, namea)
   call tokens(nx, key, keya)
@@ -286,315 +224,564 @@ subroutine futalafu_rxv(ui, nx, namea, keya, rinit, iadvct)
 end subroutine futalafu_rxv
 
 
-!*******************************************************************************!
+!*****************************************************************************!
 
 
-subroutine futalafu_calc(nc, nxtra, dt, ui, stress, d, xtra)
-  !*****************************************************************************!
+subroutine futalafu_calc(nc, nx, dt, ui, stressarg, d, xtra)
+  !***************************************************************************!
   !
   ! Combined kinematic/isotropic hardening pressure dependent plasticity
   !
-  !*****************************************************************************!
+  !***************************************************************************!
   !
   ! input arguments
   ! ===============
   ! nc         int                   Number of blocks to be processed
-  ! nxtra      int                   Number of internal state vars
+  ! nx         int                   Number of internal state vars
   ! dt         dp                    Current time increment
   ! ui         dp,ar(nprop)          User inputs
   ! d          dp,ar(6)              Strain increment
   !
   ! input output arguments
   ! ======================
-  ! stress   dp,ar(6)                stress
-  ! xtra     dp,ar(nxtra)            state variables
+  ! stressarg dp,ar(6)                stress
+  ! xtra      dp,ar(nx)               state variables
   !
   ! output arguments
   ! ================
   ! usm      dp                      uniaxial strain modulus
   !
-  !*****************************************************************************!
+  !***************************************************************************!
   !
   ! stresss and strains, plastic strain tensors
   ! 11, 22, 33, 12, 23, 13
   !
-  !*****************************************************************************!
+  !***************************************************************************!
   use tensor_toolkit
   use futalafu_constants
   implicit none
-  !........................................................................passed
-  integer :: nc, nxtra
-  real(kind=dk) :: dt
-  real(kind=dk), dimension(*) :: ui
-  real(kind=dk), dimension(nxtra, nc) :: xtra
-  real(kind=dk), dimension(6, nc) :: stress, d
-  !........................................................................local
-  integer :: ic
-  logical :: eosmod, damage
+  !......................................................................passed
+  integer(kind=ik), intent(in) :: nc, nx
+  real(kind=dk), intent(in) :: dt
+  real(kind=dk), dimension(*), intent(in) :: ui
+  real(kind=dk), dimension(6, nc), intent(in) :: d
+  real(kind=dk), dimension(nx, nc), intent(inout) :: xtra
+  real(kind=dk), dimension(6, nc), intent(inout) :: stressarg
+  !.......................................................................local
+  logical :: eosmod, softening, elastic
+  integer(kind=ik) :: ic, flg, is, ns, conv
+  integer(kind=ik), parameter :: ms = 100
   real(kind=dk), parameter, dimension(6) :: &
        delta = (/one, one, one, zero, zero, zero/)
-  real(kind=dk), parameter :: ftol=1.d-6
-  real(kind=dk) :: k, mu, y0, f, a, c0, c1, c2, twomu, threek, yld
-  real(kind=dk) :: yf, gf, sf, y
-  real(kind=dk) :: rtj2, cti1
-  real(kind=dk) :: dgam, gam, epv, dam, enrgy, tmpr, rho
-  real(kind=dk), dimension(6) :: de, sig, bstress, dep
-  real(kind=dk), dimension(6) :: g, xid, xi, xin, dxi
+  real(kind=dk), parameter :: tol1=1.d-8, tol2=1.d-6, refeps=.01_dk
+  real(kind=dk) :: k, mu, y0, f, a, c0, c1, c2, yld
+  real(kind=dk) :: yf, gf, sf, refj2, tolfac, ctp
+  real(kind=dk) :: gam, dmgn, epv, enrgy, tmpr, rho
+  real(kind=dk), dimension(6) :: de, stress, bstress, dep
+  real(kind=dk), dimension(6) :: g, xi, xit, xin, dxit
   character*13 iam
   parameter(iam='futalafu_calc' )
-  ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ futalafu_calc
+  !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ futalafu_calc
 
   ! user properties
-  k = ui(ipk); mu = ui(ipmu); y0 = ui(ipy0); a = ui(ipa);
+  y0 = ui(ipy0); a = ui(ipa);
   c0 = ui(ipc0); c1 = ui(ipc1); c2 = ui(ipc2);
+
+  ! reference value of j2
+  refj2 = two * ui(ipmu) * refeps
 
   ! damage properties
   yf = ui(ipyf); gf = ui(ipgf); sf = ui(ipsf);
 
   ! logicals
-  eosmod = ui(ipeosid) /= zero; damage = y0 /= yf;
+  eosmod = ui(ipeosid) /= zero; softening = ui(ipy0) > ui(ipyf);
 
   gather_scatter: do ic = 1, nc
 
-     ! get passed arguments
-     de = d(1:6, ic) * dt;
-     gam = xtra(kgam, ic); epv = xtra(kepv, ic); dam = xtra(kdam, ic);
-     bstress = xtra(kbsxx:kbsxz, ic); sig = stress(1:6, ic);
-     enrgy = xtra(kenrgy, ic); tmpr = xtra(ktmpr, ic);
-     rho = xtra(krho, ic) * exp(-(de(1) + de(2) + de(3)))
-
-     ! shifted stress
-     xin = sig - bstress
-
      ! initialize local variables
-     yld = zero
+     ns = 1
+     elastic = xtra(kyld, ic) == zero
 
-     ! current yield stress
-     y = y0
-     if(damage) y = y - y0 * dam + yf * dam
+     ! if the step starts elastic and ends inelastic, we return to 15 for
+     ! subcycling
+15   continue
 
-     ! peak value of I1
-     cti1 = 1.d99
-     if(c2 /= zero) cti1 = (y + c0 * gam ** (one / c1)) / c2
+     ! get passed arguments
+     de = d(1:6, ic) * dt / float(ns)
+     gam = xtra(kgam, ic); epv = xtra(kepv, ic); dmgn = xtra(kdmg, ic);
+     bstress = xtra(kbsxx:kbsxz, ic); stress = stressarg(1:6, ic);
+     enrgy = xtra(kenrgy, ic); tmpr = xtra(ktmpr, ic);
+     rho = xtra(krho, ic) * exp(-tr(de))
+     yld = xtra(kyld, ic)
 
-     ! elastic moduli
-     if(eosmod) call get_eos_moduli(ui, sig, enrgy, tmpr, rho, k, mu)
-     threek = three * k
-     if(tr(de) > zero) threek = threek * (one - .95_dk * dam)
-     twomu = two * mu
+     tolfac = one
+     if(dmgn > zero) tolfac = 100._dk
 
-     ! elastic predictor
-     dxi = threek * iso(de) + twomu * dev(de)
-     xi = xin + dxi
-     xid = dev(xi)
+     subcycle: do is = 1, ns
 
-     ! evaluate yield function
-     rtj2 = sqrt(half) * mag(xid)
-     call evaluate_yield_function(0, tr(xi), xid, gam, f, g)
+        ! shifted stress at beginning of step
+        xin = stress - bstress
 
-     if(rtj2 - f > ftol) then
+        ! elastic moduli
+        call elastic_moduli(ui, gam, xin, enrgy, tmpr, rho, k, mu)
 
-        call return_stress(xi, gam, yld)
+        ! elastic predictor
+        dxit = three * k * iso(de) + two * mu * dev(de)
+        xit = xin + dxit
 
-        if(yld < zero) call bombed("Newtwon iterations failed")
+        ! evaluate yield function at trial state
+        call yield_function(flg, xit, gam, f, ctp, g)
 
-        ! determine plastic strain
-        dxi = xi - xin
-        dep = de - one / threek * iso(dxi) + one / twomu * dev(dxi)
-        dgam = mag(dev(dep))
-        gam = gam + dgam
-        epv = epv + tr(dep)
+        if(f / refj2 <= tolfac * tol1) then
+           ! elastic
+           yld = zero
+           conv = 1
+           xi = xit
+           dep = zero
 
-        ! update back stress
-        ! Since backstress is now origin for elasticity, as dam -> 1,
-        ! backstress needs to -> 0.
-        bstress = (one - dam) * (bstress + two / three * a * dev(dep))
+        else if(elastic) then
+           ! the step started elastic, increase subcycles to sneak up on the
+           ! point at which inelasticity occurs
+           elastic = .false.
+           ns = 10
+           go to 15
 
-        if(damage) then
-           ! update damage
-           call update_damage(gam, dam)
-           !      call return_stress(xi, gam, yld)
+        else
+           ! inelastic step
+           elastic = .false.
+           call return_stress(xin, xit, gam, yld, conv, xi, dep)
+           if(conv == 0) then
+              ! return_stress did not converge, if there is softening,
+              ! increase the number of sybcycle steps to see if this will
+              ! aleviate the problem, if not, quit.
+              if(softening) then
+                 if(ns < ms) then
+                    ns = ns * 10
+                    go to 15
+                 else
+                    ! Increasing subcycles did not aleviate the problem. This
+                    ! likely occurred due to excessive curvature in the yield
+                    ! function due to softening during the step. Rather than
+                    ! quit, issue a warning and *hope* that after a step or
+                    ! two the yield function behaves better -> which it should
+                    ! once we get to the fully failed state.
+                    call logmes("WARNING: Excessive softening has occurred")
+                 end if
+              else
+                 call bombed("Failed to return stress to yield surface")
+              end if
+           end if
+
         end if
 
-     end if
+        ! update back stress
+        ! Since backstress is the origin for elasticity, as dmg -> 1,
+        ! backstress needs to -> 0.
+        bstress = (one - damage(gam)) * (bstress + two / three * a * dev(dep))
+        stress = xi + bstress
+        enrgy = enrgy + one / rho * ddp(stress, de - dep)
+        epv = epv + tr(dep)
+     end do subcycle
 
      ! update passed quantities
-     stress(1:6, ic) = xi + bstress
+     stressarg(1:6, ic) = stress
      xtra(kgam, ic) = gam
      xtra(kepv, ic) = epv
-     xtra(kdam, ic) = dam
+     xtra(kdmg, ic) = damage(gam)
      xtra(kbsxx:kbsxz, ic) = bstress
      xtra(krho, ic) = rho
      xtra(ktmpr, ic) = tmpr
-     xtra(kenrgy, ic) = enrgy + one / rho * ddp(sig, de)
-     xtra(kr, ic) = mag(dev(sig))
-     xtra(kz, ic) = ddp(sig, delta) / sqrt(three)
+     xtra(kenrgy, ic) = enrgy
+     xtra(kr, ic) = mag(dev(stress))
+     xtra(kz, ic) = ddp(stress, delta) / sqrt(three)
      xtra(kyld, ic) = yld
+
+     xtra(kf01, ic) = float(conv)
 
   end do gather_scatter
 
   return
 
-  contains
+contains
 
-    !***************************************************************************!
+  !***************************************************************************!
 
-    subroutine evaluate_yield_function(flg, i1, s, gam, f, g)
-      !*************************************************************************!
-      !
-      ! Evaluate the yield function and gradient
-      !
-      !*************************************************************************!
-      implicit none
-      !....................................................................passed
-      integer :: flg
-      real(kind=dk) :: i1, gam, f
-      real(kind=dk), dimension(6) :: s, g
-      !.....................................................................local
-      real(kind=dk), parameter :: puny=1.d-16
-      real(kind=dk), dimension(6) :: gs
-      real(kind=dk) :: eqps
-      !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ evaluate_yield_function
+  subroutine elastic_moduli(ui, gam, sig, enrgy, tmpr, rho, k, mu)
+    !*************************************************************************!
+    !
+    ! Compute tangent moduli
+    !
+    !*************************************************************************!
+    implicit none
+    !....................................................................passed
+    real(kind=dk), intent(in) :: enrgy, rho, gam
+    real(kind=dk), intent(inout) :: tmpr
+    real(kind=dk), intent(out) :: k, mu
+    real(kind=dk), dimension(6), intent(in) :: sig
+    real(kind=dk), dimension(*), intent(in) :: ui
+    !.....................................................................local
+    real(kind=dk) :: dmg_fac, sfratio
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ elastic_moduli
+    if(eosmod) then
+       call eos_moduli(ui, sig, enrgy, tmpr, rho, k, mu)
+    else
+       k = ui(ipk); mu = ui(ipmu);
+    end if
 
-      ! evaluate the yield function f
-      !                1 / c1
-      !   f = y + c gam        - c I
-      !            0              2 1
-      eqps = sqrt(two / three) * gam
-      f = max(y + c0 * eqps ** (one / c1) - c2 * i1, zero)
+    if(softening) then
+       !sfratio = max(0.074d0, ui(ipyf) / ui(ipy0))
+       sfratio = max(0.3d0, ui(ipyf) / ui(ipy0))
+       dmg_fac = sfratio + (one - sfratio) * (one - damage(gam))
+       k = k * dmg_fac
+       mu = mu * dmg_fac
+    end if
+    return
+  end subroutine elastic_moduli
 
-      ! check vertex
-      if(i1 > cti1) f = -two
+  !***************************************************************************!
 
-      ! initialize gradient and exit if not requested
-      g = zero
-      if(abs(flg) < 1) return
+  subroutine yield_function(surf, sig, gam, f, pmax, g)
+    !*************************************************************************!
+    !
+    ! Evaluate the yield function and gradient
+    !
+    !*************************************************************************!
+    implicit none
+    !....................................................................passed
+    integer(kind=ik), intent(out) :: surf
+    real(kind=dk), intent(in) :: gam
+    real(kind=dk), intent(out) :: f, pmax
+    real(kind=dk), dimension(6), intent(in) :: sig
+    real(kind=dk), dimension(6), intent(out), optional :: g
+    !.....................................................................local
+    real(kind=dk), parameter :: puny=1.d-16
+    real(kind=dk), dimension(6) :: s, gs
+    real(kind=dk) :: i1, eqps, rtj2, y, ph, dam
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ yield_function
 
-      ! gradient of yield function
-      !            df             s
-      !      g =  ---- = ------------------ + c2 * I
-      !           dsig    sqrt(2) * radius
-      if(mag(s) < puny) then
-         gs = zero
-      else
-         gs = s / sqrt(two) / mag(s)
-      end if
-      g = gs + c2 * delta
+    surf = 1
+    ! isotropic and deviatoric part of stress
+    i1 = tr(sig); s = dev(sig)
 
-      return
+    ! current yield stress
+    y = y0
+    if(softening) then
+       dam = damage(gam)
+       y = y - y0 * dam + yf * dam
+    end if
 
-    end subroutine evaluate_yield_function
+    ! maximum (negative) pressure
+    pmax = huge(one)
+    if(c2 /= zero) pmax = (y + c0 * gam ** (one / c1)) / c2 / three
 
-    !***************************************************************************!
+    ! evaluate the yield function f
+    !                1 / c1
+    !   f = y + c gam        - c I
+    !            0              2 1
+    eqps = sqrt(two / three) * gam
+    rtj2 = sqrt(half) * mag(s)
+    f = max(y + c0 * eqps ** (one / c1) - c2 * i1, zero)
+    f = rtj2 - f
 
-    subroutine return_stress(sig, gam, yld)
-      !*************************************************************************!
-      !
-      ! return the stress to the limit surface
-      !
-      !*************************************************************************!
-      implicit none
-      !....................................................................passed
-      real(kind=dk) :: gam, yld
-      real(kind=dk), dimension(6) :: sig
-      !.....................................................................local
-      integer :: i
-      real(kind=dk) :: diff, beta, f, pmax, ph
-      real(kind=dk), dimension(6) :: p, m, n, s
-      real(kind=dk), parameter :: tiny=1.d-14, small=1.d-10
-      !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ return_stress
+    if(.not. present(g)) return
 
-      ! step is at least partially inelastic
-      yld = -one
+    ! gradient of yield function
+    !            df             s
+    !      g =  ---- = ------------------ + c2 * I
+    !           dsig    sqrt(2) * radius
+    if(mag(s) < puny) then
+       gs = zero
+    else
+       gs = s / sqrt(two) / mag(s)
+    end if
+    g = gs + c2 * delta
 
-      ! evaluate yield function
-      s = dev(sig)
-      rtj2 = sqrt(half) * mag(s)
-      call evaluate_yield_function(1, tr(sig), s, gam, f, g)
-      diff = rtj2 - f
+    ! if pressure dependent yield surface, check vertex
+    if(c2 /= zero) then
+       ph = tr(sig - pmax * delta) / mag(sig - pmax * delta)
+       if(ph > tr(g) / mag(g)) then
+          surf = 2
+       end if
+    end if
 
-      newton: do i = 1, 25
-         ! Perform Newton iterations to find magnitude of projection from
-         ! the trial stress state to the yield surface.
+    return
 
-         ! yield function normal
-         !            df/dsig
-         !     n = -------------,  p = C : m
-         !          ||df/dsig||
+  end subroutine yield_function
 
-         n = g / mag(g)
+  !***************************************************************************!
 
-         ! flow direction, tentatively assume normality
-         m = n
+  subroutine return_stress(sigb, sigt, gam, yld, conv, sig, dep)
+    !*************************************************************************!
+    !
+    ! Return the stress to the yield surface
+    ! numerically
+    !
+    !*************************************************************************!
+    implicit none
+    !....................................................................passed
+    real(kind=dk), dimension(6), intent(in) :: sigb, sigt
+    real(kind=dk), intent(inout) :: gam
+    integer(kind=ik), intent(out) :: conv
+    real(kind=dk), intent(out) :: yld
+    real(kind=dk), dimension(6), intent(out) :: sig, dep
+    !.....................................................................local
+    integer(kind=ik) :: i, side
+    integer(kind=ik), parameter :: maxit1=30, maxit2=50
+    real(kind=dk) :: f, dlam, df, gamn, sfac, tfac
+    real(kind=dk) :: xs, xt, xr, fs, ft, fr, gt, gr, ctp
+    real(kind=dk), dimension(6) :: g, n, p, m
+    real(kind=dk), parameter :: small=1.d-8
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ return_stress
 
-         ! check vertex
-         pmax = cti1 / three
-         ph = tr(sig - pmax * delta) / mag(sig - pmax * delta)
-         if(ph >= tr(m)) then
-            yld = two
-            sig = pmax * delta
-            exit newton
-         end if
+    ! step is at least partially inelastic
 
-         ! return direction
-         p = threek * iso(m) + twomu * dev(m)
+    ! initialize local variables
+    gamn = gam
+    dlam = zero
 
-         ! only the direction of P matters, normalize it so that it is on
-         ! the same order of magnitude as stress
-         p = sqrt(mag(sig) / mag(p)) * p
+    ! evaluate yield function
+    call yield_function(flg, sigt, gam, fs, ctp, g)
 
-         ! apply the Newton-Raphson step
-         beta = -diff / ddp(n, p)
+    if(flg == 2) then
+       ! vertex
+       call return_stress_to_vertex(sigb, ctp, gam, yld, sig, dep)
+       return
+    end if
 
-         ! improved estimates for the stress
-         sig = sig + beta * p
-         s = dev(sig)
+    n = g / mag(g)
+    m = n
+    p = three * k * iso(m) + two * mu * dev(m)
+    yld = one
 
-         if(abs(beta) < tiny .or. (abs(beta) < small .and. diff < ftol)) then
-            yld = abs(yld)
-            exit newton
-         end if
+    if(softening) then
 
-         ! update the trial stress and yield function
-         rtj2 = sqrt(half) * mag(s)
-         call evaluate_yield_function(1, tr(sig), s, gam, f, g)
-         diff = rtj2 - f
+       ! Find initial best guess for dlam by a regula falsi method. We set the
+       ! intial brackets on dlam to be
+       !
+       !                         dlam E [0, mag(de)]
+       !
+       ! and shrink the bracket size through n steps. When dlam is found, it
+       ! is then passed on to the Newton solver that finishes the job. In the
+       ! below algorithm, the variable <x> is dlam, <g> is gam, and <f> is the
+       ! value of the yield function. The postfixes "s", "t", and "r" stand
+       ! for:
+       !
+       !        s -> over yield, t -> under yield, r -> interpolated
+       side = 0; sfac = one; tfac = one
+       xs = zero
+       xt = mag(de)
+       gt = gamn + mag(dev(de))
+       call yield_function(flg, sigt - xt * p, gt, ft, ctp, g)
 
-      end do newton
+       do i = 1, 10
+          xr = (fs / sfac * xt - ft / tfac * xs) / (fs / sfac - ft / tfac)
+          if(abs(xt - xs) < small * abs(xt + xs)) then
+             exit
+          end if
 
-    end subroutine return_stress
+          gr = gamn + mag(dev(xr * m))
+          call yield_function(flg, sigt - xr * p, gr, fr, ctp, g)
 
-    !***************************************************************************!
+          sfac = one; tfac = one
+          if(fr * ft > zero) then
+             xt = xr; ft = fr;
+             if(side == -1) sfac = one / two
+             side = -1
+          else if(fs * fr > zero) then
+             xs = xr; fs = fr;
+             if(side == 1) tfac = one / two
+             side = 1
+          else
+             exit
+          end if
 
-    subroutine update_damage(gam, dam)
-      !*************************************************************************!
-      !
-      ! Accumulate damage
-      !
-      !*************************************************************************!
-      implicit none
-      !....................................................................passed
-      real(kind=dk) :: gam, dam
-      !.....................................................................local
-      !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ update_damage
-      dam = (one + exp(-two * sf)) / (one + exp(-two * sf * (one - gam / gf)))
-      dam = one - dam
-      return
+       end do
+       dlam = max(xs, xr); gam = gamn + mag(dev(dlam * m));
 
-    end subroutine update_damage
+    end if
+
+    ! Newton iterations to find plastic strain increment
+    conv = 0
+    newton: do i = 1, maxit2
+
+       ! updated stress
+       sig = sigt - dlam * p
+
+       ! evaluate yield function at updated stress
+       call yield_function(flg, sig, gam, f, ctp, g)
+
+       ! check convergence
+       if(i <= maxit1) then
+          if(abs(f) / refj2 < tolfac * tol1) then
+             conv = 1
+             exit newton
+          end if
+       else
+          if(abs(f) / refj2 < tolfac * tol2) then
+             conv = 2
+             exit newton
+          end if
+       end if
+
+       ! check if maximum iterations exceeded
+       if(i > maxit2) exit newton
+
+       ! perform the Newton step
+       df = yield_function_deriv(sig, m, p, gam, dlam, f)
+       dlam = dlam - f / df
+       gam = gamn + mag(dev(dlam * m))
+
+    end do newton
+    dep = dlam * m
+    gam = gamn + mag(dev(dep))
+
+  end subroutine return_stress
+
+  !***************************************************************************!
+
+  subroutine return_stress_to_vertex(sigb, ctp, gam, yld, sig, dep)
+    !*************************************************************************!
+    !
+    ! Return the stress to the yield surface
+    ! numerically
+    !
+    !*************************************************************************!
+    implicit none
+    !....................................................................passed
+    real(kind=dk), intent(in) :: ctp
+    real(kind=dk), dimension(6), intent(in) :: sigb
+    real(kind=dk), intent(inout) :: gam
+    real(kind=dk), intent(out) :: yld
+    real(kind=dk), dimension(6), intent(out) :: sig, dep
+    !.....................................................................local
+    integer(kind=ik) :: i, side
+    real(kind=dk) :: gamn
+    real(kind=dk) :: xs, xt, xr, fs, ft, fr, gr
+    real(kind=dk), dimension(6) :: dsig, dsigr, sigr
+    real(kind=dk), parameter :: small=1.d-8
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ return_stress
+
+    ! yld = 2 -> on vertex
+    yld = two
+    gamn = gam
+
+    sig = ctp * delta
+    dsig = sigb - sig
+    dep = de - one / three / k * iso(dsig) - one / two / mu * dev(dsig)
+    gam = gamn + mag(dev(dep))
+    call yield_function(flg, sig, gam, fs, xs)
+
+    if(softening .and. abs(fs) / refj2 > tolfac * tol1) then
+       ! Find the softened stress using a regula falsi method.
+       ! The stress has already been returned to the vertex before softening,
+       ! but as the surface softens due to the additional plastic strain, the
+       ! updated stress will be beyond yield. Here, we bracket the stress
+       ! between the value at the fully failed state and the current and
+       ! decrease the range of the bracketed stress until within a reasonable
+       ! tolerance.
+       side = 0
+
+       ! this first call is with a large value of the magnitude of the
+       ! distortional plastic strain to get the value of ctp for the fully
+       ! failed surface.
+       call yield_function(flg, sig, ten * gf, ft, xt)
+
+       conv = 0
+       do i = 1, 20
+          xr = (fs * xt - ft * xs) / (fs - ft)
+          if(abs(xt - xs) < small * abs(xt + xs)) then
+             conv = 1
+             exit
+          end if
+
+          sigr = xr * delta
+          dsigr = sigr - sigb
+          gr = gamn + mag(dev(&
+               de - one / three / k * iso(dsigr) - one / two / mu * dev(dsigr)))
+          call yield_function(flg, sigr, gr, fr, xr)
+
+          if(fr * ft > zero) then
+             xt = xr; ft = fr;
+             if(side == -1) fs = fs / two
+             side = -1
+          else if(fs * fr > zero) then
+             xs = xr; fs = fr;
+             if(side == 1) ft = ft / two
+             side = 1
+          else
+             conv = -1
+             exit
+          end if
+          conv = 2
+       end do
+
+       if(conv == -1) call bombed("Unable to bracket softened ctp")
+
+       ! updated stress found
+       sig = xs * delta
+       dsig = sig - sigb
+       dep = de - one / three / k * iso(dsig) - one / two / mu * dev(dsig)
+       gam = mag(dev(dep))
+    end if
+
+    return
+  end subroutine return_stress_to_vertex
+
+  !***************************************************************************!
+
+  function yield_function_deriv(sig, m, p, gam, dlam, f)
+    !*************************************************************************!
+    !
+    ! Calculate the derivative of the yield function with respect to gamma
+    ! numerically
+    !
+    !*************************************************************************!
+    implicit none
+    !....................................................................passed
+    real(kind=dk) :: yield_function_deriv
+    real(kind=dk), intent(in) :: gam, dlam, f
+    real(kind=dk), dimension(6), intent(in) :: sig, m, p
+    !.....................................................................local
+    integer(kind=ik) :: flg
+    real(kind=dk) :: eps, fp, gamp, ctp
+    real(kind=dk), dimension(6) :: sigp
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ yield_function_deriv
+    ! perturb dgam, sig, and gam by eps
+    eps = sqrt(epsilon(dlam))
+    sigp = sig - (dlam + eps) * p
+    gamp = gam + mag(dev((dlam + eps) * m))
+    call yield_function(flg, sigp, gam, fp, ctp)
+    yield_function_deriv = (fp - f) / eps
+    return
+  end function yield_function_deriv
+
+  !***************************************************************************!
+
+  function damage(gam)
+    !*************************************************************************!
+    !
+    ! Accumulate damage
+    !
+    !*************************************************************************!
+    implicit none
+    !....................................................................passed
+    real(kind=dk) :: damage
+    real(kind=dk), intent(in) :: gam
+    !.....................................................................local
+    real(kind=dk) :: coher, ddmg
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ damage
+    ! calculate the coherence
+    coher = (one + exp(-two * sf)) / (one + exp(-two * sf * (one - gam / gf)))
+
+    ! The evolution of damage evolution has a couple of rules:
+    !    1) No healing -> dmgp >= dmgn
+    damage = max(one - coher, dmgn)
+
+    !    2) Maximum change of 12.5% allowed in any one step
+    !       12.5% was chosen out of a hat!
+    ddmg = min(damage - dmgn, .125_dk)
+    damage = dmgn + ddmg
+    return
+  end function damage
 
 end subroutine futalafu_calc
-
-         ! ! consistency parameter
-         ! !                  n : dsig
-         ! !         dgam = -----------,  H = dfda : ha + dfdy * hy
-         ! !                 n : p - H
-
-         ! ! hardening modulus
-         ! ha = two / three * a * dev(m)
-         ! dfda = -s / sqrt(two) / mag(s)
-         ! hy = zero
-         ! if(c0 /= zero) hy = c1 * c0 * ((f - y) / c0) ** ((c1 - 1) / c1)
-         ! dfdy = -one / sqrt(three)
-         ! H = sqrt(two) * (ddp(dfda, ha) + dfdy * hy)
-
