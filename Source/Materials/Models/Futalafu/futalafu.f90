@@ -371,7 +371,6 @@ subroutine futalafu_calc(nc, nx, dt, ui, stressarg, d, xtra)
                  call bombed("Failed to return stress to yield surface")
               end if
            end if
-
         end if
 
         ! update back stress
@@ -432,7 +431,7 @@ contains
        !sfratio = max(0.074d0, ui(ipyf) / ui(ipy0))
        sfratio = max(0.3d0, ui(ipyf) / ui(ipy0))
        dmg_fac = sfratio + (one - sfratio) * (one - damage(gam))
-       k = k * dmg_fac
+       if(tr(xin) > zero) k = k * dmg_fac
        mu = mu * dmg_fac
     end if
     return
@@ -777,9 +776,9 @@ contains
     !    1) No healing -> dmgp >= dmgn
     damage = max(one - coher, dmgn)
 
-    !    2) Maximum change of 12.5% allowed in any one step
+    !    2) Maximum change of 15% allowed in any one step
     !       12.5% was chosen out of a hat!
-    ddmg = min(damage - dmgn, .125_dk)
+    ddmg = min(damage - dmgn, .15_dk)
     damage = dmgn + ddmg
     return
   end function damage
