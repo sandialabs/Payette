@@ -4,7 +4,11 @@ begin material
   constitutive model futalafu
   matlabel = copper
   use matprops
+  nlf = 0
 end material
+begin permutation
+  permutate nlf, sequence=(-.1, .5, 1)
+end permutation
 end simulation
 
 begin matprops
@@ -20,11 +24,11 @@ begin boundary
   kappa = 0
   tstar = 1.
   ampl = 1
-  stepstar = 1
+  stepstar = 10
   estar = .02
   begin legs
     0 0 0   222222  0 0 0 0 0 0
-    1 1 1000 222222 1 -.5 -.5 0 0 0
+    1 1 100 222222 1 -.5 -.5 0 0 0
 $    1 1 1000 222222 1 0 0 0 0 0
     2 2 100 222222  2 1.5 1.5 0 0 0
   end legs

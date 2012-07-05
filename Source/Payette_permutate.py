@@ -162,7 +162,7 @@ class Permutate(object):
 
         nproc = min(mp.cpu_count(), self.data["nproc"])
         if nproc == 1:
-            results = [func(job) for arg in args]
+            results = [func(arg) for arg in args]
 
         else:
             pool = mp.Pool(processes=nproc)
