@@ -544,6 +544,7 @@ contains
     if(flg == 2) then
        ! vertex
        call return_stress_to_vertex(sigb, ctp, gam, yld, sig, dep)
+       conv = 2
        return
     end if
 
