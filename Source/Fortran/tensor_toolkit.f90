@@ -1,6 +1,6 @@
 module tensor_toolkit
 
-  private :: delta, w, diag9, i6, i15, sk, dk
+  private :: delta, w, diag9, i6, i15, sk, dk, fp
   private :: zero, one, two, three, half, third, root2, root3, root6
   private :: toor2, toor3, toor6, root23, root32, pi, piover6, six
   private :: proj2evec, affinity
@@ -490,8 +490,12 @@ contains
     implicit none
     !......................................................................passed
     real(kind=fp), dimension(6) :: iso, a
+    !.......................................................................local
+    real(kind=fp) :: tra
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~iso
-    iso = sum(a(1:3)) / three * delta
+    tra = sum(a(1:3))
+    if(abs(tra) < epsilon(tra)) tra = zero
+    iso = tra / three * delta
     return
   end function iso
 
@@ -513,6 +517,7 @@ contains
     real(kind=fp) :: tr
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~iso
     tr = sum(a(1:3))
+    if(abs(tr) < epsilon(tr)) tr = zero
     return
   end function tr
 
