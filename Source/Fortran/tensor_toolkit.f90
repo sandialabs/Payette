@@ -2,7 +2,7 @@ module tensor_toolkit
 
   private :: delta, w, diag9, i6, i15, sk, dk
   private :: zero, one, two, three, half, third, root2, root3, root6
-  private :: toor2, toor3, toor6, root23, root32, pi, piover6
+  private :: toor2, toor3, toor6, root23, root32, pi, piover6, six
   private :: proj2evec, affinity
   public :: ata, symleaf, dd66x6, push, pull, dp, ddp, mag, dev, tr, iso
   public :: matinv, eigen3x3

@@ -6,17 +6,19 @@ begin material
   use matprops
   nlf = 0
 end material
-begin permutation
-  permutate nlf, sequence=(-.1, .5, 1)
-end permutation
+$begin permutation
+$  permutate nlf, sequence=(-.1, .5, 1)
+$end permutation
 end simulation
 
 begin matprops
-$  a = 2.e10
-  b = 0.02
-  gf = .003
-  sf = 5
-  yf = 5.196e3
+$  c0 = 2.e10
+i1max = 5.e6
+tau = .7e9
+$tauinf = 1.e9
+
+$  gf = .003
+$  sf = 5
 end matprops
 
 begin boundary_001
@@ -28,8 +30,8 @@ begin boundary
   estar = .02
   begin legs
     0 0 0   222222  0 0 0 0 0 0
-    1 1 100 222222 1 -.5 -.5 0 0 0
-$    1 1 1000 222222 1 0 0 0 0 0
+$    1 1 100 222222 1 0 0 0 0 0
+$    1 1 100 222222 1 -.5 -.5 0 0 0
     2 2 100 222222  2 1.5 1.5 0 0 0
   end legs
 end boundary
