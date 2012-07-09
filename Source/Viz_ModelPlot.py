@@ -1,4 +1,5 @@
 import linecache
+import os
 import Source.Payette_utils as pu
 import Source.Payette_sim_index as psi
 from Viz_Plot2D import Viz_Plot2D
@@ -129,13 +130,16 @@ class Viz_ModelPlot(HasStrictTraits):
     headers = List(Str)
     Multi_Select = Instance(MultiSelect)
     Change_Axis = Instance(ChangeAxis)
-    file_path = String
+    file_paths = List(String)
+    file_variables = List(String)
 
     def __init__(self, **traits):
         HasStrictTraits.__init__(self, **traits)
-        self.headers = pu.get_header(self.file_path)
-        data = pu.read_data(self.file_path)
-        self.Plot_Data = Viz_Plot2D(plot_data=data, headers=self.headers, axis_index=0)
+        self.headers = pu.get_header(self.file_paths[0])
+        data = []
+        for file_path in self.file_paths:
+            data.append(pu.read_data(file_path))
+        self.Plot_Data = Viz_Plot2D(plot_data=data,run_names=self.file_variables, headers=self.headers, axis_index=0)
         self.Multi_Select = MultiSelect(choices=self.headers, plot=self.Plot_Data)
         self.Change_Axis = ChangeAxis(Plot_Data=self.Plot_Data, headers=self.headers)
 
@@ -167,18 +171,26 @@ def create_Viz_ModelPlot(window_name, **kwargs):
             "specify either an output or index file, not both")
 
     if index_file is not None:
-        sim_index = psi.SimulationIndex(index_file=arg)
-        output_files = sim_index.output_files()
+        sim_index = psi.SimulationIndex(index_file=index_file)
+        output_files = []
+        variables = []
+        idx = sim_index.get_index()
+        for run,info in idx.iteritems():
+            output_files.append(info['outfile'])
+            s = ""
+            for var, val in info['variables'].iteritems():
+                s += "%s=%s" % (var, val)
+            variables.append(s)
+
         not_found = [x for x in output_files if not os.path.isfile(x)]
         if not_found:
             pu.report_and_raise_error(
                 "The following output files were not found:\n{0}"
                 .format(", ".join(not_found)))
-        pu.report_and_raise_error(
-            "ERROR: index file reading not yet supported")
 
     elif output_file is not None:
         output_files = [output_file]
+        variables = [""]
 
     view = View(HSplit(
                        VGroup(
@@ -196,7 +208,7 @@ def create_Viz_ModelPlot(window_name, **kwargs):
                 resizable=True,
                 title=window_name)
 
-    main_window = Viz_ModelPlot(file_path=output_files[0])
+    main_window = Viz_ModelPlot(file_paths=output_files, file_variables=variables)
 
     main_window.configure_traits(view=view)
 

@@ -35,7 +35,7 @@ class PayetteInputStringPreview(HasStrictTraits):
         VGroup(
             Item('input_string', style='custom', show_label=False),
         ),
-        buttons=[Action(name='Close', action='_close'), Action(name='Running', action='_run')],
+        buttons=[Action(name='Close', action='_close'), Action(name='Run', action='_run')],
         handler=ISPHandler(),
         width=800,
         height=600,
