@@ -418,6 +418,7 @@ def test_payette(argv):
         elif stat == "notrun":
 #            longtxtsummary += "None\n"
             continue
+        longtxtlist = []
         for name in names:
             try:
                 tcmpl = ("{0:.2f}s."
@@ -425,7 +426,11 @@ def test_payette(argv):
             except ValueError:
                 tcmpl = str(test_res[stat][name]["completion time"])
 
-            longtxtsummary += "  {0:>8}   {1}\n".format(tcmpl, name)
+            longtxtlist.append([tcmpl, name])
+
+        longtxtlist = sorted(longtxtlist, key=lambda x: x[1])
+        for pair in longtxtlist:
+            longtxtsummary += "  {0:>8}   {1}\n".format(pair[0], pair[1])
             continue
         continue
     longtxtsummary += "=" * WIDTH_TERM + "\n"
