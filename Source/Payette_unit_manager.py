@@ -55,7 +55,7 @@ class UnitManager:
              "si": [1,    1,     1,      1,           1, 1, 1],
            "mksk": [1,    1,     1,      1,           1, 1, 1],
            "cgsk": [0.01, 0.001, 1,      1,           1, 1, 1],
-          "cgsev": [0.01, 0.001, 1,   1.0/8.617343e-5, 1, 1, 1],
+          "cgsev": [0.01, 0.001, 1,   1.0 / 8.617343e-5, 1, 1, 1],
          "sesame": [0.01, 0.001, 1.0e-5, 1,           1, 1, 1],
           "shock": [0.01, 0.001, 1.0e-6, 8.617343e-5, 1, 1, 1]}
 
@@ -98,7 +98,7 @@ class UnitManager:
                    "TIME_UNITS":  [0,  0,  1,  0,  0,  0,  0],
                    "RATE_UNITS":  [0,  0, -1,  0,  0,  0,  0],
    "SQUARED_INV_PRESSURE_UNITS":  [2, -2, -4,  0,  0,  0,  0],
-              "STIFFNESS_UNITS": [-2,  1, -2,  0,  0,  0,  0], #PRESSURE_UNITS/LENGTH_UNITS
+              "STIFFNESS_UNITS": [-2,  1, -2,  0,  0,  0,  0],
                      # Not specified
                 "NOT_SPECIFIED":  [0,  0,  0,  0,  0,  0,  0],
                      # non-base
@@ -168,7 +168,7 @@ class UnitManager:
         self.descriptor = descriptor
         self.dimensions = base_dim
 
-        self.val = value
+        self.val = float_value
         self.system = unit_system
 
     def get(self, system=None):
@@ -228,10 +228,10 @@ class UnitManager:
             return UnitManager(y, self.system, new_dim)
 
     def multiply_dimensions(self, x, y):
-        return [x.dimensions[i]+y.dimensions[i] for i in range(7)]
+        return [x.dimensions[i] + y.dimensions[i] for i in range(7)]
 
     def divide_dimensions(self, x, y):
-        return [x.dimensions[i]-y.dimensions[i] for i in range(7)]
+        return [x.dimensions[i] - y.dimensions[i] for i in range(7)]
 
 ###############################################################################
 ###############               FLOAT-LIKE FUNCTIONS               ##############
@@ -286,7 +286,7 @@ class UnitManager:
         raise TypeError("'UnitManager.__format__' not implemented.")
 
     def __ge__(self, y):
-        return self.get()>= y.get()
+        return self.get() >= y.get()
 
     def __getattribute__(self, name):
         return self.name
@@ -327,7 +327,7 @@ class UnitManager:
         return self.get() != y.get()
 
     def __neg__(self):
-        return self.clone( -abs(self.get()) )
+        return self.clone(-abs(self.get()))
 
     def __nonzero__(self):
         return self.get() != 0
@@ -418,6 +418,7 @@ class UnitManager:
 
     def __trunc__(self, y):
         return self.clone(self.get().__trunc__())
+
 
 def unit_tests():
 
