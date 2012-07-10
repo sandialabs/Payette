@@ -411,19 +411,21 @@ class PayetteTest(object):
             rmsd, nrmsd = pu.compute_rms_closest_point_residual(
                                          gold[:,gidx], gold[:,gjdx],
                                          out[:,oidx], out[:,ojdx])
-
-            # For good measure, write both the RMSD and normalized RMSD
-            if nrmsd >= self.failtol:
+            # Check to see if either of the error measures are less
+            # than the tolerances.
+            minerror = min(rmsd, nrmsd)
+            if minerror >= self.failtol:
                 failed = True
                 stat = "FAIL"
 
-            elif nrmsd >= self.difftol:
+            elif minerror >= self.difftol:
                 diffed = True
                 stat = "DIFF"
 
             else:
                 stat = "PASS"
 
+            # For good measure, write both the RMSD and normalized RMSD
             log.write("headers: {0}:{1} - {2}".format(rms_set[0],rms_set[1],stat))
             log.write("  Unscaled error: {0:.10e}".format(rmsd))
             log.write("    Scaled error: {0:.10e}".format(nrmsd))

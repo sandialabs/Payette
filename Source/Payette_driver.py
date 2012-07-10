@@ -271,8 +271,8 @@ def eos_driver(the_model, **kwargs):
         eos_model.evaluate_eos(simdat, matdat,
                                rho = init_density, temp = init_temperature)
 
-        init_energy = eos_model.outdata["ENERGY"]
-        init_pressure = eos_model.outdata["PRESSURE"]
+        init_energy = float(eos_model.outdata["ENERGY"])
+        init_pressure = float(eos_model.outdata["PRESSURE"])
 
         idx = 0
         DEJAVU = False
@@ -308,14 +308,13 @@ def eos_driver(the_model, **kwargs):
             CONVERGED = False
             while not CONVERGED:
                 converged_idx += 1
-
                 eos_model.evaluate_eos(simdat, matdat, rho = r, enrg = e)
 
                 f = (eos_model.outdata["PRESSURE"] + init_pressure)*a - e + init_energy
                 df = eos_model.outdata["DPDT"]/eos_model.outdata["DEDT"]*a - 1.0
-                e = e - f/df*1.5
+                e = e - f/df
                 errval = abs(f/init_energy)
-                if errval < 1.0e-9 or converged_idx > 100:
+                if errval < 1.0e-9:
                     CONVERGED = True
                     if converged_idx > 100:
                         pu.log_message("Max iterations reached (tol = {0:14.10e}).\n".format(1.0e-9)+
@@ -323,6 +322,7 @@ def eos_driver(the_model, **kwargs):
                                "abs error   = {0:14.10e}\n".format(float(f))+
                                "func val    = {0:14.10e}\n".format(float(f))+
                                "init_energy = {0:14.10e}\n".format(float(init_energy)))
+                        break
 
             # Write the headers if this is the first time through
             if not DEJAVU:
