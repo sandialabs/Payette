@@ -64,6 +64,8 @@ class Optimize(object):
 
         optimize = job_inp.get_block("optimization")
 
+        self.name = job
+
         # save Perturbate information to single "data" dictionary
         self.data = {}
         self.data["basename"] = job
@@ -270,7 +272,8 @@ class Optimize(object):
             return retcode
         else:
             return {"retcode": retcode,
-                    "index file": self.index.index_file}
+                    "index file": self.index.index_file(),
+                    "simulation name": self.name}
 
     def finish(self):
         r""" finish up the optimization job """

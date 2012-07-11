@@ -44,7 +44,9 @@ import Source.Payette_container as pcntnr
 import Source.Payette_optimize as po
 import Source.Payette_permutate as pp
 import Source.Payette_input_parser as pip
+import Source.Payette_sim_index as psi
 import Source.runopts as ro
+from Viz_ModelPlot import create_Viz_ModelPlot
 
 def run_payette(argv, disp=0):
     """Main function for running a Payette job.
@@ -113,6 +115,12 @@ def run_payette(argv, disp=0):
         action="store_true",
         default=False,
         help="time execution of Payette runs [default: %default]")
+    parser.add_option(
+        "-V",
+        dest="VIZ",
+        action="store_true",
+        default=False,
+        help="Display visualization window upon completion [default: %default]")
 
     # the following options have defaults set in runopt.py, later, we pass the
     # user requested options back to runopt.py so they are set of the rest of
@@ -243,6 +251,11 @@ def run_payette(argv, disp=0):
         opts.verbosity = 4
 
     opts.verbosity = int(opts.verbosity)
+
+    # set disp to 1 if user wants plot window
+    if opts.VIZ:
+        disp = 1
+        opts.disp = 1
 
     # pass command line arguments to global Payette variables
     ro.set_command_line_options(opts)
@@ -442,6 +455,28 @@ def run_payette(argv, disp=0):
 
     retcode = 1 if any(x["retcode"] for x in return_info) else 0
 
+    # visualize the results if requested
+    if opts.VIZ:
+        if len(return_info) == 1:
+            siminfo = return_info[0]
+            simname = siminfo["simulation name"]
+
+        else:
+            # create an index file
+            index = psi.SimulationIndex(os.getcwd())
+            simname = "Payette"
+            for idx, info in enumerate(return_info):
+                name = info["simulation name"]
+                simdir = info["simulation directory"]
+                outfile = info["output file"]
+                variables = {}
+                index.store(idx, name, simdir, variables, outfile)
+                continue
+            index.dump()
+            siminfo = {"index file": index.index_file()}
+
+        create_Viz_ModelPlot(simname, **siminfo)
+
     if __name__ == "__main__" or not opts.disp:
         # if run from the command line, just return retcode
         return retcode
@@ -479,12 +514,12 @@ def _run_job(args):
     if timing:
         tim1 = time.time()
 
-    solve = the_model.run_job()
+    siminfo = the_model.run_job()
 
     if opts.disp:
-        retcode = solve["retcode"]
+        retcode = siminfo["retcode"]
     else:
-        retcode = solve
+        retcode = siminfo
 
     if retcode != 0:
         sys.stderr.write("ERROR: simulation failed\n")
@@ -506,7 +541,7 @@ def _run_job(args):
     if not opts.disp:
         return {"retcode": retcode}
 
-    return solve
+    return siminfo
 
 
 def print_timing_info(tim0, tim1, tim2, name=None):

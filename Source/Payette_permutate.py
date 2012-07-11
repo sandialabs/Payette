@@ -56,6 +56,8 @@ class Permutate(object):
         permutate = job_inp.get_block("permutation")
         input_lines = job_inp.get_input_lines(skip="permutation")
 
+        self.name = job
+
         # save Perturbate information to single "data" dictionary
         self.data = {}
         self.data["basename"] = job
@@ -188,7 +190,8 @@ class Permutate(object):
             return retcode
         else:
             return {"retcode": retcode,
-                    "index file": self.index.index_file}
+                    "index file": self.index.index_file(),
+                    "simulation name": self.name}
 
     def finish(self):
         r""" finish up the permutation job """

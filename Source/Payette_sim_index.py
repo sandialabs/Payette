@@ -74,13 +74,13 @@ class SimulationIndex(object):
                 raise SimulationIndexError("base_dir not found")
             else:
                 # default index file name
-                self.index_file = os.path.join(base_dir, "index.pkl")
+                self._index_file = os.path.join(base_dir, "index.pkl")
         elif index_file is not None:
             if not os.path.isfile(index_file):
                 raise SimulationIndexError("index_file not found")
             else:
                 # default index file name
-                self.index_file = index_file
+                self._index_file = index_file
         else:
             raise SimulationIndexError(
                 "One of base_dir or index_file must be specified")
@@ -90,7 +90,7 @@ class SimulationIndex(object):
         self.loaded_index = {}
 
         # load the index file if it exists
-        if os.path.isfile(self.index_file):
+        if os.path.isfile(self._index_file):
             self.load()
 
     def store(self, key, name, job_dir, variables, outfile):
@@ -103,18 +103,18 @@ class SimulationIndex(object):
     def dump(self):
         """Dump self.index to a file"""
         # dup the index file
-        with open(self.index_file, "wb") as fobj:
+        with open(self._index_file, "wb") as fobj:
             pickle.dump(self.index, fobj)
         return
 
     def load(self):
         """Load the index file"""
         # check existence of file
-        if not os.path.isfile(self.index_file):
+        if not os.path.isfile(self._index_file):
             raise SimulationIndexError("index file {0} not found"
-                                       .format(self.index_file))
+                                       .format(self._index_file))
         # load it in
-        self.loaded_index = pickle.load(open(self.index_file, "rb"))
+        self.loaded_index = pickle.load(open(self._index_file, "rb"))
         return self.loaded_index
 
     def get_index(self):
@@ -125,3 +125,6 @@ class SimulationIndex(object):
 
     def output_files(self):
         return [v["outfile"] for k, v in self.loaded_index.items()]
+
+    def index_file(self):
+        return self._index_file

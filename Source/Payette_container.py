@@ -590,7 +590,9 @@ class Payette:
 
         else:
             return {"retcode": retcode,
-                    "output file": self.outfile}
+                    "output file": self.outfile,
+                    "simulation name": self.name,
+                    "simulation directory": self.simdir}
 
     def finish(self):
         """finish up"""
