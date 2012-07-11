@@ -34,6 +34,7 @@ from copy import deepcopy
 
 import Source.Payette_utils as pu
 import Source.Payette_tensor as pt
+from Source.Payette_unit_manager import UnitManager as UnitManager
 
 class DataContainer:
     """
@@ -66,7 +67,8 @@ class DataContainer:
         pass
 
     def register_data(self, name, typ, init_val=None, plot_key=None,
-                      dim=None, constant=False, plot_idx=None, xtra=None):
+                      dim=None, constant=False, plot_idx=None, xtra=None,
+                      units=None):
 
         """
             register data to the data container
@@ -89,6 +91,13 @@ class DataContainer:
         if typ not in self.data_types:
             pu.report_and_raise_error(
                 "unrecognized data type: {0}".format(typ))
+
+        # For the time being, we don't care if the data is "None" or some
+        # valid unit name. However, if it isn't one of those two, exit.
+        if units is not None and not UnitManager.is_valid_units(units):
+            pu.report_and_raise_error(
+                 "Units '{0}' for ({1},{2}) is not valid.".
+                                         format(units, plot_key, name))
 
         shape = None
         if typ in self.tensor_vars:
@@ -279,6 +288,7 @@ class DataContainer:
                                      "type": typ,
                                      "shape": shape,
                                      "value": value,
+                                     "units": units,
                                      "previous value": old_value,
                                      "old value": old_value,
                                      "stashed value": old_value,
@@ -287,6 +297,18 @@ class DataContainer:
         self.data_container_idx += 1
         setattr(self,name.replace(" ","_").upper(),old_value)
         return
+
+
+    def ensure_all_registered_data_have_valid_units(self):
+        """Returns nothing if all registered data have valid units.
+        Fails otherwise."""
+        for data, data_dict in self.data_container.iteritems():
+            if not UnitManager.is_valid_units(data_dict['units']):
+                pu.report_and_raise_error(
+      "Registered data does not have valid units set:\n"+
+      "\n".join(["({0}:{1})".format(x, y) for x, y in data_dict.iteritems()]))
+        return
+
 
     def unregister_data(self, name):
         """ unregister data with the data container """
@@ -347,6 +369,16 @@ class DataContainer:
             pu.report_and_raise_error(msg)
 
         return self.static_data_container.get(name)
+
+    def get_data_units(self, name):
+        """ return the units of the data 'name' """
+        idx = None
+        if name in self.plot_key_map:
+            plot_key = name
+            name = self.plot_key_map[plot_key]["name"]
+            idx = self.plot_key_map[plot_key]["idx"]
+
+        return self.data_container.get(name)['units']
 
     def get_data(self, name, stash=False, cur=False,
                  previous=False, form="Array"):

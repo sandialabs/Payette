@@ -52,26 +52,26 @@ class UnitManager:
     # Please see "Model Interface Guidelines" SAND96-2000, August 1996
     # Appendix C for more information (available from www.osti.gov/bridge/).
     valid_systems = {\
-             "si": [1,    1,     1,      1,           1, 1, 1],
-           "mksk": [1,    1,     1,      1,           1, 1, 1],
-           "cgsk": [0.01, 0.001, 1,      1,           1, 1, 1],
-          "cgsev": [0.01, 0.001, 1,   1.0 / 8.617343e-5, 1, 1, 1],
-         "sesame": [0.01, 0.001, 1.0e-5, 1,           1, 1, 1],
-          "shock": [0.01, 0.001, 1.0e-6, 8.617343e-5, 1, 1, 1]}
+             "SI": [1,    1,     1,      1,           1, 1, 1],
+           "MKSK": [1,    1,     1,      1,           1, 1, 1],
+           "CGSK": [0.01, 0.001, 1,      1,           1, 1, 1],
+          "CGSEV": [0.01, 0.001, 1,   1.0 / 8.617343e-5, 1, 1, 1],
+         "SESAME": [0.01, 0.001, 1.0e-5, 1,           1, 1, 1],
+          "SHOCK": [0.01, 0.001, 1.0e-6, 8.617343e-5, 1, 1, 1]}
 
     # The following are aliases to define dimensions for given quantities.
     # Feel free to define your own or use "Model Interface Guidelines"
     # SAND96-2000, August 1996 Appendix B for more information (available
     # from www.osti.gov/bridge/).
     valid_dim_aliases = {\
-                     "unitless":  [0,  0,  0,  0,  0,  0,  0],
-                       "length":  [1,  0,  0,  0,  0,  0,  0],
-                         "mass":  [0,  1,  0,  0,  0,  0,  0],
-                         "time":  [0,  0,  1,  0,  0,  0,  0],
-                  "temperature":  [0,  0,  0,  1,  0,  0,  0],
-              "discrete amount":  [0,  0,  0,  0,  1,  0,  0],
-             "electric current":  [0,  0,  0,  0,  0,  1,  0],
-           "luminous intensity":  [0,  0,  0,  0,  0,  0,  1],
+                     "UNITLESS":  [0,  0,  0,  0,  0,  0,  0],
+                       "LENGTH":  [1,  0,  0,  0,  0,  0,  0],
+                         "MASS":  [0,  1,  0,  0,  0,  0,  0],
+                         "TIME":  [0,  0,  1,  0,  0,  0,  0],
+                  "TEMPERATURE":  [0,  0,  0,  1,  0,  0,  0],
+              "DISCRETE AMOUNT":  [0,  0,  0,  0,  1,  0,  0],
+             "ELECTRIC CURRENT":  [0,  0,  0,  0,  0,  1,  0],
+           "LUMINOUS INTENSITY":  [0,  0,  0,  0,  0,  0,  1],
                      # Common Lambda and Alegra units
                 "DENSITY_UNITS": [-3,  1,  0,  0,  0,  0,  0],
             "TEMPERATURE_UNITS":  [0,  0,  0,  1,  0,  0,  0],
@@ -99,19 +99,67 @@ class UnitManager:
                    "RATE_UNITS":  [0,  0, -1,  0,  0,  0,  0],
    "SQUARED_INV_PRESSURE_UNITS":  [2, -2, -4,  0,  0,  0,  0],
               "STIFFNESS_UNITS": [-2,  1, -2,  0,  0,  0,  0],
+              "VORTICITY_UNITS":  [0,  0, -1,  0,  0,  0,  0],
                      # Not specified
                 "NOT_SPECIFIED":  [0,  0,  0,  0,  0,  0,  0],
-                     # non-base
-                     "position":  [1,  0,  0,  0,  0,  0,  0],
-                     "velocity":  [1,  0, -1,  0,  0,  0,  0],
-                 "acceleration":  [1,  0, -2,  0,  0,  0,  0],
-                        "force":  [1,  1, -2,  0,  0,  0,  0],
-                       "stress": [-1,  1, -2,  0,  0,  0,  0],
-                       "strain":  [0,  0,  0,  0,  0,  0,  0],
-                      "density": [-3,  1,  0,  0,  0,  0,  0],
-       "specific heat capacity":  [2,  0, -2, -1,  0,  0,  0],
-                       "volume":  [3,  0,  0,  0,  0,  0,  0],
-                       "energy":  [2,  1, -2,  0,  0,  0,  0]}
+                     # non-base    m   kg  s   K   n   A   lu
+                     "POSITION":  [1,  0,  0,  0,  0,  0,  0],
+                     "VELOCITY":  [1,  0, -1,  0,  0,  0,  0],
+                 "ACCELERATION":  [1,  0, -2,  0,  0,  0,  0],
+                        "FORCE":  [1,  1, -2,  0,  0,  0,  0],
+                       "STRESS": [-1,  1, -2,  0,  0,  0,  0],
+                       "STRAIN":  [0,  0,  0,  0,  0,  0,  0],
+                      "DENSITY": [-3,  1,  0,  0,  0,  0,  0],
+       "SPECIFIC HEAT CAPACITY":  [2,  0, -2, -1,  0,  0,  0],
+                       "VOLUME":  [3,  0,  0,  0,  0,  0,  0],
+                       "ENERGY":  [2,  1, -2,  0,  0,  0,  0],
+            "CAPACITANCE_UNITS": [-2, -1,  4,  0,  0,  2,  0],
+           "PERMITTIVITY_UNITS": [-3, -1,  4,  0,  0,  2,  0],
+             "RESISTANCE_UNITS":  [2,  1, -3,  0,  0, -2,  0],  # Ohm
+     "ELECTRIC_POTENTIAL_UNITS":  [2,  1, -3,  0,  0, -1,  0],  # Volt
+         "ELECTRIC_FIELD_UNITS":  [1,  1, -3,  0,  0, -1,  0],  # Volt / meter
+                               }
+
+    @classmethod
+    def is_valid_unit_system(cls, unit_system):
+        unit_system = unit_system.upper()
+        if unit_system in cls.valid_systems.keys():
+            return unit_system
+        else:
+            return ""
+
+    @classmethod
+    def is_valid_units(cls, units):
+        if type(units) == list:
+            # The list of units must have 7 integers.
+            if len(units) != 7:
+                return []  # evaluates to False
+            if not all([type(x) == int for x in units]):
+                return []  # evaluates to False
+            return [x for x in units]
+
+        elif type(units) == str:
+            # If the units is just an alias, return that list
+            units = units.upper()
+            if units in cls.valid_dim_aliases.keys():
+                return cls.valid_dim_aliases[units]
+
+            # This looks for valid string representations of
+            # units. It has an ability to do "_OVER_" for complex
+            # unit types. For example, to get units for DPDRHO,
+            # you could say "PRESSURE_UNITS_OVER_DENSITY_UNITS".
+            units = units.split("_OVER_")
+            if units[0] not in cls.valid_dim_aliases.keys():
+                return []
+            retunits = [x for x in cls.valid_dim_aliases[units[0]]]
+            for dum in units[1:]:
+                if dum not in cls.valid_dim_aliases.keys():
+                    return []
+                for i in range(0,7):
+                    retunits[i] -= cls.valid_dim_aliases[dum][i]
+            return [x for x in retunits]
+        else:
+            return []
 
     # Create a string containing pretty-printed information about
     # the class (particularly the valid unit systems and dimension
@@ -135,51 +183,28 @@ class UnitManager:
             sys.exit("Cannot convert '{0}' to float.".format(value))
 
         # The original unit system must be a valid option.
-        if unit_system not in self.valid_systems.keys():
+        if not self.is_valid_unit_system(unit_system):
             sys.exit("Unit system '{0}' not found in {1}".
                      format(unit_system, repr(self.valid_systems.keys())))
 
-        # The dimensions must be a string alias or a list of
-        # seven integers.
-        if type(base_dim) == str:
-            if base_dim in self.valid_dim_aliases.keys():
-                base_dim = self.valid_dim_aliases[base_dim]
-            else:
-                sys.exit("Token '{0}' not found in {1}.".
-                   format(base_dim, repr(self.valid_dim_aliases.keys())))
-        elif type(base_dim) != list:
-            sys.exit("Must give a list for the base dimensions.")
-
-        if len(base_dim) != 7:
-            sys.exit("Expected 7 base dimensions, got {0}.".
-                                             format(len(base_dim)))
-
-        if any([type(x) != int for x in base_dim]):
-            sys.exit("Expected all integers in the base dimension list.")
 
         # Attempt to determine the common name for the dimensions given.
-        descriptor = ""
-        if base_dim in self.valid_dim_aliases.values():
-            for tok in self.valid_dim_aliases.keys():
-                if base_dim == self.valid_dim_aliases[tok]:
-                    descriptor = tok
-                    break
-
-        self.descriptor = descriptor
-        self.dimensions = base_dim
+        self.dimensions = self.is_valid_units(base_dim)
+        if not self.dimensions:
+            sys.exit("Cannot process units '{0}'".format(repr(base_dim)))
 
         self.val = float_value
-        self.system = unit_system
+        self.system = unit_system.upper()
 
     def get(self, system=None):
         """ Return the stored value (in a different unit system, if given) """
         if system is None:
             return float(self.val)
 
-        system = system.lower()
-        if system not in self.valid_systems.keys():
+        system = system.upper()
+        if not self.is_valid_unit_system(system):
             sys.exit("Cannot convert to '{0}' - "
-                     "not in list of valid systems:\n".format(system.lower()) +
+                     "not in list of valid systems:\n".format(system.upper()) +
                      "\n".join(self.valid_systems.keys()))
         tmp = self.val
         for idx in range(0, len(self.dimensions)):
@@ -190,29 +215,38 @@ class UnitManager:
             new_sys_fac = self.valid_systems[system][idx]
             dim_exp = self.dimensions[idx]
 
-            tmp *= (curr_sys_fac / new_sys_fac) ** dim_exp
+            try:
+                tmp *= (curr_sys_fac / new_sys_fac) ** dim_exp
+            except:
+                print("original val = {0:.14e}".format(self.val))
+                print("tmp *= (curr_sys_fac / new_sys_fac) ** dim_exp")
+                print("dimensions   = {0}".format(self.dimensions))
+                print("tmp          = {0:.14e}".format(tmp))
+                print("curr_sys_fac = {0:.14e}".format(curr_sys_fac))
+                print("new_sys_fac  = {0:.14e}".format(new_sys_fac))
+                print("dim_exp      = {0:.14e}".format(dim_exp))
+                sys.exit()
 
         return float(tmp)
 
     def convert(self, system):
         """ Convert the stored value to a different unit system """
-        self.val = self.get(system=system.lower())
-        self.system = system.lower()
+        self.val = self.get(system=system)
+        self.system = system
 
     def value_info(self):
         """ Return a string containing pretty-printed information """
         msg = ("value: {0}\n"
                "unit system: {1}\n"
-               "dim description: {2}\n"
                "dimensions:\n"
-               "              length {3}\n"
-               "                mass {4}\n"
-               "                time {5}\n"
-               "         temperature {6}\n"
-               "              amount {7}\n"
-               "    electric current {8}\n"
-               "  luminous intensity {9}\n".
-              format(self.val, self.system, self.descriptor, *self.dimensions))
+               "              length {2}\n"
+               "                mass {3}\n"
+               "                time {4}\n"
+               "         temperature {5}\n"
+               "              amount {6}\n"
+               "    electric current {7}\n"
+               "  luminous intensity {8}\n".
+              format(self.val, self.system, *self.dimensions))
         return msg
 
     def update(self, newval):
@@ -220,7 +254,7 @@ class UnitManager:
         self.val = newval
 
     def clone(self, y, copy_dim=True,
-              new_dim=valid_dim_aliases["unitless"]):
+              new_dim=valid_dim_aliases["UNITLESS"]):
         """ Overwrite the current stored value with a new value """
         if copy_dim:
             return UnitManager(y, self.system, self.dimensions)
@@ -420,6 +454,7 @@ class UnitManager:
         return self.clone(self.get().__trunc__())
 
 
+
 def unit_tests():
 
     def unit_test(val, input_units, val_good, output_units, dim):
@@ -478,6 +513,7 @@ if __name__ == "__main__":
         print("ERROR: Must give a valid float value")
         usage()
 
+    UnitManager.is_valid_unit_system(sys.argv[2])
     a = UnitManager(val, sys.argv[2], sys.argv[4])
     a.convert(sys.argv[3])
     print(a.value_info())

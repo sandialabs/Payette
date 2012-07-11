@@ -33,6 +33,7 @@ import Source.Payette_utils as pu
 import Source.runopts as ro
 import Source.Payette_xml_parser as px
 from Source.Payette_xml_parser import XMLParserError as XMLParserError
+from Source.Payette_unit_manager import UnitManager as UnitManager
 
 
 class ConstitutiveModelPrototype(object):
@@ -160,7 +161,8 @@ class ConstitutiveModelPrototype(object):
         if not any(x for y in self.J0 for x in y):
             pu.report_and_raise_error("iniatial Jacobian is empty")
 
-        matdat.register_data("jacobian", "Matrix", init_val=self.J0)
+        matdat.register_data("jacobian", "Matrix", init_val=self.J0,
+                             units="NO_UNITS")
         ro.set_global_option("EFIELD_SIM", self.electric_field_model)
 
         return
@@ -171,12 +173,13 @@ class ConstitutiveModelPrototype(object):
         for idx, pm in enumerate(params):
             self.register_parameter(
                 pm["name"], idx, aliases=pm["aliases"],
-                default=pm["default"], parseable=pm["parseable"])
+                default=pm["default"], parseable=pm["parseable"],
+                units=pm["units"])
             continue
         return
 
-    def register_parameter(self, param_name, param_idx,
-                           aliases=None, parseable=True, default=0.,
+    def register_parameter(self, param_name, param_idx, aliases=None,
+                           parseable=True, default=0., units=None,
                            description="No description available"):
         """Register parameters from the material model to the consitutive
         model base class
@@ -201,6 +204,10 @@ class ConstitutiveModelPrototype(object):
 
         if aliases is None:
             aliases = []
+
+        if units is None or not UnitManager.is_valid_units(units):
+            pu.report_and_raise_error(
+                "Units '{0}' for {1} is not valid.'".format(units, param_name))
 
         if not isinstance(param_name, str):
             pu.report_and_raise_error(
@@ -240,6 +247,7 @@ class ConstitutiveModelPrototype(object):
         self.parameter_table[full_name] = {"name": full_name,
                                            "names": param_names,
                                            "ui pos": param_idx,
+                                           "units": units,
                                            "parseable": parseable,
                                            "default value": default,
                                            "description": description,}
@@ -247,6 +255,16 @@ class ConstitutiveModelPrototype(object):
 
         self.nprop += 1
 
+        return
+
+    def ensure_all_parameters_have_valid_units(self):
+        """Returns nothing if all parameters have valid units.
+        Fails otherwise."""
+        for param, param_dict in self.parameter_table.items():
+            if not UnitManager.is_valid_units(param_dict['units']):
+                pu.report_and_raise_error(
+      "Parameter does not have valid units set:\n"+
+      "\n".join(["({0}:{1})".format(x, y) for x, y in param_dict.iteritems()]))
         return
 
     def get_parameter_names_and_values(self, default=True, version=None):

@@ -111,56 +111,74 @@ Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
         # plotable data
         self.matdat.register_data("stress", "SymTensor",
                                   init_val=np.zeros(6),
-                                  plot_key="sig")
+                                  plot_key="sig",
+                                  units="PRESSURE_UNITS")
         self.matdat.register_data("stress rate", "SymTensor",
                                   init_val=np.zeros(6),
-                                  plot_key="dsigdt")
+                                  plot_key="dsigdt",
+                                  units="PRESSURE_UNITS_OVER_TIME_UNITS")
         self.matdat.register_data("strain", "SymTensor",
                                   init_val=np.zeros(6),
-                                  plot_key="strain")
+                                  plot_key="strain",
+                                  units="NO_UNITS")
         self.matdat.register_data("deformation gradient", "Tensor",
                                   init_val="Identity",
-                                  plot_key="F")
+                                  plot_key="F",
+                                  units="NO_UNITS")
         self.matdat.register_data("rate of deformation", "SymTensor",
                                   init_val=np.zeros(6),
-                                  plot_key="d")
+                                  plot_key="d",
+                                  units="NO_UNITS_OVER_TIME_UNITS")
         self.matdat.register_data("vorticity", "Tensor",
                                   init_val=np.zeros(9),
-                                  plot_key="w")
+                                  plot_key="w",
+                                  units="VORTICITY_UNITS")
         self.matdat.register_data("equivalent strain", "Scalar",
                                   init_val=0.,
-                                  plot_key="eqveps")
+                                  plot_key="eqveps",
+                                  units="NO_UNITS")
         self.matdat.register_data("pressure", "Scalar",
                                   init_val=0.,
-                                  plot_key="pressure")
+                                  plot_key="pressure",
+                                  units="PRESSURE_UNITS")
 
         if self.constitutive_model.electric_field_model:
             # electric field model data
             self.matdat.register_data("permittivity", "SymTensor",
                                      init_val=np.zeros(6),
-                                     plot_key="permtv")
+                                     plot_key="permtv",
+                                     units="PERMITTIVITY_UNITS")
             self.matdat.register_data("electric field", "Vector",
                                      init_val=np.zeros(3),
-                                     plot_key="efield")
+                                     plot_key="efield",
+                                     units="ELECTRIC_FIELD_UNITS")
 
         # non-plotable data
         self.matdat.register_data("prescribed stress", "Array",
-                                 init_val=np.zeros(6))
+                                 init_val=np.zeros(6),
+                                  units="PRESSURE_UNITS")
         self.matdat.register_data("prescribed stress components",
                                  "Integer Array",
-                                 init_val=np.zeros(6, dtype=int))
+                                 init_val=np.zeros(6, dtype=int),
+                                 units="NO_UNITS")
         self.matdat.register_data("prescribed strain", "SymTensor",
-                                 init_val=np.zeros(6))
+                                 init_val=np.zeros(6),
+                                 units="NO_UNITS")
         self.matdat.register_data("strain rate", "SymTensor",
-                                 init_val=np.zeros(6))
+                                 init_val=np.zeros(6),
+                                 units="NO_UNITS_OVER_TIME_UNITS")
         self.matdat.register_data("prescribed deformation gradient", "Tensor",
-                                 init_val=np.zeros(9))
+                                 init_val=np.zeros(9),
+                                 units="NO_UNITS")
         self.matdat.register_data("deformation gradient rate", "Tensor",
-                                 init_val=np.zeros(9))
+                                 init_val=np.zeros(9),
+                                 units="NO_UNITS_OVER_TIME_UNITS")
         self.matdat.register_data("rotation", "Tensor",
-                                 init_val="Identity")
+                                 init_val="Identity",
+                                 units="NO_UNITS")
         self.matdat.register_data("rotation rate", "Tensor",
-                                 init_val=np.zeros(9))
+                                 init_val=np.zeros(9),
+                                 units="NO_UNITS_OVER_TIME_UNITS")
         return
 
     def register_default_eos_data(self):
@@ -168,16 +186,20 @@ Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
 
         self.matdat.register_data("density", "Scalar",
                                  init_val=0.,
-                                 plot_key="rho")
+                                 plot_key="rho",
+                                 units="DENSITY_UNITS")
         self.matdat.register_data("temperature", "Scalar",
                                  init_val=0.,
-                                 plot_key="temp")
+                                 plot_key="temp",
+                                 units="TEMPERATURE_UNITS")
         self.matdat.register_data("energy", "Scalar",
                                  init_val=0.,
-                                 plot_key="enrg")
+                                 plot_key="enrg",
+                                 units="SPECIFIC_ENERGY_UNITS")
         self.matdat.register_data("pressure", "Scalar",
                                  init_val=0.,
-                                 plot_key="pres")
+                                 plot_key="pres",
+                                 units="PRESSURE_UNITS")
         return
 
     def material_data(self):

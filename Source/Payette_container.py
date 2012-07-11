@@ -40,6 +40,7 @@ import Source.runopts as ro
 from Source.Payette_material import Material
 from Source.Payette_data_container import DataContainer
 from Source.Payette_boundary import BoundaryError as BoundaryError
+from Source.Payette_unit_manager import UnitManager as UnitManager
 
 
 class PayetteError(Exception):
@@ -217,16 +218,22 @@ class Payette:
         # set up the simulation data container and register obligatory data
         self.simdat = DataContainer(self.name)
         self.simdat.register_data("time", "Scalar",
-                                 init_val=0., plot_key="time")
+                                 init_val=0., plot_key="time",
+                                 units="TIME_UNITS")
         self.simdat.register_data("time step", "Scalar",
-                                 init_val=0., plot_key="timestep")
-        self.simdat.register_data("number of steps", "Scalar", init_val=0)
-        self.simdat.register_data("leg number", "Scalar", init_val=0 )
+                                 init_val=0., plot_key="timestep",
+                                 units="TIME_UNITS")
+        self.simdat.register_data("number of steps", "Scalar", init_val=0,
+                                  units="NO_UNITS")
+        self.simdat.register_data("leg number", "Scalar", init_val=0,
+                                  units="NO_UNITS")
         self.simdat.register_data("payette density", "Scalar",
                                   init_val=self.material.initial_density(),
-                                  plot_key="PRHO")
+                                  plot_key="PRHO",
+                                  units="DENSITY_UNITS")
         self.simdat.register_data("volume fraction", "Scalar",
-                                  init_val=1., plot_key="VFRAC")
+                                  init_val=1., plot_key="VFRAC",
+                                  units="NO_UNITS")
 
         if ro.CHECK_SETUP:
             exit("EXITING to check setup")
@@ -440,16 +447,33 @@ class Payette:
 
         return
 
-    def write_state(self):
-        """ write the simulation and material data to the output file """
+    def write_state(self, input_unit_system=None, output_unit_system=None):
+        """ write the simulation and material data to the output file. If
+        input_unit_system and output_unit_system are given and valid, convert
+        from the input system to the output system first.
+        """
+        UNITCONVERT = False
+        if all([input_unit_system, output_unit_system]):
+            UNITCONVERT = True
+
         data = []
         for plot_key in self.out_vars:
             if plot_key in self.simdat.plot_keys():
                 dat = self.simdat
             else:
                 dat = self.matdat
-            data.append(dat.get_data(plot_key))
+
+            dum = dat.get_data(plot_key)
+            if UNITCONVERT:
+                units = dat.get_data_units(plot_key)
+                dum = UnitManager(dum, input_unit_system, units)
+                dum.convert(output_unit_system)
+                dum = dum.get()
+
+            data.append(dum)
             continue
+
+            
 
         for dat in data:
             self.outfile_obj.write(pu.textformat(dat))

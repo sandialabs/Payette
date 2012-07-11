@@ -35,6 +35,7 @@ import Source.Payette_kinematics as pk
 import Source.Payette_utils as pu
 import Source.Payette_tensor as pt
 import Source.runopts as ro
+from Source.Payette_unit_manager import UnitManager as UnitManager
 
 np.set_printoptions(precision=4)
 
@@ -71,6 +72,11 @@ def eos_driver(the_model, **kwargs):
 
     eos_model = material.constitutive_model
 
+    # This will make sure that everything has units set.
+    eos_model.ensure_all_parameters_have_valid_units()
+    simdat.ensure_all_registered_data_have_valid_units()
+    matdat.ensure_all_registered_data_have_valid_units()
+
     nprints = the_model.boundary.nprints()
 
     # get boundary data
@@ -84,6 +90,26 @@ def eos_driver(the_model, **kwargs):
     simdir = the_model.simdir
     simnam = the_model.name
 
+    input_unit_system = the_model.boundary.input_units()
+    output_unit_system = the_model.boundary.output_units()
+
+    if not UnitManager.is_valid_unit_system(input_unit_system):
+        pu.report_and_raise_error(
+              "Input unit system '{0}' is not a valid unit system".
+                                         format(input_unit_system))
+    if not UnitManager.is_valid_unit_system(output_unit_system):
+        pu.report_and_raise_error(
+              "Output unit system '{0}' is not a valid unit system".
+                                         format(output_unit_system))
+
+    pu.log_message("Input unit system: {0}".format(input_unit_system))
+    pu.log_message("Output unit system: {0}".format(output_unit_system))
+
+#    print(dir(the_model.boundary))
+#    print(dir(matdat))
+#    print(dir(simdat))
+#    print(dir(eos_modeldat))
+
 ################################################################################
 ###############             DENSITY-TEMPERATURE LEGS             ###############
 ################################################################################
@@ -92,17 +118,12 @@ def eos_driver(the_model, **kwargs):
         the_model._setup_out_file(out_fnam)
 
         for pair in rho_temp_pairs:
-            eos_model.evaluate_eos(simdat, matdat,
-                              rho = pair[0] / 1000.0, temp = pair[1] * K2eV)
-            # Convert from CGSEV to MKSK
-            matdat.store_data("density", matdat.get_data("density") * 1000.0)
-            matdat.store_data("energy", matdat.get_data("energy") * erg2joule)
-            matdat.store_data("pressure", matdat.get_data("pressure") / 10.0 )
-            matdat.store_data("soundspeed", matdat.get_data("soundspeed") / 100.0 )
-            matdat.store_data("temperature", matdat.get_data("temperature") / K2eV )
+            eos_model.evaluate_eos(simdat, matdat, rho = pair[0],
+                                                  temp = pair[1])
             matdat.advance_all_data()
 
-            the_model.write_state()
+            the_model.write_state(input_unit_system=input_unit_system,
+                                  output_unit_system=output_unit_system)
         pu.log_message("Legs file: {0}".format(out_fnam))
         
 
@@ -131,22 +152,12 @@ def eos_driver(the_model, **kwargs):
                 if idx%int(surf_incr**2/float(nprints)) == 0:
                     pu.log_message(
                         "Surface step {0}/{1}".format(idx, surf_incr ** 2))
-                # convert to CGSEV from MKSK
-                tmprho = rho/1000.0
-                tmptemp = K2eV*temp
 
-                eos_model.evaluate_eos(
-                    simdat, matdat, rho=tmprho, temp=tmptemp)
+                eos_model.evaluate_eos(simdat, matdat, rho=rho, temp=temp)
 
-                # Convert from CGSEV to MKSK
-                matdat.store_data("density", matdat.get_data("density") * 1000.0)
-                matdat.store_data("energy", matdat.get_data("energy") * erg2joule)
-                matdat.store_data("pressure", matdat.get_data("pressure") / 10.0 )
-                matdat.store_data("soundspeed", matdat.get_data("soundspeed") / 100.0 )
-                matdat.store_data("temperature", matdat.get_data("temperature") / K2eV )
                 matdat.advance_all_data()
-
-                the_model.write_state()
+                the_model.write_state(input_unit_system=input_unit_system,
+                                      output_unit_system=output_unit_system)
 
         pu.log_message("End surface")
         pu.log_message("Surface file: {0}".format(out_fnam))
@@ -180,21 +191,11 @@ def eos_driver(the_model, **kwargs):
             if idx%int(path_incr/float(nprints)) == 0:
                 pu.log_message("Isotherm step {0}/{1}".format(idx,path_incr))
 
-            tmprho = rho/1000.0
-            tmptemp = K2eV*isotherm[1]
+            eos_model.evaluate_eos(simdat, matdat, rho = rho, temp = isotherm[1])
 
-            eos_model.evaluate_eos(simdat, matdat,
-                                   rho = tmprho, temp = tmptemp)
-
-            # Convert from CGSEV to MKSK
-            matdat.store_data("density", matdat.get_data("density") * 1000.0)
-            matdat.store_data("energy", matdat.get_data("energy") * erg2joule)
-            matdat.store_data("pressure", matdat.get_data("pressure") / 10.0 )
-            matdat.store_data("soundspeed", matdat.get_data("soundspeed") / 100.0 )
-            matdat.store_data("temperature", matdat.get_data("temperature") / K2eV )
             matdat.advance_all_data()
-
-            the_model.write_state()
+            the_model.write_state(input_unit_system=input_unit_system,
+                                  output_unit_system=output_unit_system)
 
         pu.log_message("End isotherm")
         pu.log_message("Isotherm file: {0}".format(out_fnam))
@@ -232,8 +233,8 @@ def eos_driver(the_model, **kwargs):
         init_temperature_MKSK = hugoniot[1]
 
         # Convert to CGSEV
-        init_density = init_density_MKSK/1000.0
-        init_temperature = K2eV*init_temperature_MKSK
+        init_density = init_density_MKSK
+        init_temperature = init_temperature_MKSK
 
         eos_model.evaluate_eos(simdat, matdat,
                                rho = init_density, temp = init_temperature)
@@ -268,7 +269,7 @@ def eos_driver(the_model, **kwargs):
             # x_n+1 = x_n - f(E)/(df(E)/dE)
             #
 
-            r = rho/1000.0
+            r = rho
             a = (1./init_density - 1./r)/2.
 
             converged_idx = 0
@@ -291,15 +292,9 @@ def eos_driver(the_model, **kwargs):
                                "init_energy = {0:14.10e}\n".format(float(init_energy)))
                         break
 
-            # Convert from CGSEV to MKSK
-            matdat.store_data("density", matdat.get_data("density") * 1000.0)
-            matdat.store_data("energy", matdat.get_data("energy") * erg2joule)
-            matdat.store_data("pressure", matdat.get_data("pressure") / 10.0 )
-            matdat.store_data("soundspeed", matdat.get_data("soundspeed") / 100.0 )
-            matdat.store_data("temperature", matdat.get_data("temperature") / K2eV )
             matdat.advance_all_data()
-
-            the_model.write_state()
+            the_model.write_state(input_unit_system=input_unit_system,
+                                  output_unit_system=output_unit_system)
 
         pu.log_message("End Hugoniot")
         pu.log_message("Hugoniot file: {0}".format(out_fnam))
