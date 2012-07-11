@@ -505,7 +505,7 @@ class DataContainer:
 
         else:
             # store the scalar variable
-            newval = newval
+            newval = float(newval)
 
         # transfer oldvalue to previous and save new
         data["previous value"] = deepcopy(data["value"])

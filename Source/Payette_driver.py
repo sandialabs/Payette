@@ -84,36 +84,27 @@ def eos_driver(the_model, **kwargs):
     simdir = the_model.simdir
     simnam = the_model.name
 
-    txtfmt = lambda x: "{0:>25s}".format(str(x))
-    fltfmt = lambda x: "{0:25.14e}".format(float(x))
-
-
 ################################################################################
 ###############             DENSITY-TEMPERATURE LEGS             ###############
 ################################################################################
     if len(rho_temp_pairs) != 0:
         out_fnam = os.path.join(simdir, simnam + ".out")
-        out_fobj = open(out_fnam, "w")
-
-        headers = [x[0] for x in sorted(eos_model.outdata.iteritems())]
-        msg = "{0}\n".format("".join([txtfmt(x) for x in headers]))
-        out_fobj.write(msg)
+        the_model._setup_out_file(out_fnam)
 
         for pair in rho_temp_pairs:
             eos_model.evaluate_eos(simdat, matdat,
                               rho = pair[0] / 1000.0, temp = pair[1] * K2eV)
             # Convert from CGSEV to MKSK
-            eos_model.outdata["DENSITY"] *= 1000.0
-            eos_model.outdata["ENERGY"] *= erg2joule
-            eos_model.outdata["PRESSURE"] /= 10.0
-            eos_model.outdata["SOUNDSPEED"] /= 100.0
-            eos_model.outdata["TEMPERATURE"] /= K2eV
+            matdat.store_data("density", matdat.get_data("density") * 1000.0)
+            matdat.store_data("energy", matdat.get_data("energy") * erg2joule)
+            matdat.store_data("pressure", matdat.get_data("pressure") / 10.0 )
+            matdat.store_data("soundspeed", matdat.get_data("soundspeed") / 100.0 )
+            matdat.store_data("temperature", matdat.get_data("temperature") / K2eV )
+            matdat.advance_all_data()
 
-            values = [x[1] for x in sorted(eos_model.outdata.iteritems())]
-            msg = "{0}\n".format("".join([fltfmt(x) for x in values]))
-            out_fobj.write(msg)
-
-        out_fobj.close()
+            the_model.write_state()
+        pu.log_message("Legs file: {0}".format(out_fnam))
+        
 
 
 ################################################################################
@@ -128,7 +119,7 @@ def eos_driver(the_model, **kwargs):
         surf_incr = surface_increments
 
         out_fnam = os.path.join(simdir, simnam + ".surface")
-        out_fobj = open(out_fnam, "w")
+        the_model._setup_out_file(out_fnam)
 
         pu.log_message("=" * (80 - 6))
         pu.log_message("Begin surface")
@@ -147,28 +138,16 @@ def eos_driver(the_model, **kwargs):
                 eos_model.evaluate_eos(
                     simdat, matdat, rho=tmprho, temp=tmptemp)
 
-                # Write the headers if this is the first time through
-                if not DEJAVU:
-                    DEJAVU = True
-                    headers = [x[0] for x in
-                               sorted(eos_model.outdata.iteritems())]
-                    msg = "{0}\n".format("".join([txtfmt(x) for x in headers]))
-                    out_fobj.write(msg)
-
                 # Convert from CGSEV to MKSK
-                eos_model.outdata["DENSITY"] *= 1000.0
-                eos_model.outdata["ENERGY"] *= erg2joule
-                eos_model.outdata["PRESSURE"] /= 10.0
-                eos_model.outdata["SOUNDSPEED"] /= 100.0
-                eos_model.outdata["TEMPERATURE"] /= K2eV
+                matdat.store_data("density", matdat.get_data("density") * 1000.0)
+                matdat.store_data("energy", matdat.get_data("energy") * erg2joule)
+                matdat.store_data("pressure", matdat.get_data("pressure") / 10.0 )
+                matdat.store_data("soundspeed", matdat.get_data("soundspeed") / 100.0 )
+                matdat.store_data("temperature", matdat.get_data("temperature") / K2eV )
+                matdat.advance_all_data()
 
-                # Write the values
-                values = [x[1] for x in sorted(eos_model.outdata.iteritems())]
-                msg = "{0}\n".format("".join([fltfmt(x) for x in values]))
-                out_fobj.write(msg)
+                the_model.write_state()
 
-        out_fobj.flush()
-        out_fobj.close()
         pu.log_message("End surface")
         pu.log_message("Surface file: {0}".format(out_fnam))
 
@@ -190,7 +169,7 @@ def eos_driver(the_model, **kwargs):
                 "initial isotherm density not within range")
 
         out_fnam = os.path.join(simdir, simnam + ".isotherm")
-        out_fobj = open(out_fnam, "w")
+        the_model._setup_out_file(out_fnam)
 
         pu.log_message("=" * (80 - 6))
         pu.log_message("Begin isotherm")
@@ -207,28 +186,16 @@ def eos_driver(the_model, **kwargs):
             eos_model.evaluate_eos(simdat, matdat,
                                    rho = tmprho, temp = tmptemp)
 
-            # Write the headers if this is the first time through
-            if not DEJAVU:
-                DEJAVU = True
-                headers = [x[0] for x in
-                           sorted(eos_model.outdata.iteritems())]
-                msg = "{0}\n".format("".join([txtfmt(x) for x in headers]))
-                out_fobj.write(msg)
-
             # Convert from CGSEV to MKSK
-            eos_model.outdata["DENSITY"] *= 1000.0
-            eos_model.outdata["ENERGY"] *= erg2joule
-            eos_model.outdata["PRESSURE"] /= 10.0
-            eos_model.outdata["SOUNDSPEED"] /= 100.0
-            eos_model.outdata["TEMPERATURE"] /= K2eV
+            matdat.store_data("density", matdat.get_data("density") * 1000.0)
+            matdat.store_data("energy", matdat.get_data("energy") * erg2joule)
+            matdat.store_data("pressure", matdat.get_data("pressure") / 10.0 )
+            matdat.store_data("soundspeed", matdat.get_data("soundspeed") / 100.0 )
+            matdat.store_data("temperature", matdat.get_data("temperature") / K2eV )
+            matdat.advance_all_data()
 
-            # Write the values
-            values = [x[1] for x in sorted(eos_model.outdata.iteritems())]
-            msg = "{0}\n".format("".join([fltfmt(x) for x in values]))
-            out_fobj.write(msg)
+            the_model.write_state()
 
-        out_fobj.flush()
-        out_fobj.close()
         pu.log_message("End isotherm")
         pu.log_message("Isotherm file: {0}".format(out_fnam))
 
@@ -256,7 +223,7 @@ def eos_driver(the_model, **kwargs):
                 "initial hugoniot temperature not within range")
 
         out_fnam = os.path.join(simdir, simnam + ".hugoniot")
-        out_fobj = open(out_fnam, "w")
+        the_model._setup_out_file(out_fnam)
 
         pu.log_message("=" * (80 - 6))
         pu.log_message("Begin Hugoniot")
@@ -271,8 +238,8 @@ def eos_driver(the_model, **kwargs):
         eos_model.evaluate_eos(simdat, matdat,
                                rho = init_density, temp = init_temperature)
 
-        init_energy = float(eos_model.outdata["ENERGY"])
-        init_pressure = float(eos_model.outdata["PRESSURE"])
+        init_energy = matdat.get_data("energy")
+        init_pressure = matdat.get_data("pressure")
 
         idx = 0
         DEJAVU = False
@@ -310,8 +277,8 @@ def eos_driver(the_model, **kwargs):
                 converged_idx += 1
                 eos_model.evaluate_eos(simdat, matdat, rho = r, enrg = e)
 
-                f = (eos_model.outdata["PRESSURE"] + init_pressure)*a - e + init_energy
-                df = eos_model.outdata["DPDT"]/eos_model.outdata["DEDT"]*a - 1.0
+                f = (matdat.get_data("pressure") + init_pressure)*a - e + init_energy
+                df = matdat.get_data("dpdt")/matdat.get_data("dedt")*a - 1.0
                 e = e - f/df
                 errval = abs(f/init_energy)
                 if errval < 1.0e-9:
@@ -324,27 +291,16 @@ def eos_driver(the_model, **kwargs):
                                "init_energy = {0:14.10e}\n".format(float(init_energy)))
                         break
 
-            # Write the headers if this is the first time through
-            if not DEJAVU:
-                DEJAVU = True
-                headers = [x[0] for x in sorted(eos_model.outdata.iteritems())]
-                msg = "{0}\n".format("".join([txtfmt(x) for x in headers]))
-                out_fobj.write(msg)
-
             # Convert from CGSEV to MKSK
-            eos_model.outdata["DENSITY"] *= 1000.0
-            eos_model.outdata["ENERGY"] *= erg2joule
-            eos_model.outdata["PRESSURE"] /= 10.0
-            eos_model.outdata["SOUNDSPEED"] /= 100.0
-            eos_model.outdata["TEMPERATURE"] /= K2eV
+            matdat.store_data("density", matdat.get_data("density") * 1000.0)
+            matdat.store_data("energy", matdat.get_data("energy") * erg2joule)
+            matdat.store_data("pressure", matdat.get_data("pressure") / 10.0 )
+            matdat.store_data("soundspeed", matdat.get_data("soundspeed") / 100.0 )
+            matdat.store_data("temperature", matdat.get_data("temperature") / K2eV )
+            matdat.advance_all_data()
 
-            # Write the values
-            values = [x[1] for x in sorted(eos_model.outdata.iteritems())]
-            msg = "{0}\n".format("".join([fltfmt(x) for x in values]))
-            out_fobj.write(msg)
+            the_model.write_state()
 
-        out_fobj.flush()
-        out_fobj.close()
         pu.log_message("End Hugoniot")
         pu.log_message("Hugoniot file: {0}".format(out_fnam))
 
