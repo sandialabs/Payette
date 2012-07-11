@@ -180,7 +180,7 @@ def create_Viz_ModelPlot(window_name, **kwargs):
             output_files.append(info['outfile'])
             s = ""
             for var, val in info['variables'].iteritems():
-                s += "%s=%s" % (var, val)
+                s += "%s=%.2g" % (var, val)
             variables.append(s)
 
         not_found = [x for x in output_files if not os.path.isfile(x)]
