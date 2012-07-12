@@ -65,7 +65,7 @@ class IdealGas(ConstitutiveModelPrototype):
         """
         M = self.ui[0]
         CV = self.ui[1]
-        R = UnitManager.change(8.3144621,
+        R = UnitManager.transform(8.3144621,
             "ENERGY_UNITS_OVER_TEMPERATURE_UNITS_OVER_DISCRETE_AMOUNT",
                                                      "SI", unit_system)
 

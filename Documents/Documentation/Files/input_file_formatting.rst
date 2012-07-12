@@ -459,7 +459,74 @@ step, strain table ::
   end legs
 
 
+.. _eos_boundary_block:
 
+The ``boundary`` Block for Driving an EOS
+-----------------------------------------
+
+When driving an EOS the boundary block requires different keywords
+and formatting than described above. Unlike the other boundary block,
+there are no defaults set for the boundary keywords except for
+``nprints=5``::
+
+  begin boundary
+    nprints <int> # Number of status updates for each task
+    input units <string> # unit system of the input fiel
+    output units <string>
+    density range <float> <float>
+    temperature range <float> <float>
+    surface increments <int>
+    path isotherm <density> <temperature>
+    path hugoniot <density> <temperature>
+    begin legs
+      <density> <temperature>
+    end legs
+  end boundary
+
+``input units`` and ``output units``
+""""""""""""""""""""""""""""""""""""
+The following unit systems are valid::
+
+  SI = meter, kilogram, second, kelvin, mole, ampere, candella
+  MKSK = meter, kilogram, second, kelvin, mole, ampere, candella
+  CGSK = centimeter, gram, second, kelvin, mole, ampere, candella
+  CGSEV = centimeter, gram, second, electron volt, mole, ampere, candella
+  SESAME = centimeter, gram, 10microsecond, kelvin, mole, ampere, candella
+  SHOCK = centimeter, gram, microsecond, electron volt, mole, ampere, candella
+
+The input file must be written in a self-consistent unit system and it must be
+one of the above. Special care must be given to ensure that if you are using
+the ``matlabel`` function in the ``material`` block that your ``input units``
+are the same as the units that the parameters are specified in the control file.
+
+Generate a Surface
+""""""""""""""""""
+To generate a surface, you must specify the ``density range``, ``temperature range``,
+and the ``surface increments``. This will evaluate a square grid of evenly spaced points
+over the density and temperature range and write the output to a file ``simname.surface``.
+
+Generate an Isotherm
+""""""""""""""""""""
+To generate an isotherm, you must specify the ``density range``, ``temperature range``, and
+``path isotherm``. The density-temperature point defined on the ``path isotherm`` line is
+the starting point of the isotherm and then continues in the positive temperature direction
+until the point is outside of the density and temperature range. The isotherm is written to
+a file named ``simname.isotherm``.
+
+Generate a Hugoniot
+"""""""""""""""""""
+To generate a Hugoniot, you must specify the ``density range``, ``temperature range``, and
+``path hugoniot``. The density-temperature point defined on the ``path hugoniot`` line is
+the starting point of the hugoniot and then continues in the positive density direction
+until the point is outside of the density and temperature range. The Hugoniot is written to
+a file named ``simname.hugoniot``.
+
+Evaluate Specific Points
+""""""""""""""""""""""""
+To evaluate specific density-temperature points, create a ``legs`` block that contains
+the density-temperature pairs that you wish to evaluate. There can only be one pair per
+line. When specific density-temperature points are not desired, then the ``legs`` block
+is not needed.
 
 .. _optional_blocks:
 
@@ -487,6 +554,8 @@ where ``var?`` are *Payette* and material model variables. A complete list of
 plotable variables is listed in each simulation's log file. Each line in the
 ``mathplot`` block can contain an arbitrary number of space, comma, or semi-colon
 delimited variables.
+
+
 
 
 .. _inserting_files:

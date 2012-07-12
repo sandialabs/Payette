@@ -20,8 +20,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
-from os.path import dirname, realpath, join
+import sys
 from numpy import array
 
 from Source.Payette_utils import log_warning, log_message, report_and_raise_error
@@ -37,45 +36,22 @@ except:
     imported = False
     pass
 
-THIS_DIR = dirname(realpath(__file__))
-attributes = {
-    "payette material": True,
-    "name": "elastic",
-    "aliases": ["hooke", "linear elastic"],
-    "code types": ("python", "fortran"),
-    "fortran build script": join(THIS_DIR, "Build_elastic.py"),
-    "material type": ["mechanical"],
-    "default material": True,
-    "material database": join(THIS_DIR, "elastic_mtl_database.py"),
-    }
 
 class Elastic(ConstitutiveModelPrototype):
     """ Elasticity model. """
 
-    def __init__(self, *args, **kwargs):
-        super(Elastic, self).__init__(attributes, *args, **kwargs)
+    def __init__(self, control_file, *args, **kwargs):
+        super(Elastic, self).__init__(control_file, *args, **kwargs)
 
         self.imported = True if self.code == "python" else imported
 
         # register parameters
-        self.register_parameter("LAM", 0, aliases=[])
-        self.register_parameter("G", 1, aliases=["MU", "G0", "SHMOD"])
-        self.register_parameter("E", 2, aliases=["YOUNGS"])
-        self.register_parameter("NU", 3, aliases=["POISSONS", "POISSONS RATIO"])
-        self.register_parameter("K", 4, aliases=["B0", "BKMOD"])
-        self.register_parameter("H", 5, aliases=["CONSTRAINED"])
-        self.register_parameter("KO", 6, aliases=[])
-        self.register_parameter("CL", 7, aliases=[])
-        self.register_parameter("CT", 8, aliases=[])
-        self.register_parameter("CO", 9, aliases=[])
-        self.register_parameter("CR", 10, aliases=[])
-        self.register_parameter("RHO", 11, aliases=["DENSITY"])
-        self.nprop = len(self.parameter_table.keys())
+        self.register_parameters_from_control_file()
+
         pass
 
     # public methods
     def set_up(self, matdat):
-        iam = self.name + ".set_up"
 
         # parse parameters
         self.parse_parameters()
@@ -124,7 +100,7 @@ class Elastic(ConstitutiveModelPrototype):
         else:
             a = [1, dt, self.mui, sigold, d]
             if PC_F2PY_CALLBACK:
-                a += [report_and_raise_error, log_message]
+                a.extend([report_and_raise_error, log_message])
             sig = mtllib.elast_calc(*a)
 
         # store updated data
@@ -153,7 +129,7 @@ class Elastic(ConstitutiveModelPrototype):
         props = array(mui)
         a = [props]
         if PC_F2PY_CALLBACK:
-            a += [report_and_raise_error, log_message]
+            a .extend([report_and_raise_error, log_message])
         ui = mtllib.elast_chk(*a)
         return ui
 

@@ -438,6 +438,71 @@ end legs</pre>
 </div>
 </div>
 </div>
+<div class="section" id="the-boundary-block-for-driving-an-eos">
+<span id="eos-boundary-block"></span><h3>The <tt class="docutils literal"><span class="pre">boundary</span></tt> Block for Driving an EOS<a class="headerlink" href="#the-boundary-block-for-driving-an-eos" title="Permalink to this headline">¶</a></h3>
+<p>When driving an EOS the boundary block requires different keywords
+and formatting than described above. Unlike the other boundary block,
+there are no defaults set for the boundary keywords except for
+<tt class="docutils literal"><span class="pre">nprints=5</span></tt>:</p>
+<div class="highlight-python"><pre>begin boundary
+  nprints &lt;int&gt; # Number of status updates for each task
+  input units &lt;string&gt; # unit system of the input fiel
+  output units &lt;string&gt;
+  density range &lt;float&gt; &lt;float&gt;
+  temperature range &lt;float&gt; &lt;float&gt;
+  surface increments &lt;int&gt;
+  path isotherm &lt;density&gt; &lt;temperature&gt;
+  path hugoniot &lt;density&gt; &lt;temperature&gt;
+  begin legs
+    &lt;density&gt; &lt;temperature&gt;
+  end legs
+end boundary</pre>
+</div>
+<div class="section" id="input-units-and-output-units">
+<h4><tt class="docutils literal"><span class="pre">input</span> <span class="pre">units</span></tt> and <tt class="docutils literal"><span class="pre">output</span> <span class="pre">units</span></tt><a class="headerlink" href="#input-units-and-output-units" title="Permalink to this headline">¶</a></h4>
+<p>The following unit systems are valid:</p>
+<div class="highlight-python"><pre>SI = meter, kilogram, second, kelvin, mole, ampere, candella
+MKSK = meter, kilogram, second, kelvin, mole, ampere, candella
+CGSK = centimeter, gram, second, kelvin, mole, ampere, candella
+CGSEV = centimeter, gram, second, electron volt, mole, ampere, candella
+SESAME = centimeter, gram, 10microsecond, kelvin, mole, ampere, candella
+SHOCK = centimeter, gram, microsecond, electron volt, mole, ampere, candella</pre>
+</div>
+<p>The input file must be written in a self-consistent unit system and it must be
+one of the above. Special care must be given to ensure that if you are using
+the <tt class="docutils literal"><span class="pre">matlabel</span></tt> function in the <tt class="docutils literal"><span class="pre">material</span></tt> block that your <tt class="docutils literal"><span class="pre">input</span> <span class="pre">units</span></tt>
+are the same as the units that the parameters are specified in the control file.</p>
+</div>
+<div class="section" id="generate-a-surface">
+<h4>Generate a Surface<a class="headerlink" href="#generate-a-surface" title="Permalink to this headline">¶</a></h4>
+<p>To generate a surface, you must specify the <tt class="docutils literal"><span class="pre">density</span> <span class="pre">range</span></tt>, <tt class="docutils literal"><span class="pre">temperature</span> <span class="pre">range</span></tt>,
+and the <tt class="docutils literal"><span class="pre">surface</span> <span class="pre">increments</span></tt>. This will evaluate a square grid of evenly spaced points
+over the density and temperature range and write the output to a file <tt class="docutils literal"><span class="pre">simname.surface</span></tt>.</p>
+</div>
+<div class="section" id="generate-an-isotherm">
+<h4>Generate an Isotherm<a class="headerlink" href="#generate-an-isotherm" title="Permalink to this headline">¶</a></h4>
+<p>To generate an isotherm, you must specify the <tt class="docutils literal"><span class="pre">density</span> <span class="pre">range</span></tt>, <tt class="docutils literal"><span class="pre">temperature</span> <span class="pre">range</span></tt>, and
+<tt class="docutils literal"><span class="pre">path</span> <span class="pre">isotherm</span></tt>. The density-temperature point defined on the <tt class="docutils literal"><span class="pre">path</span> <span class="pre">isotherm</span></tt> line is
+the starting point of the isotherm and then continues in the positive temperature direction
+until the point is outside of the density and temperature range. The isotherm is written to
+a file named <tt class="docutils literal"><span class="pre">simname.isotherm</span></tt>.</p>
+</div>
+<div class="section" id="generate-a-hugoniot">
+<h4>Generate a Hugoniot<a class="headerlink" href="#generate-a-hugoniot" title="Permalink to this headline">¶</a></h4>
+<p>To generate a Hugoniot, you must specify the <tt class="docutils literal"><span class="pre">density</span> <span class="pre">range</span></tt>, <tt class="docutils literal"><span class="pre">temperature</span> <span class="pre">range</span></tt>, and
+<tt class="docutils literal"><span class="pre">path</span> <span class="pre">hugoniot</span></tt>. The density-temperature point defined on the <tt class="docutils literal"><span class="pre">path</span> <span class="pre">hugoniot</span></tt> line is
+the starting point of the hugoniot and then continues in the positive density direction
+until the point is outside of the density and temperature range. The Hugoniot is written to
+a file named <tt class="docutils literal"><span class="pre">simname.hugoniot</span></tt>.</p>
+</div>
+<div class="section" id="evaluate-specific-points">
+<h4>Evaluate Specific Points<a class="headerlink" href="#evaluate-specific-points" title="Permalink to this headline">¶</a></h4>
+<p>To evaluate specific density-temperature points, create a <tt class="docutils literal"><span class="pre">legs</span></tt> block that contains
+the density-temperature pairs that you wish to evaluate. There can only be one pair per
+line. When specific density-temperature points are not desired, then the <tt class="docutils literal"><span class="pre">legs</span></tt> block
+is not needed.</p>
+</div>
+</div>
 </div>
 <div class="section" id="optional-blocks">
 <span id="id3"></span><h2>Optional Blocks<a class="headerlink" href="#optional-blocks" title="Permalink to this headline">¶</a></h2>
@@ -548,6 +613,14 @@ end simulation</pre>
 <li><a class="reference internal" href="#example-4-mixed-control">Example 4: Mixed Control</a></li>
 <li><a class="reference internal" href="#example-5-using-time-deformation-type-table">Example 5: Using Time/Deformation Type Table</a></li>
 <li><a class="reference internal" href="#example-6-using-dt-deformation-type-table">Example 6: Using dt/Deformation Type Table</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#the-boundary-block-for-driving-an-eos">The <tt class="docutils literal"><span class="pre">boundary</span></tt> Block for Driving an EOS</a><ul>
+<li><a class="reference internal" href="#input-units-and-output-units"><tt class="docutils literal"><span class="pre">input</span> <span class="pre">units</span></tt> and <tt class="docutils literal"><span class="pre">output</span> <span class="pre">units</span></tt></a></li>
+<li><a class="reference internal" href="#generate-a-surface">Generate a Surface</a></li>
+<li><a class="reference internal" href="#generate-an-isotherm">Generate an Isotherm</a></li>
+<li><a class="reference internal" href="#generate-a-hugoniot">Generate a Hugoniot</a></li>
+<li><a class="reference internal" href="#evaluate-specific-points">Evaluate Specific Points</a></li>
 </ul>
 </li>
 </ul>

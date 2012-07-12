@@ -1,0 +1,56 @@
+# Example 20
+# Title: exmpl_20
+# Author: Scot Swan, mswan@sandia.gov
+# Keywords: eos, ideal gas, surface, isotherm, hugoniot
+# Comments: In this example, the ideal gas EOS is used to produce
+#           a surface and trajectory of the EOS surface.
+#
+#
+# The IdealGas EOS is driven, like other EOS'es, primarily
+# by density, but is assumed to be driving 1 mole of particles.
+# Density is found under the assumption of:
+#           Volume_0 * rho_0 = Molar mass
+# with Volume_0 being found by:
+#           Volume_0 = R * T / P
+# with
+#   R = Gas constant (8.3144621 Joule / K / mole)
+#   T = standard temperature ( 293.15 K )
+#   P = Standard pressure  (101.325 Kpa )
+#
+begin simulation exmpl_20
+  begin material 
+    constitutive model IdealGas
+    matlabel helium
+  end material
+  begin boundary 
+    # The EOS driver requires that all the inputs (in both the material
+    # and the boundary blocks) be of the same unit system AND that it be
+    # explicitly defined. Because the matlabel XML file for ideal gas is
+    # done in MKSK, those are the input units. We need to also explicitly
+    # set the output units.
+    input units MKSK
+    output units MKSK
+
+    # In order to produce a surface, isotherm, or hugoniot, we need to define
+    # a range over density and temperatures that we are interested.
+    density range 0.100 0.500
+    temperature range 200 2000
+
+    # To generate a surface, give surface increments (50 ** 2 points)
+    surface increments 50
+
+    # For either an isotherm or hugoniot, give path increments and the
+    # initial state (in density, temperature pairs).
+    path increments 1000
+    path isotherm 0.166 293.15
+    path hugoniot 0.166 293.15
+
+    # An arbitrary number of individual points can be evaluated as well. just
+    # give density-temperature pairs in the "legs" block.
+    begin legs 
+      0.166 300.0
+      0.314 314.1
+    end legs
+
+    end boundary
+end simulation

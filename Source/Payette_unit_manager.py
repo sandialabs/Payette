@@ -123,10 +123,13 @@ class UnitManager:
 
     @classmethod
     def is_valid_unit_system(cls, unit_system):
-        unit_system = unit_system.upper()
-        if unit_system in cls.valid_systems.keys():
-            return unit_system
-        else:
+        try:
+            unit_system = unit_system.upper()
+            if unit_system in cls.valid_systems.keys():
+                return unit_system
+            else:
+                return ""
+        except:
             return ""
 
     @classmethod
@@ -163,45 +166,42 @@ class UnitManager:
             return []
 
     @classmethod
-    def change(cls, value, units, input_unit_system, output_unit_system):
+    def transform(cls, value, units, input_unit_system, output_unit_system):
         a = cls(value, input_unit_system, units)
         a.convert(output_unit_system)
         return a.get()
 
-    # Create a string containing pretty-printed information about
-    # the class (particularly the valid unit systems and dimension
-    # aliases).
-    class_info = ("{0:=^50}".format(" Unit Manager Class Information ") +
-           "\n\nList of valid unit systems:\n" +
-           "\n".join(["    " + x for x in valid_systems.keys()]) +
-           "\n\nList of valid dimension aliases:\n" +
-           "\n".join(["    " + x for x in valid_dim_aliases.keys()]) +
-           "\n")
+    @classmethod
+    def class_info(cls):
+        # Create a string containing pretty-printed information about
+        # the class (particularly the valid unit systems and dimension
+        # aliases).
+        class_info = ("{0:=^50}".format(" Unit Manager Class Information ") +
+               "\n\nList of valid unit systems:\n" +
+               "\n".join(["    " + x for x in cls.valid_systems.keys()]) +
+               "\n\nList of valid dimension aliases:\n" +
+               "\n".join(["    " + x for x in cls.valid_dim_aliases.keys()]) +
+               "\n")
+        return class_info
 
     def __init__(self, value, unit_system, base_dim):
-
-        # Ensure that all text is converted to lowercase.
-        unit_system = unit_system.lower()
-
         # We must have a value that is a float or can be converted to a float.
         try:
-            float_value = float(value)
+            self.val = float(value)
         except ValueError:
             sys.exit("Cannot convert '{0}' to float.".format(value))
 
         # The original unit system must be a valid option.
-        if not self.is_valid_unit_system(unit_system):
+        self.system = self.is_valid_unit_system(unit_system)
+        if not self.system:
             sys.exit("Unit system '{0}' not found in {1}".
                      format(unit_system, repr(self.valid_systems.keys())))
-
 
         # Attempt to determine the common name for the dimensions given.
         self.dimensions = self.is_valid_units(base_dim)
         if not self.dimensions:
             sys.exit("Cannot process units '{0}'".format(repr(base_dim)))
 
-        self.val = float_value
-        self.system = unit_system.upper()
 
     def get(self, system=None):
         """ Return the stored value (in a different unit system, if given) """
@@ -225,6 +225,7 @@ class UnitManager:
             try:
                 tmp *= (curr_sys_fac / new_sys_fac) ** dim_exp
             except:
+                print("{0:^79}".format(" DEBUG INFORMATION "))
                 print("original val = {0:.14e}".format(self.val))
                 print("tmp *= (curr_sys_fac / new_sys_fac) ** dim_exp")
                 print("dimensions   = {0}".format(self.dimensions))
@@ -460,10 +461,7 @@ class UnitManager:
     def __trunc__(self, y):
         return self.clone(self.get().__trunc__())
 
-
-
 def unit_tests():
-
     def unit_test(val, input_units, val_good, output_units, dim):
         msg = ("\nUnit test: {0}".format(dim) +
                "\n    {0} {1} ---> {2} {3}".
@@ -484,22 +482,11 @@ def unit_tests():
     out += unit_test(1.0,  "CGSK", 0.01,  "SI",     "length")
     out += unit_test(1.0e9,  "SI", 1.0,   "SESAME", "stress")
     out += unit_test(1.0e9,  "SI", 0.01,  "SHOCK",  "stress")
-
-
-a = UnitManager(2.0, "SI", "length")
-b = UnitManager(3.0, "CGSK", "length")
-c = UnitManager(4.0, "CGSEV", "force")
+    if "FAIL" in out:
+        sys.exit(out)
+    return
 
 if __name__ == "__main__":
-    # Example:
-    #
-    # > ./this_file.py 1.0 "si" "cgsk" "length"
-    # 100.0
-    #
-    # Inputs:
-    # > ./this_file.py val input_units output_units val_dimensions
-    #
-    import sys
     unit_tests()
 
     def usage():
@@ -508,7 +495,7 @@ if __name__ == "__main__":
                "  100.0\n\n"
                "Inputs:\n"
                "  > ./this_file.py val input_units output_units dim\n\n" +
-               UnitManager.class_info)
+               UnitManager.class_info())
         sys.exit(msg)
 
     if len(sys.argv) != 5:
@@ -521,8 +508,4 @@ if __name__ == "__main__":
         usage()
 
     #def convert(cls, value, units, input_unit_system, output_unit_system):
-    print("Converted: {0}".format(UnitManager.dumconvert(val, sys.argv[4], sys.argv[2], sys.argv[3])))
-    UnitManager.is_valid_unit_system(sys.argv[2])
-    a = UnitManager(val, sys.argv[2], sys.argv[4])
-    a.convert(sys.argv[3])
-    print(a.value_info())
+    print("Converted: {0}".format(UnitManager.transform(val, sys.argv[4], sys.argv[2], sys.argv[3])))
