@@ -69,9 +69,9 @@ class UnitManager:
                          "MASS":  [0,  1,  0,  0,  0,  0,  0],
                          "TIME":  [0,  0,  1,  0,  0,  0,  0],
                   "TEMPERATURE":  [0,  0,  0,  1,  0,  0,  0],
-              "DISCRETE AMOUNT":  [0,  0,  0,  0,  1,  0,  0],
-             "ELECTRIC CURRENT":  [0,  0,  0,  0,  0,  1,  0],
-           "LUMINOUS INTENSITY":  [0,  0,  0,  0,  0,  0,  1],
+              "DISCRETE_AMOUNT":  [0,  0,  0,  0,  1,  0,  0],
+             "ELECTRIC_CURRENT":  [0,  0,  0,  0,  0,  1,  0],
+           "LUMINOUS_INTENSITY":  [0,  0,  0,  0,  0,  0,  1],
                      # Common Lambda and Alegra units
                 "DENSITY_UNITS": [-3,  1,  0,  0,  0,  0,  0],
             "TEMPERATURE_UNITS":  [0,  0,  0,  1,  0,  0,  0],
@@ -112,7 +112,8 @@ class UnitManager:
                       "DENSITY": [-3,  1,  0,  0,  0,  0,  0],
        "SPECIFIC HEAT CAPACITY":  [2,  0, -2, -1,  0,  0,  0],
                        "VOLUME":  [3,  0,  0,  0,  0,  0,  0],
-                       "ENERGY":  [2,  1, -2,  0,  0,  0,  0],
+                 "ENERGY_UNITS":  [2,  1, -2,  0,  0,  0,  0],
+           "GAS_CONSTANT_UNITS":  [2,  1, -2, -1, -1,  0,  0],  # energy / temp / mole
             "CAPACITANCE_UNITS": [-2, -1,  4,  0,  0,  2,  0],
            "PERMITTIVITY_UNITS": [-3, -1,  4,  0,  0,  2,  0],
              "RESISTANCE_UNITS":  [2,  1, -3,  0,  0, -2,  0],  # Ohm
@@ -160,6 +161,12 @@ class UnitManager:
             return [x for x in retunits]
         else:
             return []
+
+    @classmethod
+    def change(cls, value, units, input_unit_system, output_unit_system):
+        a = cls(value, input_unit_system, units)
+        a.convert(output_unit_system)
+        return a.get()
 
     # Create a string containing pretty-printed information about
     # the class (particularly the valid unit systems and dimension
@@ -513,6 +520,8 @@ if __name__ == "__main__":
         print("ERROR: Must give a valid float value")
         usage()
 
+    #def convert(cls, value, units, input_unit_system, output_unit_system):
+    print("Converted: {0}".format(UnitManager.dumconvert(val, sys.argv[4], sys.argv[2], sys.argv[3])))
     UnitManager.is_valid_unit_system(sys.argv[2])
     a = UnitManager(val, sys.argv[2], sys.argv[4])
     a.convert(sys.argv[3])

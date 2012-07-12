@@ -1,0 +1,56 @@
+<!-- Material properties file for the ideal gas EOS -->
+
+<MaterialModel>
+  <Name>IdealGas</Name>
+
+  <Type> EOS </Type>
+
+  <Description>
+    Ideal gas equation of state
+  </Description>
+
+  <Owner>Scot Swan (mswan@sandia.gov)</Owner>
+
+  <Files>
+    <Core>
+      Payette_idealgas.py
+    </Core>
+    <Interface type="payette">
+      Build_idealgas.py
+      Payette_idealgas.py
+    </Interface>
+  </Files>
+
+  <Distribution>
+    unlimited
+  </Distribution>
+
+
+  <ModelParameters>
+    <Key>idealgas</Key>
+
+    <Units>SI</Units>
+
+    <Parameter name="M" order="0"  type="double" default="0" units="MASS_UNITS">
+      Molar mass of the molecule
+    </Parameter>
+    <Parameter name="CV"   order="1"  type="double" default="0" units="NO_UNITS">
+      Dimensionless specific heat capacity at constant volume
+    </Parameter>
+
+    <!-- MONOTOMIC GASSES -->
+    <Material name="HE"  dist="unlimited" M="4.00260" CV="1.5" aliases="helium"/>
+    <Material name="NE"  dist="unlimited" M="20.1797" CV="1.5" aliases="neon"/>
+    <Material name="AR"  dist="unlimited" M="39.9480" CV="1.5" aliases="argon"/>
+    <Material name="KR"  dist="unlimited" M="83.8000" CV="1.5" aliases="krypton"/>
+    <Material name="XE"  dist="unlimited" M="131.290" CV="1.5" aliases="xenon"/>
+    <!-- DIATOMIC GASSES -->
+    <Material name="H2"  dist="unlimited" M="2.01588" CV="2.427" aliases="hydrogen"/>
+    <Material name="CO"  dist="unlimited" M="28.0101" CV="2.430" aliases="carbon monoxide"/>
+    <Material name="N2"  dist="unlimited" M="28.0134" CV="2.39"  aliases="nitrogen"/>
+    <Material name="CL2" dist="unlimited" M="70.9045" CV="3.06"  aliases="chlorine"/>
+    <Material name="BR2" dist="unlimited" M="159.808" CV="3.39"  aliases="bromine"/>
+
+  </ModelParameters>
+
+</MaterialModel>

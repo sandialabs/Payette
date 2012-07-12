@@ -118,8 +118,8 @@ def eos_driver(the_model, **kwargs):
         the_model._setup_out_file(out_fnam)
 
         for pair in rho_temp_pairs:
-            eos_model.evaluate_eos(simdat, matdat, rho = pair[0],
-                                                  temp = pair[1])
+            eos_model.evaluate_eos(simdat, matdat, input_unit_system,
+                                   rho = pair[0], temp = pair[1])
             matdat.advance_all_data()
 
             the_model.write_state(input_unit_system=input_unit_system,
@@ -153,7 +153,8 @@ def eos_driver(the_model, **kwargs):
                     pu.log_message(
                         "Surface step {0}/{1}".format(idx, surf_incr ** 2))
 
-                eos_model.evaluate_eos(simdat, matdat, rho=rho, temp=temp)
+                eos_model.evaluate_eos(simdat, matdat, input_unit_system,
+                                       rho=rho, temp=temp)
 
                 matdat.advance_all_data()
                 the_model.write_state(input_unit_system=input_unit_system,
@@ -191,7 +192,8 @@ def eos_driver(the_model, **kwargs):
             if idx%int(path_incr/float(nprints)) == 0:
                 pu.log_message("Isotherm step {0}/{1}".format(idx,path_incr))
 
-            eos_model.evaluate_eos(simdat, matdat, rho = rho, temp = isotherm[1])
+            eos_model.evaluate_eos(simdat, matdat, input_unit_system,
+                                   rho = rho, temp = isotherm[1])
 
             matdat.advance_all_data()
             the_model.write_state(input_unit_system=input_unit_system,
@@ -236,7 +238,7 @@ def eos_driver(the_model, **kwargs):
         init_density = init_density_MKSK
         init_temperature = init_temperature_MKSK
 
-        eos_model.evaluate_eos(simdat, matdat,
+        eos_model.evaluate_eos(simdat, matdat, input_unit_system,
                                rho = init_density, temp = init_temperature)
 
         init_energy = matdat.get_data("energy")
@@ -276,7 +278,8 @@ def eos_driver(the_model, **kwargs):
             CONVERGED = False
             while not CONVERGED:
                 converged_idx += 1
-                eos_model.evaluate_eos(simdat, matdat, rho = r, enrg = e)
+                eos_model.evaluate_eos(simdat, matdat, input_unit_system,
+                                       rho = r, enrg = e)
 
                 f = (matdat.get_data("pressure") + init_pressure)*a - e + init_energy
                 df = matdat.get_data("dpdt")/matdat.get_data("dedt")*a - 1.0

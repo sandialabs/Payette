@@ -43,23 +43,21 @@ class MaterialBuilder(object):
         self.pre_directives = []
 
         # signature file and migutils
-        if sigf is None:
-            self.signature_file = os.path.join(srcd, self.name + ".signature.pyf")
-        else:
-            self.signature_file = sigf
+        self.signature_file = sigf
 
         self.nocallback_file = os.path.join(self.source_directory,
                                             "nocallback.signature.pyf")
 
         # format the signature file
-        self.format_signature_file()
+        if self.signature_file is not None:
+            self.format_signature_file()
 
-        if not pc.PC_F2PY_CALLBACK:
-            self.pre_directives.append("-DNOPYCALLBACK")
+            if not pc.PC_F2PY_CALLBACK:
+                self.pre_directives.append("-DNOPYCALLBACK")
 
-        if not os.path.isfile(self.signature_file):
-            raise BuildError(
-                "{0} signature file not found".format(self.name), 40)
+            if not os.path.isfile(self.signature_file):
+                raise BuildError(
+                    "{0} signature file not found".format(self.name), 40)
 
         # include directories
         self.incdirs = [ ".", "{0}".format(self.source_directory),
