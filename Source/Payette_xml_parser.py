@@ -192,7 +192,11 @@ class XMLParser:
         """
         mtldat = []
         for mat in self.materials:
-            mtldat.append([mat["name"], mat["description"]])
+            descr = mat.get("description")
+            descr = descr if descr is not None else ""
+            aliases = mat.get("aliases")
+            aliases = aliases if aliases is not None else ""
+            mtldat.append([mat["name"], (descr + " " + aliases).strip()])
         return mtldat
 
 

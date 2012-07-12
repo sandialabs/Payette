@@ -101,20 +101,8 @@ class PayetteMaterialModelSelector(HasStrictTraits):
             xml_obj = px.XMLParser(material_database)
             mats = xml_obj.get_parameterized_materials()
             for mat in mats:
-                names, params = mat
-                name = None
-                aliases = ""
-                if isinstance(names, (str, unicode)):
-                    name = names
-                else:
-                    for n in names:
-                        if name is None:
-                            name = n
-                        else:
-                            if len(aliases) > 0:
-                                aliases += '; ' + str(n)
-                            else:
-                                aliases = n
+                name, aliases = mat
+
                 parameters = []
                 for param in xml_obj.get_material_parameterization(mat[0]):
                     key, default = param

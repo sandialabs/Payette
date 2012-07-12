@@ -131,7 +131,7 @@ class PayetteMaterial(HasStrictTraits):
     defaults = List(Instance(PayetteMaterialParameter))
 
 class PayetteMaterialAdapter(TabularAdapter):
-    columns = [('Materials Available for Selected Model', 'name'), ('Aliases', 'aliases')]
+    columns = [('Materials Available for Selected Model', 'name'), ('Description/Aliases', 'aliases')]
 
 class PayetteEOSBoundary(HasStrictTraits):
     path_increments = TraitPositiveInteger(10000)
