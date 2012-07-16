@@ -46,7 +46,6 @@ import Source.Payette_permutate as pp
 import Source.Payette_input_parser as pip
 import Source.Payette_sim_index as psi
 import Source.runopts as ro
-from Viz_ModelPlot import create_Viz_ModelPlot
 
 def run_payette(argv, disp=0):
     """Main function for running a Payette job.
@@ -475,6 +474,7 @@ def run_payette(argv, disp=0):
             index.dump()
             siminfo = {"index file": index.index_file()}
 
+        from Viz_ModelPlot import create_Viz_ModelPlot
         create_Viz_ModelPlot(simname, **siminfo)
 
     if __name__ == "__main__" or not opts.disp:
