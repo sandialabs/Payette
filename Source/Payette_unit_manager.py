@@ -116,9 +116,12 @@ class UnitManager:
            "GAS_CONSTANT_UNITS":  [2,  1, -2, -1, -1,  0,  0],  # energy / temp / mole
             "CAPACITANCE_UNITS": [-2, -1,  4,  0,  0,  2,  0],
            "PERMITTIVITY_UNITS": [-3, -1,  4,  0,  0,  2,  0],
+           "INV_PERMITTIVITY_UNITS": [3, 1,  -4,  0,  0,  -2,  0],
              "RESISTANCE_UNITS":  [2,  1, -3,  0,  0, -2,  0],  # Ohm
      "ELECTRIC_POTENTIAL_UNITS":  [2,  1, -3,  0,  0, -1,  0],  # Volt
          "ELECTRIC_FIELD_UNITS":  [1,  1, -3,  0,  0, -1,  0],  # Volt / meter
+         "POLARIZATION_UNITS": [0,  0,  0,  0,  0,  0,  0],  #
+         "INV_POLARIZATION_UNITS_SQ": [0,  0,  0,  0,  0,  0,  0],  #
                                }
 
     @classmethod
