@@ -119,6 +119,12 @@ def run_payette(argv, disp=0):
         action="store_true",
         default=False,
         help="Display visualization window upon completion [default: %default]")
+    parser.add_option(
+        "-Y", "--viz-files",
+        dest="VIZ_FILES",
+        action="store_true",
+        default=False,
+        help="Display visualization for passed files [default: %default]")
 
     # the following options have defaults set in runopt.py, later, we pass the
     # user requested options back to runopt.py so they are set of the rest of
@@ -250,6 +256,10 @@ def run_payette(argv, disp=0):
 
     opts.verbosity = int(opts.verbosity)
 
+    if opts.VIZ_FILES:
+        visualize_results(outfiles=args)
+        return
+
     # set disp to 1 if user wants plot window
     if opts.VIZ:
         disp = 1
@@ -278,8 +288,11 @@ def run_payette(argv, disp=0):
                     pass
                 continue
             continue
-        msg = "INFO: output cleaned" if cleaned else "WARNING: not cleaned"
-        sys.exit(msg)
+        if cleaned:
+            pu.log_message("output cleaned")
+        else:
+            pu.log_warning("output not cleaned")
+        return
 
     # ----------------------------------------------- start: get the user input
     if opts.verbosity:
@@ -455,32 +468,71 @@ def run_payette(argv, disp=0):
 
     # visualize the results if requested
     if opts.VIZ:
-        from Viz_ModelPlot import create_Viz_ModelPlot
-        import Source.Payette_sim_index as psi
-        if len(return_info) == 1:
-            siminfo = return_info[0]
-            simname = siminfo["simulation name"]
-
-        else:
-            # create an index file
-            index = psi.SimulationIndex(os.getcwd())
-            simname = "Payette"
-            for idx, info in enumerate(return_info):
-                name = info["simulation name"]
-                simdir = info["simulation directory"]
-                outfile = info["output file"]
-                variables = {}
-                index.store(idx, name, simdir, variables, outfile)
-                continue
-            index.dump()
-            siminfo = {"index file": index.index_file()}
-        create_Viz_ModelPlot(simname, **siminfo)
+        visualize_results(simulation_info=return_info)
 
     if __name__ == "__main__" or not opts.disp:
         # if run from the command line, just return retcode
         return retcode
 
     return return_info
+
+def visualize_results(simulation_info=None, outfiles=None):
+    """visualize the results from a simulation
+
+    Parameters
+    ----------
+    simulation_info : list
+       list of return dictionaries
+
+    outfiles : list
+       list of output files to visualize
+    """
+    if not pc.VIZ_COMPATIBLE:
+        pu.log_warning("Visualization not supported by your Python distribution")
+        return
+
+    from Viz_ModelPlot import create_Viz_ModelPlot
+    import Source.Payette_sim_index as psi
+
+    if outfiles is not None and simulation_info is not None:
+        pu.logwarning("Cannot specify both outfiles and simulation_info")
+    elif outfiles is not None:
+        simulation_info = []
+        warned = False
+        for outfile in outfiles:
+            if not os.path.isfile(outfile):
+                pu.logwarning("{0} not found".format(outfile))
+                warned = True
+                continue
+            fdir, fnam = os.path.split(outfile)
+            simname = os.path.splitext(fnam)[0]
+            simulation_info.append({"simulation name": simname,
+                                    "simulation directory": fdir,
+                                    "output file": outfile,})
+            continue
+        if warned:
+            return
+
+    if len(simulation_info) == 1:
+        # only a single simulation, get the siminfo and simname directly
+        siminfo = simulation_info[0]
+        simname = siminfo["simulation name"]
+
+    else:
+        # multiple simulations, create an index file
+        index = psi.SimulationIndex(os.getcwd())
+        simname = "Payette"
+        for idx, info in enumerate(simulation_info):
+            name = info["simulation name"]
+            simdir = info["simulation directory"]
+            outfile = info["output file"]
+            variables = {}
+            index.store(idx, name, simdir, variables, outfile)
+            continue
+        index.dump()
+        siminfo = {"index file": index.index_file()}
+    create_Viz_ModelPlot(simname, **siminfo)
+    return
 
 
 def _run_job(args):

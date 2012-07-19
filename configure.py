@@ -195,7 +195,6 @@ except ImportError:
 if ERRORS:
     sys.exit("configure.py: ERROR: fix previously trapped errors")
 
-
 # --- intro message
 PC_INTRO = """
         PPPPPPPPP      A  Y     Y  EEEEE  TTTTTTTTTTT  TTTTTTTTTTT  EEEEEE
@@ -360,6 +359,7 @@ PAYETTE_CONFIG["PC_EXTRACTPAYETTE"] = PC_EXTRACTPAYETTE
 PAYETTE_CONFIG["PC_BUILT_EXES"] = PC_BUILT_EXES
 PAYETTE_CONFIG["PC_NUMPY_VER"] = PC_NUMPY_VER
 PAYETTE_CONFIG["PC_SCIPY_VER"] = PC_SCIPY_VER
+PAYETTE_CONFIG["VIZ_COMPATIBLE"] = False
 
 # --- set up the environment
 ENV = {}
@@ -472,6 +472,34 @@ def configure_payette(argv):
 
     # clean up first
     clean_payette()
+
+    # --- visualization check
+    loginf("Checking if visualizaton suite it supported by Python distribution")
+    try:
+        try:
+            from traits.api import (HasStrictTraits, List, Instance, String,
+                                    BaseInt, Int, Float, Bool, Property, Button,
+                                    Constant, Enum, Event)
+            from traitsui.api import (View, Label, Group, HGroup, VGroup, Item,
+                                      UItem, TabularEditor, TableEditor,
+                                      InstanceEditor, ListEditor, Spring,
+                                      ObjectColumn)
+            from traitsui.tabular_adapter import TabularAdapter
+
+        except ImportError:
+            # support for MacPorts install of enthought tools
+            from enthought.traits.api import (
+                HasStrictTraits, List, Instance, String, BaseInt, Int,
+                Float, Bool, Property, Button, Constant, Enum, Event)
+            from enthought.traits.ui.api import (
+                View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor,
+                InstanceEditor, ListEditor, Spring, TableEditor, ObjectColumn)
+            from enthought.traits.ui.tabular_adapter import TabularAdapter
+        loginf("Visualizaton suite supported by Python distribution")
+        PAYETTE_CONFIG["VIZ_COMPATIBLE"] = True
+
+    except ImportError:
+        loginf("Visualizaton suite not supported by Python distribution")
 
     # Report on environmental variables
     loginf("checking for Payette-related environmental variables")
@@ -628,25 +656,27 @@ fi
                            .format(PC_PYINT, py_file, "clean"))
 
             elif name in ("buildPayette", "extractPayette",):
-                fnew.write("{0} {1} $* 2>&1\n"
-                           .format(PC_PYINT, py_file))
+                fnew.write("{0} {1} $* 2>&1\n".format(PC_PYINT, py_file))
 
             elif name in ("runPayette", ):
                 fnew.write(exit_msg)
-                fnew.write("args=$*\nargv=\nfor arg in ${args} ; do\n")
-                fnew.write('case "$arg" in\n')
-                fnew.write('"--gui") pyfile={0} ;;\n'.format(VIZ_SELECTOR))
-                fnew.write('"-G") pyfile={0} ;;\n'.format(VIZ_SELECTOR))
-                fnew.write('*) argv="${argv} ${arg}"\n')
-                fnew.write('pyfile={0} ;;\n'.format(py_file))
-                fnew.write("esac\ndone\n")
-                fnew.write("{0} $pyfile $* 2>&1\n".format(PC_PYINT))
+                if PAYETTE_CONFIG["VIZ_COMPATIBLE"]:
+                    # option to launch gui with runPayette
+                    fnew.write("args=$*\nargv=\nfor arg in ${args} ; do\n")
+                    fnew.write('case "$arg" in\n')
+                    fnew.write('"--gui") pyfile={0} ;;\n'.format(VIZ_SELECTOR))
+                    fnew.write('"-G") pyfile={0} ;;\n'.format(VIZ_SELECTOR))
+                    fnew.write('*) argv="${argv} ${arg}"\n')
+                    fnew.write('pyfile={0} ;;\n'.format(py_file))
+                    fnew.write("esac\ndone\n")
+                    fnew.write("{0} $pyfile $* 2>&1\n".format(PC_PYINT))
+                else:
+                    # gui not supported
+                    fnew.write("{0} {1} $* 2>&1\n".format(PC_PYINT, py_file))
 
             else:
                 fnew.write(exit_msg)
-                fnew.write("{0} {1} $* 2>&1\n"
-                           .format(PC_PYINT, py_file))
-
+                fnew.write("{0} {1} $* 2>&1\n".format(PC_PYINT, py_file))
 
         os.chmod(exe_path, 0o750)
         endmes("{0} script written".format(name))

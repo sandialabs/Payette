@@ -538,7 +538,7 @@ class PayetteTest(object):
         if "kayenta" in self.keywords:
             self.items_to_skip.extend(
                 ["KAPPA","EOS1","EOS2","EOS3","EOS4",
-                 "PLROOTJ2","SNDSP","ENRGY","RHO","TMPR"])
+                 "PLROOTJ2","SNDSP","ENRGY","RHO","TMPR", "FDAMAGE"])
 
         to_skip = [x.lower() for x in self.items_to_skip]
 
