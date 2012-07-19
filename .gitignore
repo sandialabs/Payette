@@ -40,7 +40,11 @@ Toolset/__found_tests__.py
 *.so
 *.o
 *.mod
+*.perm/
 *.a
+*.barf?
+*.barf??
+*.barf
 Examples/test/*
 Examples/test
 
