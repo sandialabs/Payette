@@ -83,6 +83,8 @@ class PayetteTestError(Exception):
 
 class PayetteTest(object):
 
+    TOL = 1.e-6
+
     def __init__(self, check=True):
         self.name = None
         self.tdir = None
@@ -112,8 +114,11 @@ class PayetteTest(object):
         self.items_to_compare = []
 
         # tolerances
-        self.difftol = 6.e-6
-        self.failtol = 1.e-3
+        self.difftol = 6. * self.TOL
+        self.failtol = 1.e3 * self.TOL
+
+        # architecture used to create test
+        self.arch = "darwin"
 
         pass
 
@@ -197,6 +202,10 @@ class PayetteTest(object):
 
         if not isinstance(self.items_to_compare, (list,tuple)):
             self.items_to_compare = [self.items_to_compare]
+
+        if self.arch.lower() not in sys.platform.lower():
+            # relax tolerances on architectures not used to create the gold file
+            self.failtol = 3.e6 * self.TOL
 
         self.checked = True
 
