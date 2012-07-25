@@ -1,31 +1,32 @@
 import StringIO
 import sys
 import random
+import os
+import datetime
 
-try:
-    from traits.api import HasStrictTraits, List, Instance, String
-
-except ImportError:
-    # support for MacPorts install of enthought tools
-    from enthought.traits.api import HasStrictTraits, List, Instance, String
+from enthought.traits.api import HasStrictTraits, List, Instance, String, Interface
 
 import Source.Payette_run as pr
 from Viz_ModelData import PayetteModel
+from Viz_MetaData import VizMetaData
 from Viz_ModelPlot import create_Viz_ModelPlot
-import os
+
+class IModelRunnerCallbacks(Interface):
+    def RunFinished(self, metadata):
+        ''' Called when a run completes or fails. '''
 
 class ModelRunner(HasStrictTraits):
     simulation_name = String
     material_models = List(Instance(PayetteModel))
+    callbacks = Instance(IModelRunnerCallbacks)
 
     def RunModels(self):
         for material in self.material_models:
             inputString = self.CreateModelInputString(material)
 
-            self.RunInputString(inputString)
+            self.RunInputString(inputString, material)
 
-
-    def RunInputString(self, inputString):
+    def RunInputString(self, inputString, material):
         #output = StringIO.StringIO()
         oldout = sys.stdout
         #sys.stdout = output
@@ -36,7 +37,36 @@ class ModelRunner(HasStrictTraits):
         cmd = ["--input-str={0}".format(inputString)]
         siminfo = pr.run_payette(cmd, disp=1)[0]
         sys.stdout = oldout
-        self.CreatePlotWindow(siminfo)
+
+        if self.callbacks is None:
+            self.CreatePlotWindow(siminfo)
+        else:
+            now = datetime.datetime.now()
+            index_file = siminfo.get('index file')
+            if index_file is None:
+                index_file = ''
+            else:
+                base_dir,index_file = os.path.split(index_file)
+            output_file = siminfo.get('output file')
+            if output_file is None:
+                output_file = ''
+            else:
+                base_dir,output_file = os.path.split(output_file)
+
+            metadata = VizMetaData(
+                name = self.simulation_name,
+                base_directory = base_dir,
+                index_file = index_file,
+                out_file = output_file,
+                data_type = 'Simulation',
+                model_type = ', '.join(material.model_type),
+                created_date = now.date(),
+                created_time = now.time(),
+                successful = True,
+                model = material
+            )
+
+            self.callbacks.RunFinished(metadata)
 
     def CreatePlotWindow(self, siminfo):
         # siminfo is a dictionary containing extra output information from the
@@ -122,7 +152,7 @@ class ModelRunner(HasStrictTraits):
             if p.name == "T0":
                 T0 = float(p.default)/0.861738573E-4
             elif p.name == "R0":
-                R0 = float(p.default)*1000.0
+                R0 = float(p.default)#*1000.0
 
         result = (
             "  begin boundary\n"

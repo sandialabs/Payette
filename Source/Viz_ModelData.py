@@ -1,17 +1,6 @@
-try:
-    from traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant, Enum, Event
-    from traitsui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, TableEditor, InstanceEditor, ListEditor, Spring, ObjectColumn
-    from traitsui.tabular_adapter import TabularAdapter
-
-except ImportError:
-    # support for MacPorts install of enthought tools
-    from enthought.traits.api import (
-        HasStrictTraits, List, Instance, String, BaseInt, Int,
-        Float, Bool, Property, Button, Constant, Enum, Event)
-    from enthought.traits.ui.api import (
-        View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor,
-        InstanceEditor, ListEditor, Spring, TableEditor, ObjectColumn)
-    from enthought.traits.ui.tabular_adapter import TabularAdapter
+from enthought.traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant, Enum, Event
+from enthought.traits.ui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, TableEditor, InstanceEditor, ListEditor, Spring, ObjectColumn
+from enthought.traits.ui.tabular_adapter import TabularAdapter
 
 import random
 
@@ -38,7 +27,7 @@ class PayetteModelParameter(HasStrictTraits):
     percent = Float(10.0)
     minimum = Float(0.0)
     maximum = Float(1.0)
-    mean = Float(0.0)
+    mean = Property(Float)
     std_dev = Float(1.0)
     scale = Float(1.0)
     shape = Float(1.0)
@@ -77,6 +66,12 @@ class PayetteModelParameter(HasStrictTraits):
         elif self.distribution == 'Weibull':
             return random.weibullvariate(self.scale, self.shape)
         return 0.0
+
+    def _get_mean(self):
+        return float(self.specified)
+
+    def _set_mean(self, val):
+        self.specified = str(val)
 
     edit_view = View(
         Item('name', label='Parameter', style='readonly'),
@@ -136,8 +131,8 @@ class PayetteMaterialAdapter(TabularAdapter):
 class PayetteEOSBoundary(HasStrictTraits):
     path_increments = TraitPositiveInteger(10000)
     surface_increments = TraitPositiveInteger(20)
-    min_density = Float(8000)
-    max_density = Float(16000)
+    min_density = Float(8.0)
+    max_density = Float(16.0)
     min_temperature = Float(200)
     max_temperature = Float(2000)
     isotherm = Bool(True)
@@ -211,8 +206,8 @@ class PayetteModel(HasStrictTraits):
             if self.eos_boundary.auto_density:
                 try:
                     r0 = float(param.value)
-                    self.eos_boundary.min_density = r0 * 0.9 * 1000
-                    self.eos_boundary.max_density = r0 * 1.1 * 1000
+                    self.eos_boundary.min_density = r0 * 0.9
+                    self.eos_boundary.max_density = r0 * 1.1
                 except:
                     pass
                 self.eos_boundary.auto_density = True

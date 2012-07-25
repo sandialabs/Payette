@@ -5,22 +5,10 @@ import Source.Payette_utils as pu
 import Source.Payette_sim_index as psi
 from Viz_Plot2D import Viz_Plot2D
 
-try:
-
-  from traits.api import HasStrictTraits, Instance, String, Button, \
+from enthought.traits.api import HasStrictTraits, Instance, String, Button, \
                          Bool, List, Str, Property, HasPrivateTraits, on_trait_change
-  from traitsui.api import View, Item, HSplit, VGroup, Handler, TabularEditor, HGroup, UItem
-  from traitsui.tabular_adapter import TabularAdapter
-
-except ImportError:
-  # modification for importing MacPorts install of enthought tools
-  from enthought.traits.api import (
-    HasStrictTraits, Instance, String, Button,
-    Bool, List, Str, Property, HasPrivateTraits, on_trait_change)
-  from enthought.traits.ui.api import (
-    View, Item, HSplit, VGroup, Handler, TabularEditor, HGroup, UItem)
-  from enthought.traits.ui.tabular_adapter import TabularAdapter
-
+from enthought.traits.ui.api import View, Item, HSplit, VGroup, Handler, TabularEditor, HGroup, UItem
+from enthought.traits.ui.tabular_adapter import TabularAdapter
 
 Change_X_Axis_Enabled = True
 

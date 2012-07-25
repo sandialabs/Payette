@@ -2,31 +2,16 @@
 from numpy import arange
 from scipy.special import jn
 
-try:
-
-  from chaco.example_support import COLOR_PALETTE
-  from enable.example_support import DemoFrame, demo_main
-  from enable.api import Window, Component, ComponentEditor
-  from traits.api import HasTraits, Instance, Array, List, Str, Int, Float, Bool, Dict, on_trait_change
-  from traits.ui.api import Item, Group, View, RangeEditor
-  from chaco.api import create_line_plot, add_default_axes, \
-          add_default_grids, OverlayPlotContainer, PlotLabel, \
-          create_scatter_plot, Legend, DataLabel
-  from chaco.tools.api import PanTool, ZoomTool, LegendTool, \
-          TraitsTool, DragZoom
-
-except ImportError:
-
-  from enthought.chaco.example_support import COLOR_PALETTE
-  from enthought.enable.example_support import DemoFrame, demo_main
-  from enthought.enable.api import Window, Component, ComponentEditor
-  from enthought.traits.api import HasTraits, Instance, Array, List, Str, Int, Float, Bool, Dict, on_trait_change
-  from enthought.traits.ui.api import Item, Group, View, RangeEditor
-  from enthought.chaco.api import create_line_plot, add_default_axes, \
-          add_default_grids, OverlayPlotContainer, PlotLabel, \
-          create_scatter_plot, Legend, DataLabel
-  from enthought.chaco.tools.api import PanTool, ZoomTool, LegendTool, \
-          TraitsTool, DragZoom
+from enthought.chaco.example_support import COLOR_PALETTE
+from enthought.enable.example_support import DemoFrame, demo_main
+from enthought.enable.api import Window, Component, ComponentEditor
+from enthought.traits.api import HasTraits, Instance, Array, List, Str, Int, Float, Bool, Dict, on_trait_change
+from enthought.traits.ui.api import Item, Group, View, RangeEditor
+from enthought.chaco.api import create_line_plot, add_default_axes, \
+        add_default_grids, OverlayPlotContainer, PlotLabel, \
+        create_scatter_plot, Legend, DataLabel
+from enthought.chaco.tools.api import PanTool, ZoomTool, LegendTool, \
+        TraitsTool, DragZoom
 
 size=(700,600)
 

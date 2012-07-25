@@ -1,35 +1,25 @@
-try:
-    from traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant
-    from traitsui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, InstanceEditor, ListEditor, Spring, Action, Handler
-    from traitsui.tabular_adapter import TabularAdapter
-
-except ImportError:
-    # support for MacPorts install of enthought tools
-    from enthought.traits.api import (
-        HasStrictTraits, List, Instance, String,
-        BaseInt, Int, Float, Bool, Property, Button, Constant)
-    from enthought.traits.ui.api import (
-        View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor,
-        InstanceEditor, ListEditor, Spring, Action, Handler)
-    from enthought.traits.ui.tabular_adapter import TabularAdapter
+from enthought.traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant, Enum 
+from enthought.traits.ui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, InstanceEditor, ListEditor, Spring, Action, Handler
+from enthought.traits.ui.tabular_adapter import TabularAdapter
 
 import Payette_model_index as pmi
 import Payette_xml_parser as px
 
 from Viz_ModelData import PayetteModel, PayetteModelParameter, PayetteMaterial, PayetteMaterialParameter
-from Viz_ModelRunner import ModelRunner
+from Viz_ModelRunner import ModelRunner, IModelRunnerCallbacks
 
 class PayetteInputStringPreview(HasStrictTraits):
     class ISPHandler(Handler):
         def _run(self, info):
             preview = info.ui.context['object']
-            preview.runner.RunInputString(preview.input_string)
+            preview.runner.RunInputString(preview.input_string, preview.model)
 
         def _close(self, info):
             info.ui.dispose()
 
     input_string = String
     runner = Instance(ModelRunner)
+    model = Instance(PayetteModel)
 
     trait_view = View(
         VGroup(
@@ -43,6 +33,7 @@ class PayetteInputStringPreview(HasStrictTraits):
     )
 
 class PayetteMaterialModelSelector(HasStrictTraits):
+    model_type = Enum('Mechanical', 'eos')
     models = List(Instance(PayetteModel))
     selected_model = Instance(PayetteModel)
     simulation_name = String
@@ -51,16 +42,21 @@ class PayetteMaterialModelSelector(HasStrictTraits):
     show_button = Button("Show Input File")
     run_button = Button("Run Material Model")
     model_index = pmi.ModelIndex()
+    rerun = Bool(False)
+    callbacks = Instance(IModelRunnerCallbacks)
 
     def __init__(self, **traits):
         HasStrictTraits.__init__(self, **traits)
-        self.loadModels()
+        if self.models is None or len(self.models) < 1:
+            self.loadModels()
 
     def loadModels(self):
         for modelName in self.model_index.constitutive_models():
             control_file = self.model_index.control_file(modelName)
             cmod = self.model_index.constitutive_model_object(modelName)
             cmod_obj = cmod(control_file)
+            if self.model_type not in cmod_obj.material_type:
+                continue
 
             params = []
             for param in cmod_obj.get_parameter_names_and_values():
@@ -115,13 +111,15 @@ class PayetteMaterialModelSelector(HasStrictTraits):
         return materials
 
     def _run_button_fired(self, event):
-        runner = ModelRunner(simulation_name=self.simulation_name, material_models=[self.selected_model])
+        runner = ModelRunner(simulation_name=self.simulation_name, material_models=[self.selected_model],
+                            callbacks=self.callbacks)
         runner.RunModels()
 
     def _show_button_fired(self, event):
-        runner = ModelRunner(simulation_name=self.simulation_name, material_models=[self.selected_model])
+        runner = ModelRunner(simulation_name=self.simulation_name, material_models=[self.selected_model],
+                            callbacks=self.callbacks)
         input_string = runner.CreateModelInputString(self.selected_model)
-        preview = PayetteInputStringPreview(input_string=input_string, runner=runner)
+        preview = PayetteInputStringPreview(input_string=input_string, runner=runner, model=self.selected_model)
         preview.configure_traits()
 
 
@@ -146,6 +144,7 @@ class PayetteMaterialModelSelector(HasStrictTraits):
                         Item("none_constant", style='readonly', show_label=False,
                               visible_when="selected_model is not None and len(selected_model.materials) < 1")
                     ),
+                    visible_when='not rerun',
                     show_border = True
                 ),
                 VGroup(
