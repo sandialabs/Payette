@@ -109,12 +109,6 @@ def test_payette(argv):
         default=os.path.join(CWD, "TestResults.{0}".format(platform.system())),
         help=("Directory to run tests [default: %default]."))
     parser.add_option(
-        "-i", "--index",
-        dest="INDEX",
-        action="store_true",
-        default=False,
-        help="Print benchmarks index [default: %default].")
-    parser.add_option(
         "-F",
         dest="forcererun",
         action="store_true",
@@ -163,6 +157,21 @@ def test_payette(argv):
         action="store",
         default=None,
         help=("Switch material A for B [usage -S'A:B'] [default: %default]"))
+
+    # indexing
+    parser.add_option(
+        "-i", "--index",
+        dest="INDEX",
+        action="store_true",
+        default=False,
+        help="Print benchmarks index [default: %default].")
+    parser.add_option(
+        "--name",
+        dest="INDEX_NAME",
+        action="store_true",
+        default=False,
+        help=("Print only the benchmark name, -i must also be specified "
+              "[default: %default]."))
 
     (opts, args) = parser.parse_args(argv)
 
@@ -241,12 +250,12 @@ def test_payette(argv):
             "fix nonconforming benchmarks before continuing")
 
     pu.log_message("Found {0} Payette tests in {1:.2f}s."
-                   .format(len(conforming), t_find), end="\n\n",
+                   .format(len(conforming), t_find),
                    noisy=True)
 
     if opts.INDEX:
         out = sys.stderr
-        out.write("\n\nBENCHMARK INDEX\n\n")
+        out.write("\nBENCHMARK INDEX\n\n")
         for key in found_tests:
             tests = found_tests[key]
             for py_mod, py_file in tests.items():
@@ -256,11 +265,16 @@ def test_payette(argv):
                 py_module = imp.load_module(py_mod, fobj, pathname, description)
                 fobj.close()
                 test = py_module.Test()
-                out.write(WIDTH_TERM * "=" + "\n")
-                out.write("Name:  {0}\n".format(test.name))
+
+                # write out the information
+                pre = WIDTH_TERM * "=" + "\n" if not opts.INDEX_NAME else ""
+                out.write("{0}Name:  {1}\n".format(pre, test.name))
+
+                if opts.INDEX_NAME:
+                    # Only write out name
+                    continue
                 out.write("Owner: {0}\n\n".format(test.owner))
                 out.write("Description:\n{0}".format(test.description))
-
                 out.write("\nKeywords:\n")
                 for key in test.keywords:
                     out.write("    {0}\n".format(key))
