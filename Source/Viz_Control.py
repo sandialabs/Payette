@@ -1,5 +1,8 @@
-from enthought.traits.api import HasStrictTraits, String, Int, List, Property, Button, Instance, Enum, implements
-from enthought.traits.ui.api import View, HGroup, VGroup, Item, UItem, ListEditor, TabularEditor, Label
+from enthought.traits.api import (HasStrictTraits, String, Int, List,
+                                  Property, Button, Instance,
+                                  Enum, implements, cached_property)
+from enthought.traits.ui.api import (View, HGroup, VGroup, Item,
+                                     UItem, ListEditor, TabularEditor, Label)
 from enthought.traits.ui.tabular_adapter import TabularAdapter
 from enthought.traits.ui.menu import OKButton, CancelButton
 
@@ -15,6 +18,7 @@ from Viz_MetaData import VizMetaData
 from Viz_ModelRunner import IModelRunnerCallbacks
 from Viz_ModelSelector import PayetteMaterialModelSelector
 from Viz_ModelPlot import create_Viz_ModelPlot
+from Viz_Search import filter_metadata
 
 class MetadataTabularAdapter(TabularAdapter):
     columns = [('Name', 'name'), ('Model Type', 'model_type'), ('Created', 'created_timestamp')]
@@ -59,7 +63,9 @@ class ModelTypeDialog(HasStrictTraits):
 class ControlWindow(HasStrictTraits):
     implements(IModelRunnerCallbacks)
 
+    search_string = String
     files = List(VizMetaData)
+    filtered_files = Property(depends_on=['files','search_string'])
     selected_metadata = Instance(VizMetaData)
     session_id = String
     create_button = Button("Create Simulation")
@@ -98,6 +104,8 @@ class ControlWindow(HasStrictTraits):
 
         return files
 
+    def _get_filtered_files(self):
+        return filter_metadata(self.files, self.search_string)
 
     def _create_button_fired(self):
         dialog = ModelTypeDialog()
@@ -108,7 +116,6 @@ class ControlWindow(HasStrictTraits):
             mt = 'eos'
         selector = PayetteMaterialModelSelector(model_type=mt,callbacks=self)
         selector.configure_traits()
-
 
     def _rerun_button_fired(self):
         metadata = self.selected_metadata
@@ -150,10 +157,13 @@ class ControlWindow(HasStrictTraits):
 
     trait_view = View(
         HGroup(
-            UItem("files", editor=TabularEditor(adapter=MetadataTabularAdapter(),
-                                               selected='selected_metadata',
-                                               editable=False),
-                 ),
+            VGroup(
+                Item('search_string', label='Search'),
+                UItem("filtered_files", editor=TabularEditor(adapter=MetadataTabularAdapter(),
+                                                   selected='selected_metadata',
+                                                   editable=False),
+                     ),
+            ),
             VGroup(
                 UItem('create_button'),
                 UItem('rerun_button', enabled_when="selected_metadata is not None and selected_metadata.data_type == 'Simulation'"),
