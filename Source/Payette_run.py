@@ -495,13 +495,14 @@ def visualize_results(simulation_info=None, outfiles=None):
     import Source.Payette_sim_index as psi
 
     if outfiles is not None and simulation_info is not None:
-        pu.logwarning("Cannot specify both outfiles and simulation_info")
+        pu.log_warning("Cannot specify both outfiles and simulation_info")
+
     elif outfiles is not None:
         simulation_info = []
         warned = False
         for outfile in outfiles:
             if not os.path.isfile(outfile):
-                pu.logwarning("{0} not found".format(outfile))
+                pu.log_warning("{0} not found".format(outfile))
                 warned = True
                 continue
             fdir, fnam = os.path.split(outfile)

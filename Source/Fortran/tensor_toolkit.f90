@@ -1,7 +1,7 @@
 module tensor_toolkit
 
   private :: delta, w, diag9, i6, i15, sk, dk, fp
-  private :: zero, one, two, three, half, third, root2, root3, root6
+  private :: zero, one, two, three, four, half, third, root2, root3, root6
   private :: toor2, toor3, toor6, root23, root32, pi, piover6, six
   private :: proj2evec, affinity
   public :: ata, symleaf, dd66x6, push, pull, dp, ddp, mag, dev, tr, iso
@@ -371,7 +371,7 @@ contains
     !
     ! Returns
     ! -------
-    ! ddp: a:b stored as a 6x1 array
+    ! ddp: a:b
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
@@ -381,6 +381,34 @@ contains
     ddp = sum(w * a * b)
     return
   end function ddp
+
+  function dp(a, b)
+    !---------------------------------------------------------------------------!
+    ! compute the dot product a.b
+    !
+    ! Parameters
+    ! ----------
+    ! a: 3x3 symmetric matrix stored as 6x1 array
+    ! b: 3x3 symmetric matrix stored as 6x1 array
+    !
+    ! Returns
+    ! -------
+    ! dp: a.b stored as a 6x1 array
+    !---------------------------------------------------------------------------!
+    implicit none
+    !......................................................................passed
+    real(kind=fp), dimension(6) :: dp
+    real(kind=fp), dimension(6) :: a, b
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~dp
+    dp = (/ &
+         a(1) * b(1) + a(4) * b(4) + a(6) * b(6), &
+         a(2) * b(2) + a(4) * b(4) + a(5) * b(5), &
+         a(3) * b(3) + a(5) * b(5) + a(6) * b(6), &
+         a(4) * b(2) + a(1) * b(4) + a(6) * b(5), &
+         a(5) * b(3) + a(2) * b(5) + a(4) * b(6), &
+         a(6) * b(3) + a(4) * b(5) + a(1) * b(6) /)
+    return
+  end function dp
 
   function dp6x3(a, b)
     !---------------------------------------------------------------------------!
