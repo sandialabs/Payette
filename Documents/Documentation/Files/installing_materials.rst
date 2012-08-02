@@ -1,3 +1,4 @@
+.. _installing:
 
 ########################
 Installing New Materials
@@ -20,9 +21,9 @@ Build Process
 =============
 
 The ``buildPayette`` script, described in :ref:`installation`, scans the
-``PAYETTE_ROOT/Source/Materials`` directory for *material interface module*
-and, when found, processes the build directives contained therein. A
-material's interface module is the link between it and *Payette*.
+``PAYETTE_ROOT/Source/Materials`` directory for a materials xml control file.
+The xml control file contains directives informing *Payette* the locations of
+the following files: the build module and the interface module.
 
 .. note::
 
@@ -44,62 +45,82 @@ material's interface module is the link between it and *Payette*.
 Naming Convention
 =================
 
-In general, a material provides, in addition to its interface module, a build
-module and, if applicable, source and source header files. For default
-materials included with *Payette*, the following naming convention has been
-adopted for a material "material model":
+For default materials included with *Payette*, the following naming
+convention has been adopted for a material "material model":
+
+XML control file
+  :file:`PAYETTE_ROOT/Materials/Models/MaterialModel/MaterialModel_control.xml`
 
 Interface file
-  :file:`PAYETTE_ROOT/Materials/Payette_material_model.py`
+  :file:`PAYETTE_ROOT/Materials/Models/MaterialModel/Payette_material_model.py`
 
 Build script
-  :file:`PAYETTE_ROOT/Materials/Build_material_model.py`
+  :file:`PAYETTE_ROOT/Materials/Models/MaterialModel/Build_material_model.py`
 
 Fortran source
-  :file:`PAYETTE_ROOT/Materials/Fortran/material_model.f`
+  :file:`PAYETTE_ROOT/Materials/Models/MaterialModel/material_model.f`
 
-Header file
-  :file:`PAYETTE_ROOT/Materials/Include/material_model.h`
 
+Control File Format
+===================
+The XML control file must provide the following nodes
+
+::
+
+  <MaterialModel>
+    <Name>ModelName</Name>
+
+    <Type> Material type [mechanical, eos, electromechanical] </Type>
+
+    <Description>
+      Material model description
+    </Description>
+
+    <Owner>Owner Name (owner@domain.com)</Owner>
+
+    <Files>
+      <Core>
+        material_model.f90
+      </Core>
+      <Interface type="payette">
+        Build_material_model.py
+        Payette_material_model.py
+        Payette_material_model.pyf
+      </Interface>
+    </Files>
+
+    <Distribution>
+      distribution level [uur, unlimited]
+    </Distribution>
+
+    <ModelParameters>
+      <Key>material_model</Key>
+      <Aliases>material_model_aliases</Aliases>
+
+      <Units>parameter_units</Units>
+
+      <Parameter name="PARAM_0" order="0"  type="double" default="0" units="UNITS">
+        Description of PARAM_0
+      </Parameter>
+          .
+          .
+          .
+      <Parameter name="PARAM_N" order="N" type="double" default="0" units="UNITS">
+        Description of PARAM_N
+      </Parameter>
+
+      <Material name="MATERIAL_NAME" dist="dist_level" PARAM_0="value" ... PARAM_N="value" aliases="any_aliases"/>
+
+    </ModelParameters>
+
+  </MaterialModel>
 
 Material Interface Module
 =========================
 
 Each material model must provide an interface module used by *Payette* to
-interact with that material. The interface module must provide 1) a
-``attributes`` attribute and 2) a material class derived from the
-``ConstitutiveModelPrototype`` base class.
-
-``attributes`` Attribute
-------------------------
-
-``attributes`` is a dictionary a dictionary used by *Payette* during the build
-step and contains the following ``key:value`` pairs:
-
-| ``attributes["`` **payette material** ``"]``
-|   Boolean.  Required.  Does the material represent an interface file, or not.
-|
-| ``attributes["`` **name** ``"]``
-|   String.  Required.  The material name.
-|
-| ``attributes["`` **fortran source** ``"]``
-|   Boolean.  Optional.  Does the material have additional Fortran source code.
-|   Default: ``False``
-|
-| ``attributes["`` **build script** ``"]``
-|   String.  Optional.  Absolute path to Fortran build script, if applicable.
-|   Default: ``None``
-|
-| ``attributes["`` **aliases** ``"]``
-|   List.  Optional.  List of aliases.
-|   Default: ``[]``
-|
-| ``attributes["`` **material type** ``"]``
-|   List.  Optional.  List of keyword descriptors of material type. Examples are
-|   "mechanical", "electro-mechanical".
-|   Default: ``["mechanical"]``
-
-
+interact with that material. The interface module must provide a material
+class derived from the ``ConstitutiveModelPrototype`` base class.
 
 Material Class
 --------------
@@ -122,7 +143,7 @@ The ``ConstitutiveModelPrototype`` base class provides several methods in its
 API for material models to communicate with *Payette*. Minimally, the material
 model must provide the following data: ``aliases``, ``bulk_modulus``,
 ``imported``, ``name``, ``nprop``, and ``shear_modulus``, and methods:
-``__init__``, ``setUp``, and ``updateState``.
+``__init__``, ``set_up``, and ``update_state``.
 
 Required Data
 """""""""""""
@@ -162,25 +183,29 @@ Required Functions
 ``__init__(self)``
 
    Instantiate the material model. Register parameters with *Payette*.
-   Parameters are registered by the ``registerParameter`` method
+   Parameters are registered by the ``register_parameter`` method
 
    ::
 
-     registerParameter(self, name, ui_loc, aliases=[])
+     register_parameter(self, name, ui_loc, aliases=[])
          """Register the parameter name with Payette.
 
          ui_loc is the integer location (starting at 0) of the parameter in
          the material's user input array. aliases are aliases by which the
          parameter can be specified in the input file."""
 
-``setUp(self, simdat, matdat, user_params, f_params)``
+   Alternatively, the ``register_parameters_from_control_file()`` method can
+   be called and parameters from the control file will be registered
+   automatically.
+
+``set_up(self, simdat, matdat, user_params, f_params)``
 
    Check user inputs and register extra variables with *Payette*. *simdat* and
    *matdat* are the simulation and material data containers, respectively,
    *user_params* are the parameters read in from the input file, and *f_params*
    are parameters from a parameters file.
 
-``updateState(self, simdat, matdat)``
+``update_state(self, simdat, matdat)``
 
    Update the material state to the end of the current time step. *simdat* and
    *matdat* are the simulation and material data containers, respectively.
@@ -198,107 +223,131 @@ demonstrated by an annotated version of the elastic material's interface.
 ::
 
   import sys
-  import os
-  import numpy as np
+  from numpy import array
 
-  from Source.Payette_utils import *
+  from Source.Payette_utils import log_warning, log_message, report_and_raise_error
+  from Source.Payette_tensor import iso, dev
   from Source.Payette_constitutive_model import ConstitutiveModelPrototype
+  from Payette_config import PC_F2PY_CALLBACK
+  from Toolset.elastic_conversion import compute_elastic_constants
 
   try:
       import Source.Materials.Library.elastic as mtllib
       imported = True
-  except ImportError:
+  except:
       imported = False
+      pass
 
-  from Payette_config import PC_MTLS_FORTRAN, PC_F2PY_CALLBACK
-
-  THIS_DIR = os.path.dirname(os.path.realpath(__file__))
-  attributes = {
-      "payette material": True,
-      "name": "elastic",
-      "fortran source": True,
-      "build script": os.path.join(THIS_DIR, "Build_elastic.py"),
-      "aliases": ["hooke", "elasticity", "linear elastic"],
-      "material type": ["mechanical"],
-      "default material": True,
-      }
 
   class Elastic(ConstitutiveModelPrototype):
-      def __init__(self):
-          super(Elastic, self).__init__()
+      """ Elasticity model. """
+
+      def __init__(self, control_file, *args, **kwargs):
+          super(Elastic, self).__init__(control_file, *args, **kwargs)
+
+          self.imported = True if self.code == "python" else imported
 
           # register parameters
-          self.registerParameter("LAM", 0, aliases=[])
-          self.registerParameter("G", 1, aliases=["SHMOD"])
-          self.registerParameter("E", 2, aliases=["YMOD"])
-          self.registerParameter("NU", 3, aliases=["POISSONS"])
-          self.registerParameter("K", 4, aliases=["BKMOD"])
-          self.registerParameter("H", 5, aliases=[])
-          self.registerParameter("KO", 6, aliases=[])
-          self.registerParameter("CL", 7, aliases=[])
-          self.registerParameter("CT", 8, aliases=[])
-          self.registerParameter("CO", 9, aliases=[])
-          self.registerParameter("CR", 10, aliases=[])
-          self.registerParameter("RHO", 11, aliases=[])
-          self.nprop = len(self.parameter_table.keys())
-          self.ndc = 0
+          self.register_parameters_from_control_file()
+
           pass
 
-
-      # Public methods
-      def setUp(self, simdat, matdat, user_params, f_params):
-          iam = self.name + ".setUp(self, material, props)"
-
-          if not imported:
-	      return
+      # public methods
+      def set_up(self, matdat):
 
           # parse parameters
-          self.parseParameters(user_params, f_params)
+          self.parse_parameters()
 
-          # check parameters
-          self.dc = np.zeros(self.ndc)
-          self.ui = self._check_props()
-          self.nsv,namea,keya,sv,rdim,iadvct,itype = self._set_field()
+          # the elastic model only needs the bulk and shear modulus, but the
+          # user could have specified any one of the many elastic moduli.
+          # Convert them and get just the bulk and shear modulus
+          eui = compute_elastic_constants(*self.ui0[0:12])
+          for key, val in eui.items():
+              if key.upper() not in self.parameter_table:
+                  continue
+              idx = self.parameter_table[key.upper()]["ui pos"]
+              self.ui0[idx] = val
 
-          namea = parseToken(self.nsv, namea)
-          keya = parseToken(self.nsv, keya)
+          # Payette wants ui to be the same length as ui0, but we don't want to
+          # work with the entire ui, so we only pick out what we want
+          mu, k = self.ui0[1], self.ui0[4]
+          self.ui = self.ui0
+          mui = array([k, mu])
 
-          # register the extra variables with the payette object
-          matdat.registerExtraVariables(self.nsv, namea, keya, sv)
+          self.bulk_modulus, self.shear_modulus = k, mu
 
-          self.bulk_modulus, self.shear_modulus = self.ui[4], self.ui[1]
-          pass
+          if self.code == "python":
+              self.mui = self._py_set_up(mui)
+          else:
+              self.mui = self._fort_set_up(mui)
 
+          return
 
-      # redefine Jacobian to return initial jacobian
       def jacobian(self, simdat, matdat):
-          if not imported:
-	      return
-          v = simdat.getData("prescribed stress components")
-          return self.J0[[[x] for x in v], v]
+          v = matdat.get_data("prescribed stress components")
+          return self.J0[[[x] for x in v],v]
 
-      def updateState(self, simdat, matdat):
+      def update_state(self, simdat, matdat):
           """
              update the material state based on current state and strain increment
           """
-          if not imported:
-	      return
+          # get passed arguments
+          dt = simdat.get_data("time step")
+          d = matdat.get_data("rate of deformation")
+          sigold = matdat.get_data("stress")
 
-          dt = simdat.getData("time step")
-          d = simdat.getData("rate of deformation")
-          sigold = matdat.getData("stress")
-          svold = matdat.getData("extra variables")
+          if self.code == "python":
+              sig = _py_update_state(self.mui, dt, d, sigold)
 
-          a = [dt, self. ui, sigold, d, svold, migError, migMessage]
-          if not Payette_F2Py_Callback:
-	      a = a[:-2]
-          sig, sv, usm = mtllib.hooke_incremental(*a)
+          else:
+              a = [1, dt, self.mui, sigold, d]
+              if PC_F2PY_CALLBACK:
+                  a.extend([report_and_raise_error, log_message])
+              sig = mtllib.elast_calc(*a)
+
+          # store updated data
+          matdat.store_data("stress", sig)
+
+      def _py_set_up(self, mui):
+
+          k, mu = mui
+
+          if k <= 0.:
+              report_and_raise_error("Bulk modulus K must be positive")
+
+          if mu <= 0.:
+              report_and_raise_error("Shear modulus MU must be positive")
+
+          # poisson's ratio
+          nu = (3. * k - 2 * mu) / (6 * k + 2 * mu)
+          if nu < 0.:
+              log_warning("negative Poisson's ratio")
+
+          ui = array([k, mu])
+
+          return ui
+
+      def _fort_set_up(self, mui):
+          props = array(mui)
+          a = [props]
+          if PC_F2PY_CALLBACK:
+              a .extend([report_and_raise_error, log_message])
+          ui = mtllib.elast_chk(*a)
+          return ui
 
 
-          matdat.storeData("extra variables", sv)
-          matdat.storeData("stress", sig)
+  def _py_update_state(ui, dt, d, sigold):
 
-          return
+      # strain increment
+      de = d * dt
+
+      # user properties
+      k, mu = ui
+      twomu = 2. * mu
+      threek = 3. * k
+
+      # elastic stress update
+      return sigold + threek * iso(de) + twomu * dev(de)
 
 
 Building Material Fortran Extension Modules in *Payette*

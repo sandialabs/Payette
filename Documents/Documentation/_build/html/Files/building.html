@@ -73,10 +73,10 @@ will run on Windows.</p>
 <p>The required software may be obtained in one of several ways:</p>
 <ul>
 <li><p class="first"><em>Use the</em> <a class="reference external" href="http://http://www.enthought.com/">Enthought</a> <em>Python distribution</em></p>
-<p>This option is the simplest and, perhaps, most powerful as Enthought
-provides a very complete Python distribution that has a promised &#8220;one click
-installation&#8221;. Both free and paid versions are available. The free version
-provides all of the prerequisites for <em>Payette</em>.</p>
+<p>This option is the simplest and most powerful as Enthought provides a very
+complete Python distribution that has a promised &#8220;one click installation&#8221;.
+Both free and paid versions are available. The free version provides all of
+the prerequisites for <em>Payette</em>.</p>
 </li>
 <li><p class="first"><em>Install from your systems package manager</em></p>
 <p><tt class="docutils literal"><span class="pre">apt-get</span></tt> on Ubuntu, <tt class="docutils literal"><span class="pre">yum</span></tt> on Fedora, <tt class="docutils literal"><span class="pre">rpm</span></tt> on Red Hat, etc. On the
@@ -111,6 +111,14 @@ functions from Fortran subroutines to Python functions.</p>
 <li><p class="first">Add <tt class="docutils literal"><span class="pre">PAYETTE_ROOT</span></tt> to your <tt class="docutils literal"><span class="pre">PYTHONPATH</span></tt> environment variable</p>
 </li>
 <li><p class="first">Add <tt class="docutils literal"><span class="pre">PAYETTE_ROOT/Toolset</span></tt> to your <tt class="docutils literal"><span class="pre">PATH</span></tt> environment variable</p>
+</li>
+<li><p class="first">(Optional) Set the <tt class="docutils literal"><span class="pre">PAYETTE_MTLDIR</span></tt> environment variable to point to
+directories containing additional material models (user developed, not part
+of <em>Payette</em>). See <a class="reference internal" href="installing_materials.html#installing"><em>Installing New Materials</em></a> for additional instructions on
+installing user developed material models.</p>
+</li>
+<li><p class="first">(Optional) Set the <tt class="docutils literal"><span class="pre">PAYETTE_BENCHDIR</span></tt> environment variable to point to
+directories containing additional tests.</p>
 </li>
 <li><p class="first">Change to <tt class="docutils literal"><span class="pre">PAYETTE_ROOT</span></tt> and run:</p>
 <div class="highlight-rst"><div class="highlight"><pre>% PYTHON configure.py

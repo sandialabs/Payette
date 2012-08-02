@@ -52,7 +52,7 @@
           <div class="body">
             
   <div class="section" id="installing-new-materials">
-<h1>Installing New Materials<a class="headerlink" href="#installing-new-materials" title="Permalink to this headline">¶</a></h1>
+<span id="installing"></span><h1>Installing New Materials<a class="headerlink" href="#installing-new-materials" title="Permalink to this headline">¶</a></h1>
 <p><em>Payette</em> was born from the need for an environment in which material models
 could be rapidly developed, tested, deployed, and maintained, independent of
 host finite element code implementation. Important prerequisites in the design
@@ -67,9 +67,9 @@ provided.</p>
 <div class="section" id="build-process">
 <h2>Build Process<a class="headerlink" href="#build-process" title="Permalink to this headline">¶</a></h2>
 <p>The <tt class="docutils literal"><span class="pre">buildPayette</span></tt> script, described in <a class="reference internal" href="building.html#installation"><em>Installation</em></a>, scans the
-<tt class="docutils literal"><span class="pre">PAYETTE_ROOT/Source/Materials</span></tt> directory for <em>material interface module</em>
-and, when found, processes the build directives contained therein. A
-material&#8217;s interface module is the link between it and <em>Payette</em>.</p>
+<tt class="docutils literal"><span class="pre">PAYETTE_ROOT/Source/Materials</span></tt> directory for a materials xml control file.
+The xml control file contains directives informing <em>Payette</em> the locations of
+the following files: the build module and the interface module.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p><em>Payette</em> is an open source project, without restrictions on how the source
@@ -89,68 +89,76 @@ directories containing <em>Payette</em> interface modules can be passed to
 </div>
 <div class="section" id="naming-convention">
 <h2>Naming Convention<a class="headerlink" href="#naming-convention" title="Permalink to this headline">¶</a></h2>
-<p>In general, a material provides, in addition to its interface module, a build
-module and, if applicable, source and source header files. For default
-materials included with <em>Payette</em>, the following naming convention has been
-adopted for a material &#8220;material model&#8221;:</p>
+<p>For default materials included with <em>Payette</em>, the following naming
+convention has been adopted for a material &#8220;material model&#8221;:</p>
 <dl class="docutils">
+<dt>XML control file</dt>
+<dd><tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Materials/Models/MaterialModel/MaterialModel_control.xml</span></tt></dd>
 <dt>Interface file</dt>
-<dd><tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Materials/Payette_material_model.py</span></tt></dd>
+<dd><tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Materials/Models/MaterialModel/Payette_material_model.py</span></tt></dd>
 <dt>Build script</dt>
-<dd><tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Materials/Build_material_model.py</span></tt></dd>
+<dd><tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Materials/Models/MaterialModel/Build_material_model.py</span></tt></dd>
 <dt>Fortran source</dt>
-<dd><tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Materials/Fortran/material_model.f</span></tt></dd>
-<dt>Header file</dt>
-<dd><tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Materials/Include/material_model.h</span></tt></dd>
+<dd><tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Materials/Models/MaterialModel/material_model.f</span></tt></dd>
 </dl>
+</div>
+<div class="section" id="control-file-format">
+<h2>Control File Format<a class="headerlink" href="#control-file-format" title="Permalink to this headline">¶</a></h2>
+<p>The XML control file must provide the following nodes</p>
+<div class="highlight-python"><pre>&lt;MaterialModel&gt;
+  &lt;Name&gt;ModelName&lt;/Name&gt;
+
+  &lt;Type&gt; Material type [mechanical, eos, electromechanical] &lt;/Type&gt;
+
+  &lt;Description&gt;
+    Material model description
+  &lt;/Description&gt;
+
+  &lt;Owner&gt;Owner Name (owner@domain.com)&lt;/Owner&gt;
+
+  &lt;Files&gt;
+    &lt;Core&gt;
+      material_model.f90
+    &lt;/Core&gt;
+    &lt;Interface type="payette"&gt;
+      Build_material_model.py
+      Payette_material_model.py
+      Payette_material_model.pyf
+    &lt;/Interface&gt;
+  &lt;/Files&gt;
+
+  &lt;Distribution&gt;
+    distribution level [uur, unlimited]
+  &lt;/Distribution&gt;
+
+  &lt;ModelParameters&gt;
+    &lt;Key&gt;material_model&lt;/Key&gt;
+    &lt;Aliases&gt;material_model_aliases&lt;/Aliases&gt;
+
+    &lt;Units&gt;parameter_units&lt;/Units&gt;
+
+    &lt;Parameter name="PARAM_0" order="0"  type="double" default="0" units="UNITS"&gt;
+      Description of PARAM_0
+    &lt;/Parameter&gt;
+        .
+        .
+        .
+    &lt;Parameter name="PARAM_N" order="N" type="double" default="0" units="UNITS"&gt;
+      Description of PARAM_N
+    &lt;/Parameter&gt;
+
+    &lt;Material name="MATERIAL_NAME" dist="dist_level" PARAM_0="value" ... PARAM_N="value" aliases="any_aliases"/&gt;
+
+  &lt;/ModelParameters&gt;
+
+&lt;/MaterialModel&gt;</pre>
+</div>
 </div>
 <div class="section" id="material-interface-module">
 <h2>Material Interface Module<a class="headerlink" href="#material-interface-module" title="Permalink to this headline">¶</a></h2>
 <p>Each material model must provide an interface module used by <em>Payette</em> to
-interact with that material. The interface module must provide 1) a
-<tt class="docutils literal"><span class="pre">attributes</span></tt> attribute and 2) a material class derived from the
-<tt class="docutils literal"><span class="pre">ConstitutiveModelPrototype</span></tt> base class.</p>
-<div class="section" id="attributes-attribute">
-<h3><tt class="docutils literal"><span class="pre">attributes</span></tt> Attribute<a class="headerlink" href="#attributes-attribute" title="Permalink to this headline">¶</a></h3>
-<p><tt class="docutils literal"><span class="pre">attributes</span></tt> is a dictionary a dictionary used by <em>Payette</em> during the build
-step and contains the following <tt class="docutils literal"><span class="pre">key:value</span></tt> pairs:</p>
-<div class="line-block">
-<div class="line"><tt class="docutils literal"><span class="pre">attributes[&quot;</span></tt> <strong>payette material</strong> <tt class="docutils literal"><span class="pre">&quot;]</span></tt></div>
-<div class="line-block">
-<div class="line">Boolean.  Required.  Does the material represent an interface file, or not.</div>
-<div class="line"><br /></div>
-</div>
-<div class="line"><tt class="docutils literal"><span class="pre">attributes[&quot;</span></tt> <strong>name</strong> <tt class="docutils literal"><span class="pre">&quot;]</span></tt></div>
-<div class="line-block">
-<div class="line">String.  Required.  The material name.</div>
-<div class="line"><br /></div>
-</div>
-<div class="line"><tt class="docutils literal"><span class="pre">attributes[&quot;</span></tt> <strong>fortran source</strong> <tt class="docutils literal"><span class="pre">&quot;]</span></tt></div>
-<div class="line-block">
-<div class="line">Boolean.  Optional.  Does the material have additional Fortran source code.</div>
-<div class="line">Default: <tt class="docutils literal"><span class="pre">False</span></tt></div>
-<div class="line"><br /></div>
-</div>
-<div class="line"><tt class="docutils literal"><span class="pre">attributes[&quot;</span></tt> <strong>build script</strong> <tt class="docutils literal"><span class="pre">&quot;]</span></tt></div>
-<div class="line-block">
-<div class="line">String.  Optional.  Absolute path to Fortran build script, if applicable.</div>
-<div class="line">Default: <tt class="docutils literal"><span class="pre">None</span></tt></div>
-<div class="line"><br /></div>
-</div>
-<div class="line"><tt class="docutils literal"><span class="pre">attributes[&quot;</span></tt> <strong>aliases</strong> <tt class="docutils literal"><span class="pre">&quot;]</span></tt></div>
-<div class="line-block">
-<div class="line">List.  Optional.  List of aliases.</div>
-<div class="line">Default: <tt class="docutils literal"><span class="pre">[]</span></tt></div>
-<div class="line"><br /></div>
-</div>
-<div class="line"><tt class="docutils literal"><span class="pre">attributes[&quot;</span></tt> <strong>material type</strong> <tt class="docutils literal"><span class="pre">&quot;]</span></tt></div>
-<div class="line-block">
-<div class="line">List.  Optional.  List of keyword descriptors of material type. Examples are</div>
-<div class="line">&#8220;mechanical&#8221;, &#8220;electro-mechanical&#8221;.</div>
-<div class="line">Default: <tt class="docutils literal"><span class="pre">[&quot;mechanical&quot;]</span></tt></div>
-</div>
-</div>
-</div>
+interact with that material. The interface module must provide a material
+class derived from the <tt class="docutils literal"><span class="pre">ConstitutiveModelPrototype</span></tt> base class.</p>
 <div class="section" id="material-class">
 <h3>Material Class<a class="headerlink" href="#material-class" title="Permalink to this headline">¶</a></h3>
 <p><em>Payette</em> provides a simple interface for interacting with material models
@@ -166,7 +174,7 @@ by Payette if it inherits from the <tt class="docutils literal"><span class="pre
 API for material models to communicate with <em>Payette</em>. Minimally, the material
 model must provide the following data: <tt class="docutils literal"><span class="pre">aliases</span></tt>, <tt class="docutils literal"><span class="pre">bulk_modulus</span></tt>,
 <tt class="docutils literal"><span class="pre">imported</span></tt>, <tt class="docutils literal"><span class="pre">name</span></tt>, <tt class="docutils literal"><span class="pre">nprop</span></tt>, and <tt class="docutils literal"><span class="pre">shear_modulus</span></tt>, and methods:
-<tt class="docutils literal"><span class="pre">__init__</span></tt>, <tt class="docutils literal"><span class="pre">setUp</span></tt>, and <tt class="docutils literal"><span class="pre">updateState</span></tt>.</p>
+<tt class="docutils literal"><span class="pre">__init__</span></tt>, <tt class="docutils literal"><span class="pre">set_up</span></tt>, and <tt class="docutils literal"><span class="pre">update_state</span></tt>.</p>
 </div>
 <div class="section" id="required-data">
 <h4>Required Data<a class="headerlink" href="#required-data" title="Permalink to this headline">¶</a></h4>
@@ -217,22 +225,25 @@ matrix</p>
 <p><tt class="docutils literal"><span class="pre">__init__(self)</span></tt></p>
 <blockquote>
 <div><p>Instantiate the material model. Register parameters with <em>Payette</em>.
-Parameters are registered by the <tt class="docutils literal"><span class="pre">registerParameter</span></tt> method</p>
-<div class="highlight-python"><pre>registerParameter(self, name, ui_loc, aliases=[])
+Parameters are registered by the <tt class="docutils literal"><span class="pre">register_parameter</span></tt> method</p>
+<div class="highlight-python"><pre>register_parameter(self, name, ui_loc, aliases=[])
     """Register the parameter name with Payette.
 
     ui_loc is the integer location (starting at 0) of the parameter in
     the material's user input array. aliases are aliases by which the
     parameter can be specified in the input file."""</pre>
 </div>
+<p>Alternatively, the <tt class="docutils literal"><span class="pre">register_parameters_from_control_file()</span></tt> method can
+be called and parameters from the control file will be registered
+automatically.</p>
 </div></blockquote>
-<p><tt class="docutils literal"><span class="pre">setUp(self,</span> <span class="pre">simdat,</span> <span class="pre">matdat,</span> <span class="pre">user_params,</span> <span class="pre">f_params)</span></tt></p>
+<p><tt class="docutils literal"><span class="pre">set_up(self,</span> <span class="pre">simdat,</span> <span class="pre">matdat,</span> <span class="pre">user_params,</span> <span class="pre">f_params)</span></tt></p>
 <blockquote>
 <div>Check user inputs and register extra variables with <em>Payette</em>. <em>simdat</em> and
 <em>matdat</em> are the simulation and material data containers, respectively,
 <em>user_params</em> are the parameters read in from the input file, and <em>f_params</em>
 are parameters from a parameters file.</div></blockquote>
-<p><tt class="docutils literal"><span class="pre">updateState(self,</span> <span class="pre">simdat,</span> <span class="pre">matdat)</span></tt></p>
+<p><tt class="docutils literal"><span class="pre">update_state(self,</span> <span class="pre">simdat,</span> <span class="pre">matdat)</span></tt></p>
 <blockquote>
 <div>Update the material state to the end of the current time step. <em>simdat</em> and
 <em>matdat</em> are the simulation and material data containers, respectively.</div></blockquote>
@@ -244,107 +255,131 @@ are parameters from a parameters file.</div></blockquote>
 demonstrated by an annotated version of the elastic material&#8217;s interface.</p>
 <p><strong>View the source code:</strong> <a class="reference download internal" href="../_downloads/Payette_elastic.py"><tt class="xref download docutils literal"><span class="pre">Payette_elastic.py</span></tt></a></p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">sys</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">array</span>
 
-<span class="kn">from</span> <span class="nn">Source.Payette_utils</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">Source.Payette_utils</span> <span class="kn">import</span> <span class="n">log_warning</span><span class="p">,</span> <span class="n">log_message</span><span class="p">,</span> <span class="n">report_and_raise_error</span>
+<span class="kn">from</span> <span class="nn">Source.Payette_tensor</span> <span class="kn">import</span> <span class="n">iso</span><span class="p">,</span> <span class="n">dev</span>
 <span class="kn">from</span> <span class="nn">Source.Payette_constitutive_model</span> <span class="kn">import</span> <span class="n">ConstitutiveModelPrototype</span>
+<span class="kn">from</span> <span class="nn">Payette_config</span> <span class="kn">import</span> <span class="n">PC_F2PY_CALLBACK</span>
+<span class="kn">from</span> <span class="nn">Toolset.elastic_conversion</span> <span class="kn">import</span> <span class="n">compute_elastic_constants</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">Source.Materials.Library.elastic</span> <span class="kn">as</span> <span class="nn">mtllib</span>
     <span class="n">imported</span> <span class="o">=</span> <span class="bp">True</span>
-<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+<span class="k">except</span><span class="p">:</span>
     <span class="n">imported</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="k">pass</span>
 
-<span class="kn">from</span> <span class="nn">Payette_config</span> <span class="kn">import</span> <span class="n">PC_MTLS_FORTRAN</span><span class="p">,</span> <span class="n">PC_F2PY_CALLBACK</span>
-
-<span class="n">THIS_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="n">__file__</span><span class="p">))</span>
-<span class="n">attributes</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s">&quot;payette material&quot;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
-    <span class="s">&quot;name&quot;</span><span class="p">:</span> <span class="s">&quot;elastic&quot;</span><span class="p">,</span>
-    <span class="s">&quot;fortran source&quot;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
-    <span class="s">&quot;build script&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">THIS_DIR</span><span class="p">,</span> <span class="s">&quot;Build_elastic.py&quot;</span><span class="p">),</span>
-    <span class="s">&quot;aliases&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s">&quot;hooke&quot;</span><span class="p">,</span> <span class="s">&quot;elasticity&quot;</span><span class="p">,</span> <span class="s">&quot;linear elastic&quot;</span><span class="p">],</span>
-    <span class="s">&quot;material type&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s">&quot;mechanical&quot;</span><span class="p">],</span>
-    <span class="s">&quot;default material&quot;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
-    <span class="p">}</span>
 
 <span class="k">class</span> <span class="nc">Elastic</span><span class="p">(</span><span class="n">ConstitutiveModelPrototype</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">Elastic</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+    <span class="sd">&quot;&quot;&quot; Elasticity model. &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">control_file</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Elastic</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">control_file</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">imported</span> <span class="o">=</span> <span class="bp">True</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">code</span> <span class="o">==</span> <span class="s">&quot;python&quot;</span> <span class="k">else</span> <span class="n">imported</span>
 
         <span class="c"># register parameters</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;LAM&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;G&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="p">[</span><span class="s">&quot;SHMOD&quot;</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;E&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="p">[</span><span class="s">&quot;YMOD&quot;</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;NU&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="p">[</span><span class="s">&quot;POISSONS&quot;</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;K&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="p">[</span><span class="s">&quot;BKMOD&quot;</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;H&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;KO&quot;</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;CL&quot;</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;CT&quot;</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;CO&quot;</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;CR&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">registerParameter</span><span class="p">(</span><span class="s">&quot;RHO&quot;</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="n">aliases</span><span class="o">=</span><span class="p">[])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nprop</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameter_table</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ndc</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_parameters_from_control_file</span><span class="p">()</span>
+
         <span class="k">pass</span>
 
-
-    <span class="c"># Public methods</span>
-    <span class="k">def</span> <span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simdat</span><span class="p">,</span> <span class="n">matdat</span><span class="p">,</span> <span class="n">user_params</span><span class="p">,</span> <span class="n">f_params</span><span class="p">):</span>
-        <span class="n">iam</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s">&quot;.setUp(self, material, props)&quot;</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">imported</span><span class="p">:</span>
-            <span class="k">return</span>
+    <span class="c"># public methods</span>
+    <span class="k">def</span> <span class="nf">set_up</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">matdat</span><span class="p">):</span>
 
         <span class="c"># parse parameters</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">parseParameters</span><span class="p">(</span><span class="n">user_params</span><span class="p">,</span> <span class="n">f_params</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parse_parameters</span><span class="p">()</span>
 
-        <span class="c"># check parameters</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ndc</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ui</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_props</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nsv</span><span class="p">,</span><span class="n">namea</span><span class="p">,</span><span class="n">keya</span><span class="p">,</span><span class="n">sv</span><span class="p">,</span><span class="n">rdim</span><span class="p">,</span><span class="n">iadvct</span><span class="p">,</span><span class="n">itype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set_field</span><span class="p">()</span>
+        <span class="c"># the elastic model only needs the bulk and shear modulus, but the</span>
+        <span class="c"># user could have specified any one of the many elastic moduli.</span>
+        <span class="c"># Convert them and get just the bulk and shear modulus</span>
+        <span class="n">eui</span> <span class="o">=</span> <span class="n">compute_elastic_constants</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">ui0</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">12</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">eui</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter_table</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter_table</span><span class="p">[</span><span class="n">key</span><span class="o">.</span><span class="n">upper</span><span class="p">()][</span><span class="s">&quot;ui pos&quot;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ui0</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
 
-        <span class="n">namea</span> <span class="o">=</span> <span class="n">parseToken</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nsv</span><span class="p">,</span> <span class="n">namea</span><span class="p">)</span>
-        <span class="n">keya</span> <span class="o">=</span> <span class="n">parseToken</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nsv</span><span class="p">,</span> <span class="n">keya</span><span class="p">)</span>
+        <span class="c"># Payette wants ui to be the same length as ui0, but we don&#39;t want to</span>
+        <span class="c"># work with the entire ui, so we only pick out what we want</span>
+        <span class="n">mu</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ui0</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">ui0</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ui</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ui0</span>
+        <span class="n">mui</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="n">k</span><span class="p">,</span> <span class="n">mu</span><span class="p">])</span>
 
-        <span class="c"># register the extra variables with the payette object</span>
-        <span class="n">matdat</span><span class="o">.</span><span class="n">registerExtraVariables</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nsv</span><span class="p">,</span> <span class="n">namea</span><span class="p">,</span> <span class="n">keya</span><span class="p">,</span> <span class="n">sv</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bulk_modulus</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">shear_modulus</span> <span class="o">=</span> <span class="n">k</span><span class="p">,</span> <span class="n">mu</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">bulk_modulus</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">shear_modulus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ui</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">ui</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="k">pass</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">code</span> <span class="o">==</span> <span class="s">&quot;python&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mui</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_py_set_up</span><span class="p">(</span><span class="n">mui</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mui</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fort_set_up</span><span class="p">(</span><span class="n">mui</span><span class="p">)</span>
 
+        <span class="k">return</span>
 
-    <span class="c"># redefine Jacobian to return initial jacobian</span>
     <span class="k">def</span> <span class="nf">jacobian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simdat</span><span class="p">,</span> <span class="n">matdat</span><span class="p">):</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">imported</span><span class="p">:</span>
-            <span class="k">return</span>
-        <span class="n">v</span> <span class="o">=</span> <span class="n">simdat</span><span class="o">.</span><span class="n">getData</span><span class="p">(</span><span class="s">&quot;prescribed stress components&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">J0</span><span class="p">[[[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">v</span><span class="p">],</span> <span class="n">v</span><span class="p">]</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">matdat</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="s">&quot;prescribed stress components&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">J0</span><span class="p">[[[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">v</span><span class="p">],</span><span class="n">v</span><span class="p">]</span>
 
-    <span class="k">def</span> <span class="nf">updateState</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simdat</span><span class="p">,</span> <span class="n">matdat</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">update_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simdat</span><span class="p">,</span> <span class="n">matdat</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">           update the material state based on current state and strain increment</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">imported</span><span class="p">:</span>
-            <span class="k">return</span>
+        <span class="c"># get passed arguments</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="n">simdat</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="s">&quot;time step&quot;</span><span class="p">)</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">matdat</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="s">&quot;rate of deformation&quot;</span><span class="p">)</span>
+        <span class="n">sigold</span> <span class="o">=</span> <span class="n">matdat</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="s">&quot;stress&quot;</span><span class="p">)</span>
 
-        <span class="n">dt</span> <span class="o">=</span> <span class="n">simdat</span><span class="o">.</span><span class="n">getData</span><span class="p">(</span><span class="s">&quot;time step&quot;</span><span class="p">)</span>
-        <span class="n">d</span> <span class="o">=</span> <span class="n">simdat</span><span class="o">.</span><span class="n">getData</span><span class="p">(</span><span class="s">&quot;rate of deformation&quot;</span><span class="p">)</span>
-        <span class="n">sigold</span> <span class="o">=</span> <span class="n">matdat</span><span class="o">.</span><span class="n">getData</span><span class="p">(</span><span class="s">&quot;stress&quot;</span><span class="p">)</span>
-        <span class="n">svold</span> <span class="o">=</span> <span class="n">matdat</span><span class="o">.</span><span class="n">getData</span><span class="p">(</span><span class="s">&quot;extra variables&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">code</span> <span class="o">==</span> <span class="s">&quot;python&quot;</span><span class="p">:</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="n">_py_update_state</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mui</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">sigold</span><span class="p">)</span>
 
-        <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span> <span class="n">ui</span><span class="p">,</span> <span class="n">sigold</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">svold</span><span class="p">,</span> <span class="n">migError</span><span class="p">,</span> <span class="n">migMessage</span><span class="p">]</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">Payette_F2Py_Callback</span><span class="p">:</span>
-            <span class="n">a</span> <span class="o">=</span> <span class="n">a</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
-        <span class="n">sig</span><span class="p">,</span> <span class="n">sv</span><span class="p">,</span> <span class="n">usm</span> <span class="o">=</span> <span class="n">mtllib</span><span class="o">.</span><span class="n">hooke_incremental</span><span class="p">(</span><span class="o">*</span><span class="n">a</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mui</span><span class="p">,</span> <span class="n">sigold</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">PC_F2PY_CALLBACK</span><span class="p">:</span>
+                <span class="n">a</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">report_and_raise_error</span><span class="p">,</span> <span class="n">log_message</span><span class="p">])</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="n">mtllib</span><span class="o">.</span><span class="n">elast_calc</span><span class="p">(</span><span class="o">*</span><span class="n">a</span><span class="p">)</span>
+
+        <span class="c"># store updated data</span>
+        <span class="n">matdat</span><span class="o">.</span><span class="n">store_data</span><span class="p">(</span><span class="s">&quot;stress&quot;</span><span class="p">,</span> <span class="n">sig</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_py_set_up</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mui</span><span class="p">):</span>
+
+        <span class="n">k</span><span class="p">,</span> <span class="n">mu</span> <span class="o">=</span> <span class="n">mui</span>
+
+        <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;=</span> <span class="mf">0.</span><span class="p">:</span>
+            <span class="n">report_and_raise_error</span><span class="p">(</span><span class="s">&quot;Bulk modulus K must be positive&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">mu</span> <span class="o">&lt;=</span> <span class="mf">0.</span><span class="p">:</span>
+            <span class="n">report_and_raise_error</span><span class="p">(</span><span class="s">&quot;Shear modulus MU must be positive&quot;</span><span class="p">)</span>
+
+        <span class="c"># poisson&#39;s ratio</span>
+        <span class="n">nu</span> <span class="o">=</span> <span class="p">(</span><span class="mf">3.</span> <span class="o">*</span> <span class="n">k</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">mu</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">6</span> <span class="o">*</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">mu</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">nu</span> <span class="o">&lt;</span> <span class="mf">0.</span><span class="p">:</span>
+            <span class="n">log_warning</span><span class="p">(</span><span class="s">&quot;negative Poisson&#39;s ratio&quot;</span><span class="p">)</span>
+
+        <span class="n">ui</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="n">k</span><span class="p">,</span> <span class="n">mu</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">ui</span>
+
+    <span class="k">def</span> <span class="nf">_fort_set_up</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mui</span><span class="p">):</span>
+        <span class="n">props</span> <span class="o">=</span> <span class="n">array</span><span class="p">(</span><span class="n">mui</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="n">props</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">PC_F2PY_CALLBACK</span><span class="p">:</span>
+            <span class="n">a</span> <span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">report_and_raise_error</span><span class="p">,</span> <span class="n">log_message</span><span class="p">])</span>
+        <span class="n">ui</span> <span class="o">=</span> <span class="n">mtllib</span><span class="o">.</span><span class="n">elast_chk</span><span class="p">(</span><span class="o">*</span><span class="n">a</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ui</span>
 
 
-        <span class="n">matdat</span><span class="o">.</span><span class="n">storeData</span><span class="p">(</span><span class="s">&quot;extra variables&quot;</span><span class="p">,</span> <span class="n">sv</span><span class="p">)</span>
-        <span class="n">matdat</span><span class="o">.</span><span class="n">storeData</span><span class="p">(</span><span class="s">&quot;stress&quot;</span><span class="p">,</span> <span class="n">sig</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">_py_update_state</span><span class="p">(</span><span class="n">ui</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">sigold</span><span class="p">):</span>
 
-        <span class="k">return</span>
+    <span class="c"># strain increment</span>
+    <span class="n">de</span> <span class="o">=</span> <span class="n">d</span> <span class="o">*</span> <span class="n">dt</span>
+
+    <span class="c"># user properties</span>
+    <span class="n">k</span><span class="p">,</span> <span class="n">mu</span> <span class="o">=</span> <span class="n">ui</span>
+    <span class="n">twomu</span> <span class="o">=</span> <span class="mf">2.</span> <span class="o">*</span> <span class="n">mu</span>
+    <span class="n">threek</span> <span class="o">=</span> <span class="mf">3.</span> <span class="o">*</span> <span class="n">k</span>
+
+    <span class="c"># elastic stress update</span>
+    <span class="k">return</span> <span class="n">sigold</span> <span class="o">+</span> <span class="n">threek</span> <span class="o">*</span> <span class="n">iso</span><span class="p">(</span><span class="n">de</span><span class="p">)</span> <span class="o">+</span> <span class="n">twomu</span> <span class="o">*</span> <span class="n">dev</span><span class="p">(</span><span class="n">de</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -446,8 +481,8 @@ Fortran source files and the calls the base class&#8217;s
 <li><a class="reference internal" href="#">Installing New Materials</a><ul>
 <li><a class="reference internal" href="#build-process">Build Process</a></li>
 <li><a class="reference internal" href="#naming-convention">Naming Convention</a></li>
+<li><a class="reference internal" href="#control-file-format">Control File Format</a></li>
 <li><a class="reference internal" href="#material-interface-module">Material Interface Module</a><ul>
-<li><a class="reference internal" href="#attributes-attribute"><tt class="docutils literal"><span class="pre">attributes</span></tt> Attribute</a></li>
 <li><a class="reference internal" href="#material-class">Material Class</a><ul>
 <li><a class="reference internal" href="#inheritance-from-base-class">Inheritance From Base Class</a></li>
 <li><a class="reference internal" href="#required-data">Required Data</a></li>

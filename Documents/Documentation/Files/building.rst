@@ -36,10 +36,10 @@ The required software may be obtained in one of several ways:
 
 * *Use the* `Enthought <http://http://www.enthought.com/>`_ *Python distribution*
 
-  This option is the simplest and, perhaps, most powerful as Enthought
-  provides a very complete Python distribution that has a promised "one click
-  installation". Both free and paid versions are available. The free version
-  provides all of the prerequisites for *Payette*.
+  This option is the simplest and most powerful as Enthought provides a very
+  complete Python distribution that has a promised "one click installation".
+  Both free and paid versions are available. The free version provides all of
+  the prerequisites for *Payette*.
 
 * *Install from your systems package manager*
 
@@ -79,6 +79,14 @@ Installation
 #) Add ``PAYETTE_ROOT`` to your ``PYTHONPATH`` environment variable
 
 #) Add ``PAYETTE_ROOT/Toolset`` to your ``PATH`` environment variable
+
+#) (Optional) Set the ``PAYETTE_MTLDIR`` environment variable to point to
+   directories containing additional material models (user developed, not part
+   of *Payette*). See :ref:`installing` for additional instructions on
+   installing user developed material models.
+
+#) (Optional) Set the ``PAYETTE_BENCHDIR`` environment variable to point to
+   directories containing additional tests.
 
 #) Change to ``PAYETTE_ROOT`` and run::
 
