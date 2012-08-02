@@ -1,5 +1,5 @@
 from enthought.traits.api import (HasStrictTraits, String, Int, List,
-                                  Property, Button, Instance,
+                                  Property, Button, Instance, File,
                                   Enum, implements, cached_property)
 from enthought.traits.ui.api import (View, HGroup, VGroup, Item,
                                      UItem, ListEditor, TabularEditor, Label)
@@ -19,6 +19,7 @@ from Viz_ModelRunner import IModelRunnerCallbacks
 from Viz_ModelSelector import PayetteMaterialModelSelector
 from Viz_ModelPlot import create_Viz_ModelPlot
 from Viz_Search import filter_metadata
+from Viz_DataImport import DataImportDialog
 
 class MetadataTabularAdapter(TabularAdapter):
     columns = [('Name', 'name'), ('Model Type', 'model_type'), ('Created', 'created_timestamp')]
@@ -55,7 +56,7 @@ class ModelTypeDialog(HasStrictTraits):
     trait_view = View(
         Label('Choose a Model Type'),
         UItem('model_type'),
-        buttons=[OKButton, CancelButton],
+        buttons=[CancelButton, OKButton],
         kind='modal',
         title='Choose a Model Type'
     )
@@ -72,6 +73,7 @@ class ControlWindow(HasStrictTraits):
     rerun_button = Button("Edit/Re-run Selected")
     optimize_button = Button("Perform Optimization")
     visualize_button = Button("Visualize Data")
+    import_button = Button("Import Data")
     
     def __init__(self, **traits):
         HasStrictTraits.__init__(self, **traits)
@@ -109,7 +111,9 @@ class ControlWindow(HasStrictTraits):
 
     def _create_button_fired(self):
         dialog = ModelTypeDialog()
-        dialog.configure_traits()
+        if not dialog.configure_traits():
+            return
+
         if dialog.model_type == 'Solid Mechanics':
             mt = 'Mechanical'
         else:
@@ -142,11 +146,26 @@ class ControlWindow(HasStrictTraits):
 
         create_Viz_ModelPlot(metadata.name, **args)
 
+    def _optimize_button_fired(self):
+        pass
+
     def GenerateRerunName(self, name):
         match = re.search('(.*\.rerun)([0-9]+)$', name)
         if match is not None:
             return match.group(1) + str(int(match.group(2)) + 1)
         return name + '.rerun1'
+
+    def _import_button_fired(self):
+        selector = DataImportDialog(destination='.')
+        if not selector.configure_traits():
+            return
+
+        metadata = selector.ImportSelectedData()
+        if metadata is not None:
+            with open(os.path.join(metadata.base_directory, metadata.name + '.vizmetadata'), 'w') as f:
+                pickle.dump(metadata, f)
+            self.files.append(metadata)
+
 
     # IModelRunnerCallbacks implementation
     def RunFinished(self, metadata):
@@ -169,6 +188,8 @@ class ControlWindow(HasStrictTraits):
                 UItem('rerun_button', enabled_when="selected_metadata is not None and selected_metadata.data_type == 'Simulation'"),
                 UItem('optimize_button', enabled_when="selected_metadata is not None and selected_metadata.data_type == 'Imported'"),
                 UItem('visualize_button', enabled_when="selected_metadata is not None"),
+                UItem('import_button'),
+                padding=5
             )
         ),
         width=800,
