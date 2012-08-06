@@ -381,7 +381,7 @@ if SAGE:
         sage_local = os.environ.get("SAGE_LOCAL")
         if sage_local is not None:
             FORT = (osp.join(sage_local, "gfortran") if
-                    osp.isfile(join(sage_local, "gfortran")) else
+                    osp.isfile(osp.join(sage_local, "gfortran")) else
                     FORT)
 
 if ERRORS:
