@@ -1,0 +1,241 @@
+#!/usr/bin/env python
+
+import os, subprocess, sys, datetime, shutil, time, optparse
+import multiprocessing as mp
+
+def main(argv):
+
+    usage = "usage: runNightly [options]"
+    parser = optparse.OptionParser(usage=usage, version="runNightly 1.0")
+
+    parser.add_option(
+        "-B", "--with-kayenta",
+        dest="KAYENTA",
+        action="store_true",
+        default=False,
+        help="Test the kayenta model [default: %default]")
+
+    (opts, args) = parser.parse_args(argv)
+
+    def finish(retcode):
+        # mail the log file
+        subj = '"[Payette Nightly: {0} - {1}]"'.format(ostype, retcode)
+        rec = "tjfulle@sandia.gov"
+        subprocess.call("cat {0} | mail -s {1} {2}".format(log, subj, rec),
+                        shell=True, stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT)
+
+    t0 = time.time()
+
+    # common
+    home = os.getenv("HOME")
+    ostype = sys.platform
+    scratch = os.getenv("MYSCRATCH")
+    if scratch is None:
+        sys.exit("MYSCRATCH envar must be set")
+
+    now = datetime.datetime.now()
+    date = "{0:04d}.{1:02d}.{2:02d}".format(now.year, now.month, now.day)
+
+    nightly = os.path.join(scratch, "Payette_Nightly/{0}".format(date))
+    log = os.path.join(nightly, "payette_testing.log")
+
+    git = os.path.join(home, "Local/{0}/bin/git".format(ostype))
+
+    python = os.path.join(home, "Local/{0}/bin/python".format(ostype))
+    sage = os.path.join(home, "Local/{0}/sage/sage".format(ostype))
+    exes = [python, sage]
+
+    # git repositories
+    sandiagit = "software.sandia.gov:/space/sandiagit/"
+    pay_git = sandiagit + "Payette"
+
+    # number of processes that can be run
+    nproc = "-j{0}".format(mp.cpu_count() - 2)
+
+    # remove old stuff, create new
+    if os.path.isdir(nightly):
+        shutil.rmtree(nightly)
+    os.makedirs(nightly, 0750)
+    pdir = os.path.join(nightly, "Payette")
+
+    # set up environment
+    os.environ["PAYETTE_ROOT"] = pdir
+    os.environ["PYTHONPATH"] = pdir
+    os.environ["PATH"] = (
+        "/usr/local/bin:/usr/bin:/bin:/opt/local/bin:/opt/local/sbin:"
+        "/sbin:/usr/sbin:{0}:{1}".format(
+            os.path.join(pdir, "Toolset"),
+            os.path.join(home, "Local", ostype, "bin")))
+    try:
+        os.environ.pop("PAYETTE_MTLDIR")
+    except KeyError:
+        pass
+    try:
+        os.environ.pop("PAYETTE_BENCHDIR")
+    except KeyError:
+        pass
+
+    # kayenta specific stuff
+    if opts.KAYENTA:
+        kmm_git_code = sandiagit + "kayenta/code"
+        kmm_git_bench = sandiagit + "kayenta/benchmarks_payette"
+        kmm = os.path.join(nightly, "Kayenta")
+        kmm_code = os.path.join(nightly, "Kayenta/code")
+        kmm_bench = os.path.join(nightly, "Kayenta/benchmarks_payette")
+        os.makedirs(kmm, 0750)
+
+        # set up environment
+        os.environ["PAYETTE_MTLDIR"] = os.path.join(kmm_code, "aux/payette-utils")
+        os.environ["PAYETTE_BENCHDIR"] = os.path.join(kmm, "benchmarks_payette")
+
+    # formatting
+    retcodes = {-1: "DIFF/FAIL", 0: "PASS", 1: "DIFF", 2: "FAIL"}
+    width = 90
+    align = "^"  # center alignment
+
+    # create log file
+    ret_from_all = "PASS"
+    with open(log, "w") as fobj:
+        write(fobj, "#", "#", align, width)
+        write(fobj, "Payette Nightly Testing", " ", align, width)
+        fobj.write("Date: {0}\n".format(now.strftime("%A %B %d, %Y")))
+        fobj.write("Time: {0}\n".format(now.strftime("%H:%M:%S")))
+        fobj.write("Platform: {0}\n".format(ostype))
+        write(fobj, "#", "#", align, width)
+
+        # move to directory, clone Payette
+        os.chdir(nightly)
+        fobj.write("\n\n")
+        text = "Cloning from {0}".format(pay_git)
+        write(fobj, text, "*", align, width)
+        fobj.flush()
+        retval = subprocess.call("{0} clone {1}".format(git, pay_git),
+                                 shell=True, stdout=fobj, stderr=subprocess.STDOUT)
+        if retval != 0:
+            fobj.write("ERROR: failed to clone {0}\n".format(pay_git))
+            finish("FAIL")
+
+        fobj.flush()
+
+        if opts.KAYENTA:
+            # clone Kayenta code
+            os.chdir(kmm)
+            fobj.write("\n\n")
+            text = "Cloning from {0}".format(kmm_git_code)
+            write(fobj, text, "*", align, width)
+            fobj.flush()
+            retval = subprocess.call("{0} clone {1}".format(git, kmm_git_code),
+                                     shell=True,
+                                     stdout=fobj, stderr=subprocess.STDOUT)
+            if retval != 0:
+                fobj.write("ERROR: failed to clone {0}\n".format(kmm_git_code))
+                finish("FAIL")
+
+            fobj.flush()
+
+            # clone Kayenta benchmarks
+            fobj.write("\n\n")
+            text = "Cloning from {0}".format(kmm_git_bench)
+            write(fobj, text, "*", align, width)
+            fobj.flush()
+            retval = subprocess.call("{0} clone {1}".format(git, kmm_git_bench),
+                                     shell=True,
+                                     stdout=fobj, stderr=subprocess.STDOUT)
+
+            if retval != 0:
+                fobj.write("ERROR: failed to clone {0}\n".format(kmm_git_bench))
+                finish("FAIL")
+
+            fobj.flush()
+
+        # Build and run with python
+        for exe in exes:
+
+            # configure
+            os.chdir(pdir)
+            fobj.write("\n\n")
+            text = "Configuring Payette with {0}".format(exe)
+            write(fobj, text, "*", align, width)
+            fobj.flush()
+            retval = subprocess.call("{0} configure.py".format(exe),
+                                     shell=True,
+                                     stdout=fobj, stderr=subprocess.STDOUT)
+            if retval != 0:
+                fobj.write("ERROR: Failed to configure with {0}".format(exe))
+                ret_from_all = "FAIL"
+                continue
+
+            fobj.flush()
+
+            # build
+            fobj.write("\n\n")
+            text = "Building Payette with {0}".format(exe)
+            write(fobj, text, "*", align, width)
+            fobj.flush()
+            bp = os.path.join(pdir, "Toolset/buildPayette")
+            retval = subprocess.call("{0} {1}".format(bp, nproc),
+                                     shell=True,
+                                     stdout=fobj, stderr=subprocess.STDOUT)
+
+            if retval != 0:
+                fobj.write("ERROR: Failed to build with {0}".format(exe))
+                ret_from_all = "FAIL"
+                continue
+
+            fobj.flush()
+
+            # run the tests
+            fobj.write("\n\n")
+            text = "Testing Payette with {0}".format(exe)
+            write(fobj, text, "*", align, width)
+            tp = os.path.join(pdir, "Toolset/testPayette")
+            td = os.path.join(
+                nightly,
+                "TestResults.{0}_{1}".format(ostype, os.path.basename(exe)))
+            topts = "-F -D{0}".format(td)
+            fobj.write("testPayette options: {0}\n".format(topts))
+            fobj.flush()
+            retval = subprocess.call(
+                "{0} {1} {2}".format(tp, nproc, topts),
+                shell=True, stdout=fobj, stderr=subprocess.STDOUT)
+            fobj.flush()
+
+            # clean
+            fobj.write("\n\n")
+            text = "Cleaning Payette"
+            write(fobj, text, "*", align, width)
+            fobj.flush()
+            cp = os.path.join(pdir, "Toolset/cleanPayette")
+            subprocess.call("{0}".format(cp),
+                            shell=True, stdout=fobj, stderr=subprocess.STDOUT)
+            fobj.flush()
+
+            continue
+
+        tf = time.time()
+        fobj.write("\n\n")
+        write(fobj, "#", "#", align, width)
+        text = "SUMMARY"
+        write(fobj, text, " ", align, width)
+        fobj.write("Total time: {0:.2f}\n".format(float(tf - t0)))
+        retcode = retcodes.get(retval, "FAIL")
+        fobj.write("Return code: {0}".format(retcode))
+        write(fobj, "#", "#", align, width)
+        fobj.flush()
+
+        if retcode != "PASS":
+            ret_from_all = retcode
+
+        pass
+
+    finish(ret_from_all)
+
+def write(fobj, text, fill, align, width):
+    fobj.write("{0:{fill}{align}{width}}\n"
+               .format(text, fill=fill, align=align, width=width))
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+
+
