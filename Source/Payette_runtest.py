@@ -484,7 +484,7 @@ def test_payette(argv):
         except:
             pass
 
-    return 0
+    return ndiff + nfail
 
 
 def _run_test(args):
