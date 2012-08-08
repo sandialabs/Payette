@@ -149,7 +149,8 @@ def main(argv):
     if opts.KAYENTA:
 
         git_repos.extend(
-            [sandigit + x for x in ["kayenta/code", "kayenta/benchmarks_payette"]])
+            [sandiagit + x for x in
+             ["kayenta/code", "kayenta/benchmarks_payette"]])
 
         kmm = os.path.join(nightly, "Kayenta")
         kmm_code = os.path.join(nightly, "code")
