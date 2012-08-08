@@ -298,42 +298,19 @@ def test_payette(argv):
     if not os.path.isdir(opts.testresdir):
         os.mkdir(opts.testresdir)
 
-    old_results = {}
-    summpy = os.path.join(opts.testresdir, "summary.py")
-    summhtml = os.path.splitext(summpy)[0] + ".html"
-    if os.path.isfile(summpy):
-        py_path = [os.path.dirname(summpy)]
-        py_mod = pu.get_module_name(summpy)
-        fobj, pathname, description = imp.find_module(py_mod, py_path)
-        py_module = imp.load_module(py_mod, fobj, pathname, description)
-        fobj.close()
-        try:
-            old_results = py_module.payette_test_results
-        except AttributeError:
-            copyfile(summpy,
-                     os.path.join(opts.testresdir, "summary_orig.py"))
-        try:
-            os.remove("{0}c".format(summpy))
-        except OSError:
-            pass
-
-    # check type of old_results, if not dict start over with empty dict
-    if not isinstance(old_results, dict):
+    summhtml = os.path.join(opts.testresdir, "summary.html")
+    respkl = os.path.join(opts.testresdir, "Previous_Results.pkl")
+    try:
+        old_results = load(open(respkl, "r"))
+    except IOError:
         old_results = {}
 
-    # Put all run tests in a flattened list for checking if test has
-    # been run
-    if old_results:
-        rantests = [x for y in old_results.values() for x in y]
-    else:
-        rantests = []
-
-    # reset the test results
+    # initialize the test results dictionary
     test_statuses = ["pass", "diff", "fail", "notrun",
                      "bad input", "failed to run"]
     test_res = {}
-    for i in test_statuses:
-        test_res[i] = {}
+    for test_status in test_statuses:
+        test_res[test_status] = {}
         continue
 
     pu.log_message("=" * WIDTH_TERM, pre="", noisy=True)
@@ -344,7 +321,7 @@ def test_payette(argv):
     # run the tests on multiple processors using the multiprocessor map ONLY f
     # nprocs > 1. For debug purposes, when nprocs=1, run without using the
     # multiprocessor map because it makes debugging worse than it should be.
-    test_inp = ((test, opts, rantests) for test in conforming)
+    test_inp = ((test, opts, old_results) for test in conforming)
     if nproc == 1:
         all_results = [_run_test(job) for job in test_inp]
 
@@ -378,9 +355,11 @@ def test_payette(argv):
             tcompletion = summary["completion time"]
             benchdir = summary["benchmark directory"]
             keywords = summary["keywords"]
+            old = summary.get("old status")
             test_res[status][name] = {"benchmark directory": benchdir,
                                       "completion time": tcompletion,
-                                      "keywords": keywords}
+                                      "keywords": keywords,
+                                      "old status": old}
             continue
         continue
 
@@ -427,10 +406,6 @@ def test_payette(argv):
                                    " ({0}) ".format(len(names)))
         longtxtsummary += "{0:^{1}}\n".format(header, WIDTH_TERM)
         if len(names) == 0:
-#            longtxtsummary += "None\n"
-            continue
-        elif stat == "notrun":
-#            longtxtsummary += "None\n"
             continue
         longtxtlist = []
         for name in names:
@@ -460,10 +435,6 @@ def test_payette(argv):
     pu.log_message(txtsummary, pre="", noisy=True)
     pu.log_message("=" * WIDTH_TERM, pre="", noisy=True)
 
-    # write out the results to the summary file
-    write_py_summary(summpy, test_res)
-    write_html_summary(summhtml, test_res)
-
     # cleanup our tracks
     for test_dir in test_dirs:
         for item in os.walk(test_dir):
@@ -476,6 +447,19 @@ def test_payette(argv):
                 continue
             continue
         continue
+    for dirnam, dirs, files in os.walk(opts.testresdir):
+        for name in files:
+            fbase, fext = os.path.splitext(name)
+            delext = [".so", ".pyo", ".pyc"]
+            if fext in delext:
+                os.remove(os.path.join(dirnam, name))
+                continue
+            continue
+        continue
+
+    # dump results and write html summary
+    dump(test_res, open(respkl, "w"))
+    write_html_summary(summhtml, test_res)
 
     if opts.buildpayette:
         shutil.rmtree(opts.testresdir)
@@ -500,7 +484,7 @@ def _run_test(args):
     """ run the payette test in py_file """
 
     # pass args to local variables
-    py_file, opts, rantests = args
+    py_file, opts, old_results = args
 
     # check for switched materials
     switch = opts.switch
@@ -528,7 +512,7 @@ def _run_test(args):
     benchdir = os.path.join(opts.testresdir, testbase, test.name)
 
     # check if benchmark has been run
-    ran = [x for x in rantests if x == test.name]
+    ran = [(y, x) for y in old_results for x in old_results[y] if x == test.name]
 
     if not (opts.forcererun or opts.testfile) and ran and os.path.isdir(benchdir):
         pu.log_message(
@@ -537,10 +521,10 @@ def _run_test(args):
             "{0:>10s}".format("notrun\n") +
             "Test already ran. " +
             "Use -F option to force a rerun", pre="", noisy=True)
-        result = {test.name: {"status": "notrun",
-                              "keywords": test.keywords,
-                              "completion time": "NA",
-                              "benchmark directory": benchdir}}
+        result = {test.name: old_results[ran[0][0]][ran[0][1]]}
+        if result[test.name].get("old status") is None:
+            result[test.name]["old status"] = ran[0][0]
+        result[test.name]["status"] = "notrun"
         return result
 
     # Let the user know which test is running
@@ -640,28 +624,6 @@ def _run_test(args):
     return result
 
 
-def write_py_summary(fname, results):
-
-    """ write summary of the results dictionary to python file """
-
-    # the results dictionary is of the form
-    # results = { {status: {name: { "benchmark directory":benchdir,
-    #                               "completion time":tcompletion,
-    #                               "keywords":keywords } } } }
-    with open(fname, "w") as fobj:
-        fobj.write("payette_test_results = {}\n")
-        for stat in results:
-            # key is one of diff, pass, fail, notrun
-            # names are the names of the tests
-            fobj.write("payette_test_results['{0}']=[".format(stat))
-            fobj.write(",".join(["'{0}'".format(x)
-                                 for x in results[stat].keys()]))
-            fobj.write("]\n")
-            continue
-
-    return
-
-
 def write_html_summary(fname, results):
 
     """ write summary of the results dictionary to html file """
@@ -708,13 +670,19 @@ def write_html_summary(fname, results):
                 except ValueError:
                     tcompletion = str(results[stat][test]["completion time"])
 
-                status = "Exit {0} {1}".format(stat, tcompletion)
+                if stat == "notrun":
+                    oldstat = results[stat][test].get("old status")
+                    status = "notrun (old status: {0})".format(oldstat)
+                else:
+                    status = stat
+
                 for myfile in files:
                     if myfile.endswith(".out.html") and opts.postprocess:
                         fobj.write("<li><a href='{0}'>PostProcessing</a>\n"
                                    .format(os.path.join(tresd, myfile)))
                 fobj.write("<li>Keywords: {0}\n".format(keywords))
                 fobj.write("<li>Status: {0}\n".format(status))
+                fobj.write("<li>Completion time: {0}\n".format(tcompletion))
                 fobj.write("</ul>\n")
                 continue
             fobj.write("</ul>\n")
