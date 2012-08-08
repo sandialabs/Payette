@@ -5,7 +5,7 @@ import multiprocessing as mp
 
 def main(argv):
     # Option parsing
-    usage = "usage: runNightly <-Xpython> <-Sscratch> [options]"
+    usage = "usage: runNightly <-Xpython> <-Sscratch> <-Ggit> [options]"
     parser = optparse.OptionParser(usage=usage, version="runNightly 1.0")
     parser.add_option(
         "-S", "--scratch-dir",
@@ -32,13 +32,13 @@ def main(argv):
         dest="KAYENTA",
         action="store_true",
         default=False,
-        help="Test the kayenta model [default: %default]")
+        help="OPTIONAL test the kayenta model [default: %default]")
     parser.add_option(
         "-k", "--keyword",
         dest="KW",
         action="append",
         default=[],
-        help="Additional keywords [default: %default]")
+        help="OPTIONAL additional keywords [default: %default]")
     (opts, args) = parser.parse_args(argv)
 
     # return codes
@@ -118,6 +118,12 @@ def main(argv):
     # directory to run tonights tests
     nightly = os.path.join(opts.SCRATCH, "Payette_Nightly/{0}".format(date))
 
+    # remove old stuff, create new
+    if os.path.isdir(nightly):
+        shutil.rmtree(nightly)
+    os.makedirs(nightly, 0750)
+    pdir = os.path.join(nightly, "Payette")
+
     # log file
     log = os.path.join(nightly, "payette_testing.log")
 
@@ -126,13 +132,7 @@ def main(argv):
 
     # git repositories
     sandiagit = "software.sandia.gov:/space/sandiagit/"
-    git_repos = [sandiagit + "Payette"]
-
-    # remove old stuff, create new
-    if os.path.isdir(nightly):
-        shutil.rmtree(nightly)
-    os.makedirs(nightly, 0750)
-    pdir = os.path.join(nightly, "Payette")
+    git_repos = [(sandiagit + "Payette", nightly)]
 
     # set up environment
     os.environ["PAYETTE_ROOT"] = pdir
@@ -148,14 +148,15 @@ def main(argv):
     # kayenta specific stuff
     if opts.KAYENTA:
 
+        kmm = os.path.join(nightly, "Kayenta")
+        kmm_code = os.path.join(kmm, "code")
+        kmm_bench = os.path.join(kmm, "benchmarks_payette")
+        os.makedirs(kmm, 0750)
+
         git_repos.extend(
-            [sandiagit + x for x in
+            [(sandiagit + x, kmm) for x in
              ["kayenta/code", "kayenta/benchmarks_payette"]])
 
-        kmm = os.path.join(nightly, "Kayenta")
-        kmm_code = os.path.join(nightly, "code")
-        kmm_bench = os.path.join(nightly, "benchmarks_payette")
-        os.makedirs(kmm, 0750)
 
         # set up environment
         os.environ["PAYETTE_MTLDIR"] = os.path.join(kmm_code, "aux/payette-utils")
@@ -175,8 +176,11 @@ def main(argv):
         write(fobj, "#", "#", align, width)
 
         # clone git repositories
-        os.chdir(nightly)
-        for git_repo in git_repos:
+        for git_repo, base_dir in git_repos:
+            if not os.path.isdir(base_dir):
+                os.makedirs(base_dir, 0750)
+
+            os.chdir(base_dir)
             fobj.write("\n\n")
             text = "Cloning from {0}".format(git_repo)
             write(fobj, text, "*", align, width)
@@ -188,6 +192,7 @@ def main(argv):
             if retval != 0:
                 fobj.write("ERROR: failed to clone {0}\n".format(git_repo))
                 finish(2)
+                shutil.move(os.path.basename(git_repo), base_dir)
 
         # Build and run with python
         for exe in opts.EXES:
