@@ -4,54 +4,129 @@ import os, subprocess, sys, datetime, shutil, time, optparse
 import multiprocessing as mp
 
 def main(argv):
-
-    usage = "usage: runNightly [options]"
+    # Option parsing
+    usage = "usage: runNightly <-Xpython> <-Sscratch> [options]"
     parser = optparse.OptionParser(usage=usage, version="runNightly 1.0")
-
+    parser.add_option(
+        "-S", "--scratch-dir",
+        dest="SCRATCH",
+        action="store",
+        default=None,
+        help=("REQUIRED path to scratch directory to run tests "
+              "[default: %default]"))
+    parser.add_option(
+        "-X", "--python-int",
+        dest="EXES",
+        action="append",
+        default=[],
+        help=("REQUIRED path to python interpreter used to run tests "
+              "(accumulated) [default: %default]"))
+    parser.add_option(
+        "-G", "--git-exe",
+        dest="GIT",
+        action="store",
+        default=None,
+        help="REQUIRED path to git executable [default: %default]")
     parser.add_option(
         "-B", "--with-kayenta",
         dest="KAYENTA",
         action="store_true",
         default=False,
         help="Test the kayenta model [default: %default]")
-
+    parser.add_option(
+        "-k", "--keyword",
+        dest="KW",
+        action="append",
+        default=[],
+        help="Additional keywords [default: %default]")
     (opts, args) = parser.parse_args(argv)
 
-    def finish(retcode):
+    # return codes
+    retcodes = {-1: "DIFF/FAIL", 0: "PASS", 1: "DIFF", 2: "FAIL"}
+
+    def failed(fail=[0], inquire=False):
+        if inquire:
+            return fail[0]
+        fail[0] += 1
+        return
+
+    def diffed(diff=[0], inquire=False):
+        if inquire:
+            return diff[0]
+        diff[0] += 1
+        return
+
+    def error_count(errors=[0], inquire=False):
+        if inquire:
+            return errors[0]
+        errors[0] += 1
+        return
+
+    def error(message):
+        error_count()
+        print "ERROR: {0}".format(message)
+        return
+
+    def finish(retval):
+        retcode = retcodes.get(retval)
+
         # mail the log file
         subj = '"[Payette Nightly: {0} - {1}]"'.format(ostype, retcode)
         rec = "tjfulle@sandia.gov"
         subprocess.call("cat {0} | mail -s {1} {2}".format(log, subj, rec),
                         shell=True, stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT)
+        sys.exit(retval)
 
     t0 = time.time()
 
-    # common
-    home = os.getenv("HOME")
-    ostype = sys.platform
-    scratch = os.getenv("MYSCRATCH")
-    if scratch is None:
-        sys.exit("MYSCRATCH envar must be set")
+    # check required options
+    # python interpreter
+    if not opts.EXES:
+        error("python interpreter[s] must be specified")
+    else:
+        for exe in opts.EXES:
+            if not os.path.isfile(exe):
+                error("python interpreter {0} not found".format(exe))
 
+    # scratch space
+    if not opts.SCRATCH:
+        error("scratch directory must be specified")
+    else:
+        if not os.path.isdir(opts.SCRATCH):
+            error("scratch directory {0} not found".format(opts.SCRATCH))
+        elif not os.access(opts.SCRATCH, os.W_OK|os.X_OK):
+            error("unable to write to {0}".format(opts.SCRATCH))
+
+    # scratch space
+    if not opts.GIT:
+        error("path to git must be specified")
+    else:
+        if not os.path.isfile(opts.GIT):
+            error("git executable {0} not found".format(opts.GIT))
+
+    # check for previous errors
+    if error_count(inquire=True):
+        parser.print_help()
+        parser.error("Resolve previous errors")
+
+    # local variables
+    ostype = sys.platform
     now = datetime.datetime.now()
     date = "{0:04d}.{1:02d}.{2:02d}".format(now.year, now.month, now.day)
 
-    nightly = os.path.join(scratch, "Payette_Nightly/{0}".format(date))
+    # directory to run tonights tests
+    nightly = os.path.join(opts.SCRATCH, "Payette_Nightly/{0}".format(date))
+
+    # log file
     log = os.path.join(nightly, "payette_testing.log")
-
-    git = os.path.join(home, "Local/{0}/bin/git".format(ostype))
-
-    python = os.path.join(home, "Local/{0}/bin/python".format(ostype))
-    sage = os.path.join(home, "Local/{0}/sage/sage".format(ostype))
-    exes = [python, sage]
-
-    # git repositories
-    sandiagit = "software.sandia.gov:/space/sandiagit/"
-    pay_git = sandiagit + "Payette"
 
     # number of processes that can be run
     nproc = "-j{0}".format(mp.cpu_count() - 2)
+
+    # git repositories
+    sandiagit = "software.sandia.gov:/space/sandiagit/"
+    git_repos = [sandiagit + "Payette"]
 
     # remove old stuff, create new
     if os.path.isdir(nightly):
@@ -64,38 +139,32 @@ def main(argv):
     os.environ["PYTHONPATH"] = pdir
     os.environ["PATH"] = (
         "/usr/local/bin:/usr/bin:/bin:/opt/local/bin:/opt/local/sbin:"
-        "/sbin:/usr/sbin:{0}:{1}".format(
-            os.path.join(pdir, "Toolset"),
-            os.path.join(home, "Local", ostype, "bin")))
-    try:
-        os.environ.pop("PAYETTE_MTLDIR")
-    except KeyError:
-        pass
-    try:
-        os.environ.pop("PAYETTE_BENCHDIR")
-    except KeyError:
-        pass
+        "/sbin:/usr/sbin:{0}".format(os.path.join(pdir, "Toolset")))
+    try: os.environ.pop("PAYETTE_MTLDIR")
+    except KeyError: pass
+    try: os.environ.pop("PAYETTE_BENCHDIR")
+    except KeyError: pass
 
     # kayenta specific stuff
     if opts.KAYENTA:
-        kmm_git_code = sandiagit + "kayenta/code"
-        kmm_git_bench = sandiagit + "kayenta/benchmarks_payette"
+
+        git_repos.extend(
+            [sandigit + x for x in ["kayenta/code", "kayenta/benchmarks_payette"]])
+
         kmm = os.path.join(nightly, "Kayenta")
-        kmm_code = os.path.join(nightly, "Kayenta/code")
-        kmm_bench = os.path.join(nightly, "Kayenta/benchmarks_payette")
+        kmm_code = os.path.join(nightly, "code")
+        kmm_bench = os.path.join(nightly, "benchmarks_payette")
         os.makedirs(kmm, 0750)
 
         # set up environment
         os.environ["PAYETTE_MTLDIR"] = os.path.join(kmm_code, "aux/payette-utils")
-        os.environ["PAYETTE_BENCHDIR"] = os.path.join(kmm, "benchmarks_payette")
+        os.environ["PAYETTE_BENCHDIR"] = os.path.join(kmm_bench)
 
     # formatting
-    retcodes = {-1: "DIFF/FAIL", 0: "PASS", 1: "DIFF", 2: "FAIL"}
     width = 90
     align = "^"  # center alignment
 
-    # create log file
-    ret_from_all = "PASS"
+    # open log file
     with open(log, "w") as fobj:
         write(fobj, "#", "#", align, width)
         write(fobj, "Payette Nightly Testing", " ", align, width)
@@ -104,53 +173,23 @@ def main(argv):
         fobj.write("Platform: {0}\n".format(ostype))
         write(fobj, "#", "#", align, width)
 
-        # move to directory, clone Payette
+        # clone git repositories
         os.chdir(nightly)
-        fobj.write("\n\n")
-        text = "Cloning from {0}".format(pay_git)
-        write(fobj, text, "*", align, width)
-        fobj.flush()
-        retval = subprocess.call("{0} clone {1}".format(git, pay_git),
-                                 shell=True, stdout=fobj, stderr=subprocess.STDOUT)
-        if retval != 0:
-            fobj.write("ERROR: failed to clone {0}\n".format(pay_git))
-            finish("FAIL")
-
-        fobj.flush()
-
-        if opts.KAYENTA:
-            # clone Kayenta code
-            os.chdir(kmm)
+        for git_repo in git_repos:
             fobj.write("\n\n")
-            text = "Cloning from {0}".format(kmm_git_code)
+            text = "Cloning from {0}".format(git_repo)
             write(fobj, text, "*", align, width)
             fobj.flush()
-            retval = subprocess.call("{0} clone {1}".format(git, kmm_git_code),
-                                     shell=True,
-                                     stdout=fobj, stderr=subprocess.STDOUT)
+            retval = subprocess.call(
+                "{0} clone {1}".format(opts.GIT, git_repo),
+                shell=True, stdout=fobj, stderr=subprocess.STDOUT)
+            fobj.flush()
             if retval != 0:
-                fobj.write("ERROR: failed to clone {0}\n".format(kmm_git_code))
-                finish("FAIL")
-
-            fobj.flush()
-
-            # clone Kayenta benchmarks
-            fobj.write("\n\n")
-            text = "Cloning from {0}".format(kmm_git_bench)
-            write(fobj, text, "*", align, width)
-            fobj.flush()
-            retval = subprocess.call("{0} clone {1}".format(git, kmm_git_bench),
-                                     shell=True,
-                                     stdout=fobj, stderr=subprocess.STDOUT)
-
-            if retval != 0:
-                fobj.write("ERROR: failed to clone {0}\n".format(kmm_git_bench))
-                finish("FAIL")
-
-            fobj.flush()
+                fobj.write("ERROR: failed to clone {0}\n".format(git_repo))
+                finish(2)
 
         # Build and run with python
-        for exe in exes:
+        for exe in opts.EXES:
 
             # configure
             os.chdir(pdir)
@@ -163,7 +202,7 @@ def main(argv):
                                      stdout=fobj, stderr=subprocess.STDOUT)
             if retval != 0:
                 fobj.write("ERROR: Failed to configure with {0}".format(exe))
-                ret_from_all = "FAIL"
+                error_count()
                 continue
 
             fobj.flush()
@@ -180,7 +219,7 @@ def main(argv):
 
             if retval != 0:
                 fobj.write("ERROR: Failed to build with {0}".format(exe))
-                ret_from_all = "FAIL"
+                error_count()
                 continue
 
             fobj.flush()
@@ -193,12 +232,24 @@ def main(argv):
             td = os.path.join(
                 nightly,
                 "TestResults.{0}_{1}".format(ostype, os.path.basename(exe)))
-            topts = "-F -D{0}".format(td)
+            kws = " ".join(["-k{0}".format(x) for x in opts.KW])
+            topts = "-F -D{0}".format(td) + " " + kws
             fobj.write("testPayette options: {0}\n".format(topts))
             fobj.flush()
             retval = subprocess.call(
                 "{0} {1} {2}".format(tp, nproc, topts),
                 shell=True, stdout=fobj, stderr=subprocess.STDOUT)
+            if retval < 0:
+                diffed()
+                failed()
+            elif retval == 1:
+                diffed()
+            elif retval == 2:
+                failed()
+
+            retcode = retcodes.get(retval, "FAIL")
+            fobj.write(
+                "Testing completed with return code: {0}\n".format(retcode))
             fobj.flush()
 
             # clean
@@ -216,20 +267,26 @@ def main(argv):
         tf = time.time()
         fobj.write("\n\n")
         write(fobj, "#", "#", align, width)
-        text = "SUMMARY"
+        text = "TESTING COMPLETED"
         write(fobj, text, " ", align, width)
         fobj.write("Total time: {0:.2f}\n".format(float(tf - t0)))
-        retcode = retcodes.get(retval, "FAIL")
-        fobj.write("Return code: {0}".format(retcode))
         write(fobj, "#", "#", align, width)
         fobj.flush()
 
-        if retcode != "PASS":
-            ret_from_all = retcode
-
         pass
 
-    finish(ret_from_all)
+    if error_count(inquire=True):
+        finish(2)
+    elif failed(inquire=True) and diffed(inquire=True):
+        finish(-1)
+    elif diffed(inquire=True):
+        finish(1)
+    elif failed(inquire=True):
+        finish(2)
+    else:
+        finish(0)
+
+    return
 
 def write(fobj, text, fill, align, width):
     fobj.write("{0:{fill}{align}{width}}\n"

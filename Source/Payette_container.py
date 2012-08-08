@@ -28,9 +28,11 @@ import os
 import sys
 import math
 import numpy as np
+import datetime
 from copy import deepcopy
 from textwrap import fill as textfill
 
+import Payette_config as pc
 import Source.Payette_driver as pd
 import Source.Payette_utils as pu
 import Source.Payette_extract as pe
@@ -163,6 +165,14 @@ class Payette:
         # set up the logger for the simulation
         pu.setup_logger(self.logfile)
         pu.log_message("setting up simulation {0}".format(self.name))
+
+        # write some info to the log file
+        now = datetime.datetime.now()
+        pu.write_to_simlog("Date: {0}".format(now.strftime("%A %B %d, %Y")))
+        pu.write_to_simlog("Time: {0}".format(now.strftime("%H:%M:%S")))
+        pu.write_to_simlog("Platform: {0}".format(pc.PC_OSTYPE))
+        pu.write_to_simlog("Python interpreter: {0}".format(pc.PC_PYINT))
+
 
         # write description
         pu.write_to_simlog("Description: ")
@@ -473,7 +483,7 @@ class Payette:
             data.append(dum)
             continue
 
-            
+
 
         for dat in data:
             self.outfile_obj.write(pu.textformat(dat))
