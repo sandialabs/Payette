@@ -195,6 +195,8 @@ def test_payette(argv):
             pu.report_error("benchmark directory {0} not found".format(dirnam))
         elif "__test_dir__.py" not in os.listdir(dirnam):
             pu.report_error("__test_dir__.py not found in {0}".format(dirnam))
+        else:
+            test_dirs.append(dirnam)
         continue
     if pu.error_count():
         pu.report_and_raise_error("stopping due to previous errors")
@@ -238,7 +240,13 @@ def test_payette(argv):
                 # a notebook directory has been found, see if there are any
                 # conforming tests that use it
                 if [x for x in conforming if root in x]:
-                    mathnbs[root.split(os.sep)[-1]] = [
+                    __test_dir__ = _get_test_module(
+                        os.path.join(root, "__test_dir__.py"))
+                    try:
+                        base_nb_dir = __test_dir__.DIRECTORY
+                    except AttributeError:
+                        base_nb_dir = root.split(os.sep)[-1]
+                    mathnbs[base_nb_dir] = [
                         os.path.join(dirnam, x) for x in files
                         if x.endswith(".nb") or x.endswith(".m")]
             continue
@@ -485,6 +493,7 @@ def _run_test(args):
 
     # pass args to local variables
     py_file, opts, old_results = args
+    py_dir = os.path.dirname(py_file)
 
     # check for switched materials
     switch = opts.switch
@@ -505,10 +514,15 @@ def _run_test(args):
     # tests), we try to keep the base directory name of that test. e.g., if
     # the user asked to look for tests in /some/directory/to/special_tests, we
     # run the tests in TestResults.OSTYP/special_tests.
-    if pc.PC_TESTS[0] in py_file:
-        testbase = os.path.dirname(py_file).split(pc.PC_TESTS[0] + os.sep)[1]
-    else:
-        testbase = os.path.split(os.path.dirname(py_file))[1]
+    __test_dir__ = _get_test_module(os.path.join(py_dir, "__test_dir__.py"))
+    try:
+        testbase = __test_dir__.DIRECTORY
+    except AttributeError:
+        if pc.PC_TESTS[0] in py_file:
+            testbase = py_dir.split(pc.PC_TESTS[0] + os.sep)[1]
+        else:
+            testbase = os.path.split(os.path.dirname(py_file))[1]
+
     benchdir = os.path.join(opts.testresdir, testbase, test.name)
 
     # check if benchmark has been run
@@ -694,6 +708,8 @@ def write_html_summary(fname, results):
 def _copy_mathematica_nbs(mathnbs, destdir):
     """copy the mathematica notebooks to the destination directory"""
 
+    print mathnbs
+    print destdir
     for mtldir, mathnb in mathnbs.items():
         for item in mathnb:
             fbase = os.path.basename(item)

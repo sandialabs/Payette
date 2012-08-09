@@ -453,6 +453,12 @@ def configure_payette(argv):
         action="store_true",
         default=sys.dont_write_bytecode,
         help="Don't write bytecode files [default: %default]")
+    parser.add_option(
+        "--no-clean",
+        dest="NOCLEAN",
+        action="store_true",
+        default=False,
+        help="Don't clean when configuring [default: %default]")
 
     opts = parser.parse_args(argv)[0]
 
@@ -471,7 +477,8 @@ def configure_payette(argv):
     errors = 0
 
     # clean up first
-    clean_payette()
+    if not opts.NOCLEAN:
+        clean_payette()
 
     # --- visualization check
     loginf("Checking if visualizaton suite it supported by Python distribution")
