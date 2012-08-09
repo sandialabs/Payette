@@ -498,21 +498,25 @@ def visualize_results(simulation_info=None, outfiles=None):
         pu.log_warning("Cannot specify both outfiles and simulation_info")
 
     elif outfiles is not None:
-        simulation_info = []
-        warned = False
-        for outfile in outfiles:
-            if not os.path.isfile(outfile):
-                pu.log_warning("{0} not found".format(outfile))
-                warned = True
+        if len(outfiles) == 1 and os.path.basename(outfiles[0]) == "index.pkl":
+            simulation_info = [
+                {"simulation name": "Payette", "index file": outfiles[0]}]
+        else:
+            simulation_info = []
+            warned = False
+            for outfile in outfiles:
+                if not os.path.isfile(outfile):
+                    pu.log_warning("{0} not found".format(outfile))
+                    warned = True
+                    continue
+                fdir, fnam = os.path.split(outfile)
+                simname = os.path.splitext(fnam)[0]
+                simulation_info.append({"simulation name": simname,
+                                        "simulation directory": fdir,
+                                        "output file": outfile,})
                 continue
-            fdir, fnam = os.path.split(outfile)
-            simname = os.path.splitext(fnam)[0]
-            simulation_info.append({"simulation name": simname,
-                                    "simulation directory": fdir,
-                                    "output file": outfile,})
-            continue
-        if warned:
-            return
+            if warned:
+                return
 
     if len(simulation_info) == 1:
         # only a single simulation, get the siminfo and simname directly
