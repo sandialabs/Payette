@@ -708,8 +708,6 @@ def write_html_summary(fname, results):
 def _copy_mathematica_nbs(mathnbs, destdir):
     """copy the mathematica notebooks to the destination directory"""
 
-    print mathnbs
-    print destdir
     for mtldir, mathnb in mathnbs.items():
         for item in mathnb:
             fbase = os.path.basename(item)

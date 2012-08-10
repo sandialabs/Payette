@@ -481,32 +481,26 @@ def configure_payette(argv):
         clean_payette()
 
     # --- visualization check
-    loginf("Checking if visualizaton suite it supported by Python distribution")
-    try:
+    display = os.environ.get("DISPLAY")
+    loginf( "Checking if visualizaton suite it supported by Python distribution")
+    if display is not None:
         try:
-            from traits.api import (HasStrictTraits, List, Instance, String,
-                                    BaseInt, Int, Float, Bool, Property, Button,
-                                    Constant, Enum, Event)
-            from traitsui.api import (View, Label, Group, HGroup, VGroup, Item,
-                                      UItem, TabularEditor, TableEditor,
-                                      InstanceEditor, ListEditor, Spring,
-                                      ObjectColumn)
-            from traitsui.tabular_adapter import TabularAdapter
-
-        except ImportError:
             # support for MacPorts install of enthought tools
             from enthought.traits.api import (
-                HasStrictTraits, List, Instance, String, BaseInt, Int,
-                Float, Bool, Property, Button, Constant, Enum, Event)
+                HasStrictTraits, Instance, String, Button,
+                Bool, List, Str, Property, HasPrivateTraits, on_trait_change)
             from enthought.traits.ui.api import (
-                View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor,
-                InstanceEditor, ListEditor, Spring, TableEditor, ObjectColumn)
+                View, Item, HSplit, VGroup, Handler,
+                TabularEditor, HGroup, UItem)
             from enthought.traits.ui.tabular_adapter import TabularAdapter
-        loginf("Visualizaton suite supported by Python distribution")
-        PAYETTE_CONFIG["VIZ_COMPATIBLE"] = True
+            loginf("Visualizaton suite supported by Python distribution")
+            PAYETTE_CONFIG["VIZ_COMPATIBLE"] = True
 
-    except ImportError:
-        loginf("Visualizaton suite not supported by Python distribution")
+        except ImportError:
+            loginf("Visualizaton suite not supported by Python distribution")
+
+    else:
+        loginf("DISPLAY not set, visualization suite cannot be imported")
 
     # Report on environmental variables
     loginf("checking for Payette-related environmental variables")
