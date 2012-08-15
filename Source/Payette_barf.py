@@ -100,6 +100,7 @@ class PayetteBarf(object):
         self.payette_input = self._convert_to_payette()
 
         the_model = pcntnr.Payette(self.payette_input)
+        the_model.write_input_file()
 
         # the model has been set up, now advance the stress and state variables
         # to where they need to be based on barf file
@@ -138,7 +139,7 @@ class PayetteBarf(object):
         self.barf["model version"] = version
         self.barf["model revision"] = self.barf["lines"][1].split()[2]
         self.barf["barf message"] = self.barf["lines"][2].strip()
-        self.barf["name"] = message.replace(" ", "_")
+        self.barf["name"] = message.replace(" ", "_").replace(".", "")
         self.barf["time step"] = None
 
         return
@@ -275,7 +276,7 @@ end simulation
             idx = int(idx) - 1
             nam = cmod.parameter_table_idx_map[idx]
 
-            if idx == 59:
+            if idx == 60:
                 self.barf["using eos"] = val > 0
                 val = 0
 
