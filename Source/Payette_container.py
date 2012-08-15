@@ -592,8 +592,10 @@ class Payette:
         else:
             driver = pd.eos_driver
 
+        # jrh: This dictionary to get extra info from eos_driver
+        extra_files = {}
         try:
-            retcode = driver(self, restart=self.is_restart)
+            retcode = driver(self, restart=self.is_restart, extra_files=extra_files)
 
         except PayetteError as error:
             if ro.DEBUG:
@@ -625,6 +627,7 @@ class Payette:
         else:
             return {"retcode": retcode,
                     "output file": self.outfile,
+                    "extra files": extra_files,
                     "simulation name": self.name,
                     "simulation directory": self.simdir}
 

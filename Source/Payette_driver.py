@@ -66,6 +66,12 @@ def eos_driver(the_model, **kwargs):
     K2eV = 8.617343e-5
     erg2joule = 1.0e-4
 
+    # jrh: Added this dict to get extra file names
+    extra_files = kwargs.get("extra_files")
+    if extra_files is None:
+        extra_files = {}
+    extra_files['path files'] = {}
+
     simdat = the_model.simulation_data()
     material = the_model.material
     matdat = material.material_data()
@@ -162,6 +168,7 @@ def eos_driver(the_model, **kwargs):
 
         pu.log_message("End surface")
         pu.log_message("Surface file: {0}".format(out_fnam))
+        extra_files['surface file'] = out_fnam
 
 ################################################################################
 ###############                     ISOTHERM                     ###############
@@ -201,6 +208,7 @@ def eos_driver(the_model, **kwargs):
 
         pu.log_message("End isotherm")
         pu.log_message("Isotherm file: {0}".format(out_fnam))
+        extra_files['path files']['isotherm'] = out_fnam
 
 ################################################################################
 ###############                     HUGONIOT                     ###############
@@ -301,6 +309,7 @@ def eos_driver(the_model, **kwargs):
 
         pu.log_message("End Hugoniot")
         pu.log_message("Hugoniot file: {0}".format(out_fnam))
+        extra_files['path files']['hugoniot'] = out_fnam
 
     return 0
 
