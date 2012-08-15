@@ -22,7 +22,7 @@ from Viz_Search import filter_metadata
 from Viz_DataImport import DataImportDialog
 
 class MetadataTabularAdapter(TabularAdapter):
-    columns = [('Name', 'name'), ('Model Type', 'model_type'), ('Created', 'created_timestamp')]
+    columns = [('Name', 'name'), ('Model Type', 'model_type'), ('Data Type', 'data_type'), ('Created', 'created_timestamp')]
     created_timestamp_content = Property
     bg_color = Property
     text_color = Property

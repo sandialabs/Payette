@@ -33,7 +33,7 @@ class PayetteInputStringPreview(HasStrictTraits):
     )
 
 class PayetteMaterialModelSelector(HasStrictTraits):
-    model_type = Enum('Mechanical', 'eos')
+    model_type = Enum('Mechanical', 'eos', 'any')
     models = List(Instance(PayetteModel))
     selected_model = Instance(PayetteModel)
     simulation_name = String
@@ -55,7 +55,7 @@ class PayetteMaterialModelSelector(HasStrictTraits):
             control_file = self.model_index.control_file(modelName)
             cmod = self.model_index.constitutive_model_object(modelName)
             cmod_obj = cmod(control_file)
-            if self.model_type not in cmod_obj.material_type:
+            if self.model_type != 'any' and self.model_type not in cmod_obj.material_type:
                 continue
 
             params = []
@@ -184,6 +184,6 @@ class PayetteMaterialModelSelector(HasStrictTraits):
     )
 
 if __name__ == "__main__":
-    pm = PayetteMaterialModelSelector()
+    pm = PayetteMaterialModelSelector(model_type='any')
     pm.configure_traits()
 
