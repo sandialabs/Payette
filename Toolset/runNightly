@@ -28,6 +28,12 @@ def main(argv):
         default=None,
         help="REQUIRED path to git executable [default: %default]")
     parser.add_option(
+        "-e",
+        dest="EMAIL",
+        action="append",
+        default=[],
+        help="OPTIONAL additional email addresses [default: %default]")
+    parser.add_option(
         "-B", "--with-kayenta",
         dest="KAYENTA",
         action="store_true",
@@ -73,8 +79,9 @@ def main(argv):
         # mail the log file
         subj = '"[Payette Nightly: {0} - {1}]"'.format(ostype, retcode)
         rec = "tjfulle@sandia.gov"
-        subprocess.call("cat {0} | mail -s {1} {2}".format(log, subj, rec),
-                        shell=True, stdout=subprocess.PIPE,
+        cc = "" if not opts.EMAIL else "-c {0}".format(",".join(opts.EMAIL))
+        cmd = "cat {0} | mail -s {1} {2} {3}".format(log, subj, cc, rec)
+        subprocess.call(cmd, shell=True, stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT)
         sys.exit(retval)
 
