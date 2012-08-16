@@ -30,6 +30,7 @@ import linecache
 import numpy as np
 import pickle
 import inspect
+from textwrap import fill as textfill
 
 import Payette_config as pc
 import Source.Payette_extract as pe
@@ -163,8 +164,8 @@ def log_warning(message, limit=False, caller=None, pre="WARNING: ",
     if caller:
         caller = " [reported by: {0}]".format(caller)
 
-    message = ("{0}{1}{2}{3}{4}"
-               .format(beg, pre, message, caller, end))
+    message = (textfill("{0}{1}{2}{3}".format(beg, pre, message, caller),
+                        subsequent_indent=" "*(len(beg)+len(pre))) + end)
     if SIMLOG is not None:
         SIMLOG.write(message)
     sys.stdout.flush()
