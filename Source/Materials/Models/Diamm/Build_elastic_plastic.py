@@ -28,7 +28,7 @@ from Source.Payette_build import BuildError as BuildError
 
 class Build(MaterialBuilder):
 
-    def __init__(self,name,libname,compiler_info):
+    def __init__(self, name, libname, libdir, compiler_info):
 
         fdir,fnam = os.path.split(os.path.realpath(__file__))
 
@@ -36,7 +36,7 @@ class Build(MaterialBuilder):
         sigf = os.path.join(fdir, "Payette_elastic_plastic.pyf")
         # initialize base class
         MaterialBuilder.__init__(
-            self, name, libname, srcd, compiler_info, sigf=sigf)
+            self, name, libname, srcd, libdir, compiler_info, sigf=sigf)
 
         pass
 

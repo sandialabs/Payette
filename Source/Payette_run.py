@@ -125,6 +125,12 @@ def run_payette(argv, disp=0):
         action="store_true",
         default=False,
         help="Display visualization for passed files [default: %default]")
+    parser.add_option(
+        "-A",
+        dest="AUG_DIR",
+        action="store",
+        default=None,
+        help="Alternate material index file [default: %default]")
 
     # the following options have defaults set in runopt.py, later, we pass the
     # user requested options back to runopt.py so they are set of the rest of
@@ -295,6 +301,17 @@ def run_payette(argv, disp=0):
         return
 
     # ----------------------------------------------- start: get the user input
+    if opts.AUG_DIR is None:
+        material_index = pc.PC_MTLS_FILE
+    else:
+        if not os.path.isdir(opts.AUG_DIR):
+            parser.error("{0} not found".format(opts.AUG_DIR))
+        material_index = os.path.join(
+            opts.AUG_DIR, os.path.basename(pc.PC_MTLS_FILE))
+    if not os.path.isfile(material_index):
+        parser.error("{0} not found".format(material_index))
+
+
     if opts.verbosity:
         pu.log_message(pc.PC_INTRO, pre="")
 
@@ -325,7 +342,7 @@ def run_payette(argv, disp=0):
             if not os.path.isfile(barf_file):
                 parser.error("barf file {0} not found".format(barf_file))
 
-            PayetteBarf(barf_file)
+            PayetteBarf(barf_file, material_index)
 
         return 0
 
@@ -430,7 +447,7 @@ def run_payette(argv, disp=0):
 
     # we have a list of user input.  now create a generator to send to _run_job
     nsyms = len(user_input_sets) - 1
-    job_inp = ((item, opts, restart, timing, idx==nsyms)
+    job_inp = ((item, material_index, opts, restart, timing, idx==nsyms)
                for idx, item in enumerate(user_input_sets))
 
     # number of processors
@@ -545,7 +562,7 @@ def _run_job(args):
     """ run each individual job """
 
     # pass passed args to local arguments
-    user_input, opts, restart, timing, last = args
+    user_input, material_index, opts, restart, timing, last = args
 
     if timing:
         tim0 = time.time()
@@ -557,14 +574,14 @@ def _run_job(args):
 
     elif any("optimization" in x for x in user_input):
         # intantiate the Optimize object
-        the_model = po.Optimize(user_input)
+        the_model = po.Optimize(user_input, material_index)
 
     elif any("permutation" in x for x in user_input):
         # intantiate the Optimize object
-        the_model = pp.Permutate(user_input)
+        the_model = pp.Permutate(user_input, material_index)
 
     else:
-        the_model = pcntnr.Payette(user_input)
+        the_model = pcntnr.Payette(user_input, material_index)
 
     # run the job
     if timing:

@@ -67,7 +67,7 @@ class PayetteBarf(object):
 
     """
 
-    def __init__(self, barf_file):
+    def __init__(self, barf_file, material_index):
 
         pu.log_message("running barf file: {0}".format(barf_file))
 
@@ -80,7 +80,10 @@ class PayetteBarf(object):
             self.barf["lines"].append(line)
             continue
 
-        self.model_index = pmi.ModelIndex()
+        if not os.path.isfile(material_index):
+            pu.report_and_raise_error("{0} not found".format(material_index))
+
+        self.model_index = pmi.ModelIndex(pc.PC_MTLS_FILE)
 
         # get the barf info
         self.get_barf_info()
@@ -99,7 +102,7 @@ class PayetteBarf(object):
         # convert the barf file to a payette input
         self.payette_input = self._convert_to_payette()
 
-        the_model = pcntnr.Payette(self.payette_input)
+        the_model = pcntnr.Payette(self.payette_input, material_index)
         the_model.write_input_file()
 
         # the model has been set up, now advance the stress and state variables

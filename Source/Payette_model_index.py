@@ -51,7 +51,7 @@ class ModelIndex(object):
     """Class for indexing installed materials
 
     """
-    def __init__(self):
+    def __init__(self, index_file=None):
         """Initialize the ModelIndex object
 
         Parameters
@@ -60,8 +60,15 @@ class ModelIndex(object):
 
         """
 
-        # default index file name
-        self.index_file = pc.PC_MTLS_FILE
+        # index file name
+        if index_file is None:
+            index_file = pc.PC_MTLS_FILE
+
+        index_dir = os.path.dirname(index_file)
+        if not os.path.isdir(index_dir):
+            raise ModelIndexError(
+                "Directory {0} must first be created".format(index_dir))
+        self.index_file = index_file
 
         # initialize class data
         self._installed_constitutive_models = {}
@@ -111,9 +118,13 @@ class ModelIndex(object):
     def dump(self):
         """Dump self.constitutive_models to a file"""
         # dup the index file
+        if pc.PC_ROOT in self.index_file:
+            stubf = "PAYETTE_ROOT" + self.index_file.split(pc.PC_ROOT)[1]
+        else:
+            stubf = self.index_file
         sys.stdout.write(
             "\nINFO: writing constitutive model information to: {0}\n"
-            .format("PAYETTE_ROOT" + self.index_file.split(pc.PC_ROOT)[1]))
+            .format(stubf))
         with open(self.index_file, "wb") as fobj:
             pickle.dump(self._installed_constitutive_models, fobj)
         sys.stdout.write("INFO: constitutive model information written\n")

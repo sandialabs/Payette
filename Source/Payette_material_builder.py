@@ -33,14 +33,44 @@ from Source.Payette_build import BuildError as BuildError
 
 class MaterialBuilder(object):
 
-    def __init__(self, name, libname, srcd, compiler_info,
+    def __init__(self, name, libname, srcd, libdir, compiler_info,
                  sigf=None, incdirs=None, libdirs=None, libs=None):
+        """
+        Initialize the MaterialBuilder object.
+
+        Parameters
+        ----------
+        name : str
+           name of material
+        libname : str
+           name of library to be built
+        srcd : path
+           path to source directory
+        libdir : path
+           path to library directory where finished library will be copied
+        compiler_info : dict
+           information about compiler
+        sigf : path, optional
+           path to f2py signature file
+        incdirs : path, optional
+           path to include directories
+        libdirs : path, optional
+           path to library directories
+        libs : path, optional
+           libraries to use when compiling
+
+        """
 
         self.name = name
         self.source_directory = srcd
         self.source_files = []
         self.libname = libname
         self.pre_directives = []
+
+        # directory to copy libraries
+        if not os.path.isdir(libdir):
+            raise BuildError("library directory {0} not found".format(libdir))
+        self.payette_libdir = libdir
 
         # signature file and migutils
         self.signature_file = sigf
@@ -112,9 +142,9 @@ class MaterialBuilder(object):
             raise BuildError("Stopping due to previous errors.", 10)
 
         # remove extension module files if they exist
-        for d in [self.source_directory, pc.PC_MTLS_LIBRARY]:
+        for d in [self.source_directory, self.payette_libdir]:
             try:
-                os.remove(os.path.join(d,self.libname))
+                os.remove(os.path.join(d, self.libname))
             except OSError:
                 pass
 
@@ -185,7 +215,7 @@ class MaterialBuilder(object):
 
         # copy the extension module file to the library directory
         shutil.move(self.libname,
-                    os.path.join(pc.PC_MTLS_LIBRARY, self.libname))
+                    os.path.join(self.payette_libdir, self.libname))
 
         try:
             os.remove(echo)

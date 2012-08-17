@@ -145,6 +145,13 @@ def build_payette(argv):
         default=[],
         help=("Additional directories to scan for materials, accumulated "
               "[default: %default]."))
+    parser.add_option(
+        "-A",
+        dest="AUG_DIR",
+        action="store",
+        default=None,
+        help=("Augment existing materials by building in place the "
+              "materials in the passed directory [default: %default]."))
     (opts, args) = parser.parse_args(argv)
 
     if len(args) > 0:
@@ -174,14 +181,24 @@ def build_payette(argv):
 
     # directories to search for materials
     search_directories = []
-    material_directories = pc.PC_MTLDIRS
-    material_directories.extend([os.path.expanduser(x) for x in opts.MTLDIRS])
-    for directory in material_directories:
-        for item in os.walk(directory):
-            dirnam = os.path.realpath(item[0])
-            if dirnam not in search_directories:
-                search_directories.append(dirnam)
-            continue
+    if opts.AUG_DIR is None:
+        payette_mtls_file = pc.PC_MTLS_FILE
+        payette_libdir = pc.PC_MTLS_LIBRARY
+        material_directories = pc.PC_MTLDIRS
+        material_directories.extend([os.path.expanduser(x) for x in opts.MTLDIRS])
+        for directory in material_directories:
+            for item in os.walk(directory):
+                dirnam = os.path.realpath(item[0])
+                if dirnam not in search_directories:
+                    search_directories.append(dirnam)
+                continue
+    else:
+        if not os.path.isdir(opts.AUG_DIR):
+            parser.error("{0} not found".format(opts.AUG_DIR))
+        payette_mtls_file = os.path.join(opts.AUG_DIR,
+                                         os.path.basename(pc.PC_MTLS_FILE))
+        payette_libdir = opts.AUG_DIR
+        search_directories.append(opts.AUG_DIR)
 
     # prepare compiler options
     if pc.PC_FCOMPILER:
@@ -203,13 +220,15 @@ def build_payette(argv):
     build = BuildPayette(
         search_directories=search_directories,
         requested_materials=requested_materials,
-        compiler_info=compiler_info)
+        compiler_info=compiler_info,
+        libdir=payette_libdir)
 
     build.collect_all_materials()
 
     nproc = min(mp.cpu_count(), opts.NPROC)
     build.build_libraries(nproc=nproc)
-    build.write_installed_materials_file()
+
+    build.write_installed_materials_file(payette_mtls_file)
 
     return build.errors
 
@@ -241,11 +260,12 @@ class BuildError(Exception):
 class BuildPayette(object):
 
     def __init__(self, search_directories=None, requested_materials=None,
-                 compiler_info=None):
+                 compiler_info=None, libdir=None):
 
         # verify each search directory exists
-        if search_directories is None:
+        if not search_directories:
             raise BuildError("No search directories given.")
+
         for directory in search_directories:
             if not os.path.isdir(directory):
                 pu.report_error("search directory {0} not found"
@@ -265,6 +285,10 @@ class BuildPayette(object):
             compiler_info = {}
         self.compiler_info = compiler_info
         self.errors = 0
+
+        if libdir is None:
+            libdir = pc.PC_MTLS_LIBRARY
+        self.libdir = libdir
 
         pass
 
@@ -413,7 +437,7 @@ class BuildPayette(object):
 
         # build the libraries
         nproc = min(nproc, len(self.materials_to_build))
-        requested_builds = [(key, val, self.compiler_info)
+        requested_builds = [(key, val, self.compiler_info, self.libdir)
                             for key, val in self.materials_to_build.items()]
         if nproc > 1:
             ro.set_global_option("VERBOSITY", False)
@@ -471,14 +495,14 @@ class BuildPayette(object):
 
         return
 
-    def write_installed_materials_file(self):
-        """ Write the Source/Materials/Payette_materials.py file containing a
+    def write_installed_materials_file(self, index_file):
+        """ Write the Source/installed_materials.pkl file containing a
         dictionary of installed models and model attributes
 
         """
 
         # get list of previously installed materials
-        model_index = pmi.ModelIndex()
+        model_index = pmi.ModelIndex(index_file)
 
         # remove materials that failed to build from constitutive models, and
         # add materials that were built to constitutive models, if not already
@@ -501,7 +525,7 @@ def _build_lib(args):
 
     """ build the material library for payette_material """
 
-    material, material_data, compiler_info = args
+    material, material_data, compiler_info, libdir = args
 
     # get attributes
     libname = material_data["libname"]
@@ -515,11 +539,11 @@ def _build_lib(args):
     # import build script
     py_mod, py_path = pu.get_module_name_and_path(build_script)
     fobj, pathname, description = imp.find_module(py_mod, py_path)
-    build = imp.load_module(py_mod, fobj, pathname, description)
+    build_module = imp.load_module(py_mod, fobj, pathname, description)
     fobj.close()
 
     try:
-        build = build.Build(material, libname, compiler_info)
+        build = build_module.Build(material, libname, libdir, compiler_info)
         build_error = build.build_extension_module()
 
     except BuildError as error:

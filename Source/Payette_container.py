@@ -71,7 +71,7 @@ class PayetteError(Exception):
         Exception.__init__(self, self.message)
 
 
-class Payette:
+class Payette(object):
     """
     CLASS NAME
        Payette
@@ -85,7 +85,7 @@ class Payette:
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     """
 
-    def __init__(self, input_lines):
+    def __init__(self, input_lines, material_index):
 
         # instantiate the user input object
         self.input_lines = input_lines
@@ -116,9 +116,12 @@ class Payette:
                     "cannot create simulation directory: {0}"
                     .format(self.simdir))
 
-
         self.name = self.user_input.get_simulation_key()
         self._open_files = {}
+
+        # material index file
+        if not os.path.isfile(material_index):
+            raise PayetteError("{0} not found".format(material_index))
 
         # default variables
         self.dtable_fobj = None
@@ -192,7 +195,11 @@ class Payette:
             raise PayetteError(
                 "material block not found for {0}"
                 .format(self.name))
-        self.material = _parse_mtl_block(material)
+        model_name, user_params, user_options = _parse_mtl_block(material)
+        # instantiate the material object
+        self.material = Material(model_name, user_params,
+                                 material_index, **user_options)
+
         self.matdat = self.material.material_data()
 
         # set up boundary and leg blocks
@@ -749,9 +756,6 @@ def _parse_mtl_block(material_inp):
     # spaces with _ in all model names and convert to lower case
     model_name = model_name.lower().replace(" ", "_")
 
-    # instantiate the material object
-    material = Material(model_name, user_params, **user_options)
-
-    return material
+    return model_name, user_params, user_options
 
 

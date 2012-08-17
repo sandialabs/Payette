@@ -879,7 +879,7 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
 
     """
 
-    model_index = pmi.ModelIndex()
+    model_index = pmi.ModelIndex(pc.PC_MTLS_FILE)
 
     iam = "find_tests"
 
