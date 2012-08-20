@@ -735,19 +735,23 @@ def clean_payette():
                       "*.math1", "*.math2", "*.props", "*.vtable", "*.dtable"]
     pats_to_remove.extend(PC_BUILT_EXES.keys())
 
-    for item in os.walk(PC_ROOT):
-        dirnam, files = item[0], item[2]
+    dirs_to_clean = ["Aux", "Benchmarks", "Documents", "Examples",
+                     "Source", "Toolset",]
 
-        if ".svn" in dirnam:
+    for directory in dirs_to_clean:
+        for item in os.walk(os.path.join(PC_ROOT, directory)):
+            dirnam, files = item[0], item[2]
+
+            if ".svn" in dirnam:
+                continue
+
+            for fnam in files:
+                if any(fnmatch(fnam, pat) for pat in pats_to_remove):
+                    os.remove(osp.join(dirnam, fnam))
+
+                continue
+
             continue
-
-        for fnam in files:
-            if any(fnmatch(fnam, pat) for pat in pats_to_remove):
-                os.remove(osp.join(dirnam, fnam))
-
-            continue
-
-        continue
 
     return
 
