@@ -330,6 +330,35 @@ contains
     return
   end function inv
 
+  function sym_inv(a)
+    !---------------------------------------------------------------------------!
+    ! compute the inverse of a.
+    !
+    ! Parameters
+    ! ----------
+    ! a: 3x3 matrix stored as 6x1 array
+    !
+    ! Returns
+    ! -------
+    ! inv: inverse of a stored as 6x1 array
+    !---------------------------------------------------------------------------!
+    implicit none
+    !......................................................................passed
+    real(kind=fp) :: det
+    real(kind=fp), dimension(6) :: a, sym_inv
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~sym_inv
+    det = a(1) * a(2) * a(3) - a(3) * a(4) ** 2 - a(1) * a(5) ** 2 &
+          + two * a(4) * a(5) * a(6) - a(2) * a(6) ** 2
+    sym_inv = (/a(2) * a(3) - a(5) ** 2, &
+                a(1) * a(3) - a(6) ** 2, &
+                a(1) * a(2) - a(4) ** 2, &
+                -(a(3) * a(4)) + a(5) * a(6), &
+                -(a(1) * a(5)) + a(4) * a(6), &
+                a(4) * a(5) - a(2) * a(6)/)
+    sym_inv = sym_inv / det
+    return
+  end function sym_inv
+
   function dp9x6(a, b)
     !---------------------------------------------------------------------------!
     ! compute the dot product a.b
