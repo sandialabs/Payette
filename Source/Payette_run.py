@@ -132,6 +132,18 @@ def run_payette(argv, disp=0):
         default=None,
         help="Alternate material index file [default: %default]")
 
+    # The following option is only valid if the user configured with Lambda
+    if pc.LAMBDA_MDLS:
+        help_message = "Use lambda models"
+    else:
+        help_message = "Payette must be configured for Lambda models to use -L"
+    parser.add_option(
+        "-L",
+        dest="LAMBDA",
+        action="store_true",
+        default=False,
+        help=help_message + " [default: %default]")
+
     # the following options have defaults set in runopt.py, later, we pass the
     # user requested options back to runopt.py so they are set of the rest of
     # the modules used by runPayette
@@ -301,15 +313,24 @@ def run_payette(argv, disp=0):
         return
 
     # ----------------------------------------------- start: get the user input
-    if opts.AUG_DIR is None:
-        material_index = pc.PC_MTLS_FILE
-    else:
+    if opts.AUG_DIR is not None and opts.LAMBDA:
+        parser.error("Cannot specify -A and -L")
+
+    if opts.AUG_DIR is not None:
         if not os.path.isdir(opts.AUG_DIR):
             parser.error("{0} not found".format(opts.AUG_DIR))
         material_index = os.path.join(
             opts.AUG_DIR, os.path.basename(pc.PC_MTLS_FILE))
+    elif opts.LAMBDA:
+        material_index = os.path.join(
+            pc.LAMBDA_MDLS[0], os.path.basename(pc.PC_MTLS_FILE))
+    else:
+        material_index = pc.PC_MTLS_FILE
+
     if not os.path.isfile(material_index):
-        parser.error("{0} not found".format(material_index))
+        pu.report_and_raise_error(
+            "buildPayette must first be executed to create\n\t{0}"
+            .format(material_index))
 
 
     if opts.verbosity:
@@ -644,10 +665,6 @@ def print_final_timing_info(tim0):
 
 
 if __name__ == "__main__":
-
-    if not os.path.isfile(pc.PC_MTLS_FILE):
-        pu.report_and_raise_error(
-            "buildPayette must be executed before tests can be run")
 
     ARGV = sys.argv[1:]
 

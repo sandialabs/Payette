@@ -152,6 +152,19 @@ def build_payette(argv):
         default=None,
         help=("Augment existing materials by building in place the "
               "materials in the passed directory [default: %default]."))
+
+    # The following option is only valid if the user configured with Lambda
+    if pc.LAMBDA_MDLS:
+        help_message = "Build the lambda models"
+    else:
+        help_message = "Payette must be configured for Lambda models to use -L"
+    parser.add_option(
+        "-L",
+        dest="LAMBDA",
+        action="store_true",
+        default=False,
+        help=help_message + " [default: %default]")
+
     (opts, args) = parser.parse_args(argv)
 
     if len(args) > 0:
@@ -181,7 +194,29 @@ def build_payette(argv):
 
     # directories to search for materials
     search_directories = []
-    if opts.AUG_DIR is None:
+    if opts.AUG_DIR is not None and opts.LAMBDA:
+        parser.error("Cannot specify -A and -L")
+
+    if opts.AUG_DIR is not None:
+        if not os.path.isdir(opts.AUG_DIR):
+            parser.error("{0} not found".format(opts.AUG_DIR))
+        payette_mtls_file = os.path.join(opts.AUG_DIR,
+                                         os.path.basename(pc.PC_MTLS_FILE))
+        payette_libdir = opts.AUG_DIR
+        for dirnam, dirs, files in os.walk(opts.AUG_DIR):
+            search_directories.append(dirnam)
+
+    elif opts.LAMBDA:
+        if not pc.LAMBDA_MDLS:
+            parser.error("Lambda models not configured")
+
+        _lambda, _lambda_mdls = pc.LAMBDA_MDLS[0], pc.LAMBDA_MDLS[1:]
+        payette_mtls_file = os.path.join(_lambda,
+                                         os.path.basename(pc.PC_MTLS_FILE))
+        payette_libdir = _lambda
+        search_directories.extend(_lambda_mdls)
+
+    else:
         payette_mtls_file = pc.PC_MTLS_FILE
         payette_libdir = pc.PC_MTLS_LIBRARY
         material_directories = pc.PC_MTLDIRS
@@ -192,13 +227,6 @@ def build_payette(argv):
                 if dirnam not in search_directories:
                     search_directories.append(dirnam)
                 continue
-    else:
-        if not os.path.isdir(opts.AUG_DIR):
-            parser.error("{0} not found".format(opts.AUG_DIR))
-        payette_mtls_file = os.path.join(opts.AUG_DIR,
-                                         os.path.basename(pc.PC_MTLS_FILE))
-        payette_libdir = opts.AUG_DIR
-        search_directories.append(opts.AUG_DIR)
 
     # prepare compiler options
     if pc.PC_FCOMPILER:
@@ -496,7 +524,7 @@ class BuildPayette(object):
         return
 
     def write_installed_materials_file(self, index_file):
-        """ Write the Source/installed_materials.pkl file containing a
+        """ Write the Source/payette_materials.db file containing a
         dictionary of installed models and model attributes
 
         """

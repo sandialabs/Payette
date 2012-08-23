@@ -54,6 +54,7 @@ nocallback.signature.pyf
 host_defines.h
 TestResults.*
 installed_materials.pkl
+payette_materials.db
 
 # Example output
 Examples/exmpl_*.opt*

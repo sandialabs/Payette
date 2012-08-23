@@ -20,7 +20,6 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-
 from __future__ import print_function
 import os
 import os.path as osp
@@ -33,7 +32,6 @@ __version__ = "1.0.1"
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
 
 def check_exists(itemnam, item):
-
     """ check if item exists on file system """
 
     if not isinstance(item, (list, tuple)):
@@ -47,6 +45,26 @@ def check_exists(itemnam, item):
 
     return errors
 
+
+def find_mtl_directories(dirpath, exclude=[]):
+    """Walk through dirpath and find directories that have Payette control
+    files
+
+    Parameters
+    ----------
+    dirpath : str
+       path to directory to search
+
+    Returns
+    -------
+    mtl_directories : list
+       list of directories containing control files
+    """
+    return [dirnam for dirnam, dirs, files in os.walk(dirpath)
+            if (".svn" not in dirnam and
+                ".git" not in dirnam and
+                dirnam not in exclude and
+                any("_control.xml" in y for y in files))]
 
 def begmes(msg, pre="", end="  "):
 
@@ -215,6 +233,7 @@ SPACE = "      "
 # --- All environmental variables used by Payette are listed here
 ENV_BENCHDIR = "PAYETTE_BENCHDIR"
 ENV_MTLDIR = "PAYETTE_MTLDIR"
+ENV_LAMBDA = "LAMBDA_ROOT"
 
 # --- base level directories
 THIS_FILE = osp.realpath(__file__)
@@ -291,27 +310,42 @@ ERRORS += check_exists("PC_INPUTS", PC_INPUTS)
 
 # PC_MTLDIRS is the directory where we search for Payette material models
 PC_MTLS = osp.join(PC_SOURCE, "Materials")
+ERRORS += check_exists("PC_MTLS", PC_MTLS)
 PC_MTLDIRS = [osp.join(PC_MTLS, "Models")]
 USER_MTLS = os.getenv(ENV_MTLDIR, "")
 PC_MTLDIRS.extend([x for x in USER_MTLS.split(os.pathsep) if x])
+
+# expand PC_MTLDIRS
 for mtl_d in [x for x in PC_MTLDIRS]:
     if osp.isdir(mtl_d):
-        for dirnam, dirs, files in os.walk(mtl_d):
-            if (".svn" not in dirnam and ".git" not in dirnam and
-                dirnam not in PC_MTLS and
-                any(y.endswith(".py") for y in files if y != "__init__.py")):
-                PC_MTLDIRS.append(dirnam)
-            continue
+        PC_MTLDIRS.extend(find_mtl_directories(mtl_d, exclude=PC_MTLS))
     continue
+
+# PC_LAMBDA_MDLS contains directories where we search for Lambda models
+LAMBDA = os.getenv(ENV_LAMBDA)
+LAMBDA_MDLS = []
+if LAMBDA is not None:
+    if not osp.isdir(LAMBDA):
+        logerr("{0} not found".format(LAMBDA))
+        ERRORS += 1
+    else:
+        if "library/models" not in LAMBDA:
+            LAMBDA = osp.join(LAMBDA, "library/models")
+        if not osp.isdir(LAMBDA):
+            logerr("expected to find {0} but did not".format(LAMBDA))
+            ERRORS += 1
+        else:
+            LAMBDA_MDLS.extend(find_mtl_directories(LAMBDA, exclude=PC_MTLS))
+            LAMBDA_MDLS.insert(0, LAMBDA.replace("/library/models", ""))
+
 PC_FORTRAN = osp.join(PC_SOURCE, "Fortran")
 PC_MIG_UTILS = osp.join(PC_FORTRAN, "migutils.F")
-ERRORS += check_exists("PC_MTLS", PC_MTLS)
 ERRORS += check_exists("PC_MIG_UTILS", PC_MIG_UTILS)
 
 # --- Subdirectories of PC_MTLS
 PC_MTLS_LIBRARY = osp.join(PC_MTLS, "Library")
 PC_MTLS_INCLUDES = osp.join(PC_MTLS, "Includes")
-PC_MTLS_FILE = osp.join(PC_SOURCE, "installed_materials.pkl")
+PC_MTLS_FILE = osp.join(PC_SOURCE, "payette_materials.db")
 ERRORS += check_exists("PC_MTLS_LIBRARY", PC_MTLS_LIBRARY)
 ERRORS += check_exists("PC_MTLS_INCLUDES", PC_MTLS_INCLUDES)
 
@@ -336,6 +370,7 @@ PAYETTE_CONFIG["PC_TOOLS"] = PC_TOOLS
 PAYETTE_CONFIG["PC_FOUND_TESTS"] = PC_FOUND_TESTS
 PAYETTE_CONFIG["PC_MTLS"] = PC_MTLS
 PAYETTE_CONFIG["PC_MTLDIRS"] = PC_MTLDIRS
+PAYETTE_CONFIG["LAMBDA_MDLS"] = LAMBDA_MDLS
 PAYETTE_CONFIG["PC_FORTRAN"] = PC_FORTRAN
 PAYETTE_CONFIG["PC_MIG_UTILS"] = PC_MIG_UTILS
 PAYETTE_CONFIG["PC_MTLS_LIBRARY"] = PC_MTLS_LIBRARY
@@ -448,6 +483,12 @@ def configure_payette(argv):
         default=[],
         help="Additional directories to scan for materials [default: %default]")
     parser.add_option(
+        "--lambda",
+        dest="LAMBDA",
+        action="store",
+        default=None,
+        help="Location of Lambda [default: %default]")
+    parser.add_option(
         "-B",
         dest="DONTWRITEBYTECODE",
         action="store_true",
@@ -514,6 +555,11 @@ def configure_payette(argv):
     else:
         logmes("${0} set".format(ENV_BENCHDIR), pre=SPACE)
 
+    if not LAMBDA_MDLS:
+        logmes("Lambda models not configured", pre=SPACE)
+    else:
+        logmes("Lambda models configured", pre=SPACE)
+
     # configure Payette
     loginf("configuring Payette environment")
 
@@ -563,6 +609,25 @@ def configure_payette(argv):
         continue
     sys.path.extend(PC_MTLDIRS)
 
+    # check for Lambda
+    if opts.LAMBDA is not None:
+        _lambda = osp.expanduser(opts.LAMBDA)
+        if LAMBDA_MDLS:
+            errors += 1
+            logerr("Environment variable LAMBDA_ROOT already specified")
+        elif not osp.isdir(_lambda):
+            errors += 1
+            logerr("{0} not found".format(_lambda))
+        else:
+            if "library/models" not in _lambda:
+                _lambda = osp.join(_lambda, "library/models")
+            if not osp.isdir(_lambda):
+                    logerr("expected to find {0} but did not".format(_lambda))
+                    errors += 1
+            else:
+                LAMBDA_MDLS.extend(find_mtl_directories(_lambda, exclude=PC_MTLS))
+                LAMBDA_MDLS.insert(0, _lambda.replace("/library/models", ""))
+
     if errors:
         sys.exit("ERROR: stopping due to previous errors")
 
@@ -578,6 +643,8 @@ def configure_payette(argv):
 
     # make sure PC_ROOT is first on PYTHONPATH
     pypath = os.pathsep.join([PC_ROOT, PC_TOOLS] + PC_MTLDIRS)
+    if LAMBDA_MDLS:
+        pypath = pypath + os.pathsep + os.pathsep.join(LAMBDA_MDLS)
     if "PYTHONPATH" in ENV:
         pypath += (
             os.pathsep +
@@ -596,6 +663,8 @@ def configure_payette(argv):
         fnew.write("if PC_ROOT not in sys.path: "
                    "sys.path.insert(0, PC_ROOT)\n")
         fnew.write("sys.path.extend(PC_MTLDIRS)\n")
+        if LAMBDA_MDLS:
+            fnew.write("sys.path.extend(LAMBDA_MDLS)\n")
         for key, val in ENV.items():
             fnew.write('os.environ["{0}"] = "{1}"\n'.format(key, val))
             continue
@@ -660,7 +729,7 @@ fi
                 fnew.write("{0} {1} $* 2>&1\n".format(PC_PYINT, py_file))
 
             elif name in ("runPayette", ):
-                fnew.write(exit_msg)
+                # fnew.write(exit_msg)
                 if PAYETTE_CONFIG["VIZ_COMPATIBLE"]:
                     # option to launch gui with runPayette
                     fnew.write("args=$*\nargv=\nfor arg in ${args} ; do\n")
@@ -676,7 +745,7 @@ fi
                     fnew.write("{0} {1} $* 2>&1\n".format(PC_PYINT, py_file))
 
             else:
-                fnew.write(exit_msg)
+                # fnew.write(exit_msg)
                 fnew.write("{0} {1} $* 2>&1\n".format(PC_PYINT, py_file))
 
         os.chmod(exe_path, 0o750)
@@ -730,7 +799,8 @@ def clean_payette():
 
     pats_to_remove = ["*.pyc", "*.pyo", "Payette_config.py",
                       "*{0}".format(soext),
-                      "installed_materials.pkl", "__found_tests__.py",
+                      "payette_materials.db", "installed_materials.pkl",
+                      "__found_tests__.py",
                       "*.log", "*.echo", "*.prf", "*.diff", "*.xout", "*.out",
                       "*.math1", "*.math2", "*.props", "*.vtable", "*.dtable"]
     pats_to_remove.extend(PC_BUILT_EXES.keys())
