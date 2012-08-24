@@ -205,6 +205,7 @@ class Payette(object):
         # set up boundary and leg blocks
         boundary = self.user_input.get_block("boundary")
         legs = self.user_input.get_block("legs")
+        efield = self.user_input.get_block("efield")
         if boundary is None:
             raise PayetteError(
                 "boundary block not found for {0}"
@@ -222,7 +223,8 @@ class Payette(object):
             Boundary = pb.EOSBoundary
 
         try:
-            self.boundary = Boundary(boundary, legs)
+            bkwargs = {"boundary": boundary, "legs": legs, "efield": efield}
+            self.boundary = Boundary(**bkwargs)
 
         except BoundaryError as error:
             pu.report_and_raise_error(

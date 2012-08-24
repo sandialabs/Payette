@@ -272,6 +272,86 @@ contains
     return
   end function pull
 
+  function pushv(a, f, flg)
+    !---------------------------------------------------------------------------!
+    ! Push the vector a forward
+    !
+    !  If flg == 0
+    !      pushv = inv(transpose(f)) . a
+    !
+    !  else
+    !      pushv = 1 / detf * f . a
+    !
+    !
+    !---------------------------------------------------------------------------!
+    implicit none
+    !......................................................................passed
+    integer, intent(in) :: flg
+    real(kind=fp), dimension(3), intent(in) :: a
+    real(kind=fp), dimension(9), intent(in) :: f
+    real(kind=fp), dimension(3) :: pushv
+    !.......................................................................local
+    real(kind=fp) :: detf, dnom
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~pushv
+    if(flg == 0) then
+       dnom = f(3) * f(5) * f(7) - f(2) * f(6) * f(7) - f(3) * f(4) * f(8) +  &
+              f(1) * f(6) * f(8) + f(2) * f(4) * f(9) - f(1) * f(5) * f(9)
+       pushv = (/&
+            (a(3) * f(5) * f(7) - a(2) * f(6) * f(7) - a(3) * f(4) * f(8) + &
+             a(1) * f(6) * f(8) + a(2) * f(4) * f(9) - a(1) * f(5) * f(9)), &
+             !
+            -a(3) * f(2) * f(7) + a(3) * f(1) * f(8) + a(2) * f(3) * f(7) - &
+             a(2) * f(1) * f(9) - a(1) * f(3) * f(8) + a(1) * f(2) * f(9),  &
+             !
+             a(3) * f(2) * f(4) - a(2) * f(3) * f(4) - a(3) * f(1) * f(5) + &
+             a(1) * f(3) * f(5) + a(2) * f(1) * f(6) - a(1) * f(2) * f(6)/)
+       pushv = pushv / dnom
+    else
+       detf = f(3) * (f(4) * f(8) - f(5) * f(7)) + &
+              f(2) * (f(6) * f(7) - f(4) * f(9)) + &
+              f(1) * (f(5) * f(9) - f(6) * f(8))
+       pushv = one / detf * (/a(1) * f(1) + a(2) * f(2) + a(3) * f(3), &
+                              a(1) * f(4) + a(2) * f(5) + a(3) * f(6), &
+                              a(1) * f(7) + a(2) * f(8) + a(3) * f(9)/)
+    end if
+  end function pushv
+
+  function pullv(a, f, flg)
+    !---------------------------------------------------------------------------!
+    ! Pull the vector a back
+    !
+    ! If flg == 0
+    !      pullv = transpose(f) . a
+    !
+    ! else
+    !      pullv = detf * inv(f) . a
+    !---------------------------------------------------------------------------!
+    implicit none
+    !......................................................................passed
+    integer, intent(in) :: flg
+    real(kind=fp), dimension(3), intent(in) :: a
+    real(kind=fp), dimension(9), intent(in) :: f
+    real(kind=fp), dimension(3) :: pullv
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~pushv
+    if(flg == 0) then
+       pullv = (/a(1) * f(1) + a(2) * f(4) + a(3) * f(7), &
+                 a(1) * f(2) + a(2) * f(5) + a(3) * f(8), &
+                 a(1) * f(3) + a(2) * f(6) + a(3) * f(9)/)
+    else
+       pullv = (/a(3) * (f(2) * f(6) - f(3) * f(5)) + &
+                 a(2) * (f(3) * f(8) - f(2) * f(9)) + &
+                 a(1) * (f(5) * f(9) - f(6) * f(8)), &
+                 !
+                 a(3) * (f(3) * f(4) - f(1) * f(6)) + &
+                 a(2) * (f(1) * f(9) - f(3) * f(7)) + &
+                 a(1) * (f(6) * f(7) - f(4) * f(9)), &
+                 !
+                 a(3) * (f(1) * f(5) - f(2) * f(4)) + &
+                 a(2) * (f(2) * f(7) - f(1) * f(8)) + &
+                 a(1) * (f(4) * f(8) - f(5) * f(7))/)
+    end if
+  end function pullv
+
   function unrot(a, r)
     !---------------------------------------------------------------------------!
     implicit none

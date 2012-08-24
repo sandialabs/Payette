@@ -234,6 +234,7 @@ SPACE = "      "
 ENV_BENCHDIR = "PAYETTE_BENCHDIR"
 ENV_MTLDIR = "PAYETTE_MTLDIR"
 ENV_LAMBDA = "LAMBDA_ROOT"
+ENV_ALEGRA = "ALEGRANEVADA"
 
 # --- base level directories
 THIS_FILE = osp.realpath(__file__)
@@ -250,7 +251,7 @@ PC_FOUND_TESTS = osp.join(PC_TOOLS, "__found_tests__.py")
 
 # modify sys.path
 if PC_ROOT not in sys.path:
-    sys.path.insert(0, PC_ROOT)
+    sys.path.append(PC_ROOT)
 
 ERRORS += check_exists("PC_ROOT", PC_ROOT)
 ERRORS += check_exists("PC_AUX", PC_AUX)
@@ -321,7 +322,8 @@ for mtl_d in [x for x in PC_MTLDIRS]:
         PC_MTLDIRS.extend(find_mtl_directories(mtl_d, exclude=PC_MTLS))
     continue
 
-# PC_LAMBDA_MDLS contains directories where we search for Lambda models
+# ------- Sandia National Labs specific material directories ---------------- #
+# LAMBDA_MDLS contains directories where we search for Lambda models
 LAMBDA = os.getenv(ENV_LAMBDA)
 LAMBDA_MDLS = []
 if LAMBDA is not None:
@@ -337,6 +339,22 @@ if LAMBDA is not None:
         else:
             LAMBDA_MDLS.extend(find_mtl_directories(LAMBDA, exclude=PC_MTLS))
             LAMBDA_MDLS.insert(0, LAMBDA.replace("/library/models", ""))
+
+# ALEGRA contains directories where we search for Alegra models
+ALEGRA = os.getenv(ENV_ALEGRA)
+ALEGRA_MDLS = []
+if ALEGRA is not None:
+    if not osp.isdir(ALEGRA):
+        logerr("{0} not found".format(ALEGRA))
+        ERRORS += 1
+    else:
+        _alegra = osp.join(ALEGRA, "alegra/material_libs/utils/payette")
+        if not osp.isdir(_alegra):
+            logerr("expected to find {0} but did not".format(_alegra))
+            ERRORS += 1
+        else:
+            ALEGRA_MDLS.append(_alegra)
+# --------------------------------------------------------------------------- #
 
 PC_FORTRAN = osp.join(PC_SOURCE, "Fortran")
 PC_MIG_UTILS = osp.join(PC_FORTRAN, "migutils.F")
@@ -370,7 +388,6 @@ PAYETTE_CONFIG["PC_TOOLS"] = PC_TOOLS
 PAYETTE_CONFIG["PC_FOUND_TESTS"] = PC_FOUND_TESTS
 PAYETTE_CONFIG["PC_MTLS"] = PC_MTLS
 PAYETTE_CONFIG["PC_MTLDIRS"] = PC_MTLDIRS
-PAYETTE_CONFIG["LAMBDA_MDLS"] = LAMBDA_MDLS
 PAYETTE_CONFIG["PC_FORTRAN"] = PC_FORTRAN
 PAYETTE_CONFIG["PC_MIG_UTILS"] = PC_MIG_UTILS
 PAYETTE_CONFIG["PC_MTLS_LIBRARY"] = PC_MTLS_LIBRARY
@@ -395,6 +412,8 @@ PAYETTE_CONFIG["PC_BUILT_EXES"] = PC_BUILT_EXES
 PAYETTE_CONFIG["PC_NUMPY_VER"] = PC_NUMPY_VER
 PAYETTE_CONFIG["PC_SCIPY_VER"] = PC_SCIPY_VER
 PAYETTE_CONFIG["VIZ_COMPATIBLE"] = False
+PAYETTE_CONFIG["LAMBDA_MDLS"] = LAMBDA_MDLS
+PAYETTE_CONFIG["ALEGRA_MDLS"] = ALEGRA_MDLS
 
 # --- set up the environment
 ENV = {}
@@ -489,6 +508,12 @@ def configure_payette(argv):
         default=None,
         help="Location of Lambda [default: %default]")
     parser.add_option(
+        "--alegra",
+        dest="ALEGRA",
+        action="store",
+        default=None,
+        help="Location of alegranevada [default: %default]")
+    parser.add_option(
         "-B",
         dest="DONTWRITEBYTECODE",
         action="store_true",
@@ -542,23 +567,6 @@ def configure_payette(argv):
 
     else:
         loginf("DISPLAY not set, visualization suite cannot be imported")
-
-    # Report on environmental variables
-    loginf("checking for Payette-related environmental variables")
-    if USER_MTLS == "":
-        logmes("${0} not set".format(ENV_MTLDIR), pre=SPACE)
-    else:
-        logmes("${0} set".format(ENV_MTLDIR), pre=SPACE)
-
-    if USER_TESTS == "":
-        logmes("${0} not set".format(ENV_BENCHDIR), pre=SPACE)
-    else:
-        logmes("${0} set".format(ENV_BENCHDIR), pre=SPACE)
-
-    if not LAMBDA_MDLS:
-        logmes("Lambda models not configured", pre=SPACE)
-    else:
-        logmes("Lambda models configured", pre=SPACE)
 
     # configure Payette
     loginf("configuring Payette environment")
@@ -628,6 +636,23 @@ def configure_payette(argv):
                 LAMBDA_MDLS.extend(find_mtl_directories(_lambda, exclude=PC_MTLS))
                 LAMBDA_MDLS.insert(0, _lambda.replace("/library/models", ""))
 
+    # check for Alegra
+    if opts.ALEGRA is not None:
+        _alegra = osp.expanduser(opts.ALEGRA)
+        if ALEGRA_MDLS:
+            errors += 1
+            logerr("Environment variable ALEGRANEVADA already specified")
+        elif not osp.isdir(_alegra):
+            errors += 1
+            logerr("{0} not found".format(_alegra))
+        else:
+            _alegra = osp.join(_alegra, "alegra/material_libs/utils/payette")
+            if not osp.isdir(_alegra):
+                logerr("expected to find {0} but did not".format(_alegra))
+                errors += 1
+            else:
+                ALEGRA_MDLS.append(_alegra)
+
     if errors:
         sys.exit("ERROR: stopping due to previous errors")
 
@@ -642,15 +667,38 @@ def configure_payette(argv):
         ENV["PYTHONDONTWRITEBYTECODE"]=""
 
     # make sure PC_ROOT is first on PYTHONPATH
-    pypath = os.pathsep.join([PC_ROOT, PC_TOOLS] + PC_MTLDIRS)
-    if LAMBDA_MDLS:
-        pypath = pypath + os.pathsep + os.pathsep.join(LAMBDA_MDLS)
-    if "PYTHONPATH" in ENV:
-        pypath += (
-            os.pathsep +
-            os.pathsep.join([x for x in ENV["PYTHONPATH"].split(os.pathsep)
-                             if x not in pypath.split(os.pathsep)]))
+    pypath = os.pathsep.join([PC_ROOT, PC_TOOLS]) # + PC_MTLDIRS)
+#    if LAMBDA_MDLS:
+#        pypath = pypath + os.pathsep + os.pathsep.join(LAMBDA_MDLS)
+#    if "PYTHONPATH" in ENV:
+#        pypath += (
+#            os.pathsep +
+#            os.pathsep.join([x for x in ENV["PYTHONPATH"].split(os.pathsep)
+#                             if x not in pypath.split(os.pathsep)]))
     ENV["PYTHONPATH"] = pypath
+
+    # ------ Report on environmental variables --------------------------------
+    loginf("checking for Payette-related environmental variables")
+    if USER_MTLS == "":
+        logmes("{0} not set".format(ENV_MTLDIR), pre=SPACE)
+    else:
+        logmes("{0} set".format(ENV_MTLDIR), pre=SPACE)
+
+    if USER_TESTS == "":
+        logmes("{0} not set".format(ENV_BENCHDIR), pre=SPACE)
+    else:
+        logmes("{0} set".format(ENV_BENCHDIR), pre=SPACE)
+
+    if not LAMBDA_MDLS:
+        logmes("Lambda models not configured", pre=SPACE)
+    else:
+        logmes("Lambda models configured", pre=SPACE)
+
+    if not ALEGRA_MDLS:
+        logmes("Alegra models not configured", pre=SPACE)
+    else:
+        logmes("Alegra models configured", pre=SPACE)
+    # -------------------------------------------------------------------------
 
     # write the the configuration file
     begmes("writing Payette_config.py", pre=SPACE)
@@ -661,7 +709,7 @@ def configure_payette(argv):
             fnew.write(dictfrmt(key, val) + "\n")
             continue
         fnew.write("if PC_ROOT not in sys.path: "
-                   "sys.path.insert(0, PC_ROOT)\n")
+                   "sys.path.append(PC_ROOT)\n")
         fnew.write("sys.path.extend(PC_MTLDIRS)\n")
         if LAMBDA_MDLS:
             fnew.write("sys.path.extend(LAMBDA_MDLS)\n")

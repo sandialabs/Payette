@@ -126,15 +126,16 @@ def run_payette(argv, disp=0):
         default=False,
         help="Display visualization for passed files [default: %default]")
     parser.add_option(
-        "-A",
+        "-D",
         dest="AUG_DIR",
         action="store",
         default=None,
-        help="Alternate material index file [default: %default]")
+        help="Alternate directory to find index file [default: %default]")
 
+    # ------- Sandia National Labs specific material directories ------------ #
     # The following option is only valid if the user configured with Lambda
     if pc.LAMBDA_MDLS:
-        help_message = "Use lambda models"
+        help_message = "Use Lambda models"
     else:
         help_message = "Payette must be configured for Lambda models to use -L"
     parser.add_option(
@@ -143,6 +144,18 @@ def run_payette(argv, disp=0):
         action="store_true",
         default=False,
         help=help_message + " [default: %default]")
+    # The following option is only valid if the user configured with Alegra
+    if pc.ALEGRA_MDLS:
+        help_message = "Run with the Alegra models"
+    else:
+        help_message = "Payette must be configured for Alegra models to use -A"
+    parser.add_option(
+        "-A",
+        dest="ALEGRA",
+        action="store_true",
+        default=False,
+        help=help_message + " [default: %default]")
+    # ----------------------------------------------------------------------- #
 
     # the following options have defaults set in runopt.py, later, we pass the
     # user requested options back to runopt.py so they are set of the rest of
@@ -313,8 +326,9 @@ def run_payette(argv, disp=0):
         return
 
     # ----------------------------------------------- start: get the user input
-    if opts.AUG_DIR is not None and opts.LAMBDA:
-        parser.error("Cannot specify -A and -L")
+    incompat = [opts.AUG_DIR, opts.LAMBDA, opts.ALEGRA]
+    if len([x for x in incompat if bool(x)]) > 1:
+        parser.error("-D, -L, and -A must be specified independently")
 
     if opts.AUG_DIR is not None:
         if not os.path.isdir(opts.AUG_DIR):
@@ -324,6 +338,9 @@ def run_payette(argv, disp=0):
     elif opts.LAMBDA:
         material_index = os.path.join(
             pc.LAMBDA_MDLS[0], os.path.basename(pc.PC_MTLS_FILE))
+    elif opts.ALEGRA:
+        material_index = os.path.join(
+            pc.ALEGRA_MDLS[0], os.path.basename(pc.PC_MTLS_FILE))
     else:
         material_index = pc.PC_MTLS_FILE
 

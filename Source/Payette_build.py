@@ -146,16 +146,17 @@ def build_payette(argv):
         help=("Additional directories to scan for materials, accumulated "
               "[default: %default]."))
     parser.add_option(
-        "-A",
+        "-D",
         dest="AUG_DIR",
         action="store",
         default=None,
         help=("Augment existing materials by building in place the "
               "materials in the passed directory [default: %default]."))
 
+    # ------- Sandia National Labs specific material directories ------------ #
     # The following option is only valid if the user configured with Lambda
     if pc.LAMBDA_MDLS:
-        help_message = "Build the lambda models"
+        help_message = "Build the Lambda models"
     else:
         help_message = "Payette must be configured for Lambda models to use -L"
     parser.add_option(
@@ -164,6 +165,18 @@ def build_payette(argv):
         action="store_true",
         default=False,
         help=help_message + " [default: %default]")
+    # The following option is only valid if the user configured with Alegra
+    if pc.ALEGRA_MDLS:
+        help_message = "Build the Alegra models"
+    else:
+        help_message = "Payette must be configured for Alegra models to use -A"
+    parser.add_option(
+        "-A",
+        dest="ALEGRA",
+        action="store_true",
+        default=False,
+        help=help_message + " [default: %default]")
+    # ----------------------------------------------------------------------- #
 
     (opts, args) = parser.parse_args(argv)
 
@@ -194,8 +207,9 @@ def build_payette(argv):
 
     # directories to search for materials
     search_directories = []
-    if opts.AUG_DIR is not None and opts.LAMBDA:
-        parser.error("Cannot specify -A and -L")
+    incompat = [opts.AUG_DIR, opts.LAMBDA, opts.ALEGRA]
+    if len([x for x in incompat if bool(x)]) > 1:
+        parser.error("-D, -L, and -A must be specified independently")
 
     if opts.AUG_DIR is not None:
         if not os.path.isdir(opts.AUG_DIR):
@@ -211,10 +225,20 @@ def build_payette(argv):
             parser.error("Lambda models not configured")
 
         _lambda, _lambda_mdls = pc.LAMBDA_MDLS[0], pc.LAMBDA_MDLS[1:]
-        payette_mtls_file = os.path.join(_lambda,
-                                         os.path.basename(pc.PC_MTLS_FILE))
+        payette_mtls_file = os.path.join(
+            _lambda, os.path.basename(pc.PC_MTLS_FILE))
         payette_libdir = _lambda
         search_directories.extend(_lambda_mdls)
+
+    elif opts.ALEGRA:
+        if not pc.ALEGRA_MDLS:
+            parser.error("Alegra models not configured")
+
+        _alegra_mdls = pc.ALEGRA_MDLS[0]
+        payette_mtls_file = os.path.join(
+            _alegra_mdls, os.path.basename(pc.PC_MTLS_FILE))
+        payette_libdir = _alegra_mdls
+        search_directories.append(_alegra_mdls)
 
     else:
         payette_mtls_file = pc.PC_MTLS_FILE

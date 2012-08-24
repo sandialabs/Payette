@@ -123,7 +123,7 @@ class InputParser(object):
         recognized_blocks = ("simulation", "boundary", "legs", "material",
                              "optimization", "permutation", "enumeration",
                              "mathplot", "name", "content", "extraction",
-                             "output", "description")
+                             "output", "description", "efield")
         incompatible_blocks = (
             ("visualization", "optimization", "enumeration"),)
 

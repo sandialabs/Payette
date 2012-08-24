@@ -47,7 +47,12 @@ class Boundary(object):
 
     """
 
-    def __init__(self, boundary=None, legs=None):
+    def __init__(self, *args, **kwargs):
+
+        boundary = kwargs.get("boundary")
+        legs = kwargs.get("legs")
+        efield = kwargs.get("efield")
+
         if boundary is None:
             raise BoundaryError("boundary block not found")
 
@@ -57,6 +62,7 @@ class Boundary(object):
         # passed values
         self.boundary = boundary
         self.legs = legs
+        self.efield = efield
 
         # defaults
         self.boundary_warnings = 0
@@ -224,6 +230,11 @@ class Boundary(object):
         """Parse the legs block of the user input
 
         """
+        # parse the electric field block first
+        efield_blk = self.parse_efield_block()
+        efield_blk_times = [x[0] for x in efield_blk]
+        efield_blk_vals = [x[1] for x in efield_blk]
+
         stress_control = False
         kappa = self.kappa()
 
@@ -348,20 +359,50 @@ class Boundary(object):
                     "length of leg control != number of control "
                     "items in leg {0:d}".format(leg_no))
 
-            # separate out electric fields from deformations
-            efield, hold, efcntrl = [], [], []
-            for idx, cntrl_type in enumerate(lcntrl):
-                if cntrl_type == 6:
-                    efield.append(cij[idx])
-                    hold.append(idx)
-                    efcntrl.append(cntrl_type)
-                continue
+            # get the electric field for current time and make sure it has
+            # length 3
+            if efield_blk:
+                efcntrl, hold = [6, 6, 6], []
+                if leg_t < efield_blk_times[0]:
+                    # not yet reached time in which efield is given
+                    efield = [0., 0., 0.]
 
-            # make sure electric field has length 3
-            efield.extend([0.] * (3 - len(efield)))
-            efcntrl.extend([6] * (3 - len(efcntrl)))
+                elif leg_t > efield_blk_times[-1]:
+                    # past given efield, use last given value
+                    efield = efield_blk_vals[-1]
 
-            # remove electric field values from cij
+                elif leg_t in efield_blk_times:
+                    # time corresponds to a time in the efield block
+                    efield = efield_blk_vals[efield_blk_times.index(leg_t)]
+
+                else:
+                    # User gave an efield block in the input, interpolate it to
+                    # get the right value for the current time
+                    t0 = [x for x in efield_blk_times if x < leg_t][-1]
+                    tf = [x for x in efield_blk_times if x > leg_t][0]
+                    y0 = efield_blk_vals[efield_blk_times.index(t0)]
+                    yf = efield_blk_vals[efield_blk_times.index(tf)]
+                    efield = [(yf[i] - y0[i]) / (tf - t0) * leg_t
+                              for i in range(3)]
+
+            else:
+                efield, hold, efcntrl = [], [], []
+                for idx, cntrl_type in enumerate(lcntrl):
+                    if cntrl_type == 6:
+                        if efield_blk:
+                            raise BoundaryError(
+                                "Encountered efield block and efield "
+                                "specification in legs")
+                        efield.append(cij[idx])
+                        hold.append(idx)
+                        efcntrl.append(cntrl_type)
+                    continue
+
+                efield.extend([0.] * (3 - len(efield)))
+                efcntrl.extend([6] * (3 - len(efcntrl)))
+
+            # separate out electric fields from deformations. electric field
+            # will be appended to end of control list
             cij = [i for j, i in enumerate(cij) if j not in hold]
             lcntrl = [i for j, i in enumerate(lcntrl) if j not in hold]
 
@@ -785,11 +826,62 @@ class Boundary(object):
         """Unfinished docstring"""
         return self.bcontrol
 
+    def parse_efield_block(self):
+        """Parse the electric field block
+
+        The user has the option of specifying the electric field either in its
+        own standalone block or in a general legs block. Look for the electric
+        field block and parse it if encountered.
+
+        Parameters
+        ----------
+        self : instance
+            Boundary instance
+
+        Returns
+        -------
+        efield : list
+            List of form [[t_0, [ef_x, ef_y, ef_z]_0],
+                                      .
+                          [t_n, [ef_x, ef_y, ef_z]_n]]
+
+        """
+        if self.efield is None:
+            return []
+
+        # the electric field block contains time - electric field
+        # pairs of the form:
+        #
+        # time efield_x efield_y efield_z
+        efield = []
+        tn = -1.
+        for line in self.efield:
+            try:
+                line = [float(x) for x in line.split()]
+            except ValueError:
+                raise BoundaryError("Syntax error at {0}".format(line))
+            t, ef = line[0], line[1:]
+            if len(ef) != 3:
+                raise BoundaryError(
+                    "efield vector must be of length 3, got <{0}>"
+                    .format(", ".join([str(x) for x in ef])))
+            if t < tn:
+                raise BoundaryError(
+                    "time must be monotonically increasing in efield block")
+            tn = t
+            efield.append([t, ef])
+            continue
+
+        return efield
+
 
 class EOSBoundary(object):
     """The EOS boundary class"""
 
-    def __init__(self, boundary=None, legs=None):
+    def __init__(self, *args, **kwargs):
+
+        boundary = kwargs.get("boundary")
+        legs = kwargs.get("legs")
 
         if boundary is None:
             raise BoundaryError("boundary block not found")
@@ -1092,3 +1184,4 @@ class EOSBoundary(object):
     def get_boundary_control_params(self):
         """Unfinished docstring"""
         return self.bcontrol
+
