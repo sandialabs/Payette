@@ -951,7 +951,7 @@ def func(xcall, xnams, data, base_dir, xgold, material_index, index):
     return error
 
 
-def rtxc(xcall, xnams, data, base_dir, xgold, index):
+def rtxc(xcall, xnams, data, base_dir, xgold, material_index, index):
     """The Kayenta limit function
 
     Evaluates the Kayenta limit function
