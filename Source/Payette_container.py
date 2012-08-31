@@ -29,6 +29,7 @@ import sys
 import math
 import numpy as np
 import datetime
+import shutil
 from copy import deepcopy
 from textwrap import fill as textfill
 
@@ -176,7 +177,6 @@ class Payette(object):
         pu.write_to_simlog("Platform: {0}".format(pc.PC_OSTYPE))
         pu.write_to_simlog("Python interpreter: {0}".format(pc.PC_PYINT))
 
-
         # write description
         pu.write_to_simlog("Description: ")
         description = (
@@ -185,6 +185,16 @@ class Payette(object):
                           initial_indent="  ", subsequent_indent="  "))
         pu.write_to_simlog(description)
 
+        # write input to log file
+        pu.write_to_simlog("User input:")
+        ns = 0
+        for line in self.user_input.get_input_lines():
+            if "end" in line.split()[0]:
+                ns -= 2
+            pu.write_to_simlog(" " * ns + line)
+            if "begin" in line:
+                ns += 2
+            continue
 
         # file name for the Payette restart file
         self.is_restart = False
@@ -684,14 +694,23 @@ class Payette(object):
         None
 
         """
-
         inp_lines = self.user_input.get_input_lines()
         inp_f = os.path.join(self.simdir, self.name + ".inp")
+        if os.path.isfile(inp_f):
+            fnam, fext = os.path.splitext(inp_f)
+            shutil.copyfile(inp_f, fnam + ".orig" + fext)
+
+        # write the file
+        ns = 0
         with open(inp_f, "w") as fobj:
             for line in inp_lines:
                 if "simdir" in line.lower() or "write input" in line.lower():
                     continue
-                fobj.write(line + "\n")
+                if "end" in line.split()[0]:
+                    ns -= 2
+                fobj.write(" " * ns + line + "\n")
+                if "begin" in line:
+                    ns += 2
                 continue
         return
 

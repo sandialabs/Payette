@@ -115,7 +115,6 @@ class InputParser(object):
 
         nsims = len([x for x in self.input_sets if "simulation" in x])
         if nsims > 1:
-            print self.input_sets
             raise InputError("Too many input sets encountered")
 
         # input_sets contains a list of all blocks in the file, parse it to
@@ -262,6 +261,7 @@ class InputParser(object):
         iline = 0
 
         user_input = _remove_all_comments(raw_user_input, cchars)
+        user_input = _preprocess_input_deck(user_input)
 
         # infinite loop for reading the input file and getting all inserted
         # files
@@ -282,7 +282,23 @@ class InputParser(object):
             # get the next line of input
             line = user_input[iline]
 
-            # check for internal "use" directives
+            # check for internal "use" directives "use" blocks allow repeating
+            # data among multiple simulations in a single file. For example,
+            # if you are running a single input file with 4 simulations each
+            # having the same material, you could have
+            #
+            # begin material
+            #   use material_block
+            # end material
+            #      .
+            #      .
+            #      .
+            # end simulation
+            #
+            # begin material_block
+            #   constitutive model ...
+            #   parameters
+            # end material_block
             if line.split()[0] == "use":
                 block = " ".join(line.split()[1:])
                 # check if insert is given in file
@@ -757,6 +773,70 @@ def _remove_all_comments(lines, cchars):
         stripped_lines.append(line)
         continue
     return stripped_lines
+
+
+def _preprocess_input_deck(lines):
+    """ process a preprocessing input block
+
+    Parameters
+    ----------
+    lines : list
+        new line separated list of the user input
+
+    Returns
+    -------
+    preprocessed_lines : list
+        preprocessed new line separated list of the user input
+
+    """
+    idx_0, idx_f, preprocessing = _find_block(lines, "preprocessing")
+    if not preprocessing:
+        return lines
+
+    lines = remove_block(lines, "preprocessing")
+
+    # replacement and math characters
+    rchars = ",="
+    mchars = "+-/*"
+
+    # find substitutions
+    substitutions = {}
+    for line in preprocessing:
+        orig_line = line.strip()
+        for char in rchars:
+            line = line.replace(char, " ")
+        line = line.strip().split()
+        try:
+            key = line[0]
+            key = "{" + key if key[0] != "{" else key
+            key = key + "}" if key[-1] != "}" else key
+            substitutions[key] = " ".join(line[1:])
+        except IndexError:
+            raise InputError(
+                'Expected key = val pairs in preprocessing block, got "{0}"'
+                .format(orig_line))
+        continue
+    if not substitutions:
+        raise InputError("Empty preprocessing block encountered")
+
+    preprocessed_lines = []
+    for line in lines:
+        line = line.strip()
+
+        # skip blank lines
+        if not line.split():
+            continue
+
+        line_subs = [x for x in substitutions if x in line.split()]
+        for line_sub in line_subs:
+            line = line.replace(line_sub, substitutions[line_sub])
+            if any(x in mchars for x in line):
+                line = "".join([x for x in line if x not in rchars]).split()
+                line = "{0} = {1:12.6E}".format(line[0], eval(" ".join(line[1:])))
+
+        preprocessed_lines.append(line)
+        continue
+    return preprocessed_lines
 
 
 def replace_params_and_name(lines, name, param_names, param_vals):

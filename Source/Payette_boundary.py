@@ -108,7 +108,8 @@ class Boundary(object):
             "deformation gradient": {"num": 5, "len": 9},
             "electric field": {"num": 6, "len": 3},
             "displacement": {"num": 8, "len": 3},
-            "vstrain": {"num": 2, "len": 1}}
+            "vstrain": {"num": 2, "len": 1},
+            "pressure": {"num": 4, "len": 1}}
         self.allowed_time_specifier = ["time", "dt"]
         self.leg_table_data = None
         self.lcontrol = []
@@ -508,6 +509,16 @@ class Boundary(object):
                 efac_hold = self.efac
                 self.efac = 1.0
 
+            elif lcntrl == [4]:
+
+                # only one stress value given -> pressure
+                pres = cij[0] * self.sfac
+                sij = -1. * pres
+                lcntrl = [4, 4, 4]
+                cij = [sij, sij, sij]
+                sfac_hold = self.sfac
+                self.sfac = 1.0
+
             # fill in cij and lcntrl so that their lengths are always 9
             # the electric field control is added to the end of lcntrl
             cij.extend([0.] * (6 - len(cij)) + efield)
@@ -544,6 +555,10 @@ class Boundary(object):
 
             try:
                 self.efac = efac_hold
+            except NameError:
+                pass
+            try:
+                self.sfac = sfac_hold
             except NameError:
                 pass
 
