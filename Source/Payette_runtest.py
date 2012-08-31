@@ -455,6 +455,7 @@ def test_payette(argv):
                 continue
             continue
         continue
+
     for dirnam, dirs, files in os.walk(opts.testresdir):
         for name in files:
             fbase, fext = os.path.splitext(name)
@@ -482,8 +483,11 @@ def test_payette(argv):
         retval = 1
     elif nfail:
         retval = 2
+    elif nfailtorun:
+        retval = 3
     else:
         retval = 0
+
     return retval
 
 

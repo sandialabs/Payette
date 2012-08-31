@@ -48,7 +48,8 @@ def main(argv):
     (opts, args) = parser.parse_args(argv)
 
     # return codes
-    retcodes = {-1: "DIFF/FAIL", 0: "PASS", 1: "DIFF", 2: "FAIL"}
+    retcodes = {-1: "DIFF/FAIL", 0: "PASS", 1: "DIFF",
+                 2: "FAIL", 3: "FAIL"} # TO RUN"
 
     def failed(fail=[0], inquire=False):
         if inquire:
@@ -252,12 +253,15 @@ def main(argv):
             retval = subprocess.call(
                 "{0} {1} {2}".format(tp, nproc, topts),
                 shell=True, stdout=fobj, stderr=subprocess.STDOUT)
+
             if retval < 0:
                 diffed()
                 failed()
             elif retval == 1:
                 diffed()
             elif retval == 2:
+                failed()
+            elif retval == 3:
                 failed()
 
             retcode = retcodes.get(retval, "FAIL")
