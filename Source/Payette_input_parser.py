@@ -113,39 +113,36 @@ class InputParser(object):
         self._parse_input_lines()
         self._get_blocks()
 
-        nsims = len([x for x in self.input_sets if "simulation" in x])
+        nsims = len([x for x in self.input_sets if
+                     "simulation" in x or "parameterization" in x])
         if nsims > 1:
             raise InputError("Too many input sets encountered")
 
         # input_sets contains a list of all blocks in the file, parse it to
         # make sure that a simulation is given
-        recognized_blocks = ("simulation", "boundary", "legs", "material",
+        major_blocks = ("simulation", "parameterization", )
+
+        recognized_blocks = ("boundary", "legs", "material",
                              "optimization", "permutation", "enumeration",
                              "mathplot", "name", "content", "extraction",
-                             "output", "description", "efield")
-        incompatible_blocks = (
-            ("visualization", "optimization", "enumeration"),)
+                             "output", "description", "efield",
+                             "shearfit", "hydrofit")
+        incompatible_blocks = (("optimization", "permutation",),)
 
         for input_set in self.input_sets:
 
-            if "simulation" not in input_set:
+            sim_type = [x for x in input_set if x in major_blocks]
+            if len(sim_type) != 1:
                 keys = ", ".join(input_set.keys())
                 if ro.WARNING == "all":
                     self.log_warning(
                         "expected to find a simulation block but found: {0}"
                         .format(keys))
                 continue
-
-            simkey = input_set["simulation"]["name"]
-            if not simkey:
-                self.input_error(
-                    'did not find simulation name.  Simulation block '
-                    'must be of form:\n'
-                    '\tbegin simulation <simulation name> ... end simulation')
-                continue
+            sim_type = sim_type[0]
 
             # check for incompatibilities
-            bad_blocks = [x for x in input_set["simulation"]
+            bad_blocks = [x for x in input_set[sim_type]
                           if x not in recognized_blocks]
 
             if bad_blocks:
@@ -153,15 +150,24 @@ class InputParser(object):
                     "unrecognized blocks: {0}".format(", ".join(bad_blocks)))
 
             for item in incompatible_blocks:
-                bad_blocks = [x for x in input_set["simulation"] if x in item]
+                bad_blocks = [x for x in input_set[sim_type] if x in item]
                 if len(bad_blocks) > 1:
                     self.input_error(
                         "{0} blocks incompatible, choose one"
                         .format(", ".join(bad_blocks)))
                 continue
 
+
+            simkey = input_set[sim_type]["name"]
+            if not simkey and sim_type == "simulation":
+                self.input_error(
+                    'did not find simulation name.  Simulation block '
+                    'must be of form:\n'
+                    '\tbegin simulation <simulation name> ... end simulation')
+                continue
+
             self.simkey = simkey
-            self.input_set = input_set["simulation"]
+            self.input_set = input_set[sim_type]
 
             continue
 
@@ -217,6 +223,10 @@ class InputParser(object):
             elif item[0].lower() == "write" and item[1].lower() == "input":
                 key = "WRITE_INPUT"
                 val = True
+
+            elif "constitutive" in item[0].lower():
+                key = "constitutive model"
+                val = item[-1].lower()
 
             else:
                 # key and value given.  Determine key and value
@@ -720,34 +730,49 @@ def parse_user_input(raw_user_input, user_cchar=None):
     all_inputs = []
     current_input = []
     in_simulation = False
+    in_parameterization = False
+    ending = None
+
+    # the user input can be of form begin [simulation, parameterization]
+    sim_types = ("simulation", "parameterization", )
+
     for line in user_input:
         line = " ".join(line.strip().split())
-        if "begin simulation" in line.lower():
+        if any("begin {0}".format(x) in line.lower() for x in sim_types):
             if current_input:
                 sys.exit(
                     "beginning simulation encountered before end of previous")
             else:
-                in_simulation = True
+                if "simulation" in line:
+                    ending = "end simulation"
+                    in_simulation = True
+                else:
+                    ending = "end parameterization"
+                    in_parameterization = True
 
-        if in_simulation:
+        if in_simulation or in_parameterization:
             current_input.append(line)
+
         else:
             use_blocks.append(line)
 
-        if "end simulation" in line.lower():
+        if ending is not None and ending in line.lower():
             all_inputs.append(current_input)
             current_input = []
             in_simulation = False
+            in_parameterization = False
             continue
 
         continue
 
-    if current_input and "end simulation" not in current_input[-1]:
-        sys.exit("end of simulation '{0}' not found".format(current_input[0]))
+    if current_input:
+        if not any("end {0}".format(x) in current_input[-1] for x in sim_types):
+            sys.exit(
+                "end of simulation '{0}' not found".format(current_input[0]))
 
     # check for the end of each simulation and insert 'use' blocks
     for idx, item in enumerate(all_inputs):
-        if "end simulation" not in item[-1]:
+        if not any("end {0}".format(x) in item[-1] for x in sim_types):
             sys.exit("end of simulation '{0}' not found".format(item[0]))
 
         item.extend(use_blocks)

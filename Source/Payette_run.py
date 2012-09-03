@@ -43,6 +43,7 @@ import Source.Payette_utils as pu
 import Source.Payette_container as pcntnr
 import Source.Payette_optimize as po
 import Source.Payette_permutate as pp
+import Source.Payette_parameterize as pparam
 import Source.Payette_input_parser as pip
 import Source.runopts as ro
 
@@ -200,7 +201,7 @@ def run_payette(argv, disp=0):
         default=ro.NOWRITEPROPS,
         help="Do not write checked parameters [default: %default]")
     parser.add_option(
-        "--simdir",
+        "-a", "--simdir",
         dest="simdir",
         action="store",
         default=ro.SIMDIR,
@@ -617,6 +618,10 @@ def _run_job(args):
     elif any("permutation" in x for x in user_input):
         # intantiate the Optimize object
         the_model = pp.Permutate(user_input, material_index)
+
+    elif any("parameterization" in x for x in user_input):
+        # intantiate the Optimize object
+        the_model = pparam.parameterizer(user_input, material_index)
 
     else:
         the_model = pcntnr.Payette(user_input, material_index)

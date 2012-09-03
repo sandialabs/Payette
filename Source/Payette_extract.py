@@ -82,7 +82,8 @@ def extract(argv):
         if col[0] == coltoken:
             return int(col[1:])
         else:
-            logerr("bad column specifier {0} sent to col2int".format(col), 5)
+            raise ExtractError(
+                "bad column specifier {0} sent to col2int".format(col), 5)
         return
 
     usage =\
@@ -91,24 +92,63 @@ def extract(argv):
   % {0} [options] file [@key1 [@key2 [...]]] [%col1 [%col2 [ %coln ]]]""".format(exe)
 
     parser = optparse.OptionParser(usage = usage, version = "%prog 1.0")
-    parser.add_option("-s","--sep",dest="SEP",action="store",type="choice",
-                      choices=("space","tab","comma"),default="space",
-                      help=("output file column seperation format. "
-                            "[choices: (space, tab, comma) ] [default: space]"))
-    parser.add_option("--cols",dest="COLS",action="store_true", default=False,
-                      help="print data column numbers [default: %default]")
-    parser.add_option("--man",dest="MAN",action="store_true",default=False,
-                      help="print man page [default: %default]")
-    parser.add_option("--xout",dest="XOUT",action="store_true",default=False,
-                      help=("write results to file 'input_file.xout'"
-                            " [default: %default]"))
-    parser.add_option("--silent",dest="SILENT",action="store_true",default=False,
-                      help=("silent operation [default: %default]"))
-    parser.add_option("--operation",dest="OPP",action="store",default=None,
-                      type="choice",choices=(None,"print"),
-                      help=("Operation to perform, choose from ({0})"
-                            .format(", ".join(opchoices))))
+    parser.add_option(
+        "-s", "--sep",
+        dest="SEP",
+        action="store",
+        type="choice",
+        choices=("space","tab","comma"),
+        default="space",
+        help=("output file column seperation format. "
+              "[choices: (space, tab, comma) ] [default: space]"))
+    parser.add_option(
+        "--cols",
+        dest="COLS",
+        action="store_true",
+        default=False,
+        help="print data column numbers [default: %default]")
+    parser.add_option(
+        "--man",
+        dest="MAN",
+        action="store_true",
+        default=False,
+        help="print man page [default: %default]")
+    parser.add_option(
+        "--xout",
+        dest="XOUT",
+        action="store_true",
+        default=False,
+        help="write results to file 'input_file.xout' [default: %default]")
+    parser.add_option(
+        "-n",
+        dest="STEP",
+        action="store",
+        default=1,
+        type=int,
+        help="Print out every n lines [default: %default]")
+    parser.add_option(
+        "--silent",
+        dest="SILENT",
+        action="store_true",
+        default=False,
+        help="silent operation [default: %default]")
+    parser.add_option(
+        "--operation",
+        dest="OPP",
+        action="store",
+        default=None,
+        type="choice",choices=(None,"print"),
+        help=("Operation to perform, choose from ({0})"
+              .format(", ".join(opchoices))))
+    parser.add_option(
+        "--disp",
+        dest="DISP",
+        action="store",
+        default=0,
+        type=int,
+        help="Amount of return info [default: %default]")
     (opts, passed_args) = parser.parse_args(argv)
+
     if opts.MAN:
         sys.stderr.write(manpage)
         parser.print_help()
@@ -182,9 +222,11 @@ def extract(argv):
             continue
 
         xout = fnam + ".xout" if opts.XOUT else None
-        logger = Logger(xout,"w")
+        logger = Logger(xout, "w")
         logger.write(header)
-        for datline in data:
+        for i in range(0, len(data), int(opts.STEP)):
+            datline = data[i]
+
             # write out data to file
             logger.write(sep.join([ffrmt(x) for x in datline]))
             continue
@@ -196,7 +238,12 @@ def extract(argv):
 
         continue
 
-    return 0
+    retval = 0
+
+    if opts.DISP:
+        return retval, data
+
+    return retval
 
 def ffrmt(x):
     return "{0:12.5E}".format(x)
@@ -207,9 +254,9 @@ def message(msg):
     sys.stdout.write("{0}: INFO: {1}\n".format(exe, msg))
     return
 
-def logerr(msg, errno):
-    sys.stdout.write("{0}: ERROR: {1}\n".format(exe, msg))
-    sys.exit(errno)
+class ExtractError(Exception):
+    def __init__(self, message, errno):
+        super(ExtractError, self).__init__(message)
 
 def args2dict(args,sep):
 
@@ -247,7 +294,7 @@ def args2dict(args,sep):
                     sys.stderr.write(linedat, length)
                     msg = ("Number of columns in line {0} of {1} not consistent"
                            .format(iline+1,argf))
-                    logerr(msg, 6)
+                    raise ExtractError(msg, 6)
             continue
         fobj.close()
         return
@@ -259,7 +306,7 @@ def args2dict(args,sep):
         except:
             msg = ("keyword {0} not in {1}, choose from:\n {2}"
                    .format(kw,argf,header))
-            logerr(msg, 4)
+            raise ExtractError(msg, 4)
 
         return col, nam
 
@@ -269,13 +316,13 @@ def args2dict(args,sep):
             col = int(col) - 1
             nam = header.split()[col]
         except ValueError:
-            logerr("non integer column number {0}".format(col), 7)
+            raise ExtractError("non integer column number {0}".format(col), 7)
         except IndexError:
             msg = ("{0} has only {1} columns, requested column {2}"
                    .format(argf,len(header.split()),col+1))
-            logerr(msg, 8)
+            raise ExtractError(msg, 8)
         except:
-            logerr("error processing {0} in {1}" .format(arg,args), 9)
+            raise ExtractError("error processing {0} in {1}" .format(arg,args), 9)
 
         col = coltoken + str(col)
         return col, nam
@@ -287,11 +334,11 @@ def args2dict(args,sep):
         argf = args[iarg]
 
         if not os.path.isfile(argf):
-            logerr("Expected valid file, got {0}".format(argf), 10)
+            raise ExtractError("Expected valid file, got {0}".format(argf), 10)
 
         # check if same file is repeated
         if [True for x in parsed_args if args[iarg] in x]:
-            logerr("file {0} sent multiple times".format(argf), 11)
+            raise ExtractError("file {0} sent multiple times".format(argf), 11)
 
         # add file to tmparg and move on to next item in args
         check_file()
@@ -346,12 +393,12 @@ def args2dict(args,sep):
                     if x[0] == kwtoken:
                         if len(x) == 1:
                             msg = "empty keyword identifier".format(args)
-                            logerr(msg, 12)
+                            raise ExtractError(msg, 12)
                         tmparg[ix],nam = kw2col(x[1:])
                     elif x[0] == coltoken:
                         if len(x) == 1:
                             msg = "empty column identifier".format(args)
-                            logerr(msg, 13)
+                            raise ExtractError(msg, 13)
                         tmparg[ix],nam = col2col(x[1:])
                     else:
                         nam = x
@@ -366,12 +413,14 @@ def args2dict(args,sep):
 
                 if arg[0] == kwtoken:
                     if len(arg) == 1:
-                        logerr("empty keyword identifier".format(args), 12)
+                        raise ExtractError(
+                            "empty keyword identifier".format(args), 12)
                         pass
                     arg, nam = kw2col(arg[1:])
                 elif arg[0] == coltoken:
                     if len(arg) == 1:
-                        logerr("empty column identifier".format(args), 12)
+                        raise ExtractError(
+                            "empty column identifier".format(args), 12)
                         pass
                     arg,nam = col2col(arg[1:])
                 else:
@@ -393,7 +442,8 @@ def args2dict(args,sep):
             try:
                 eval("".join([x.replace(coltoken,"") for x in item]))
             except:
-                logerr("bad extraction request: {0}".format(item), 2)
+                raise ExtractError(
+                    "bad extraction request: {0}".format(item), 2)
             continue
 
         # header is now a list, join it with the user requested separation
@@ -454,10 +504,10 @@ def print_cols(fnam,header):
 
 class Logger(object):
 
-    def __init__(self,name,mode):
+    def __init__(self, name, mode):
         self.stdout = sys.stdout
         if name is not None:
-            self.file = open(name,mode)
+            self.file = open(name, mode)
         else:
             self.file = None
         sys.stdout = self
@@ -465,11 +515,13 @@ class Logger(object):
 
     def __del__(self):
         sys.stdout = sys.__stdout__
-        if self.file: self.file.close()
+        if self.file:
+            self.file.close()
         pass
 
-    def write(self,data):
-        if self.file: self.file.write(data + "\n")
+    def write(self, data):
+        if self.file:
+            self.file.write(data + "\n")
         if not SILENT:
             self.stdout.write(data + "\n")
 

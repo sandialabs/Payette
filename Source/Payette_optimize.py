@@ -74,33 +74,27 @@ class Optimize(object):
         self.data["return level"] = ro.DISP
         self.data["fext"] = ".opt"
         self.data["options"] = []
-        self.shearfit = False
 
         # fill the data with the optimization information
         self.parse_optimization_block(optimize)
 
-        if not self.shearfit:
-            input_lines = job_inp.get_input_lines(skip="optimization")
+        input_lines = job_inp.get_input_lines(skip="optimization")
         self.data["baseinp"] = input_lines
 
         # set the loglevel to 0 for Payette simulation and save the payette
         # options to the data dictionary
         ro.set_global_option("VERBOSITY", 0, default=True)
 
-        if not self.shearfit:
-            # check user input for required blocks
-            if not job_inp.has_block("material"):
-                pu.report_and_raise_error(
-                    "material block not found in input file")
+        # check user input for required blocks
+        if not job_inp.has_block("material"):
+            pu.report_and_raise_error(
+                "material block not found in input file")
 
         # check the optimization variables
         self.check_params()
 
         # check minimization variables
         self.check_min_parameters()
-
-        if self.shearfit:
-            self.init_shearfit()
 
         if self.data["verbosity"]:
             pu.log_message("Optimizing {0}".format(job), noisy=True)
@@ -212,34 +206,14 @@ class Optimize(object):
                        "ftol": self.data["tolerance"],
                        "disp": self.data["disp"],}
 
-        if self.shearfit:
-            fcn = rtxc
-        else:
-            fcn = func
-
         opt_params = minimize(
-            fcn, opt_params, args=opt_args, method=opt_method,
+            func, opt_params, args=opt_args, method=opt_method,
             bounds=opt_bounds, options=opt_options,
             )
 
         # optimum parameters found, write out final info
-        if self.shearfit:
-            a_params = self.data["a_params"]
-            a_params[self.data["index array"]] = opt_params
-            stren, peaki1, fslope, yslope = kpc.old_2_new(*a_params)
-            msg = ("A1 = {0:12.6E}, ".format(a_params[0]) +
-                   "A2 = {0:12.6E}, ".format(a_params[1]) +
-                   "A3 = {0:12.6E}, ".format(a_params[2]) +
-                   "A4 = {0:12.6E}".format(a_params[3]) +
-                   "\n {0}".format(" " * 27) +
-                   "STREN = {0:12.6E}, ".format(stren) +
-                   "PEAKI1 = {0:12.6E}, ".format(peaki1) +
-                   "FSLOPE = {0:12.6E}, ".format(fslope) +
-                   "YSLOPE = {0:12.6E}".format(yslope))
-
-        else:
-            msg = ", ".join(["{0} = {1:12.6E}".format(opt_nams[i], x)
-                             for i, x in enumerate(opt_params)])
+        msg = ", ".join(["{0} = {1:12.6E}".format(opt_nams[i], x)
+                         for i, x in enumerate(opt_params)])
 
         pu.log_message("Optimized parameters found on iteration {0:d}"
                        .format(IOPT + 1),
@@ -259,13 +233,6 @@ class Optimize(object):
                 opt_val = opt_params[idx]
                 fobj.write("{0} = {1:12.6E}\n".format(nam, opt_val))
                 continue
-
-            if self.shearfit:
-                fobj.write("\nEquivalent new paramters:\n")
-                fobj.write("STREN = {0:12.6E}\n".format(stren))
-                fobj.write("PEAKI1 = {0:12.6E}\n".format(peaki1))
-                fobj.write("FSLOPE = {0:12.6E}\n".format(fslope))
-                fobj.write("YSLOPE = {0:12.6E}".format(yslope))
 
         os.chdir(cwd)
         retcode = 0
@@ -341,10 +308,6 @@ class Optimize(object):
 
             continue
 
-        if "shearfit" in self.data["options"]:
-            self.shearfit = True
-            opt_method = allowed_methods["cobyla"]
-
         # get method before other options
         for item in opt_block:
             for pat, repl in ((",", " "), ("=", " "), ):
@@ -396,10 +359,6 @@ class Optimize(object):
                 key = item[1]
                 vals = item[2:]
 
-                if self.shearfit and key.lower() not in ("a1", "a2", "a3", "a4"):
-                    pu.report_error("optimize variable "+ key +
-                                    " not allowed with shearfit method")
-
                 bounds = (None, None)
                 init_val = None
 
@@ -436,10 +395,6 @@ class Optimize(object):
                 # set up this parameter to fix
                 key = item[1]
                 vals = item[2:]
-
-                if self.shearfit and key.lower() not in ("a1", "a2", "a3", "a4"):
-                    pu.report_error("fixed variable "+ key +
-                                    " not allowed with shearfit method")
 
                 init_val = None
                 if "initial" in vals:
@@ -486,10 +441,10 @@ class Optimize(object):
             else:
                 gold_f = os.path.realpath(gold_f)
 
-        if not self.shearfit and not minimize["vars"]:
+        if not minimize["vars"]:
             pu.report_error("no parameters to minimize given")
 
-        if not self.shearfit and not optimize:
+        if not optimize:
             pu.report_error("no parameters to optimize given")
 
         for key, val in optimize.items():
@@ -504,38 +459,6 @@ class Optimize(object):
 
         if pu.error_count():
             pu.report_and_raise_error("stopping due to previous errors")
-
-        if self.shearfit:
-            # for shearfit, we optimize a1 - a4 by minimizing errror in rootj2
-            # vs. i1 using the rtxc function. Therefore, the only minimization
-            # variables needed are i1 and rootj2
-            for item in minimize["vars"]:
-                if (item.lower() not in ("@i1", "@rootj2") and
-                    item.lower()[0:4] != "@sig"):
-                    pu.report_error("minimize variable "+ min_var[1:] +
-                                    " not allowed with shearfit method")
-                continue
-
-            if pu.error_count():
-                pu.report_and_raise_error("stopping due to previous errors")
-
-            head = list(set([x.lower() for x in sorted(pu.get_header(gold_f))]))
-            if head != ["i1", "rootj2"]:
-                sigcnt = 0
-                for item in head:
-                    if item.lower()[0:3] == "sig":
-                        sigcnt += 1
-                    continue
-                if sigcnt < 3:
-                    pu.report_and_raise_error(
-                        "{0} does not contain sufficient information to "
-                        "compute I1 and ROOTJ2".format(gold_f))
-
-                # user gave file with sig11, sig22, ..., it needs to be
-                # converted to i1 and rootj2
-                gold_f = get_rtj2_vs_i1(gold_f)
-
-            minimize["vars"] = ["@I1", "@ROOTJ2"]
 
         self.data["gold file"] = gold_f
         self.data["minimize"] = minimize
@@ -561,10 +484,6 @@ class Optimize(object):
         None
 
         """
-
-        if self.shearfit:
-            # for shearfit, we don't actually have to call Kayenta
-            return
 
         # Remove from the material block the optimized parameters. Current
         # values will be inserted in to the material block for each run.
@@ -629,79 +548,6 @@ class Optimize(object):
 
         return
 
-    def init_shearfit(self):
-        """ Initialize data needed by shearfit
-
-        To run shearfit, we need values for A1 - A4, in that order. The user
-        may only want to optimize some, not all, of the A parameters. Here we
-        initialize all A parameters to zero, and then populate the initial
-        array with input from the user.
-
-        """
-
-        # initial setup
-        a_params = np.zeros(4, dtype=float)
-        index_array = [None] * 4
-
-        # mapping to a_params array
-        idx_map = {"a1": 0, "a2": 1, "a3":2, "a4":3}
-
-        if not self.data["optimize"]:
-            # user did not specify an parameters, get the first guess in a two
-            # step process:
-            # 1) get A1 and A4 through a linear fit, if it is good, keep the
-            # result
-            # 2) if needed, do a full curve fit, using A1 from above
-
-            dat = pu.read_data(self.data["gold file"])
-            ione = dat[:, 0]
-            rootj2 = dat[:, 1]
-
-            # linear fit
-            fit = np.polyfit(ione, rootj2, 1, full=True)
-            if fit[1] < 1.e-16:
-                # data was very linear -> drucker prager -> fix all values
-                a_params[3], a_params[0] = np.abs(fit[0])
-                index_array = [None] * 4
-
-            else:
-                # least squares fit
-                def rtj2(i1, a1, a2, a3, a4):
-                    return a1 - a3 * np.exp(a2 * i1) - a4 * i1
-                p0 = np.zeros(4)
-                p0[0] = fit[0][1]
-                curve_fit = scipy.optimize.curve_fit(rtj2, ione, rootj2, p0=p0)
-                a_params = np.abs(curve_fit[0])
-
-            for key in idx_map:
-                if key in [x.lower() for x in self.data["fix"]]:
-                    continue
-                self.data["optimize"][key] = {}
-                self.data["optimize"][key]["bounds"] = (None, None)
-                self.data["optimize"][key]["initial value"] = (
-                    a_params[idx_map[key]])
-
-        else:
-            for key, val in self.data["optimize"].items():
-                idx = idx_map[key.lower()]
-                a_params[idx] = val["initial value"]
-                index_array[idx] = idx
-                continue
-
-        # replace the values the user wanted fixed
-        for key, val in self.data["fix"].items():
-            idx = idx_map[key.lower()]
-            a_params[idx] = val["initial value"]
-            continue
-
-        # store the initial A params, and "index array": the array of indices
-        # of the A parameters to be optimized.
-        self.data["a_params"] = np.array(a_params)
-        self.data["index array"] = np.array(
-            [x for x in index_array if x is not None], dtype=int)
-
-        return
-
 
 def minimize(fcn, x0, args=(), method="Nelder-Mead",
              bounds=None, options={}):
@@ -752,7 +598,6 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
     xtol = options["xtol"]
     ftol = options["ftol"]
     disp = options["disp"]
-    shearfit = "shearfit" in args[1]["options"]
 
     # optimization methods work best with number around 1, here we
     # normalize the optimization variables and save the multiplier to be
@@ -770,22 +615,16 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
             "Method {0} cannot handle constraints nor bounds directly."
             .format(method))
 
-    if has_bounds or shearfit:
+    if has_bounds:
         # user has specified bounds on the parameters to be optimized. Here,
         # we convert the bounds to inequality constraints
         lcons, ucons = [], []
         for ibnd, bound in enumerate(bounds):
             lbnd, ubnd = bound
             if lbnd is None:
-                if shearfit:
-                    lbnd = 0.
-                else:
-                    lbnd = -1.e20
+                lbnd = -1.e20
             if ubnd is None:
-                if shearfit:
-                    ubnd = x0[ibnd]*FAC[ibnd] + 50 * x0[ibnd]*FAC[ibnd]
-                else:
-                    ubnd = 1.e20
+                ubnd = 1.e20
 
             if lbnd > ubnd:
                 pu.report_error("lbnd({0:12.6E}) > ubnd({1:12.6E})"
@@ -949,166 +788,3 @@ def func(xcall, xnams, data, base_dir, xgold, material_index, index):
     os.chdir(base_dir)
 
     return error
-
-
-def rtxc(xcall, xnams, data, base_dir, xgold, material_index, index):
-    """The Kayenta limit function
-
-    Evaluates the Kayenta limit function
-
-              f(ione) = a1 + a3*exp(-a2*ione) + a4*ione
-
-    Parameters
-    ----------
-    ione : array_like
-        values of ione
-    a1 - a4 : float
-        Limit surface parameters
-
-    Returns
-    -------
-    rootj2 : array_like
-        values of sqrt(j2) corresponding to ione
-
-    """
-
-    global IOPT
-    IOPT += 1
-
-    job = data["basename"] + ".{0:03d}".format(IOPT)
-    job_dir = os.path.join(base_dir, job)
-
-    os.mkdir(job_dir)
-    os.chdir(job_dir)
-
-    # write trial params to file
-    msg = []
-    with open(os.path.join(job_dir, job + ".opt"), "w") as fobj:
-        fobj.write("Parameters for iteration {0:d}\n".format(IOPT + 1))
-        for idx, item in enumerate(zip(xnams, xcall)):
-            nam, opt_val = item
-
-            # Some methods do not allow for bounds and we can get negative
-            # trial values. This is a problem when optimizing, say, elastic
-            # moduli that cannot be negative since if we send a negative
-            # elastic modulus to the routine it will bomb and the optimization
-            # will stop. This is a way of forcing the optimizer to see a very
-            # large error if it tries to send in numbers above or below the
-            # user specified bounds -> essentially, we are using a penalty
-            # method of sorts to force the bounds we want.
-            lbnd, ubnd = data["optimize"][nam]["bounds"]
-            if lbnd is not None and opt_val < lbnd / FAC[idx]:
-                return 1.e3
-
-            if ubnd is not None and opt_val > ubnd / FAC[idx]:
-                return 1.e3
-
-            pstr = "{0} = {1:12.6E}".format(nam, opt_val * FAC[idx])
-            fobj.write(pstr + "\n")
-            msg.append(pstr)
-            continue
-
-    if data["verbosity"]:
-        pu.log_message("Iteration {0:03d}, trial parameters: {1}"
-                       .format(IOPT + 1, ", ".join(msg)),
-                       noisy=True)
-
-    # compute rootj2 and error
-    v = data["index array"]
-    a = data["a_params"]
-    a[v] = xcall * FAC
-    a1, a2, a3, a4 = a
-
-    # enforce constraints
-    if a1 < 0. or a2 < 0. or a3 < 0. or a4 < 0. or a1 - a3 < 0.:
-        return 1.e3
-
-    dat = pu.read_data(xgold)
-    ione = dat[:, 0]
-    rootj2 = dat[:, 1]
-
-    error = rootj2 - (a1 - a3 * np.exp(a2 * ione) - a4 * ione)
-    error = math.sqrt(np.mean(error ** 2))
-    dnom = abs(np.amax(rootj2))
-    error = error / dnom if dnom >= 2.e-16 else error
-
-    with open(os.path.join(job_dir, job + ".opt"), "a") as fobj:
-        fobj.write("error = {0:12.6E}\n".format(error))
-
-    # go back to the base_dir
-    os.chdir(base_dir)
-
-    return error
-
-
-def get_rtj2_vs_i1(fpath):
-    """Convert sigij in file fpath to ione and rootj2
-
-    Parameters
-    ----------
-    fpath : str
-        path to file
-
-    Returns
-    -------
-    fnew : str
-        path to file with the ione and rootj2 values
-
-    """
-
-    header = pu.get_header(fpath)
-    data = pu.read_data(fpath)
-    sig11, sig22, sig33, sig12, sig23, sig13 = [None] * 6
-    for idx, item in enumerate(header):
-        if item.lower() == "sig11":
-            sig11 = data[:, idx]
-
-        if item.lower() == "sig22":
-            sig22 = data[:, idx]
-
-        if item.lower() == "sig33":
-            sig33 = data[:, idx]
-
-        if item.lower() == "sig12":
-            sig12 = data[:, idx]
-
-        if item.lower() == "sig23":
-            sig23 = data[:, idx]
-
-        if item.lower() == "sig13":
-            sig13 = data[:, idx]
-
-        continue
-
-    if sig11 is None or sig22 is None or sig33 is None:
-        pu.report_and_raise_error(
-            "insufficient information in {0} to compute I1 and ROOTJ2"
-            .format(gold_f))
-
-    if sig12 is None:
-        sig12 = np.zeros(len(sig11))
-
-    if sig23 is None:
-        sig23 = np.zeros(len(sig11))
-
-    if sig13 is None:
-        sig13 = np.zeros(len(sig11))
-
-    i1 = sig11 + sig22 + sig33
-    rtj2 = np.sqrt(1. / 6. * ((sig11 - sig22) ** 2 +
-                              (sig22 - sig33) ** 2 +
-                              (sig33 - sig11) ** 2) +
-                   sig12 ** 2 + sig23 ** 2 + sig13 ** 2)
-
-    fnam, fext = os.path.splitext(fpath)
-    fnew = fnam + FNEWEXT
-
-    with open(fnew, "w") as fobj:
-        fobj.write("{0:12s}    {1:12s}\n".format("I1", "ROOTJ2"))
-        for idx in range(len(i1)):
-            fobj.write("{0:12.6E}    {1:12.6E}\n".format(i1[idx], rtj2[idx]))
-            continue
-
-    return fnew
-
-

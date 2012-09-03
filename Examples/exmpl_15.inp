@@ -4,21 +4,22 @@
 # Keywords: optimization
 # Comments: This input file demonstrates the shear fit functionality of Payette.
 
-begin simulation exmpl_15
+begin parameterization
 
   # for shearfit, we don't actually have to run a simulation, so we don't have
   # to define anything but the optimization block
 
+  constitutive model kayenta
+  material test_material
+
   # in this example, the gold file is a table of principal stress values
 
-  begin optimization
-    method cobyla
-    option shearfit
+  begin shearfit
     optimize A1, initial value = 800.e6 # 843.e6
     optimize A2, initial value = 1.e-10 # 2.731e-10
     optimize A3, initial value = 780.e6 # 821.92e6
     optimize A4, initial value = 1.e-10 # 1.e-10
-    gold file shearfit_prin.gold
-  end optimization
+    data file shearfit_prin.gold
+  end shearfit
 
-end simulation
+end parameterization

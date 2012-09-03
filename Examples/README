@@ -39,4 +39,6 @@ exmpl_16.inp   Permutation example using combination method
 exmpl_17.inp   Shearfit example, A1-A4 not specified, A4 fixed
 exmpl_18.inp   use named block
 exmpl_19.inp   use material from material database
+exmpl_20.inp   equation of state
+exmpl_20.inp   preprocessing
 --------------+------------------------------------------------------------
