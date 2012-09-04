@@ -825,6 +825,7 @@ def _preprocess_input_deck(lines):
     mchars = "+-/*"
 
     # find substitutions
+    beg, end = "{}"
     substitutions = {}
     for line in preprocessing:
         orig_line = line.strip()
@@ -832,10 +833,11 @@ def _preprocess_input_deck(lines):
             line = line.replace(char, " ")
         line = line.strip().split()
         try:
-            key = line[0]
-            key = "{" + key if key[0] != "{" else key
-            key = key + "}" if key[-1] != "}" else key
-            substitutions[key] = " ".join(line[1:])
+            key = line[0].replace(beg, "").replace(end, "")
+            # key = key[1:] if key[0] == "{" else key
+            # key = key[0:-1] if key[-1] == "}" else key
+            substitutions[key] = (
+                " ".join(line[1:]).replace(beg, "").replace(end, ""))
         except IndexError:
             raise InputError(
                 'Expected key = val pairs in preprocessing block, got "{0}"'
@@ -844,20 +846,39 @@ def _preprocess_input_deck(lines):
     if not substitutions:
         raise InputError("Empty preprocessing block encountered")
 
+    # go through lines and look for any substitutions
     preprocessed_lines = []
     for line in lines:
         line = line.strip()
 
         # skip blank lines
-        if not line.split():
+        if not line.split() or line[0] in "#$":
             continue
 
-        line_subs = [x for x in substitutions if x in line.split()]
-        for line_sub in line_subs:
-            line = line.replace(line_sub, substitutions[line_sub])
-            if any(x in mchars for x in line):
-                line = "".join([x for x in line if x not in rchars]).split()
-                line = "{0} = {1:12.6E}".format(line[0], eval(" ".join(line[1:])))
+        x0, x1, x2 = 0, line.find(beg), line.find(end)
+        nloops = 0
+        while True:
+            if list(set([x1, x2])) == [-1] or x2 < x1 or nloops > 20:
+                break
+
+            # This line contains at least 1 { } pairs, replace there contents
+            # with those in the preprocessing block
+            segment = line[x1+1:x2]
+            for sub, val in substitutions.items():
+                if sub in segment:
+                    segment = segment.replace(sub, val)
+                continue
+
+            # evaluate any math characters
+            if any(x in mchars for x in segment):
+                segment = "{0:12.6E}".format(eval(segment))
+
+            # now replace the portion of line from { to } with the
+            # preprocessed content
+            line = line.replace(line[x1:x2+1], segment)
+            x0, x1, x2 = x2, line.find(beg, x2), line.find(end, x2+1)
+            nloops += 1
+            continue
 
         preprocessed_lines.append(line)
         continue

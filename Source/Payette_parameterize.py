@@ -110,6 +110,7 @@ class Parameterize(object):
         disp = False
         optimize = {}
         fix = {}
+        options = {}
 
         # parse the shearfit block
         for item in block:
@@ -160,7 +161,7 @@ class Parameterize(object):
 
                 optimize[key] = {"bounds": bounds, "initial value": init_val,}
 
-            elif "fix" in item[0].lower():
+            elif "fix" in token:
                 # set up this parameter to fix
                 key = item[1]
                 vals = item[2:]
@@ -176,13 +177,13 @@ class Parameterize(object):
 
                 fix[key] = {"initial value": init_val}
 
-            elif "maxiter" in item[0].lower():
+            elif "maxiter" in token:
                 maxiter = int(item[1])
 
-            elif "tolerance" in item[0].lower():
+            elif "tolerance" in token:
                 tolerance = float(item[1])
 
-            elif "disp" in item[0].lower():
+            elif "disp" in token:
                 disp = item[1].lower()
                 if disp == "true":
                     disp = True
@@ -200,6 +201,9 @@ class Parameterize(object):
                         # since it was set, the user wants disp to be true.
                         disp = True
 
+            else:
+                options[token.upper()] = item[1]
+
             continue
 
         if data_f is None:
@@ -212,7 +216,7 @@ class Parameterize(object):
         if pu.error_count():
             pu.report_and_raise_error("stopping due to previous errors")
 
-        return data_f, optimize, maxiter, tolerance, disp, fix
+        return data_f, optimize, maxiter, tolerance, disp, fix, options
 
 
 class Kayenta(Parameterize):
@@ -229,8 +233,6 @@ class Kayenta(Parameterize):
         # get the shearfit block
         shearfit_block = job.get_block("shearfit")
         hydrofit_block = job.get_block("hydrofit")
-        if hydrofit_block is not None:
-            raise ParameterizeError("hydrofit not yet available")
 
         self.shearfit = shearfit_block is not None
         self.hydrofit = hydrofit_block is not None
@@ -239,9 +241,14 @@ class Kayenta(Parameterize):
             block_data = self.parse_block(shearfit_block)
             self.init_shearfit(*block_data)
 
+        if self.hydrofit:
+            block_data = self.parse_block(hydrofit_block)
+            self.init_hydrofit(*block_data)
+
+
         pass
 
-    def init_shearfit(self, data_f, optimize, maxiter, tolerance, disp, fix):
+    def init_shearfit(self, *args):
         """ Initialize data needed by shearfit
 
         To run shearfit, we need values for A1 - A4, in that order. The user
@@ -250,6 +257,9 @@ class Kayenta(Parameterize):
         array with input from the user.
 
         """
+
+        data_f, optimize, maxiter, tolerance, disp, fix = args[0:-1]
+
         # pass arguments to class data
         self.SF_maxiter = maxiter
         self.SF_tolerance = tolerance
@@ -377,8 +387,8 @@ class Kayenta(Parameterize):
             if ubnd is None:
                 ubnd = self.SF_ai[idx] + 10. * self.SF_ai[idx]
 
-            if lbnd > ubnd:
-                pu.report_error("lbnd({0:12.6E}) > ubnd({1:12.6E})"
+            if lbnd >= ubnd:
+                pu.report_error("lbnd({0:12.6E}) >= ubnd({1:12.6E})"
                                 .format(lbnd, ubnd))
 
             bounds[idx] = [lbnd, ubnd]
@@ -388,6 +398,171 @@ class Kayenta(Parameterize):
             continue
         self.SF_cons = lcons + ucons
         self.SF_bounds = [bounds[idx] for idx in self.SF_v]
+
+        if pu.error_count():
+            pu.report_and_raise_error("ERROR: Resolve previous errors")
+
+        return
+
+    def init_hydrofit(self, *args):
+        """ Initialize data needed by hydrofit
+
+        To run shearfit, we need values for B0 - B4, in that order. The user
+        may only want to optimize some, not all, of the B parameters. Here we
+        initialize all B parameters to zero, and then populate the initial
+        array with input from the user.
+
+        """
+
+        data_f, optimize, maxiter, tolerance, disp, fix, options = args
+
+        # pass arguments to class data
+        self.HF_maxiter = maxiter
+        self.HF_tolerance = tolerance
+        self.HF_disp = disp
+
+        # parameters to be optimized by shearfit
+        B_map = {"B0": 0, "B1": 1, "B2": 2, "B3":3, "B4":4}
+
+        # check input vars
+        for key, val in optimize.items():
+            if key.upper() not in B_map:
+                raise ParameterizeError(
+                    "unrecognized optimization variable {0}".format(key))
+        for key, val in fix.items():
+            if key.upper() not in B_map:
+                raise ParameterizeError(
+                    "unrecognized fixed variable {0}".format(key))
+
+        # --------------------------------------------------------------------
+        # # check the data file. the user must specify a column of volume
+        # strain "EVOL" and pressure "PRESSURE"
+        min_vars = ["@EVOL", "@PRESSURE"]
+        exargs = [data_f, "--silent", "--disp=1"] + min_vars
+        try:
+            evol_pres = pe.extract(exargs)[1]
+
+        except ExtractError:
+            raise ParameterizeError(
+                "Could not find EVOL and PRESSURE columns from {0}"
+                .format(os.path.basename(data_f)))
+
+        # initial guess at plastic volume change
+        ev_p = evol_pres[-1][0]
+
+        # determine the unload curve
+        ev_c, idx_c = 1.e9, None
+        for idx, (evol, pres) in enumerate(evol_pres):
+            if evol < ev_c:
+                ev_c = evol
+                idx_c = idx
+            continue
+        unload = [[x[0] - ev_p, x[1]] for x in reversed(evol_pres[idx_c:])]
+
+        crush_pres = float(options.get("PC", 0.))
+        if crush_pres:
+            unload = [x for x in unload if x[1] < crush_pres]
+
+        # determine the tangent bulk modulus from unload curve
+        # K = -dp / dv
+        bmod = [-(unload[idx + 1][1] - unload[idx][1]) /
+                 (unload[idx + 1][0] - unload[idx][0])
+                 for idx in range(len(unload) - 1)]
+        if any(x < 0. for x in bmod):
+            raise ParameterizeError(
+                "Encountered negative bulk modulus in hydrofit data")
+
+        # save the data to class attribute
+        self.HF_data = np.array(evol_pres)
+        self.HF_bmod = np.array(bmod)
+        self.HF_unload = np.array(unload)
+
+        # -------------------------------------------------------------------- #
+        bi = [None] * 5
+        bounds = [[None, None] for i in range(5)]
+        v = [None] * 5
+        fixed = [None] * 5
+
+        # User specified parameters to optimize, initialize data
+        for key, val in optimize.items():
+            idx = B_map[key.upper()]
+            bi[idx] = val["initial value"]
+            if bi[idx] is not None and bi[idx] < 0.:
+                raise ParameterizeError("B{0} must be > 0".format(idx))
+            bounds[idx] = val["bounds"]
+            v[idx] = idx
+            continue
+
+        # any ai that is None is converted to 0
+        bi = [x if x is not None else 0. for x in bi]
+
+        if not optimize or not bi[0]:
+            # user did not specify any parameters, get the first guess for B0
+            # through a linear fit
+
+            # least squares fit
+            ione = -3. * self.HF_unload[:, 1][1:]
+            def kfunc(i1, *b):
+                b0, b1, b2 = b
+                return b0 + b1 * np.exp(-b2 / np.abs(i1))
+            p0 = np.zeros(3)
+            p0[0] = self.HF_bmod[0]
+            p0[1] = self.HF_bmod[-1] - p0[0]
+            p0[2] = -np.log((self.HF_bmod[2] - p0[0]) / p0[1]) * np.abs(ione[2])
+            curve_fit = scipy.optimize.curve_fit(
+                kfunc, ione, self.HF_bmod, p0=p0)
+            bi = np.append(np.abs(curve_fit[0]), np.zeros(2))
+            v = [0, 1, 2, 3, 4]
+
+        # restore or set fixed values
+        for key, val in fix.items():
+            idx = B_map[key.upper()]
+            bi[idx] = val["initial value"]
+            fixed[idx] = key.upper()
+            v[idx] = None
+            continue
+
+        # bi, bounds, and v now contain the initial values for the b
+        # parameters, bounds, and an integer index array of which parameters
+        # to optimize. filter the data
+        self.HF_v = np.array([x for x in v if x is not None], dtype=int)
+        self.HF_bi = np.array(bi, dtype=float)
+
+        # optimizers like to work with numbers close to one => scale the
+        # optimized parameters
+        self.HF_fac = [None] * len(self.HF_v)
+        self.HF_nams = [None] * len(self.HF_v)
+
+        for idx in self.HF_v:
+            self.HF_fac[idx] = eval(
+                "1.e" + "{0:12.6E}".format(self.HF_bi[idx]).split("E")[1])
+            self.HF_fac[idx] = 1.
+            self.HF_nams[idx] = [
+                key for key, val in B_map.items() if val == idx][0]
+            continue
+        self.HF_bi[self.HF_v] = self.HF_bi[self.HF_v] / self.HF_fac
+        self.HF_fixed = [x for x in fixed if x is not None]
+
+        # Convert the bounds to inequality constraints
+        lcons, ucons = [], []
+        for idx in self.HF_v:
+            lbnd, ubnd = bounds[idx]
+            if lbnd is None:
+                lbnd = 0.
+            if ubnd is None:
+                ubnd = self.HF_bi[idx] + 10. * self.HF_bi[idx]
+
+            if lbnd >= ubnd:
+                pu.report_error("lbnd({0:12.6E}) > ubnd({1:12.6E})"
+                                .format(lbnd, ubnd))
+
+            bounds[idx] = [lbnd, ubnd]
+            lcons.append(lambda z, idx=idx, bnd=lbnd: z[idx] - bnd)
+            ucons.append(lambda z, idx=idx, bnd=ubnd: bnd - z[idx])
+
+            continue
+        self.HF_cons = lcons + ucons
+        self.HF_bounds = [bounds[idx] for idx in self.HF_v]
 
         if pu.error_count():
             pu.report_and_raise_error("ERROR: Resolve previous errors")
@@ -410,11 +585,17 @@ class Kayenta(Parameterize):
 
         """
 
+        global IOPT
         if self.verbosity:
             pu.log_message("Running: {0}".format(self.name), noisy=True)
 
         if self.shearfit:
+            IOPT = 0
             self.run_shearfit_job()
+
+        if self.hydrofit:
+            IOPT = 0
+            self.run_hydrofit_job()
 
         return 0
 
@@ -468,6 +649,59 @@ Bounds:
                "FSLOPE = {0:12.6E}, ".format(fslope) +
                "YSLOPE = {0:12.6E}".format(yslope))
 
+        message = ("Optimized parameters found on iteration {0}\n"
+                   "Optimized parameters:\n{1}".format(IOPT, msg))
+        log_message(message)
+        pu.log_message(message)
+        log_message(None, _close=True)
+
+        return 0
+
+    def run_hydrofit_job(self):
+
+        B_map = {"B0": 0, "B1": 1, "B2": 2, "B3":3, "B4":4}
+        # set up args and call optimzation routine
+        ione = -3. * self.HF_unload[:, 1][1:]
+        args = (self.HF_bi, self.HF_nams, ione, self.HF_bmod, self.HF_fac,
+                self.HF_v, self.verbosity)
+
+        # open the log file
+        xinit = np.array(self.HF_bi)
+        xinit[self.HF_v] = xinit[self.HF_v] * self.HF_fac
+        msg_init = "".join(["{0} = {1:12.6E}\n".format(
+                    self.HF_nams[idx], xinit[idx]) for idx in self.HF_v])
+        msg_fixd = "".join(["{0} = {1:12.6E}\n".format(
+                    key, xinit[B_map[key]]) for key in self.HF_fixed])
+        msg_bnds = "".join(["{0}: ({1:12.6E}, {2:12.6E})\n".format(
+                    self.HF_nams[idx],
+                    self.HF_bounds[idx][0] * self.HF_fac[idx],
+                    self.HF_bounds[idx][1] * self.HF_fac[idx])
+                            for idx in self.HF_v])
+
+        message = """\
+Starting the hydro fit optimization routine.
+Initial values:
+{0}
+Fixed values
+{1}
+Bounds:
+{2}""".format(msg_init, msg_fixd, msg_bnds)
+
+        log_message(message, _open=self.name + ".hydrofit")
+
+        # call the optimizer
+        xopt = scipy.optimize.fmin_cobyla(
+            bmod, self.HF_bi[self.HF_v], self.HF_cons, consargs=(),
+            args=args, disp=self.HF_disp, rhoend=1.e-7)
+
+        # optimum parameters found, write out final info
+        bopt = self.HF_bi
+        bopt[self.HF_v] = xopt * self.HF_fac
+        msg = ("B0 = {0:12.6E}, ".format(bopt[0]) +
+               "B1 = {0:12.6E}, ".format(bopt[1]) +
+               "B2 = {0:12.6E}, ".format(bopt[2]) +
+               "B3 = {0:12.6E}\n".format(bopt[3]) +
+               "B4 = {0:12.6E}\n".format(bopt[4]))
         message = ("Optimized parameters found on iteration {0}\n"
                    "Optimized parameters:\n{1}".format(IOPT, msg))
         log_message(message)
@@ -616,6 +850,36 @@ def rtxc(xcall, xinit, xnams, data, fac, v, verbosity, ncalls=[0]):
     error = rootj2 - (a1 - a3 * np.exp(a2 * ione) - a4 * ione)
     error = math.sqrt(np.mean(error ** 2))
     dnom = abs(np.amax(rootj2))
+    error = error / dnom if dnom >= 2.e-16 else error
+
+    return error
+
+def bmod(xcall, xinit, xnams, ione, k, fac, v, verbosity, ncalls=[0]):
+    """The Kayenta bulk modulus function """
+
+    global IOPT
+    ncalls[0] += 1
+    IOPT = ncalls[0]
+
+    # write trial params to file
+    msg = []
+    for idx, nam in enumerate(xnams):
+        opt_val = xcall[idx] * fac[idx]
+        pstr = "{0} = {1:12.6E}".format(nam, opt_val)
+        msg.append(pstr)
+        continue
+
+    log_message("Iteration {0:03d}, trial parameters: {1}"
+                .format(ncalls[0], ", ".join(msg)))
+
+    # compute rootj2 and error
+    b = xinit
+    b[v] = xcall * fac
+    b0, b1, b2, b3, b4 = b
+
+    error = k - (b0 + b1 * np.exp(b2 / np.abs(ione)))
+    error = math.sqrt(np.mean(error ** 2))
+    dnom = abs(np.amax(k))
     error = error / dnom if dnom >= 2.e-16 else error
 
     return error
