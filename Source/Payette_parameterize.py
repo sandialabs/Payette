@@ -310,8 +310,24 @@ class Kayenta(Parameterize):
         bounds = [[None, None] for i in range(4)]
         v = [None] * 4
         fixed = [None] * 4
+        has_bounds = False
 
-        if not optimize:
+        # User specified parameters to optimize, initialize data
+        for key, val in optimize.items():
+            idx = A_map[key.upper()]
+            ai[idx] = val["initial value"]
+            if ai[idx] is not None and ai[idx] < 0.:
+                raise ParameterizeError("B{0} must be > 0".format(idx+1))
+            bounds[idx] = val["bounds"]
+            if not has_bounds:
+                has_bounds = any(x is not None for x in bounds[idx])
+            v[idx] = idx
+            continue
+
+        # any ai that is None is converted to 0
+        ai = [x if x is not None else 0. for x in ai]
+
+        if not optimize or not ai[0]:
             # user did not specify any parameters, get the first guess in a two
             # step process:
             # 1) get A1 and A4 through a linear fit, if it is good, keep the
@@ -331,21 +347,12 @@ class Kayenta(Parameterize):
             else:
                 # least squares fit
                 def rtj2(i1, a1, a2, a3, a4):
-                    return a1 - a3 * np.exp(a2 * i1) - a4 * i1
+                    return a1 - a3 * exps(a2 * i1) - a4 * i1
                 p0 = np.zeros(4)
                 p0[0] = fit[0][1]
                 curve_fit = scipy.optimize.curve_fit(rtj2, ione, rootj2, p0=p0)
                 ai = np.abs(curve_fit[0])
                 v = [0, 1, 2, 3]
-
-        else:
-            # User specified paramters to optimize, initialize data
-            for key, val in optimize.items():
-                idx = A_map[key.upper()]
-                ai[idx] = val["initial value"]
-                bounds[idx] = val["bounds"]
-                v[idx] = idx
-                continue
 
         # restore or set fixed values
         for key, val in fix.items():
@@ -354,9 +361,6 @@ class Kayenta(Parameterize):
             fixed[idx] = key.upper()
             v[idx] = None
             continue
-
-        # any ai that is None is converted to 0
-        ai = [x if x is not None else 0. for x in ai]
 
         # ai, bounds, and v now contain the initial values for the a
         # parameters, bounds, and an integer index array of which parameters
@@ -384,8 +388,14 @@ class Kayenta(Parameterize):
             lbnd, ubnd = bounds[idx]
             if lbnd is None:
                 lbnd = 0.
+
             if ubnd is None:
-                ubnd = self.SF_ai[idx] + 10. * self.SF_ai[idx]
+                if self.SF_ai[idx]:
+                    ubnd = self.SF_ai[idx] + 10. * self.SF_ai[idx]
+                elif idx == 3 or idx == 1:
+                    ubnd = 2.
+                else:
+                    ubnd = 1.e99
 
             if lbnd >= ubnd:
                 pu.report_error("lbnd({0:12.6E}) >= ubnd({1:12.6E})"
@@ -394,9 +404,11 @@ class Kayenta(Parameterize):
             bounds[idx] = [lbnd, ubnd]
             lcons.append(lambda z, idx=idx, bnd=lbnd: z[idx] - bnd)
             ucons.append(lambda z, idx=idx, bnd=ubnd: bnd - z[idx])
-
             continue
-        self.SF_cons = lcons + ucons
+
+        # A1 - A3 > 0
+        cons = [lambda z: z[0] - z[2]]
+        self.SF_cons = lcons + ucons + cons
         self.SF_bounds = [bounds[idx] for idx in self.SF_v]
 
         if pu.error_count():
@@ -472,14 +484,54 @@ class Kayenta(Parameterize):
             raise ParameterizeError(
                 "Encountered negative bulk modulus in hydrofit data")
 
+        # determine portions due to crushing and loading
+        for idx, val in enumerate(bmod):
+            devol = evol_pres[idx + 1][0] - evol_pres[idx][0]
+            dpres = evol_pres[idx + 1][1] - evol_pres[idx][1]
+            if abs((-val * devol - dpres) / dpres) > 1.:
+                crush = [[x[0], x[1]] for x in evol_pres[idx-1:]]
+                load = [[x[0], x[1]] for x in evol_pres[:idx]]
+                break
+
         # save the data to class attribute
         self.HF_data = np.array(evol_pres)
         self.HF_bmod = np.array(bmod)
         self.HF_unload = np.array(unload)
+        self.HF_crush = np.array(crush)
+        self.HF_load = np.array(load)
 
+
+
+        if ro.VERBOSITY:
+            # write out the elastic unloading curve
+            with open(self.name + ".unload", "w") as fobj:
+                fobj.write("{0:13s} {1:13s} {2:13s}\n"
+                           .format("EVOL", "PRES", "BMOD"))
+                for idx in range(len(self.HF_bmod)):
+                    fobj.write("{0:12.6E} {1:12.6E} {2:12.6E}\n"
+                               .format(self.HF_unload[:, 0][idx] + ev_p,
+                                       self.HF_unload[:, 1][idx],
+                                       self.HF_bmod[idx]))
+
+            # write out the crush curve
+            with open(self.name + ".crush", "w") as fobj:
+                fobj.write("{0:13s} {1:13s}\n".format("EVOL", "PRES"))
+                for idx in range(len(self.HF_crush)):
+                    fobj.write("{0:12.6E} {1:12.6E}\n"
+                               .format(self.HF_crush[:, 0][idx],
+                                       self.HF_crush[:, 1][idx]))
+
+            # write out the loading curve
+            with open(self.name + ".load", "w") as fobj:
+                fobj.write("{0:13s} {1:13s}\n".format("EVOL", "PRES"))
+                for idx in range(len(self.HF_load)):
+                    fobj.write("{0:12.6E} {1:12.6E}\n"
+                               .format(self.HF_load[:, 0][idx],
+                                       self.HF_load[:, 1][idx]))
         # -------------------------------------------------------------------- #
         bi = [None] * 5
         bounds = [[None, None] for i in range(5)]
+        has_bounds = False
         v = [None] * 5
         fixed = [None] * 5
 
@@ -490,10 +542,12 @@ class Kayenta(Parameterize):
             if bi[idx] is not None and bi[idx] < 0.:
                 raise ParameterizeError("B{0} must be > 0".format(idx))
             bounds[idx] = val["bounds"]
+            if not has_bounds:
+                has_bounds = any(x is not None for x in bounds[idx])
             v[idx] = idx
             continue
 
-        # any ai that is None is converted to 0
+        # any bi that is None is converted to 0
         bi = [x if x is not None else 0. for x in bi]
 
         if not optimize or not bi[0]:
@@ -504,7 +558,7 @@ class Kayenta(Parameterize):
             ione = -3. * self.HF_unload[:, 1][1:]
             def kfunc(i1, *b):
                 b0, b1, b2 = b
-                return b0 + b1 * np.exp(-b2 / np.abs(i1))
+                return b0 + b1 * exps(-b2 / np.abs(i1))
             p0 = np.zeros(3)
             p0[0] = self.HF_bmod[0]
             p0[1] = self.HF_bmod[-1] - p0[0]
@@ -512,7 +566,7 @@ class Kayenta(Parameterize):
             curve_fit = scipy.optimize.curve_fit(
                 kfunc, ione, self.HF_bmod, p0=p0)
             bi = np.append(np.abs(curve_fit[0]), np.zeros(2))
-            v = [0, 1, 2, 3, 4]
+            v = [0, 1, 2, 3, 4] if has_bounds else [None] * 5
 
         # restore or set fixed values
         for key, val in fix.items():
@@ -700,7 +754,7 @@ Bounds:
         msg = ("B0 = {0:12.6E}, ".format(bopt[0]) +
                "B1 = {0:12.6E}, ".format(bopt[1]) +
                "B2 = {0:12.6E}, ".format(bopt[2]) +
-               "B3 = {0:12.6E}\n".format(bopt[3]) +
+               "B3 = {0:12.6E}, ".format(bopt[3]) +
                "B4 = {0:12.6E}\n".format(bopt[4]))
         message = ("Optimized parameters found on iteration {0}\n"
                    "Optimized parameters:\n{1}".format(IOPT, msg))
@@ -847,7 +901,7 @@ def rtxc(xcall, xinit, xnams, data, fac, v, verbosity, ncalls=[0]):
     ione = data[:, 0]
     rootj2 = data[:, 1]
 
-    error = rootj2 - (a1 - a3 * np.exp(a2 * ione) - a4 * ione)
+    error = rootj2 - (a1 - a3 * exps(a2 * ione) - a4 * ione)
     error = math.sqrt(np.mean(error ** 2))
     dnom = abs(np.amax(rootj2))
     error = error / dnom if dnom >= 2.e-16 else error
@@ -877,9 +931,14 @@ def bmod(xcall, xinit, xnams, ione, k, fac, v, verbosity, ncalls=[0]):
     b[v] = xcall * fac
     b0, b1, b2, b3, b4 = b
 
-    error = k - (b0 + b1 * np.exp(b2 / np.abs(ione)))
+    error = k - (b0 + b1 * exps(b2 / np.abs(ione)))
     error = math.sqrt(np.mean(error ** 2))
     dnom = abs(np.amax(k))
     error = error / dnom if dnom >= 2.e-16 else error
 
     return error
+
+def exps(arg):
+    eunderflow = -34.53877639491 * 1.
+    eoverflow = 92.1034037 * 1.
+    return np.array([np.exp(min(max(x, eunderflow), eoverflow)) for x in arg])

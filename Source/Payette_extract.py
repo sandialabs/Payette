@@ -190,7 +190,7 @@ def extract(argv):
         fobj = open(outf, "r")
         for iline, line in enumerate(fobj):
 
-            if iline == 0 or not line.split():
+            if iline == 0 or not line.split() or line.split()[0] == "#":
                 continue
 
             linedat = [ float(x) for x in line.split() ]
@@ -282,10 +282,10 @@ def args2dict(args,sep):
         fobj = open(argf, "r")
         for iline, line in enumerate(fobj):
 
-            if iline == 0 or not line.split():
+            if iline == 0 or not line.split() or line.strip()[0] == "#":
                 continue
 
-            linedat = [ float(x) for x in line.split() ]
+            linedat = [float(x) for x in line.split()]
             if iline == 1:
                 length = len(linedat)
 
