@@ -106,7 +106,7 @@ class Parameterize(object):
         # defaults
         data_f = None
         maxiter = 20
-        tolerance = 1.e-4
+        tolerance = 1.e-8
         disp = False
         optimize = {}
         fix = {}
@@ -359,6 +359,9 @@ class Kayenta(Parameterize):
             idx = A_map[key.upper()]
             ai[idx] = val["initial value"]
             fixed[idx] = key.upper()
+            if ai[idx] is None:
+                raise ParameterizeError(
+                    "No initial value given for {0}".format(key.upper()))
             v[idx] = None
             continue
 
@@ -370,21 +373,22 @@ class Kayenta(Parameterize):
 
         # optimizers like to work with numbers close to one => scale the
         # optimized parameters
-        self.SF_fac = [None] * len(self.SF_v)
-        self.SF_nams = [None] * len(self.SF_v)
+        fac = [None] * 4
+        self.SF_nams = [None] * 4
 
         for idx in self.SF_v:
-            self.SF_fac[idx] = eval(
+            fac[idx] = eval(
                 "1.e" + "{0:12.6E}".format(self.SF_ai[idx]).split("E")[1])
             self.SF_nams[idx] = [
                 key for key, val in A_map.items() if val == idx][0]
             continue
+        self.SF_fac = np.array([x for x in fac if x is not None])
         self.SF_ai[self.SF_v] = self.SF_ai[self.SF_v] / self.SF_fac
         self.SF_fixed = [x for x in fixed if x is not None]
 
         # Convert the bounds to inequality constraints
         lcons, ucons = [], []
-        for idx in self.SF_v:
+        for iv, idx in enumerate(self.SF_v):
             lbnd, ubnd = bounds[idx]
             if lbnd is None:
                 lbnd = 0.
@@ -401,15 +405,17 @@ class Kayenta(Parameterize):
                 pu.report_error("lbnd({0:12.6E}) >= ubnd({1:12.6E})"
                                 .format(lbnd, ubnd))
 
+            lbnd, ubnd = lbnd / self.SF_fac[iv], ubnd / self.SF_fac[iv]
             bounds[idx] = [lbnd, ubnd]
-            lcons.append(lambda z, idx=idx, bnd=lbnd: z[idx] - bnd)
-            ucons.append(lambda z, idx=idx, bnd=ubnd: bnd - z[idx])
+            lcons.append(lambda z, idx=idx, bnd=lbnd: z[iv] - bnd)
+            ucons.append(lambda z, idx=idx, bnd=ubnd: bnd - z[iv])
             continue
 
         # A1 - A3 > 0
         cons = [lambda z: z[0] - z[2]]
+        cons=[]
         self.SF_cons = lcons + ucons + cons
-        self.SF_bounds = [bounds[idx] for idx in self.SF_v]
+        self.SF_bounds = [x for x in bounds]
 
         if pu.error_count():
             pu.report_and_raise_error("ERROR: Resolve previous errors")
@@ -584,17 +590,12 @@ class Kayenta(Parameterize):
 
         # optimizers like to work with numbers close to one => scale the
         # optimized parameters
-        self.HF_fac = [None] * len(self.HF_v)
         self.HF_nams = [None] * len(self.HF_v)
 
         for idx in self.HF_v:
-            self.HF_fac[idx] = eval(
-                "1.e" + "{0:12.6E}".format(self.HF_bi[idx]).split("E")[1])
-            self.HF_fac[idx] = 1.
             self.HF_nams[idx] = [
                 key for key, val in B_map.items() if val == idx][0]
             continue
-        self.HF_bi[self.HF_v] = self.HF_bi[self.HF_v] / self.HF_fac
         self.HF_fixed = [x for x in fixed if x is not None]
 
         # Convert the bounds to inequality constraints
@@ -669,9 +670,9 @@ class Kayenta(Parameterize):
                     key, xinit[A_map[key]]) for key in self.SF_fixed])
         msg_bnds = "".join(["{0}: ({1:12.6E}, {2:12.6E})\n".format(
                     self.SF_nams[idx],
-                    self.SF_bounds[idx][0] * self.SF_fac[idx],
-                    self.SF_bounds[idx][1] * self.SF_fac[idx])
-                            for idx in self.SF_v])
+                    self.SF_bounds[idx][0] * self.SF_fac[iv],
+                    self.SF_bounds[idx][1] * self.SF_fac[iv])
+                            for iv, idx in enumerate(self.SF_v)])
 
         message = """\
 Starting the shear fit optimization routine.
@@ -716,21 +717,19 @@ Bounds:
         B_map = {"B0": 0, "B1": 1, "B2": 2, "B3":3, "B4":4}
         # set up args and call optimzation routine
         ione = -3. * self.HF_unload[:, 1][1:]
-        args = (self.HF_bi, self.HF_nams, ione, self.HF_bmod, self.HF_fac,
+        args = (self.HF_bi, self.HF_nams, ione, self.HF_bmod,
                 self.HF_v, self.verbosity)
 
         # open the log file
         xinit = np.array(self.HF_bi)
-        xinit[self.HF_v] = xinit[self.HF_v] * self.HF_fac
+        xinit[self.HF_v] = xinit[self.HF_v]
         msg_init = "".join(["{0} = {1:12.6E}\n".format(
                     self.HF_nams[idx], xinit[idx]) for idx in self.HF_v])
         msg_fixd = "".join(["{0} = {1:12.6E}\n".format(
                     key, xinit[B_map[key]]) for key in self.HF_fixed])
         msg_bnds = "".join(["{0}: ({1:12.6E}, {2:12.6E})\n".format(
-                    self.HF_nams[idx],
-                    self.HF_bounds[idx][0] * self.HF_fac[idx],
-                    self.HF_bounds[idx][1] * self.HF_fac[idx])
-                            for idx in self.HF_v])
+                    self.HF_nams[idx], self.HF_bounds[idx][0],
+                    self.HF_bounds[idx][1]) for idx in self.HF_v])
 
         message = """\
 Starting the hydro fit optimization routine.
@@ -750,7 +749,7 @@ Bounds:
 
         # optimum parameters found, write out final info
         bopt = self.HF_bi
-        bopt[self.HF_v] = xopt * self.HF_fac
+        bopt[self.HF_v] = xopt
         msg = ("B0 = {0:12.6E}, ".format(bopt[0]) +
                "B1 = {0:12.6E}, ".format(bopt[1]) +
                "B2 = {0:12.6E}, ".format(bopt[2]) +
@@ -884,9 +883,9 @@ def rtxc(xcall, xinit, xnams, data, fac, v, verbosity, ncalls=[0]):
 
     # write trial params to file
     msg = []
-    for idx, nam in enumerate(xnams):
-        opt_val = xcall[idx] * fac[idx]
-        pstr = "{0} = {1:12.6E}".format(nam, opt_val)
+    for iv, idx in enumerate(v):
+        opt_val = xcall[iv] * fac[iv]
+        pstr = "{0} = {1:12.6E}".format(xnams[idx], opt_val)
         msg.append(pstr)
         continue
 
@@ -908,7 +907,7 @@ def rtxc(xcall, xinit, xnams, data, fac, v, verbosity, ncalls=[0]):
 
     return error
 
-def bmod(xcall, xinit, xnams, ione, k, fac, v, verbosity, ncalls=[0]):
+def bmod(xcall, xinit, xnams, ione, k, v, verbosity, ncalls=[0]):
     """The Kayenta bulk modulus function """
 
     global IOPT
@@ -918,7 +917,7 @@ def bmod(xcall, xinit, xnams, ione, k, fac, v, verbosity, ncalls=[0]):
     # write trial params to file
     msg = []
     for idx, nam in enumerate(xnams):
-        opt_val = xcall[idx] * fac[idx]
+        opt_val = xcall[idx]
         pstr = "{0} = {1:12.6E}".format(nam, opt_val)
         msg.append(pstr)
         continue
@@ -928,7 +927,7 @@ def bmod(xcall, xinit, xnams, ione, k, fac, v, verbosity, ncalls=[0]):
 
     # compute rootj2 and error
     b = xinit
-    b[v] = xcall * fac
+    b[v] = xcall
     b0, b1, b2, b3, b4 = b
 
     error = k - (b0 + b1 * exps(b2 / np.abs(ione)))
