@@ -1,11 +1,11 @@
-begin simulation payette-test-shearfit-prin
-begin optimization
-method cobyla
-option shearfit
-optimize A1, initial value = 800.e6   # 843.02e6
-optimize A2, initial value = 1.e-10   # 2.731e-10
-optimize A3, initial value = 780.e6   # 821.92e6
-optimize A4, initial value = 1.e-10
-gold file shearfit_prin.tbl
-end optimization
-end simulation
+begin parameterization
+material payette-test-shearfit-prin
+constitutive model kayenta
+begin shearfit
+optimize A1#, initial value = 800.e6   # 843.02e6
+optimize A2#, initial value = 1.e-10   # 2.731e-10
+optimize A3#, initial value = 780.e6   # 821.92e6
+optimize A4#, initial value = 1.e-10
+data file shearfit_prin.tbl
+end shearfit
+end parameterization

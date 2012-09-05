@@ -13,7 +13,7 @@ class Test(PayetteTest):
         self.tdir = os.path.dirname(os.path.realpath(__file__))
 
         self.infile = "{0}.inp".format(os.path.join(self.tdir, self.name))
-        self.outfile = "{0}.opt/{0}.opt".format(self.name)
+        self.outfile = "{0}.out".format(self.name)
         self.baseline = "{0}.gold".format(os.path.join(self.tdir, self.name))
         self.keywords = ["builtin", "long", "regression",
                          "optimization", "shearfit"]

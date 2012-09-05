@@ -27,6 +27,7 @@ Toolset/__found_tests__.py
 *.log
 *.diff
 *.tmp
+*.shearfit
 */.DS_Store
 .DS_Store
 *.prf

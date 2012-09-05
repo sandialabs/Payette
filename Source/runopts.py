@@ -9,7 +9,7 @@ import sys
 
 # --- runtime configurable options
 DISP = False
-VERBOSITY = 3
+VERBOSITY = 1
 SQA = False
 DEBUG = False
 STRICT = False

@@ -6,8 +6,8 @@ end preprocessing
 begin simulation payette-test-preprocessing
   begin material
     constitutive model elastic
-    shmod = {half_shear_modulus} * 2.
-    bkmod = {two_bulk_modulus} / 2.
+    shmod = {half_shear_modulus * 2.}
+    bkmod = {two_bulk_modulus / 2.}
   end material
   begin boundary
     kappa = 0.

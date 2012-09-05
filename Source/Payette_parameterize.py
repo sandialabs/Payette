@@ -45,12 +45,75 @@ from Source.Payette_extract import ExtractError as ExtractError
 
 # Module level variables
 IOPT = 0
-FAC = []
-FNEWEXT = ".0x312.dat"
 
 class ParameterizeError(Exception):
     def __init__(self, message):
         super(ParameterizeError, self).__init__(message)
+
+class ParameterizeLogger(object):
+    loggers = {"root": None, }
+    def __init__(self, name, fpath, mode="w"):
+        self.name = name
+        self.fpath = fpath
+        self.fobj = open(fpath, mode)
+        self.loggers[self.name] = {"object": self, "file object": self.fobj}
+        pass
+
+    def log(self, message, level=1, end="\n", cout=False, root_write=False):
+        """Log a message
+
+        Parameters
+        ----------
+        message : str
+            the message to write
+        level : int [optional, 1]
+            log level
+        end : str [optional, \n]
+            ending character
+        cout : bool [optional, False]
+            write message to console
+        """
+        pre = {0: "", 1: "INFO: ", 2: "WARNING: ", 3: "ERROR: "}[level]
+        message = message.split("\n")
+        message = "".join(["{0}{1}{2}".format(pre, x, end)
+                           for x in message if x])
+
+        self.fobj.write(message)
+
+        if cout or ro.VERBOSITY > 1:
+            sys.stdout.write(message)
+
+        root = self.loggers["root"].get("object")
+        if self == root:
+            return
+
+        if root is not None and root_write:
+            self.loggers["root"]["file object"].write(message)
+
+        return
+
+    def close(self):
+        self.fobj.flush()
+        self.fobj.close()
+        del self.loggers[self.name]
+        return
+
+    def closeall(self):
+        for logger in self.loggers:
+            try:
+                logger["file object"].flush()
+                logger["file object"].close()
+            except ValueError:
+                pass
+
+def get_logger(name, fpath=None):
+    if fpath is not None:
+        return ParameterizeLogger(name, fpath)
+    logger = ParameterizeLogger.loggers.get(name)
+    if logger is None:
+        raise ParameterizeLogger("Logger {0} not found".format(name))
+    return logger["object"]
+
 
 def parameterizer(input_lines, material_index):
     r"""docstring -> needs to be completed """
@@ -105,9 +168,6 @@ class Parameterize(object):
 
         # defaults
         data_f = None
-        maxiter = 20
-        tolerance = 1.e-8
-        disp = False
         optimize = {}
         fix = {}
         options = {}
@@ -177,30 +237,6 @@ class Parameterize(object):
 
                 fix[key] = {"initial value": init_val}
 
-            elif "maxiter" in token:
-                maxiter = int(item[1])
-
-            elif "tolerance" in token:
-                tolerance = float(item[1])
-
-            elif "disp" in token:
-                disp = item[1].lower()
-                if disp == "true":
-                    disp = True
-
-                elif disp == "false":
-                    disp = False
-
-                else:
-                    try:
-                        disp = bool(float(item[1]))
-
-                    except ValueError:
-                        # the user specified disp in the input file, it is not
-                        # one of false, true, and is not a number. assume that
-                        # since it was set, the user wants disp to be true.
-                        disp = True
-
             else:
                 options[token.upper()] = item[1]
 
@@ -216,8 +252,37 @@ class Parameterize(object):
         if pu.error_count():
             pu.report_and_raise_error("stopping due to previous errors")
 
-        return data_f, optimize, maxiter, tolerance, disp, fix, options
+        return data_f, optimize, fix, options
 
+
+# parameters to be optimized by shearfit and hydrofit
+def A_map(token=None):
+    mapping = {"A1": 0, "A2": 1, "A3": 2, "A4": 3,}
+    if token is None:
+        return sorted(mapping.keys())
+    if isinstance(token, (int, float)):
+        token = int(token)
+        for key, val in mapping.items():
+            if val == token:
+                return key
+            continue
+        return None
+
+    return mapping.get(token)
+
+def B_map(token):
+    mapping = {"B0": 0, "B1": 1, "B2": 2, "B3": 3, "B4": 4,}
+    if token is None:
+        return sorted(mapping.keys())
+    if isinstance(token, (int, float)):
+        token = int(token)
+        for key, val in mapping.items():
+            if val == token:
+                return key
+            continue
+        return None
+
+    return mapping[token]
 
 class Kayenta(Parameterize):
 
@@ -258,23 +323,20 @@ class Kayenta(Parameterize):
 
         """
 
-        data_f, optimize, maxiter, tolerance, disp, fix = args[0:-1]
+        data_f, optimize, fix, options = args
 
         # pass arguments to class data
-        self.SF_maxiter = maxiter
-        self.SF_tolerance = tolerance
-        self.SF_disp = disp
-
-        # parameters to be optimized by shearfit
-        A_map = {"A1": 0, "A2": 1, "A3":2, "A4":3}
+        self.SF_maxiter = int(options.get("MAXITER", 20))
+        self.SF_tolerance = float(options.get("TOLERANCE", 1.e-6))
+        self.SF_method = options.get("METHOD", "SIMPLEX")
 
         # check input vars
         for key, val in optimize.items():
-            if key.upper() not in A_map:
+            if A_map(key.upper()) is None:
                 raise ParameterizeError(
                     "unrecognized optimization variable {0}".format(key))
         for key, val in fix.items():
-            if key.upper() not in A_map:
+            if A_map(key.upper()) is None:
                 raise ParameterizeError(
                     "unrecognized fixed variable {0}".format(key))
 
@@ -314,7 +376,7 @@ class Kayenta(Parameterize):
 
         # User specified parameters to optimize, initialize data
         for key, val in optimize.items():
-            idx = A_map[key.upper()]
+            idx = A_map(key.upper())
             ai[idx] = val["initial value"]
             if ai[idx] is not None and ai[idx] < 0.:
                 raise ParameterizeError("B{0} must be > 0".format(idx+1))
@@ -346,17 +408,18 @@ class Kayenta(Parameterize):
 
             else:
                 # least squares fit
-                def rtj2(i1, a1, a2, a3, a4):
-                    return a1 - a3 * exps(a2 * i1) - a4 * i1
                 p0 = np.zeros(4)
                 p0[0] = fit[0][1]
-                curve_fit = scipy.optimize.curve_fit(rtj2, ione, rootj2, p0=p0)
+                step = int(round(len(ione) / 4.))
+                i1 = ione[::step]
+                rtj2 = rootj2[::step]
+                curve_fit = scipy.optimize.curve_fit(rtxc, i1, rtj2, p0=p0)
                 ai = np.abs(curve_fit[0])
                 v = [0, 1, 2, 3]
 
         # restore or set fixed values
         for key, val in fix.items():
-            idx = A_map[key.upper()]
+            idx = A_map(key.upper())
             ai[idx] = val["initial value"]
             fixed[idx] = key.upper()
             if ai[idx] is None:
@@ -368,23 +431,18 @@ class Kayenta(Parameterize):
         # ai, bounds, and v now contain the initial values for the a
         # parameters, bounds, and an integer index array of which parameters
         # to optimize. filter the data
-        self.SF_v = np.array([x for x in v if x is not None], dtype=int)
+        self.SF_v = [x for x in v if x is not None]
         self.SF_ai = np.array(ai, dtype=float)
+        self.SF_fixed = [x for x in fixed if x is not None]
 
         # optimizers like to work with numbers close to one => scale the
         # optimized parameters
         fac = [None] * 4
-        self.SF_nams = [None] * 4
-
         for idx in self.SF_v:
             fac[idx] = eval(
                 "1.e" + "{0:12.6E}".format(self.SF_ai[idx]).split("E")[1])
-            self.SF_nams[idx] = [
-                key for key, val in A_map.items() if val == idx][0]
             continue
-        self.SF_fac = np.array([x for x in fac if x is not None])
-        self.SF_ai[self.SF_v] = self.SF_ai[self.SF_v] / self.SF_fac
-        self.SF_fixed = [x for x in fixed if x is not None]
+        self.SF_fac = [x for x in fac if x is not None]
 
         # Convert the bounds to inequality constraints
         lcons, ucons = [], []
@@ -395,7 +453,7 @@ class Kayenta(Parameterize):
 
             if ubnd is None:
                 if self.SF_ai[idx]:
-                    ubnd = self.SF_ai[idx] + 10. * self.SF_ai[idx]
+                    ubnd = self.SF_ai[idx] + 1000. * self.SF_ai[idx]
                 elif idx == 3 or idx == 1:
                     ubnd = 2.
                 else:
@@ -405,15 +463,24 @@ class Kayenta(Parameterize):
                 pu.report_error("lbnd({0:12.6E}) >= ubnd({1:12.6E})"
                                 .format(lbnd, ubnd))
 
-            lbnd, ubnd = lbnd / self.SF_fac[iv], ubnd / self.SF_fac[iv]
+            lbnd, ubnd = lbnd / fac[idx], ubnd / fac[idx]
             bounds[idx] = [lbnd, ubnd]
-            lcons.append(lambda z, idx=idx, bnd=lbnd: z[iv] - bnd)
-            ucons.append(lambda z, idx=idx, bnd=ubnd: bnd - z[iv])
+            lcons.append(lambda z, idx=iv, bnd=lbnd: z[idx] - bnd)
+            ucons.append(lambda z, idx=iv, bnd=ubnd: bnd - z[idx])
             continue
 
-        # A1 - A3 > 0
-        cons = [lambda z: z[0] - z[2]]
-        cons=[]
+        # The inequality constraint that A1 - A3 > 0
+        if A_map("A1") in self.SF_v and A_map("A3") in self.SF_v:
+            a1, a3 = self.SF_v.index(A_map("A1")), self.SF_v.index(A_map("A3"))
+            cons = [lambda z, a1=a1, a3=a3: z[a1] - z[a3]]
+        elif A_map("A1") in self.SF_v:
+            a1, a3 = self.SF_v.index(A_map("A1")), self.SF_ai[A_map("A3")]
+            cons = [lambda z, a1=a1, a3=a3: z[1] - a3]
+        elif A_map("A3") in self.SF_v:
+            a1, a3 = self.SF_ai[A_map("A1")], self.SF_v.index(A_map("A3"))
+            cons = [lambda z, a1=a1, a3=a3: a1 - z[a3]]
+        else:
+            cons = []
         self.SF_cons = lcons + ucons + cons
         self.SF_bounds = [x for x in bounds]
 
@@ -432,23 +499,20 @@ class Kayenta(Parameterize):
 
         """
 
-        data_f, optimize, maxiter, tolerance, disp, fix, options = args
+        data_f, optimize, fix, options = args
 
         # pass arguments to class data
-        self.HF_maxiter = maxiter
-        self.HF_tolerance = tolerance
-        self.HF_disp = disp
-
-        # parameters to be optimized by shearfit
-        B_map = {"B0": 0, "B1": 1, "B2": 2, "B3":3, "B4":4}
+        self.HF_maxiter = int(options.get("MAXITER", 20))
+        self.HF_tolerance = float(options.get("TOLERANCE", 1.e-6))
+        self.HF_method = options.get("METHOD", "COBYLA")
 
         # check input vars
         for key, val in optimize.items():
-            if key.upper() not in B_map:
+            if B_map(key.upper()) is None:
                 raise ParameterizeError(
                     "unrecognized optimization variable {0}".format(key))
         for key, val in fix.items():
-            if key.upper() not in B_map:
+            if B_map(key.upper()) is None:
                 raise ParameterizeError(
                     "unrecognized fixed variable {0}".format(key))
 
@@ -494,7 +558,7 @@ class Kayenta(Parameterize):
         for idx, val in enumerate(bmod):
             devol = evol_pres[idx + 1][0] - evol_pres[idx][0]
             dpres = evol_pres[idx + 1][1] - evol_pres[idx][1]
-            if abs((-val * devol - dpres) / dpres) > 1.:
+            if abs((-val * devol - dpres) / dpres) > .1:
                 crush = [[x[0], x[1]] for x in evol_pres[idx-1:]]
                 load = [[x[0], x[1]] for x in evol_pres[:idx]]
                 break
@@ -543,7 +607,7 @@ class Kayenta(Parameterize):
 
         # User specified parameters to optimize, initialize data
         for key, val in optimize.items():
-            idx = B_map[key.upper()]
+            idx = B_map(key.upper())
             bi[idx] = val["initial value"]
             if bi[idx] is not None and bi[idx] < 0.:
                 raise ParameterizeError("B{0} must be > 0".format(idx))
@@ -562,21 +626,18 @@ class Kayenta(Parameterize):
 
             # least squares fit
             ione = -3. * self.HF_unload[:, 1][1:]
-            def kfunc(i1, *b):
-                b0, b1, b2 = b
-                return b0 + b1 * exps(-b2 / np.abs(i1))
-            p0 = np.zeros(3)
+            p0 = np.zeros(5)
             p0[0] = self.HF_bmod[0]
             p0[1] = self.HF_bmod[-1] - p0[0]
             p0[2] = -np.log((self.HF_bmod[2] - p0[0]) / p0[1]) * np.abs(ione[2])
             curve_fit = scipy.optimize.curve_fit(
                 kfunc, ione, self.HF_bmod, p0=p0)
-            bi = np.append(np.abs(curve_fit[0]), np.zeros(2))
+            bi = np.abs(curve_fit[0])
             v = [0, 1, 2, 3, 4] if has_bounds else [None] * 5
 
         # restore or set fixed values
         for key, val in fix.items():
-            idx = B_map[key.upper()]
+            idx = B_map(key.upper())
             bi[idx] = val["initial value"]
             fixed[idx] = key.upper()
             v[idx] = None
@@ -590,12 +651,6 @@ class Kayenta(Parameterize):
 
         # optimizers like to work with numbers close to one => scale the
         # optimized parameters
-        self.HF_nams = [None] * len(self.HF_v)
-
-        for idx in self.HF_v:
-            self.HF_nams[idx] = [
-                key for key, val in B_map.items() if val == idx][0]
-            continue
         self.HF_fixed = [x for x in fixed if x is not None]
 
         # Convert the bounds to inequality constraints
@@ -640,151 +695,138 @@ class Kayenta(Parameterize):
 
         """
 
-        global IOPT
-        if self.verbosity:
-            pu.log_message("Running: {0}".format(self.name), noisy=True)
+        logger = get_logger("root", fpath=self.name+".out")
+
+        logger.log("Running parameterization job {0}".format(self.name),
+                   cout=True)
 
         if self.shearfit:
             IOPT = 0
+            shearlog = get_logger("shearfit", fpath=self.name+".shearfit")
             self.run_shearfit_job()
+            shearlog.close()
+
 
         if self.hydrofit:
             IOPT = 0
+            hydrolog = get_logger("hydrofit", fpath=self.name+".hydrofit")
             self.run_hydrofit_job()
+            hydrolog.close()
 
         return 0
 
     def run_shearfit_job(self):
 
-        A_map = {"A1": 0, "A2": 1, "A3":2, "A4":3}
         # set up args and call optimzation routine
-        args = (self.SF_ai, self.SF_nams, self.SF_data, self.SF_fac,
+        args = (self.SF_ai, self.SF_data, self.SF_fac,
                 self.SF_v, self.verbosity)
 
-        # open the log file
-        xinit = np.array(self.SF_ai)
-        xinit[self.SF_v] = xinit[self.SF_v] * self.SF_fac
         msg_init = "".join(["{0} = {1:12.6E}\n".format(
-                    self.SF_nams[idx], xinit[idx]) for idx in self.SF_v])
-        msg_fixd = "".join(["{0} = {1:12.6E}\n".format(
-                    key, xinit[A_map[key]]) for key in self.SF_fixed])
+                    A_map()[idx], self.SF_ai[idx]) for idx in self.SF_v])
+        if self.SF_fixed:
+            msg_fixd = ("\n\nFixed values:\n" +
+                        "".join(["{0} = {1:12.6E}\n".format(
+                            key, self.SF_ai[A_map(key)])
+                                 for key in self.SF_fixed]))
+        else:
+            msg_fixd = ""
         msg_bnds = "".join(["{0}: ({1:12.6E}, {2:12.6E})\n".format(
-                    self.SF_nams[idx],
+                    A_map()[idx],
                     self.SF_bounds[idx][0] * self.SF_fac[iv],
                     self.SF_bounds[idx][1] * self.SF_fac[iv])
                             for iv, idx in enumerate(self.SF_v)])
 
         message = """\
 Starting the shear fit optimization routine.
+Optimization method: {0}
 Initial values:
-{0}
-Fixed values
-{1}
+{1}{2}
 Bounds:
-{2}""".format(msg_init, msg_fixd, msg_bnds)
+{3}""".format(self.SF_method, msg_init, msg_fixd, msg_bnds)
 
-        log_message(message, _open=self.name + ".shearfit")
+        # get the log file
+        logger = get_logger("shearfit")
+        logger.log(message, cout=True)
 
         # call the optimizer
-        xopt = scipy.optimize.fmin_cobyla(
-            rtxc, self.SF_ai[self.SF_v], self.SF_cons, consargs=(),
-            args=args, disp=self.SF_disp)
-
+        xinit = self.SF_ai[self.SF_v] / self.SF_fac
+        xopt = optimize(shearfit, xinit, self.SF_cons, method=self.SF_method,
+                        consargs=(), args=args, disp=0, tol=self.SF_tolerance)
+        xopt = np.array([max(0., x) for x in xopt])
 
         # optimum parameters found, write out final info
-        aopt = self.SF_ai
-        aopt[self.SF_v] = xopt * self.SF_fac
-        stren, peaki1, fslope, yslope = kpc.old_2_new(*aopt)
-        msg = ("A1 = {0:12.6E}, ".format(aopt[0]) +
-               "A2 = {0:12.6E}, ".format(aopt[1]) +
-               "A3 = {0:12.6E}, ".format(aopt[2]) +
-               "A4 = {0:12.6E}\n".format(aopt[3]) +
+        self.A_opt = self.SF_ai
+        self.A_opt[self.SF_v] = xopt * self.SF_fac
+        self.new_params = kpc.old_2_new(*self.A_opt)
+        stren, peaki1, fslope, yslope = self.new_params
+        msg = ("A1 = {0:12.6E}, ".format(self.A_opt[0]) +
+               "A2 = {0:12.6E}, ".format(self.A_opt[1]) +
+               "A3 = {0:12.6E}, ".format(self.A_opt[2]) +
+               "A4 = {0:12.6E}\n".format(self.A_opt[3]) +
                "STREN = {0:12.6E}, ".format(stren) +
                "PEAKI1 = {0:12.6E}, ".format(peaki1) +
                "FSLOPE = {0:12.6E}, ".format(fslope) +
                "YSLOPE = {0:12.6E}".format(yslope))
 
-        message = ("Optimized parameters found on iteration {0}\n"
-                   "Optimized parameters:\n{1}".format(IOPT, msg))
-        log_message(message)
-        pu.log_message(message)
-        log_message(None, _close=True)
+        message = ("Optimized shearfit parameters found on iteration {0}\n"
+                   "Optimized shearfit parameters:\n{1}".format(IOPT, msg))
+        logger.log(message, cout=True, root_write=True)
 
         return 0
 
     def run_hydrofit_job(self):
 
-        B_map = {"B0": 0, "B1": 1, "B2": 2, "B3":3, "B4":4}
         # set up args and call optimzation routine
         ione = -3. * self.HF_unload[:, 1][1:]
-        args = (self.HF_bi, self.HF_nams, ione, self.HF_bmod,
+        args = (self.HF_bi, ione, self.HF_bmod,
                 self.HF_v, self.verbosity)
 
         # open the log file
         xinit = np.array(self.HF_bi)
         xinit[self.HF_v] = xinit[self.HF_v]
         msg_init = "".join(["{0} = {1:12.6E}\n".format(
-                    self.HF_nams[idx], xinit[idx]) for idx in self.HF_v])
+                    B_map()[idx], xinit[idx]) for idx in self.HF_v])
         msg_fixd = "".join(["{0} = {1:12.6E}\n".format(
-                    key, xinit[B_map[key]]) for key in self.HF_fixed])
+                    key, xinit[B_map(key)]) for key in self.HF_fixed])
         msg_bnds = "".join(["{0}: ({1:12.6E}, {2:12.6E})\n".format(
-                    self.HF_nams[idx], self.HF_bounds[idx][0],
+                    B_map()[idx], self.HF_bounds[idx][0],
                     self.HF_bounds[idx][1]) for idx in self.HF_v])
 
         message = """\
 Starting the hydro fit optimization routine.
+Optimization method: {0}
 Initial values:
-{0}
-Fixed values
 {1}
+Fixed values
+{2}
 Bounds:
-{2}""".format(msg_init, msg_fixd, msg_bnds)
+{3}""".format(self.HF_method, msg_init, msg_fixd, msg_bnds)
 
-        log_message(message, _open=self.name + ".hydrofit")
+        logger = get_logger("hydrofit")
+        logger.log(message, cout=True)
 
         # call the optimizer
-        xopt = scipy.optimize.fmin_cobyla(
-            bmod, self.HF_bi[self.HF_v], self.HF_cons, consargs=(),
-            args=args, disp=self.HF_disp, rhoend=1.e-7)
+        xopt = optimize(hydrofit, self.HF_bi[self.HF_v], self.HF_cons,
+                        consargs=(), args=args, disp=0,
+                        method=self.HF_method, tol=self.HF_tolerance)
 
         # optimum parameters found, write out final info
-        bopt = self.HF_bi
-        bopt[self.HF_v] = xopt
-        msg = ("B0 = {0:12.6E}, ".format(bopt[0]) +
-               "B1 = {0:12.6E}, ".format(bopt[1]) +
-               "B2 = {0:12.6E}, ".format(bopt[2]) +
-               "B3 = {0:12.6E}, ".format(bopt[3]) +
-               "B4 = {0:12.6E}\n".format(bopt[4]))
-        message = ("Optimized parameters found on iteration {0}\n"
-                   "Optimized parameters:\n{1}".format(IOPT, msg))
-        log_message(message)
-        pu.log_message(message)
-        log_message(None, _close=True)
+        self.B_opt = self.HF_bi
+        self.B_opt[self.HF_v] = xopt
+        msg = ("B0 = {0:12.6E}, ".format(self.B_opt[0]) +
+               "B1 = {0:12.6E}, ".format(self.B_opt[1]) +
+               "B2 = {0:12.6E}, ".format(self.B_opt[2]) +
+               "B3 = {0:12.6E}, ".format(self.B_opt[3]) +
+               "B4 = {0:12.6E}\n".format(self.B_opt[4]))
+        message = ("Optimized hydrofit parameters found on iteration {0}\n"
+                   "Optimized hydrofit parameters:\n{1}".format(IOPT, msg))
+        logger.log(message, cout=True, root_write=True)
 
         return 0
 
     def finish(self):
         r""" finish up the optimization job """
         return
-
-
-def log_message(message, _open=None, _close=False, fobj=[None]):
-
-    if _open is not None:
-        fobj[0] = open(_open, "w")
-        fobj[0].write(message + "\n")
-        return
-
-    if _close:
-        fobj[0].close()
-        fobj[0] = None
-        return
-
-    if fobj[0] is None:
-        raise ParameterizeError("file object must be opened first")
-
-    fobj[0].write(message + "\n")
-    return
 
 
 def get_rtj2_vs_i1(fpath):
@@ -794,11 +836,6 @@ def get_rtj2_vs_i1(fpath):
     ----------
     fpath : str
         path to file
-
-    Returns
-    -------
-    fnew : str
-        path to file with the ione and rootj2 values
 
     """
 
@@ -847,7 +884,6 @@ def get_rtj2_vs_i1(fpath):
                    sig12 ** 2 + sig23 ** 2 + sig13 ** 2)
 
     fnam, fext = os.path.splitext(fpath)
-    fnew = fnam + FNEWEXT
 
     i1_rtj2 = []
     for idx in range(len(i1)):
@@ -856,7 +892,7 @@ def get_rtj2_vs_i1(fpath):
     return i1_rtj2
 
 
-def rtxc(xcall, xinit, xnams, data, fac, v, verbosity, ncalls=[0]):
+def shearfit(xcall, xinit, data, fac, v, verbosity, ncalls=[0]):
     """The Kayenta limit function
 
     Evaluates the Kayenta limit function
@@ -885,12 +921,13 @@ def rtxc(xcall, xinit, xnams, data, fac, v, verbosity, ncalls=[0]):
     msg = []
     for iv, idx in enumerate(v):
         opt_val = xcall[iv] * fac[iv]
-        pstr = "{0} = {1:12.6E}".format(xnams[idx], opt_val)
+        pstr = "{0} = {1:12.6E}".format(A_map()[idx], opt_val)
         msg.append(pstr)
         continue
 
-    log_message("Iteration {0:03d}, trial parameters: {1}"
-                .format(ncalls[0], ", ".join(msg)))
+    logger = get_logger("shearfit")
+    logger.log("Iteration {0:03d}, trial parameters: {1}"
+               .format(ncalls[0], ", ".join(msg)))
 
     # compute rootj2 and error
     a = xinit
@@ -900,14 +937,14 @@ def rtxc(xcall, xinit, xnams, data, fac, v, verbosity, ncalls=[0]):
     ione = data[:, 0]
     rootj2 = data[:, 1]
 
-    error = rootj2 - (a1 - a3 * exps(a2 * ione) - a4 * ione)
+    error = rootj2 - rtxc(ione, a1, a2, a3, a4)
     error = math.sqrt(np.mean(error ** 2))
     dnom = abs(np.amax(rootj2))
     error = error / dnom if dnom >= 2.e-16 else error
 
     return error
 
-def bmod(xcall, xinit, xnams, ione, k, v, verbosity, ncalls=[0]):
+def hydrofit(xcall, xinit, ione, k, v, verbosity, ncalls=[0]):
     """The Kayenta bulk modulus function """
 
     global IOPT
@@ -916,21 +953,22 @@ def bmod(xcall, xinit, xnams, ione, k, v, verbosity, ncalls=[0]):
 
     # write trial params to file
     msg = []
-    for idx, nam in enumerate(xnams):
-        opt_val = xcall[idx]
-        pstr = "{0} = {1:12.6E}".format(nam, opt_val)
+    for iv, idx in enumerate(v):
+        opt_val = xcall[iv] * fac[iv]
+        pstr = "{0} = {1:12.6E}".format(B_map()[idx], opt_val)
         msg.append(pstr)
         continue
 
-    log_message("Iteration {0:03d}, trial parameters: {1}"
-                .format(ncalls[0], ", ".join(msg)))
+    logger = get_logger("hydrofit")
+    logger.log("Iteration {0:03d}, trial parameters: {1}"
+               .format(ncalls[0], ", ".join(msg)))
 
     # compute rootj2 and error
     b = xinit
     b[v] = xcall
     b0, b1, b2, b3, b4 = b
 
-    error = k - (b0 + b1 * exps(b2 / np.abs(ione)))
+    error = k - kfunc(ione, b0, b1, b2, b3, b4)
     error = math.sqrt(np.mean(error ** 2))
     dnom = abs(np.amax(k))
     error = error / dnom if dnom >= 2.e-16 else error
@@ -938,6 +976,47 @@ def bmod(xcall, xinit, xnams, ione, k, v, verbosity, ncalls=[0]):
     return error
 
 def exps(arg):
+    """Exponential that guards against under and overflow"""
     eunderflow = -34.53877639491 * 1.
     eoverflow = 92.1034037 * 1.
     return np.array([np.exp(min(max(x, eunderflow), eoverflow)) for x in arg])
+
+def kfunc(i1, b0, b1, b2, b3=0., b4=0.):
+    """The kayenta bulk modulus function"""
+    n = len(i1)
+    return b0 * np.ones(n) + b1 * exps(-b2 / np.abs(i1))
+
+def rtxc(i1, a1, a2, a3, a4):
+    """The radius in triaxial compression"""
+    return a1 - a3 * exps(a2 * i1) - a4 * i1
+
+def optimize(func, x0, cons=[], method="SIMPLEX",
+             consargs=(), args=(), disp=0, tol=1.e-6, maxiter=100):
+    """wrapper around scipy minimization routines"""
+
+    method = method.upper()
+    methods = ("SIMPLEX", "COBYLA", "POWELL", "SLSQP")
+    if method not in methods:
+        raise ParameterizeError(
+            "Unrecognized optimization method {0}, choose from {1}"
+            .format(method, ", ".join(methods)))
+
+    if method == "SIMPLEX":
+        xopt = scipy.optimize.fmin(
+            func, x0, args=args, disp=disp, xtol=tol, ftol=tol)
+
+    elif method == "POWELL":
+        xopt = scipy.optimize.fmin_powell(
+            func, x0, args=args, disp=disp, xtol=tol, ftol=tol)
+
+    elif method == "COBYLA":
+        xopt = scipy.optimize.fmin_cobyla(
+            func, x0, cons, consargs=consargs, args=args, disp=disp,
+            rhoend=1.e-7, maxfun=5000)
+    else:
+        sys.exit("slsqp not yet supported")
+        xopt = scipy.optimize.fmin_slsqp(
+            func, x0, ieqcons=cons, args=args, disp=disp,
+            acc=1.e-7, iter=maxiter)
+
+    return xopt
