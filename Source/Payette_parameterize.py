@@ -45,6 +45,7 @@ from Source.Payette_extract import ExtractError as ExtractError
 
 # Module level variables
 IOPT = 0
+EPS = np.finfo(np.float).eps
 
 class ParameterizeError(Exception):
     def __init__(self, message):
@@ -238,7 +239,12 @@ class Parameterize(object):
                 fix[key] = {"initial value": init_val}
 
             else:
-                options[token.upper()] = item[1]
+                key = token.upper()
+                if len(item) == 1:
+                    val = True
+                else:
+                    val = " ".join(item[1:])
+                options[key] = val
 
             continue
 
@@ -327,7 +333,7 @@ class Kayenta(Parameterize):
 
         # pass arguments to class data
         self.SF_maxiter = int(options.get("MAXITER", 20))
-        self.SF_tolerance = float(options.get("TOLERANCE", 1.e-6))
+        self.SF_tolerance = float(options.get("TOLERANCE", 1.e-8))
         self.SF_method = options.get("METHOD", "SIMPLEX")
 
         # check input vars
@@ -502,6 +508,7 @@ class Kayenta(Parameterize):
         data_f, optimize, fix, options = args
 
         # pass arguments to class data
+        self.HF_options = options
         self.HF_maxiter = int(options.get("MAXITER", 20))
         self.HF_tolerance = float(options.get("TOLERANCE", 1.e-6))
         self.HF_method = options.get("METHOD", "COBYLA")
@@ -530,7 +537,7 @@ class Kayenta(Parameterize):
                 .format(os.path.basename(data_f)))
 
         # initial guess at plastic volume change
-        ev_p = evol_pres[-1][0]
+        self.HF_p3 = evol_pres[-1][0]
 
         # determine the unload curve
         ev_c, idx_c = 1.e9, None
@@ -539,47 +546,48 @@ class Kayenta(Parameterize):
                 ev_c = evol
                 idx_c = idx
             continue
-        unload = [[x[0] - ev_p, x[1]] for x in reversed(evol_pres[idx_c:])]
+        unload = [[x[0] - self.HF_p3, x[1]] for x in reversed(evol_pres[idx_c:])]
 
         crush_pres = float(options.get("PC", 0.))
         if crush_pres:
             unload = [x for x in unload if x[1] < crush_pres]
 
         # determine the tangent bulk modulus from unload curve
-        # K = -dp / dv
-        bmod = [-(unload[idx + 1][1] - unload[idx][1]) /
-                 (unload[idx + 1][0] - unload[idx][0])
-                 for idx in range(len(unload) - 1)]
-        if any(x < 0. for x in bmod):
+        # K = -dp / dv -> along the unload curve
+        # bmod = [k_i, p_i]
+        bmod = [[-(unload[idx + 1][1] - unload[idx][1]) /
+                  (unload[idx + 1][0] - unload[idx][0]), unload[idx +1][1]]
+                for idx in range(len(unload) - 1)]
+        if any(x[0] < 0. for x in bmod):
             raise ParameterizeError(
                 "Encountered negative bulk modulus in hydrofit data")
 
-        # determine portions due to crushing and loading
+        # determine portions due to crushing and elastic loading
         for idx, val in enumerate(bmod):
             devol = evol_pres[idx + 1][0] - evol_pres[idx][0]
             dpres = evol_pres[idx + 1][1] - evol_pres[idx][1]
-            if abs((-val * devol - dpres) / dpres) > .1:
+            if abs((-val[0] * devol - dpres) / dpres) > .1:
                 crush = [[x[0], x[1]] for x in evol_pres[idx-1:]]
                 load = [[x[0], x[1]] for x in evol_pres[:idx]]
                 break
 
         # save the data to class attribute
         self.HF_data = np.array(evol_pres)
-        self.HF_bmod = np.array(bmod)
+        self.HF_evol = self.HF_data[:, 0]
+        self.HF_pres = self.HF_data[:, 1]
+        self.HF_bmod = np.array(bmod)[:, 0]
         self.HF_unload = np.array(unload)
         self.HF_crush = np.array(crush)
         self.HF_load = np.array(load)
 
-
-
-        if ro.VERBOSITY:
+        if options.get("WRITE_CURVES") is not None:
             # write out the elastic unloading curve
             with open(self.name + ".unload", "w") as fobj:
                 fobj.write("{0:13s} {1:13s} {2:13s}\n"
                            .format("EVOL", "PRES", "BMOD"))
                 for idx in range(len(self.HF_bmod)):
                     fobj.write("{0:12.6E} {1:12.6E} {2:12.6E}\n"
-                               .format(self.HF_unload[:, 0][idx] + ev_p,
+                               .format(self.HF_unload[:, 0][idx] + self.HF_p3,
                                        self.HF_unload[:, 1][idx],
                                        self.HF_bmod[idx]))
 
@@ -630,9 +638,8 @@ class Kayenta(Parameterize):
             p0[0] = self.HF_bmod[0]
             p0[1] = self.HF_bmod[-1] - p0[0]
             p0[2] = -np.log((self.HF_bmod[2] - p0[0]) / p0[1]) * np.abs(ione[2])
-            curve_fit = scipy.optimize.curve_fit(
-                kfunc, ione, self.HF_bmod, p0=p0)
-            bi = np.abs(curve_fit[0])
+            bi = np.abs(scipy.optimize.curve_fit(
+                    kfunc, ione, self.HF_bmod, p0=p0)[0])
             v = [0, 1, 2, 3, 4] if has_bounds else [None] * 5
 
         # restore or set fixed values
@@ -712,6 +719,10 @@ class Kayenta(Parameterize):
             hydrolog = get_logger("hydrofit", fpath=self.name+".hydrofit")
             self.run_hydrofit_job()
             hydrolog.close()
+
+            porolog = get_logger("porofit", fpath=self.name+".porofit")
+            self.run_porofit_job()
+            porolog.close()
 
         return 0
 
@@ -813,6 +824,7 @@ Bounds:
         # optimum parameters found, write out final info
         self.B_opt = self.HF_bi
         self.B_opt[self.HF_v] = xopt
+
         msg = ("B0 = {0:12.6E}, ".format(self.B_opt[0]) +
                "B1 = {0:12.6E}, ".format(self.B_opt[1]) +
                "B2 = {0:12.6E}, ".format(self.B_opt[2]) +
@@ -824,8 +836,100 @@ Bounds:
 
         return 0
 
+    def run_porofit_job(self):
+        """Find the P parameters"""
+
+
+        logger = get_logger("porofit")
+        logger.log("Starting the poro fit optimization routine.\n"
+                   "Optimization method: {0}".format(self.HF_method),
+                   cout=True)
+
+        # now that the optimum bulk modulus has been found, the total elastic
+        # strain and plastic strain at each step can be computed from
+        # dve = dp / k
+        ve, vp = [0.], [0.]
+        por = [1. - np.exp(-(vp[-1] - self.HF_p3))]
+        for idx, item in enumerate(self.HF_data[1:]):
+            dv = item[0] - self.HF_data[idx][0]
+            p, dp = item[1], item[1] - self.HF_data[idx][1]
+            K = self.B_opt[0] if abs(p) < EPS else kfunc(-3 * p, *self.B_opt)
+            dve = -dp / K
+            dvp = dv - dve
+            ve.append(ve[-1] + dve)
+            vp.append(vp[-1] + dvp)
+            por.append(1. - np.exp(-(vp[-1] - self.HF_p3)))
+            continue
+        self.HF_eve = np.array(ve)
+        self.HF_evp = np.array(vp)
+        self.HF_por = np.array(por)
+
+        # now find the P parameters
+        p0 = np.zeros(4)
+        p0[3] = -self.HF_p3
+        for idx, por_p in enumerate(self.HF_por[1:]):
+            por_n = self.HF_por[idx]
+            p_n, p_p = self.HF_pres[idx], self.HF_pres[idx+1]
+            s0 = abs((por_p - por_n) / (p_p - p_n))
+            if por_p < .99 * por_n:
+                p0[0] = -3. * p_n
+                p0[1] = s0 / 3. / p0[3]
+                break
+        else:
+            raise ParameterizeError(
+                "Initial P parameters could not be determined")
+
+        # least squares fit
+        cons = [lambda z: z[0], lambda z: z[1]]
+        v = [0, 1]
+
+        if "P2" in self.HF_options:
+            cons.append(lambda z: z[2])
+            v.append(2)
+
+        if "P3" in self.HF_options:
+            cons.append(lambda z: z[3])
+            v.append(3)
+
+        args = (-3. * self.HF_data[:, 1], self.HF_evp, p0, v)
+        self.P_opt = np.array(p0)
+        self.P_opt[v] = optimize(
+            porofit, p0[v], cons, method=self.HF_method,
+            consargs=(), args=args, disp=0, tol=self.HF_tolerance)
+
+        msg = ("P0 = {0:12.6E}, ".format(self.P_opt[0]) +
+               "P1 = {0:12.6E}, ".format(self.P_opt[1]) +
+               "P2 = {0:12.6E}, ".format(self.P_opt[2]) +
+               "P3 = {0:12.6E}\n".format(self.P_opt[3]))
+        message = ("Optimized porofit parameters found on iteration {0}\n"
+                   "Optimized porofit parameters:\n{1}".format(IOPT, msg))
+        logger.log(message, cout=True, root_write=True)
+
+        return 0
+
     def finish(self):
         r""" finish up the optimization job """
+        if self.HF_options.get("WRITE_CURVES") is not None:
+            fobj_e = open(self.name + ".eve", "w")
+            fobj_p = open(self.name + ".evp", "w")
+            fobj_x = open(self.name + ".por", "w")
+            fobj_e.write("{0:12s} {1:12s}\n".format("EVE", "PRES"))
+            fobj_p.write("{0:12s} {1:12s}\n".format("EVP", "PRES"))
+            fobj_x.write("{0:12s} {1:12s}\n".format("PI", "PRES"))
+            for idx in range(len(self.HF_eve)):
+                eve, evp = self.HF_eve[idx], self.HF_evp[idx]
+                por, pres = self.HF_por[idx], self.HF_data[idx][1]
+                fobj_e.write("{0:12.6E} {1:12.6E}\n".format(eve, pres))
+                fobj_p.write("{0:12.6E} {1:12.6E}\n".format(evp, pres))
+                fobj_x.write("{0:12.6E} {1:12.6E}\n".format(por, pres))
+                continue
+            fobj_e.flush()
+            fobj_e.close()
+            fobj_p.flush()
+            fobj_p.close()
+            fobj_x.flush()
+            fobj_x.close()
+
         return
 
 
@@ -975,20 +1079,56 @@ def hydrofit(xcall, xinit, ione, k, v, verbosity, ncalls=[0]):
 
     return error
 
+
+def porofit(xcall, ione, evp, p0, v, ncalls=[0]):
+    """The Kayenta bulk modulus function """
+    global IOPT
+    ncalls[0] += 1
+    IOPT = ncalls[0]
+
+    # write trial params to file
+    p = p0
+    p[v] = xcall[v]
+    msg = []
+    for idx, opt_val in enumerate(xcall):
+        pstr = "P{0} = {1:12.6E}".format(idx, opt_val)
+        msg.append(pstr)
+        continue
+
+    logger = get_logger("porofit")
+    logger.log("Iteration {0:03d}, trial parameters: {1}"
+               .format(ncalls[0], ", ".join(msg)))
+
+    # compute evp error
+    error = evp - crush_curve(ione, *p)
+    error = math.sqrt(np.mean(error ** 2))
+    dnom = abs(np.amax(evp))
+    error = error / dnom if dnom >= 2.e-16 else error
+    return error
+
 def exps(arg):
     """Exponential that guards against under and overflow"""
     eunderflow = -34.53877639491 * 1.
     eoverflow = 92.1034037 * 1.
+    if not isinstance(arg, (list, tuple, np.ndarray)):
+        arg = [arg]
     return np.array([np.exp(min(max(x, eunderflow), eoverflow)) for x in arg])
 
 def kfunc(i1, b0, b1, b2, b3=0., b4=0.):
     """The kayenta bulk modulus function"""
-    n = len(i1)
-    return b0 * np.ones(n) + b1 * exps(-b2 / np.abs(i1))
+    bmod = b0 + b1 * exps(-b2 / np.abs(i1))
+    if len(bmod) == 1:
+        return bmod[0]
+    return bmod
 
 def rtxc(i1, a1, a2, a3, a4):
     """The radius in triaxial compression"""
     return a1 - a3 * exps(a2 * i1) - a4 * i1
+
+def crush_curve(i1, *p):
+    """The kayenta crush curve spline"""
+    xi = -i1 - p[0]
+    return -p[3] * (1. - exps(-(p[1] + p[2] * xi) * xi))
 
 def optimize(func, x0, cons=[], method="SIMPLEX",
              consargs=(), args=(), disp=0, tol=1.e-6, maxiter=100):
