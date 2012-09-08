@@ -428,7 +428,7 @@ class BuildPayette(object):
             class_data = pyclbr.readmodule(py_mod, path=py_path)
             base_classes = ("ConstitutiveModelPrototype", )
             for item, data in class_data.items():
-                class_name = data.name
+                model_class_name = data.name
                 if any(x in pu.get_super_classes(data) for x in base_classes):
                     break
                 continue
@@ -439,6 +439,30 @@ class BuildPayette(object):
                     .format(class_name, ", ".join(base_classes)))
                 continue
 
+            # check if a parameterization file exists and check validity
+            parameterization_file = [
+                x for x in interface
+                if os.path.basename(x).endswith("_parameterize.py")]
+            if not parameterization_file:
+                parameterization_file = None
+            else:
+                parameterization_file = parameterization_file[0]
+            py_mod, py_path = pu.get_module_name_and_path(parameterization_file)
+            class_data = pyclbr.readmodule(py_mod, path=py_path)
+            base_classes = ("Parameterize", )
+            for item, data in class_data.items():
+                param_class_name = data.name
+                if any(x in pu.get_super_classes(data) for x in base_classes):
+                    break
+                continue
+            else:
+                pu.log_warning(
+                    "Ignoring parameterization file '{0}'".format(name) +
+                    " because {1} not derived from any of {2}"
+                    .format(class_name, ", ".join(base_classes)))
+                parameterization_file = None
+
+            # get the build script
             try:
                 build_script = [
                     x for x in interface
@@ -461,7 +485,9 @@ class BuildPayette(object):
                 "aliases": aliases,
                 "interface file": interface_file,
                 "control file": control_file,
-                "class name": class_name,
+                "class name": model_class_name,
+                "parameterization file": parameterization_file,
+                "parameterization class": param_class_name,
                 }
 
             continue
@@ -566,7 +592,8 @@ class BuildPayette(object):
                 model_index.store(
                     material, info["libname"], info["class name"],
                     info["interface file"], info["control file"],
-                    info["aliases"])
+                    info["aliases"], info["parameterization file"],
+                    info["parameterization class"])
             continue
         model_index.dump()
         return

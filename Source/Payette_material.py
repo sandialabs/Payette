@@ -42,8 +42,6 @@ class Material:
 
     def __init__(self, model_name, user_params, index_file, *args, **kwargs):
 
-        iam = "Material.__init__"
-
         # get the material's constitutive model object
         self.model_index = pmi.ModelIndex(index_file)
         control_file = self.model_index.control_file(model_name)

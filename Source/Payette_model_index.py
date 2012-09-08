@@ -89,7 +89,8 @@ class ModelIndex(object):
         """return the installed constitutive models dict"""
         return self._installed_constitutive_models.keys()
 
-    def store(self, name, libname, clsname, intrfc, cntrl, aliases):
+    def store(self, name, libname, clsname, intrfc, cntrl, aliases,
+              param_file=None, param_cls=None):
         """Store all kwargs in to the index dict
 
         Parameters
@@ -111,7 +112,9 @@ class ModelIndex(object):
         self._installed_constitutive_models[name] = {
             "libname": libname, "class name": clsname,
             "interface file": intrfc, "control file": cntrl,
-            "aliases": aliases}
+            "aliases": aliases,
+            "parameterization file": param_file,
+            "parameterization class": param_cls,}
 
         return
 
@@ -174,6 +177,26 @@ class ModelIndex(object):
         cmod = getattr(py_module, cls_nam)
         del py_module
         return cmod
+
+    def parameterization_file(self, model_name):
+        """ get the parameterize file for the material """
+        constitutive_model = self.constitutive_model(model_name)
+        return constitutive_model.get("parameterization file")
+
+    def parameterizer(self, model_name):
+        """ get the actual model object """
+        constitutive_model = self.constitutive_model(model_name)
+        if constitutive_model["parameterization file"] is None:
+            return None
+        py_mod, py_path = pu.get_module_name_and_path(
+            constitutive_model["parameterization file"])
+        cls_nam = constitutive_model["parameterization class"]
+        fobj, pathname, description = imp.find_module(py_mod, py_path)
+        py_module = imp.load_module(py_mod, fobj, pathname, description)
+        fobj.close()
+        _parameterizer = getattr(py_module, cls_nam)
+        del py_module
+        return _parameterizer
 
 
 def remove_index_file():

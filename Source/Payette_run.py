@@ -350,7 +350,6 @@ def run_payette(argv, disp=0):
             "buildPayette must first be executed to create\n\t{0}"
             .format(material_index))
 
-
     if opts.verbosity:
         pu.log_message(pc.PC_INTRO, pre="")
 
