@@ -445,22 +445,26 @@ class BuildPayette(object):
                 if os.path.basename(x).endswith("_parameterize.py")]
             if not parameterization_file:
                 parameterization_file = None
+                param_class_name = None
             else:
                 parameterization_file = parameterization_file[0]
-            py_mod, py_path = pu.get_module_name_and_path(parameterization_file)
-            class_data = pyclbr.readmodule(py_mod, path=py_path)
-            base_classes = ("Parameterize", )
-            for item, data in class_data.items():
-                param_class_name = data.name
-                if any(x in pu.get_super_classes(data) for x in base_classes):
-                    break
-                continue
-            else:
-                pu.log_warning(
-                    "Ignoring parameterization file '{0}'".format(name) +
-                    " because {1} not derived from any of {2}"
-                    .format(class_name, ", ".join(base_classes)))
-                parameterization_file = None
+                py_mod, py_path = pu.get_module_name_and_path(
+                    parameterization_file)
+                class_data = pyclbr.readmodule(py_mod, path=py_path)
+                base_classes = ("Parameterize", )
+                for item, data in class_data.items():
+                    param_class_name = data.name
+                    if any(x in pu.get_super_classes(data)
+                           for x in base_classes):
+                        break
+                    continue
+                else:
+                    pu.log_warning(
+                        "Ignoring parameterization file '{0}'".format(name) +
+                        " because {1} not derived from any of {2}"
+                        .format(class_name, ", ".join(base_classes)))
+                    parameterization_file = None
+                    param_class_name = None
 
             # get the build script
             try:
