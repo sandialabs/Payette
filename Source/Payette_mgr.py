@@ -363,7 +363,7 @@ def main(argv):
 
     # determine file type given, whether output files for viewing, input files
     # for running, or barf files for barf processing
-    oexts = (".out", ".dat",)
+    oexts = (".out", ".dat", ".pkl")
     iexts = (".barf", ".inp", ".i",)
     rexts = (".prf", )
     oargs, iargs, uargs, bargs, rargs = [], [], [], [], []
@@ -372,6 +372,9 @@ def main(argv):
 
         # check for file existence
         if not os.path.isfile(farg):
+            if os.path.isdir(farg):
+                uargs.append(farg)
+                continue
             if os.path.isfile(farg.rstrip(".") + ".inp"):
                 farg = farg.rstrip(".") + ".inp"
             else:
@@ -404,10 +407,15 @@ def main(argv):
 
     # check for incompatibilities
     if uargs:
-        pu.report_and_raise_error(
-            "Files with unkown file extension[s] passed to Payette [{0}]"
-            .format(os.path.splitext(x)[1] for x in uargs))
-    if len([x for x in (oargs, iargs, uargs, bargs, rargs) if x]) > 1:
+        for uarg in uargs:
+            if os.path.isdir(uarg) and "index.pkl" in os.listdir(uarg):
+                oargs.append(os.path.join(uarg, "index.pkl"))
+                continue
+            pu.report_and_raise_error(
+                "Files with unkown file extension[s] passed to Payette [{0}]"
+                .format(os.path.splitext(x)[1] for x in uargs))
+
+    if len([x for x in (oargs, iargs, bargs, rargs) if x]) > 1:
         pu.report_and_raise_error(
             "Payette can only process one file type request at a time")
 
@@ -486,10 +494,11 @@ def _visualize_results(simulation_info=None, outfiles=None):
     from Viz_ModelPlot import create_Viz_ModelPlot
     import Source.Payette_sim_index as psi
 
-    if outfiles is not None and simulation_info is not None:
+    if len([x for x in [simulation_info, outfiles] if x is not None]) > 1:
         pu.log_warning("Cannot specify both outfiles and simulation_info")
+        return
 
-    elif outfiles is not None:
+    if outfiles is not None:
         if len(outfiles) == 1 and os.path.basename(outfiles[0]) == "index.pkl":
             simulation_info = [
                 {"simulation name": "Payette", "index file": outfiles[0]}]
