@@ -62,7 +62,7 @@ class ModelIndex(object):
 
         # index file name
         if index_file is None:
-            index_file = pc.PC_MTLS_FILE
+            index_file = ro.MTLDB
 
         index_dir = os.path.dirname(index_file)
         if not os.path.isdir(index_dir):

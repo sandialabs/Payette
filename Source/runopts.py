@@ -1,14 +1,15 @@
 # *************************************************************************** #
-# This file contains common runtime options for runPayette.  It IS NOT        #
+# This file contains common runtime options for Payette.  It is NOT           #
 # intended to be edited directly.  The file attributes can be changed through #
-# command line arguments to runPayette, or through simulation input file      #
+# command line arguments to payette, or through simulation input file         #
 # directives.                                                                 #
 # *************************************************************************** #
 
 import sys
+import Payette_config as pc
 
 # --- runtime configurable options
-DISP = False
+DISP = 1
 VERBOSITY = 1
 SQA = False
 DEBUG = False
@@ -26,13 +27,14 @@ WRITE_INPUT = False
 WARNING = "warn"
 TESTERROR = False
 SIMDIR = None
+MTLDB = pc.PC_MTLS_FILE
 
 # not set through command line
 EFIELD_SIM = False
 
 
 def set_command_line_options(opts):
-    """Set global Payette options based on options passed to runPayette
+    """Set global Payette options based on options passed to payette
 
     Parameters
     ----------
@@ -49,13 +51,13 @@ def set_command_line_options(opts):
     each simulation. For example, additional SQA coding is run if the user
     specifies
 
-    % runPayette input_file --sqa
+    % payette input_file --sqa
 
     Other options can be found by executing
 
-    % runPayette -h
+    % payette -h
 
-    In runPayette, the user options are passed in to this function where there
+    In payette, the user options are passed in to this function where there
     are made module attributes that can then be used throughout Payette by
     importing this module.
 

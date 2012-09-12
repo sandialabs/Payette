@@ -17,8 +17,7 @@ class Test(PayetteTest):
         self.outfile = "{0}.out".format(self.name)
         self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
         self.input_string = self.get_input_string()
-        self.runcommand = ["--no-writeprops", "-v", "0",
-                           "--input-str={0}".format(self.input_string)]
+        self.siminp = self.input_string.split("\n")
         self.material = "elastic"
         self.keywords = ["payette", "input_str", "regression", "fast", "builtin",
                          "matlabel"]
@@ -35,6 +34,7 @@ class Test(PayetteTest):
     def get_input_string(self):
 
         input_string = """begin simulation payette-test-matlabel
+  nowriteprops
   begin boundary
     estar = -1.
     kappa = 0.
@@ -60,7 +60,7 @@ end simulation
 
         # run the test directly through run_payette
 
-        perform_calcs = run_payette(self.runcommand)
+        perform_calcs = run_payette(siminp=self.siminp, verbosity=0, disp=0)
 
         if perform_calcs != 0:
             return self.failtoruncode

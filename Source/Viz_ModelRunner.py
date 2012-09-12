@@ -34,8 +34,8 @@ class ModelRunner(HasStrictTraits):
         # tjf: run_payette can be invoked with disp=1 and then it returns a
         # tjf: dictionary with some extra information. I pass that extra
         # tjf: information to the CreatePlotWindow method.
-        cmd = ["--input-str={0}".format(inputString)]
-        siminfo = pr.run_payette(cmd, disp=1)[0]
+        siminp = inputString.split("\n")
+        siminfo = pr.run_payette(siminp=siminp, disp=1)[0]
         sys.stdout = oldout
 
         if self.callbacks is None:

@@ -17,9 +17,9 @@ class Test(PayetteTest):
         self.outfile = "{0}.out".format(self.name)
         self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
         self.restartfile = self.name + ".prf"
-        self.runcommand = ["runPayette", "--no-writeprops", "--write-restart",
+        self.runcommand = ["payette", "--no-writeprops", "--write-restart",
                            "--test-restart", self.infile]
-        self.restartcommand = ["runPayette", "--no-writeprops", "--write-restart",
+        self.restartcommand = ["payette", "--no-writeprops", "--write-restart",
                                "--test-restart", self.restartfile]
         self.material = "elastic"
 

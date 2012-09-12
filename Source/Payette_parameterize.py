@@ -112,7 +112,7 @@ def get_logger(name, fpath=None):
     return logger["object"]
 
 
-def parameterizer(input_lines, index_file):
+def parameterizer(input_lines):
     r"""docstring -> needs to be completed """
 
     # get the optimization block
@@ -120,7 +120,7 @@ def parameterizer(input_lines, index_file):
 
     # check for compatible constitutive model
     constitutive_model = job_inp.user_options["constitutive model"]
-    model_index = pmi.ModelIndex(index_file)
+    model_index = pmi.ModelIndex()
     parameterizer = model_index.parameterizer(constitutive_model)
     if parameterizer is None:
         raise ParameterizeError(

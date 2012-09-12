@@ -25,8 +25,8 @@ import os
 import os.path as osp
 import sys
 import optparse
+import subprocess
 from distutils import sysconfig
-
 
 __version__ = "1.0.1"
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
@@ -135,9 +135,9 @@ def get_exe_path(exe):
     except AttributeError:
         path = []
 
-    for osp.dirname in path:
-        if osp.isfile(osp.join(osp.dirname, exe)):
-            return osp.join(osp.dirname, exe)
+    for dirname in path:
+        if osp.isfile(osp.join(dirname, exe)):
+            return osp.join(dirname, exe)
 
     sys.exit("ERROR: executable {0} not found".format(exe))
 
@@ -243,7 +243,6 @@ PC_AUX = osp.join(PC_ROOT, "Aux")
 PC_DOCS = osp.join(PC_ROOT, "Documents")
 PC_SOURCE = osp.join(PC_ROOT, "Source")
 PC_TESTS = [osp.join(PC_ROOT, "Benchmarks")]
-ENV_BENCHDIR = "PAYETTE_BENCHDIR"
 USER_TESTS = os.getenv(ENV_BENCHDIR, "")
 PC_TESTS.extend([x for x in USER_TESTS.split(os.pathsep) if x])
 PC_TOOLS = osp.join(PC_ROOT, "Toolset")
@@ -267,15 +266,11 @@ PC_PYVER = "python" if not SAGE else "sage -python"
 PC_PYVER = "{0} {1}.{2}.{3}".format(PC_PYVER,MAJOR,MINOR,MICRO)
 
 # --- Payette executable files
-PC_CLEANPAYETTE = (osp.join(PC_TOOLS, "cleanPayette"), THIS_FILE)
-
 PC_EXTRACT = osp.join(PC_SOURCE, "Payette_extract.py")
 PC_EXTRACTPAYETTE = (osp.join(PC_TOOLS, "extractPayette"), PC_EXTRACT)
 
-PC_RUN = osp.join(PC_SOURCE, "Payette_run.py")
-PC_RUNPAYETTE = (osp.join(PC_TOOLS, "runPayette"), PC_RUN)
-VIZ_SELECTOR = osp.join(PC_SOURCE, "Viz_ModelSelector.py")
-ERRORS += check_exists("VIZ_SELECTOR", VIZ_SELECTOR)
+PC_MGR = osp.join(PC_SOURCE, "Payette_mgr.py")
+PC_RUNPAYETTE = (osp.join(PC_TOOLS, "payette"), PC_MGR)
 
 PC_BUILD = osp.join(PC_SOURCE, "Payette_build.py")
 PC_BUILDPAYETTE = (osp.join(PC_TOOLS, "buildPayette"), PC_BUILD)
@@ -283,15 +278,10 @@ PC_BUILDPAYETTE = (osp.join(PC_TOOLS, "buildPayette"), PC_BUILD)
 PC_RUNTEST = osp.join(PC_SOURCE, "Payette_runtest.py")
 PC_TESTPAYETTE = (osp.join(PC_TOOLS, "testPayette"), PC_RUNTEST)
 
-PC_VIZ = osp.join(PC_SOURCE, "Viz_ModelSelector.py")
-PC_VIZPAYETTE = (osp.join(PC_TOOLS, "vizPayette"), PC_VIZ)
-
 PC_F2PY = (osp.join(PC_TOOLS,"f2py"), None)
-PC_BUILT_EXES = {"runPayette": PC_RUNPAYETTE,
+PC_BUILT_EXES = {"payette": PC_RUNPAYETTE,
                  "testPayette": PC_TESTPAYETTE,
-                 "vizPayette": PC_VIZPAYETTE,
                  "buildPayette": PC_BUILDPAYETTE,
-                 "cleanPayette": PC_CLEANPAYETTE,
                  "extractPayette": PC_EXTRACTPAYETTE,
                  "f2py": PC_F2PY}
 PC_EXES = {}
@@ -397,7 +387,7 @@ PAYETTE_CONFIG["PC_INPUTS"] = PC_INPUTS
 PAYETTE_CONFIG["PC_EXT_MOD_FEXT"] = PC_EXT_MOD_FEXT
 PAYETTE_CONFIG["PC_OSTYPE"] = PC_OSTYPE
 PAYETTE_CONFIG["PC_RUNTEST"] = PC_RUNTEST
-PAYETTE_CONFIG["PC_RUN"] = PC_RUN
+PAYETTE_CONFIG["PC_MGR"] = PC_MGR
 PAYETTE_CONFIG["PC_BUILD"] = PC_BUILD
 PAYETTE_CONFIG["PC_EXTRACT"] = PC_EXTRACT
 PAYETTE_CONFIG["PC_EXES"] = PC_EXES
@@ -406,7 +396,6 @@ PAYETTE_CONFIG["PC_F2PY"] = PC_F2PY
 PAYETTE_CONFIG["PC_RUNPAYETTE"] = PC_RUNPAYETTE
 PAYETTE_CONFIG["PC_TESTPAYETTE"] = PC_TESTPAYETTE
 PAYETTE_CONFIG["PC_BUILDPAYETTE"] = PC_BUILDPAYETTE
-PAYETTE_CONFIG["PC_CLEANPAYETTE"] = PC_CLEANPAYETTE
 PAYETTE_CONFIG["PC_EXTRACTPAYETTE"] = PC_EXTRACTPAYETTE
 PAYETTE_CONFIG["PC_BUILT_EXES"] = PC_BUILT_EXES
 PAYETTE_CONFIG["PC_NUMPY_VER"] = PC_NUMPY_VER
@@ -544,7 +533,8 @@ def configure_payette(argv):
 
     # clean up first
     if not opts.NOCLEAN:
-        clean_payette()
+        clean_payette = os.path.join(PC_TOOLS, "cleanPayette")
+        subprocess.call(clean_payette, shell=True)
 
     # --- visualization check
     display = os.environ.get("DISPLAY")
@@ -768,33 +758,9 @@ fi
             for key, val in ENV.items():
                 fnew.write("export {0}={1}\n".format(key, val))
                 continue
-
-            if name == "cleanPayette":
-                fnew.write("{0} {1} {2} $* 2>&1\n"
-                           .format(PC_PYINT, py_file, "clean"))
-
-            elif name in ("buildPayette", "extractPayette",):
-                fnew.write("{0} {1} $* 2>&1\n".format(PC_PYINT, py_file))
-
-            elif name in ("runPayette", ):
-                # fnew.write(exit_msg)
-                if PAYETTE_CONFIG["VIZ_COMPATIBLE"]:
-                    # option to launch gui with runPayette
-                    fnew.write("args=$*\nargv=\nfor arg in ${args} ; do\n")
-                    fnew.write('case "$arg" in\n')
-                    fnew.write('"--gui") pyfile={0} ;;\n'.format(VIZ_SELECTOR))
-                    fnew.write('"-G") pyfile={0} ;;\n'.format(VIZ_SELECTOR))
-                    fnew.write('*) argv="${argv} ${arg}"\n')
-                    fnew.write('pyfile={0} ;;\n'.format(py_file))
-                    fnew.write("esac\ndone\n")
-                    fnew.write("{0} $pyfile $* 2>&1\n".format(PC_PYINT))
-                else:
-                    # gui not supported
-                    fnew.write("{0} {1} $* 2>&1\n".format(PC_PYINT, py_file))
-
-            else:
-                # fnew.write(exit_msg)
-                fnew.write("{0} {1} $* 2>&1\n".format(PC_PYINT, py_file))
+            fnew.write("PYTHON={0}\n".format(PC_PYINT))
+            fnew.write("PYFILE={0}\n".format(py_file))
+            fnew.write("$PYTHON $PYFILE $*\n")
 
         os.chmod(exe_path, 0o750)
         endmes("{0} script written".format(name))
@@ -837,52 +803,9 @@ import os
 """
 
 
-def clean_payette():
-
-    """ clean Payette of any automatically generated files """
-
-    from fnmatch import fnmatch
-
-    soext = sysconfig.get_config_var("SO")
-
-    pats_to_remove = ["*.pyc", "*.pyo", "Payette_config.py",
-                      "*{0}".format(soext),
-                      "payette_materials.db", "installed_materials.pkl",
-                      "__found_tests__.py",
-                      "*.log", "*.echo", "*.prf", "*.diff", "*.xout", "*.out",
-                      "*.math1", "*.math2", "*.props", "*.vtable", "*.dtable"]
-    pats_to_remove.extend(PC_BUILT_EXES.keys())
-
-    dirs_to_clean = ["Aux", "Benchmarks", "Documents", "Examples",
-                     "Source", "Toolset",]
-
-    for directory in dirs_to_clean:
-        for item in os.walk(os.path.join(PC_ROOT, directory)):
-            dirnam, files = item[0], item[2]
-
-            if ".svn" in dirnam:
-                continue
-
-            for fnam in files:
-                if any(fnmatch(fnam, pat) for pat in pats_to_remove):
-                    os.remove(osp.join(dirnam, fnam))
-
-                continue
-
-            continue
-
-    return
-
-
 if __name__ == "__main__":
 
-    if "clean" in sys.argv:
-        loginf("cleaning Payette")
-        clean_payette()
-        loginf("Payette cleaned")
-        sys.exit(0)
-
-    elif any("vers" in x for x in sys.argv):
+    if any("vers" in x for x in sys.argv):
         sys.exit("Payette, version " + __version__)
 
     if sys.argv[0] != osp.basename(__file__):

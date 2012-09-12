@@ -234,11 +234,11 @@ class PayetteTest(object):
             echof = kwargs["echof"]
         except KeyError:
             echof = self.name + ".echo"
-#        if "runPayette" in cmd[0]:
+#        if "payette" in cmd[0]:
 #            # run directly and not through a subprocess
 #            sys.stdout = open(echof,"w")
 #            sys.stderr = sys.stdout
-#            returncode = runPayette(len(cmd[1:]),cmd[1:])
+#            returncode = run_payette(len(cmd[1:]),cmd[1:])
 #            sys.stdout.close()
 #            sys.stdout = sys.__stdout__
 #            sys.stderr = sys.__stderr__

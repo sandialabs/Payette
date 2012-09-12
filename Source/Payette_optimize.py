@@ -51,7 +51,7 @@ FNEWEXT = ".0x312.gold"
 class Optimize(object):
     r"""docstring -> needs to be completed """
 
-    def __init__(self, input_lines, material_index):
+    def __init__(self, input_lines):
         r""" Initialization """
 
         # get the optimization block
@@ -65,7 +65,6 @@ class Optimize(object):
         optimize = job_inp.get_block("optimization")
 
         self.name = job
-        self.material_index = material_index
 
         # save Perturbate information to single "data" dictionary
         self.data = {}
@@ -198,8 +197,7 @@ class Optimize(object):
             continue
 
         # set up args and call optimzation routine
-        opt_args = [opt_nams, self.data, base_dir,
-                    xgold, self.material_index, self.index]
+        opt_args = [opt_nams, self.data, base_dir, xgold, self.index]
         opt_method = self.data["optimization method"]["method"]
         opt_options = {"maxiter": self.data["maximum iterations"],
                        "xtol": self.data["tolerance"],
@@ -495,7 +493,7 @@ class Optimize(object):
             self.data["baseinp"], self.data["basename"],
             param_nams, initial_vals)
 
-        the_model = pc.Payette(job_inp, self.material_index)
+        the_model = pc.Payette(job_inp)
         param_table = the_model.material.constitutive_model.parameter_table
 
         # remove cruft
@@ -664,7 +662,7 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
     return xopt * FAC
 
 
-def func(xcall, xnams, data, base_dir, xgold, material_index, index):
+def func(xcall, xnams, data, base_dir, xgold, index):
 
     r"""Objective function
 
@@ -737,7 +735,7 @@ def func(xcall, xnams, data, base_dir, xgold, material_index, index):
                        noisy=True)
 
     # instantiate Payette object
-    the_model = pc.Payette(job_inp, material_index)
+    the_model = pc.Payette(job_inp)
 
     # run the job
     solve = the_model.run_job()

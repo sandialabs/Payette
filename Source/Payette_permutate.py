@@ -43,7 +43,7 @@ import Source.runopts as ro
 class Permutate(object):
     r"""docstring -> needs to be completed """
 
-    def __init__(self, input_lines, material_index):
+    def __init__(self, input_lines):
 
         # extract the permutation block and delete it so that it is not read
         # again
@@ -57,9 +57,6 @@ class Permutate(object):
         input_lines = job_inp.get_input_lines(skip="permutation")
 
         self.name = job
-        if not os.path.isfile(material_index):
-            pu.report_and_raise_error("{0} not found".format(material_index))
-        self.material_index = material_index
 
         # save Perturbate information to single "data" dictionary
         self.data = {}
@@ -162,8 +159,7 @@ class Permutate(object):
         # Save additional arguments to func in the global FARGS. This would be
         # handled better using something similar to scipy.optimize.py's
         # wrap_function, but that is not compatible with Pool.map.
-        args = ((x, self.param_nams, self.data, base_dir,
-                 self.material_index, self.index)
+        args = ((x, self.param_nams, self.data, base_dir, self.index)
                 for x in self.param_ranges)
 
         nproc = min(mp.cpu_count(), self.data["nproc"])
@@ -396,7 +392,7 @@ class Permutate(object):
             self.param_nams, self.initial_vals)
 
         # copy the job input and instantiate a Payette object
-        the_model = pc.Payette(job_inp, self.material_index)
+        the_model = pc.Payette(job_inp)
         param_table = the_model.material.constitutive_model.parameter_table
 
         # remove cruft
@@ -448,7 +444,7 @@ def func(args):
 
     """
 
-    xcall, xnams, data, base_dir, material_index, index = args
+    xcall, xnams, data, base_dir, index = args
     job_id, xcall = xcall[0], xcall[1]
 
     job = data["basename"] + "." + job_id
@@ -477,7 +473,7 @@ def func(args):
                        .format(job_id, ", ".join(msg)), noisy=True)
 
     # instantiate Payette object
-    the_model = pc.Payette(job_inp, material_index)
+    the_model = pc.Payette(job_inp)
 
     # write out the input file, not actually used, but nice to have
     the_model.write_input = True

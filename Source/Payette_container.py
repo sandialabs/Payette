@@ -73,20 +73,13 @@ class PayetteError(Exception):
 
 
 class Payette(object):
-    """
-    CLASS NAME
-       Payette
+    """Main container class for a Payette single element simulation,
+    instantiated in the payette script. The documentation is currently sparse,
+    but may be expanded if time allows.
 
-    PURPOSE
-       main container class for a Payette single element simulation, instantiated in
-       the runPayette script. The documentation is currently sparse, but may be
-       expanded if time allows.
-
-    AUTHORS
-       Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     """
 
-    def __init__(self, input_lines, material_index):
+    def __init__(self, input_lines):
 
         # instantiate the user input object
         self.input_lines = input_lines
@@ -119,10 +112,6 @@ class Payette(object):
 
         self.name = self.user_input.get_simulation_key()
         self._open_files = {}
-
-        # material index file
-        if not os.path.isfile(material_index):
-            raise PayetteError("{0} not found".format(material_index))
 
         # default variables
         self.dtable_fobj = None
@@ -207,8 +196,7 @@ class Payette(object):
                 .format(self.name))
         model_name, user_params, user_options = _parse_mtl_block(material)
         # instantiate the material object
-        self.material = Material(model_name, user_params,
-                                 material_index, **user_options)
+        self.material = Material(model_name, user_params, **user_options)
 
         self.matdat = self.material.material_data()
 

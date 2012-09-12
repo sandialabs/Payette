@@ -17,7 +17,7 @@ class Test(PayetteTest):
         self.outfile = "{0}.out".format(self.name)
         self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
         self.keywords = ["builtin", "fast", "verification", "elastic", "using"]
-        self.runcommand = ["runPayette", "--no-writeprops",
+        self.runcommand = ["payette", "--no-writeprops",
                            self.infile]
         self.material = "elastic"
 

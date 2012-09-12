@@ -131,7 +131,7 @@ def eos_driver(the_model, **kwargs):
             the_model.write_state(input_unit_system=input_unit_system,
                                   output_unit_system=output_unit_system)
         pu.log_message("Legs file: {0}".format(out_fnam))
-        
+
 
 
 ################################################################################
@@ -406,7 +406,7 @@ def solid_driver(the_model, **kwargs):
             if ileg == int(len(legs) / 2):
                 print("\n\nStopping to test Payette restart capabilities.\n"
                       "Restart the simulation by executing\n\n"
-                      "\t\trunPayette {0}\n\n".format(the_model.restart_file))
+                      "\t\tpayette {0}\n\n".format(the_model.restart_file))
                 the_model.finish()
                 sys.exit(76)
 

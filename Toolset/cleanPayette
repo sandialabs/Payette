@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+import os, sys
+from fnmatch import fnmatch
+from distutils import sysconfig
+
+""" clean Payette of any automatically generated files """
+
+FDIR, FNAM = os.path.split(os.path.realpath(__file__))
+RDIR = os.path.join(FDIR, "../")
+USAGE = "{0}: clean Payette of generated files\nusage: {0}".format(FNAM)
+if any(x in ("-h", "-help", "--help", "help") for x in sys.argv):
+    sys.exit(USAGE)
+
+SOEXT = sysconfig.get_config_var("SO")
+
+PATS_TO_REMOVE = ["*.pyc", "*.pyo", "Payette_config.py",
+                  "*{0}".format(SOEXT),
+                  "payette_materials.db", "installed_materials.pkl",
+                  "__found_tests__.py",
+                  "*.log", "*.echo", "*.prf", "*.diff", "*.xout", "*.out",
+                  "*.math1", "*.math2", "*.props", "*.vtable", "*.dtable", ]
+
+DIRS_TO_CLEAN = ["Aux", "Benchmarks", "Documents", "Examples",
+                 "Source", "Toolset",]
+
+for directory in DIRS_TO_CLEAN:
+    for dirnam, dirs, files in os.walk(os.path.join(RDIR, directory)):
+        if ".svn" in dirnam or ".git" in dirnam:
+            continue
+
+        for fnam in files:
+            if any(fnmatch(fnam, pat) for pat in PATS_TO_REMOVE):
+                os.remove(os.path.join(dirnam, fnam))
+            continue
+        continue
+    continue
+
+for exe in ("buildPayette", "runPayette", "vizPayette", "testPayette", "payette"):
+    try:
+        os.remove(os.path.join(FDIR, exe))
+    except OSError:
+        pass
+
+sys.exit(0)
+

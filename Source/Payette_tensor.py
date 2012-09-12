@@ -25,7 +25,7 @@
 represented by 3x3 matrices.
 
 For some functions, two levels of accuracy are present: full accuracy using
-scipy functions if the user specified --strict when calling runPayette, or
+scipy functions if the user specified --strict when calling payette, or
 (default) second order Taylor series approximations. With --strict, the
 answers are more accurate, but the slow down is substantial.
 
