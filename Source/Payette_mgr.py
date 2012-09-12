@@ -13,8 +13,6 @@ FILE = os.path.realpath(__file__)
 ROOTDIR = os.path.realpath(os.path.join(os.path.dirname(FILE), "../"))
 SRCDIR = os.path.join(ROOTDIR, "Source")
 EXENAM = "payette"
-sys.path.insert(0, ROOTDIR)
-
 
 # import Payette specific files
 try:

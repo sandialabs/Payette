@@ -48,7 +48,7 @@ import Source.Payette_input_parser as pip
 import Source.runopts as ro
 
 def run_payette(siminp=None, restart=False, timing=False, cchar=None,
-                nproc=ro.NPROC, disp=0, verbosity=ro.VERBOSITY):
+                nproc=ro.NPROC, disp=ro.DISP, verbosity=ro.VERBOSITY):
     """Main function for running a Payette job.
     Read the user inputs from argv, parse options, read user input, and run
     the jobs.
@@ -77,6 +77,9 @@ def run_payette(siminp=None, restart=False, timing=False, cchar=None,
     nproc = min(min(mp.cpu_count(), nproc), len(user_input_sets))
     verbosity = verbosity if nproc == 1 else 0
     ro.VERBOSITY = verbosity
+
+    # set disp to match user requested value
+    ro.set_global_option("DISP", disp)
 
     if nproc > 1:
         pu.log_warning(
@@ -148,7 +151,7 @@ def _run_job(args):
         tim1 = time.time()
 
     siminfo = the_model.run_job()
-    if not disp:
+    if disp:
         retcode = siminfo["retcode"]
     else:
         retcode = siminfo
