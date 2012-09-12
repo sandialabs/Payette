@@ -69,29 +69,17 @@ def build_payette(argv):
     usage = ("usage: buildPayette  [options]")
     parser = optparse.OptionParser(usage=usage, version="buildPayette 1.0")
     parser.add_option(
-        "-x", "--no-build-libs",
-        dest="nobuildlibs",
-        action="store_true",
-        default=False,
-        help="do not build material libraries: [default: %default]")
-    parser.add_option(
         "-m",
         dest="mtllib",
         action="append",
         default=[],
         help="specify material libraries to build: [default: ['all']]")
     parser.add_option(
-        "-t", "--test",
-        dest="TEST",
+        "-w",
+        dest="WIPE",
         action="store_true",
         default=False,
-        help="run testPayette executable: [default: %default]")
-    parser.add_option(
-        "-F",
-        dest="FORCEREBUILD",
-        action="store_true",
-        default=False,
-        help="Rebuild Payette_materials.py [default:%default]")
+        help="Wipe before building Payette_materials.py [default:%default]")
     parser.add_option(
         "-v",
         dest="VERBOSITY",
@@ -119,12 +107,6 @@ def build_payette(argv):
         action="store_true",
         default=False,
         help="Build pieze_ceramic [default: %default]")
-    parser.add_option(
-        "--summary",
-        dest="SUMMARY",
-        action="store_true",
-        default=False,
-        help="write summary to screen [default: %default]")
     parser.add_option(
         "-j",
         dest="NPROC",
@@ -184,10 +166,6 @@ def build_payette(argv):
         parser.print_help()
         parser.error("buildPayette does not require arguments, only options")
 
-    if opts.SUMMARY:
-        write_summary_to_screen()
-        sys.exit(0)
-
     ro.set_global_option("VERBOSITY", opts.VERBOSITY, default=True)
 
     pu.log_message(pc.PC_INTRO, pre="")
@@ -202,7 +180,7 @@ def build_payette(argv):
         requested_materials.append("piezo_ceramic")
 
     # force a rebuild by wiping the existing installed materials file
-    if opts.FORCEREBUILD:
+    if opts.WIPE:
         pmi.remove_index_file()
 
     # directories to search for materials
@@ -306,7 +284,6 @@ class BuildError(Exception):
 
     def __str__(self):
         return self.message
-
 
 
 class BuildPayette(object):
@@ -661,57 +638,6 @@ def _build_lib(args):
         pass
 
     return build_error
-
-
-def write_summary_to_screen():
-
-    """ write summary of entire Payette project to the screen """
-
-    def num_code_lines(fpath):
-
-        """ return the number of lines of code in fpath """
-
-        nlines = 0
-        if os.path.splitext(fpath)[1] not in code_exts:
-            return nlines
-        for line in open(fpath, "r").readlines():
-            line = line.strip().split()
-            if not line or line[0] == "#":
-                continue
-            nlines += 1
-            continue
-        return nlines
-
-    all_dirs, all_files = [], []
-    code_exts = [".py", ".pyf", "", ".F", ".C", ".f", ".f90"]
-    all_exts = code_exts + [".inp", ".tex", ".pdf"]
-    for dirnam, dirs, files in os.walk(pc.PC_ROOT):
-        if ".git" in dirnam:
-            continue
-        all_dirs.extend([os.path.join(dirnam, d) for d in dirs])
-        all_files.extend([os.path.join(dirnam, ftmp) for ftmp in files
-                          if not os.path.islink(os.path.join(dirnam, ftmp))
-                          and os.path.splitext(ftmp)[1] in all_exts])
-        continue
-    num_lines = sum([num_code_lines(ftmp) for ftmp in all_files])
-    num_dirs = len(all_dirs)
-    num_files = len(all_files)
-    num_infiles = len([x for x in all_files if x.endswith(".inp")])
-    num_pyfiles = len([x for x in all_files
-                       if x.endswith(".py") or x.endswith(".pyf")])
-    pu.log_message(pc.PC_INTRO, pre="")
-    pu.log_message("Summary of Project:", pre="")
-    pu.log_message("\tNumber of files in project:         {0:d}"
-                   .format(num_files), pre="")
-    pu.log_message("\tNumber of directories in project:   {0:d}"
-                   .format(num_dirs), pre="")
-    pu.log_message("\tNumber of input files in project:   {0:d}"
-                   .format(num_infiles), pre="")
-    pu.log_message("\tNumber of python files in project:  {0:d}"
-                   .format(num_pyfiles), pre="")
-    pu.log_message("\tNumber of lines of code in project: {0:d}"
-                   .format(num_lines), pre="")
-    return
 
 
 if __name__ == "__main__":

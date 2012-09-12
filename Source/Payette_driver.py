@@ -725,6 +725,4 @@ def solid_driver(the_model, **kwargs):
         continue # continue to next leg
     # ----------------------------------------------------- end{processing leg}
 
-    if ro.TESTERROR:
-        pu.report_and_raise_error("Testing error raising")
     return 0

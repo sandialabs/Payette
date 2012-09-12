@@ -76,13 +76,6 @@ class PassThroughOptionParser(OptionParser):
                 largs.append(e.opt_str)
 
 
-def warning(msg):
-    sys.stdout.write("WARNING: {0}\n".format(msg))
-
-def error(msg):
-    sys.exit("ERROR: {0}\n".format(msg))
-
-
 def main(argv):
     """
     The main gateway to the Payette driver and associated tools
@@ -103,7 +96,6 @@ def main(argv):
     ro.restore_default_options()
 
     # --------------------------------------------- command line option parsing
-    payette_exts = [".log", ".math1", ".math2", ".props", ".echo", ".prf"]
     parser = PassThroughOptionParser(usage=USAGE, version="payette 1.0")
     parser.add_option(
         "-H", "--man",
@@ -124,6 +116,12 @@ def main(argv):
         default=False,
         help="Clean ALL Payette output and exit [default: %default]")
     parser.add_option(
+        "--summary",
+        dest="SUMMARY",
+        action="store_true",
+        default=False,
+        help="write summary to screen [default: %default]")
+    parser.add_option(
         "--cchar",
         dest="cchar",
         action="store",
@@ -137,11 +135,6 @@ def main(argv):
         default=None,
         help=("Input string for simulation instead of file "
                 "[default: %default]"))
-    parser.add_option(
-        "-m", "--materials",
-        dest="mtls",
-        default=False,
-        action="store_true")
     parser.add_option(
         "-p", "--princ",
         dest="principal",
@@ -166,7 +159,8 @@ def main(argv):
         dest="AUG_DIR",
         action="store",
         default=None,
-        help="Alternate directory to find index file [default: %default]")
+        help=("Alternate directory to find material database "
+              "file [default: %default]"))
 
     # ---------------------- Sandia National Labs specific material directories
     # The following option is only valid if the user configured with Lambda
@@ -210,7 +204,7 @@ def main(argv):
         default=ro.SQA,
         help="Run additional verification/sqa checks [default: %default]")
     parser.add_option(
-        "-d", "--dbg", "--debug",
+        "--dbg", "--debug",
         dest="debug",
         action="store_true",
         default=ro.DEBUG,
@@ -227,7 +221,7 @@ def main(argv):
         dest="writerestart",
         action="store_true",
         default=ro.WRITERESTART,
-        help="Do not save restart files [default: %default]")
+        help="Write restart files [default: %default]")
     parser.add_option(
         "--no-writeprops",
         dest="nowriteprops",
@@ -235,7 +229,7 @@ def main(argv):
         default=ro.NOWRITEPROPS,
         help="Do not write checked parameters [default: %default]")
     parser.add_option(
-        "-a", "--simdir",
+        "-d", "--simdir",
         dest="simdir",
         action="store",
         default=ro.SIMDIR,
@@ -252,8 +246,7 @@ def main(argv):
         dest="keep",
         action="store_true",
         default=ro.KEEP,
-        help=("Do not overwrite old output files with each run "
-                "[default: %default]"))
+        help="Do not overwrite old output with each run [default: %default]")
     parser.add_option(
         "--write-vandd",
         dest="write_vandd_table",
@@ -295,7 +288,7 @@ def main(argv):
         default=ro.DISP,
         help="Return extra diagnositic information if > 0 [default: %default]")
     parser.add_option(
-        "-w", "--write-input",
+        "--write-input",
         dest="write_input",
         action="store_true",
         default=ro.WRITE_INPUT,
@@ -308,53 +301,21 @@ def main(argv):
         choices=["ignore", "warn", "error", "all"],
         default=ro.WARNING,
         help="warning level [default: %default]")
-    parser.add_option(
-        "--test-error",
-        dest="testerror",
-        action="store_true",
-        default=ro.TESTERROR,
-        help="test raising error [default: %default]")
 
     # parse the command line arguments
     (opts, args) = parser.parse_args(argv)
     # ----------------------------------------- end command line option parsing
 
+    if opts.SUMMARY:
+        # write the summary
+        sys.exit(_write_summary_to_screen())
+
     if opts.debug:
+        # for debug problems, increase verbosity
         opts.verbosity = 4
 
-    if opts.CLEANALL:
-        payette_exts.extend([".out"])
-        opts.CLEAN = True
-
-    if opts.CLEAN:
-        # ------------------------------------------------------ clean and exit
-        cleaned = False
-        # clean all the payette output and exit
-        if not args:
-            sys.exit(warning("No base file name given to clean"))
-        for fpath in args:
-            fpath = os.path.realpath(fpath)
-            fdir = os.path.dirname(fpath)
-            fnam, fext = os.path.splitext(fpath)
-            if fnam not in [os.path.splitext(x)[0] for x in os.listdir(fdir)]:
-                warning("no Payette output for {0} found in {1}"
-                        .format(fpath, fdir))
-                continue
-            pu.log_message("cleaning output for {0}".format(fnam))
-            for ext in payette_exts:
-                try:
-                    os.remove(fnam + ext)
-                    cleaned = True
-                except OSError:
-                    pass
-                continue
-            continue
-        if cleaned:
-            pu.log_message("output cleaned")
-        else:
-            warning("output not cleaned")
-        sys.exit(0)
-        # -------------------------------------------------- end clean and exit
+    if opts.CLEAN or opts.CLEANALL:
+        sys.exit(_clean_file_exts(args, opts.CLEANALL))
 
     if opts.MAN:
         # print the man page for this and other scripts
@@ -452,7 +413,7 @@ def main(argv):
 
     if oargs:
         # output files given, launch visualizer
-        sys.exit(visualize_results(outfiles=oargs))
+        sys.exit(_visualize_results(outfiles=oargs))
 
     if bargs:
         # user passed in a barf file
@@ -502,12 +463,12 @@ def main(argv):
 
     # visualize the results if requested
     if opts.VIZ:
-        visualize_results(simulation_info=siminfo)
+        _visualize_results(simulation_info=siminfo)
 
     retcode = 1 if any(x["retcode"] for x in siminfo) else 0
     return retcode
 
-def visualize_results(simulation_info=None, outfiles=None):
+def _visualize_results(simulation_info=None, outfiles=None):
     """visualize the results from a simulation
 
     Parameters
@@ -568,6 +529,100 @@ def visualize_results(simulation_info=None, outfiles=None):
         index.dump()
         siminfo = {"index file": index.index_file()}
     create_Viz_ModelPlot(simname, **siminfo)
+    return
+
+
+def _write_summary_to_screen():
+    """ write summary of entire Payette project to the screen """
+
+    def _num_code_lines(fpath):
+        """ return the number of lines of code in fpath """
+        nlines = 0
+        fnam, fext = os.path.splitext(fpath)
+        if fext not in code_exts:
+            return 0
+        cchars = {".py": "#", ".f90": "!", ".F": "!c", "C": "\\"}
+        for line in open(fpath, "r").readlines():
+            line = line.strip()
+            if not line.split() or line[0] in cchars.get(fext, "#"):
+                continue
+            nlines += 1
+            continue
+        return nlines
+
+    all_dirs, all_files = [], []
+    code_exts = [".py", ".pyf", "", ".F", ".C", ".f", ".f90"]
+    all_exts = code_exts + [".inp", ".tex", ".pdf"]
+    for dirnam, dirs, files in os.walk(pc.PC_ROOT):
+        if ".git" in dirnam:
+            continue
+        all_dirs.extend([os.path.join(dirnam, d) for d in dirs])
+        all_files.extend([os.path.join(dirnam, ftmp) for ftmp in files
+                          if not os.path.islink(os.path.join(dirnam, ftmp))
+                          and os.path.splitext(ftmp)[1] in all_exts])
+        continue
+    num_lines = sum([_num_code_lines(ftmp) for ftmp in all_files])
+    num_dirs = len(all_dirs)
+    num_files = len(all_files)
+    num_infiles = len([x for x in all_files if x.endswith(".inp")])
+    num_pyfiles = len([x for x in all_files
+                       if x.endswith(".py") or x.endswith(".pyf")])
+    pu.log_message(pc.PC_INTRO, pre="")
+    pu.log_message("Summary of Project:", pre="")
+    pu.log_message("\tNumber of files in project:         {0:d}"
+                   .format(num_files), pre="")
+    pu.log_message("\tNumber of directories in project:   {0:d}"
+                   .format(num_dirs), pre="")
+    pu.log_message("\tNumber of input files in project:   {0:d}"
+                   .format(num_infiles), pre="")
+    pu.log_message("\tNumber of python files in project:  {0:d}"
+                   .format(num_pyfiles), pre="")
+    pu.log_message("\tNumber of lines of code in project: {0:d}"
+                   .format(num_lines), pre="")
+    return
+
+
+def _clean_file_exts(files, cleanall):
+    """Remove Payette generated files
+
+    Parameters
+    ----------
+    files : list
+        list of files to clean
+    cleanall : bool
+        if True, remove output files as well
+
+    Returns
+    -------
+    None
+
+    """
+
+    pu.log_message("Cleaning Payette output for {0}".format(", ".join(files)))
+    payette_exts = [".log", ".math1", ".math2", ".props", ".echo", ".prf"]
+    if cleanall:
+        payette_exts.extend([".out"])
+
+    # clean all the payette output and exit
+    if not files:
+        pu.log_warning("No base file name given to clean")
+        return
+
+    for fpath in files:
+        fpath = os.path.realpath(os.path.expanduser(fpath))
+        fdir = os.path.dirname(fpath)
+        fnam, fext = os.path.splitext(fpath)
+        faux = [os.path.join(fdir, x) for x in os.listdir(fdir) if
+                os.path.splitext(x)[1] in payette_exts and
+                os.path.splitext(x)[0] == os.path.basename(fnam)]
+        for fff in faux:
+            try:
+                os.remove(fff)
+            except OSError:
+                pass
+            continue
+        continue
+    pu.log_message("Output cleaned")
     return
 
 

@@ -25,7 +25,6 @@ NPROC = 1
 CHECK_SETUP = False
 WRITE_INPUT = False
 WARNING = "warn"
-TESTERROR = False
 SIMDIR = None
 MTLDB = pc.PC_MTLS_FILE
 
