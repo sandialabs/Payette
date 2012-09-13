@@ -157,6 +157,12 @@ def test_payette(argv):
         action="store",
         default=None,
         help=("Switch material A for B [usage -S'A:B'] [default: %default]"))
+    parser.add_option(
+        "--rebaseline",
+        dest="REBASELINE",
+        action="store_true",
+        default=False,
+        help="Rebaseline a test [default: %default]")
 
     # indexing
     parser.add_option(
@@ -175,9 +181,6 @@ def test_payette(argv):
 
     (opts, args) = parser.parse_args(argv)
 
-    if args:
-        sys.exit("ERROR: testPayette does not take any arguments")
-
     if opts.switch is not None:
         pu.log_warning("switching materials is an untested feature")
 
@@ -185,6 +188,34 @@ def test_payette(argv):
     nproc = min(mp.cpu_count(), opts.nproc)
 
     pu.log_message(pc.PC_INTRO, pre="", noisy=True)
+
+    if opts.REBASELINE:
+        if not args:
+            args = list(set([os.path.splitext(os.path.basename(x))[0]
+                             for x in os.listdir(os.getcwd())]))
+            if len(args) > 1:
+                print args
+                sys.exit("Could not determine which test to rebaseline")
+
+        for arg in args:
+            fpath = os.path.realpath(os.path.expanduser(arg))
+            fnam, fext = os.path.splitext(fpath)
+            old = os.path.realpath(fnam + ".gold")
+            new = fnam + ".out"
+            errors = 0
+            for f in (old, new):
+                if not os.path.isfile(f):
+                    errors += 1
+                    sys.stderr.write("ERROR: {0} not found\n".format(f))
+                continue
+            if errors:
+                sys.stdout.write("ERROR: Test not rebaselined\n")
+                continue
+            sys.stdout.write("Rebaseling {0}\n".format(os.path.basename(fnam)))
+            shutil.move(new, old)
+            sys.stdout.write("{0} rebaselined\n".format(os.path.basename(fnam)))
+            continue
+        sys.exit("Rebaselining complete\n")
 
     # find tests
     pu.log_message("Testing Payette", noisy=True)
