@@ -20,18 +20,17 @@ begin simulation exmpl_11
 
   begin material
     constitutive model hooke
-    G 54.e9  # 53.e9 -> value used to create exmpls.tbl
-    K 129.e9  # 135.e9 -> value used to create exmpls.tbl
+    G {opt_g}  # 53.e9 -> value used to create exmpls.tbl
+    K {opt_k}  # 135.e9 -> value used to create exmpls.tbl
   end material
 
   begin optimization
     method powell  # optimizer method [simplex] {simplex, powell, cobyla}
     maxiter 25  # maximum number of iterations [25]
     tolerance 1.e-6  # tolerance between out and gold file [1.e-4]
-    optimize K, bounds = (125.e9, 150.e9), initial value = 129.e9
-    optimize G, bounds = (45.e9, 57.e9), initial value = 54.e9
-    gold file exmpls.gold
-    minimize sig11, sig22, sig33
+    optimize opt_k, bounds = (125.e9, 150.e9), initial value = 129.e9
+    optimize opt_g, bounds = (45.e9, 57.e9), initial value = 54.e9
+    obj_fn = min_sig.py
     disp 0
   end optimization
 

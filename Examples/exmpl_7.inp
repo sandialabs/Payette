@@ -20,8 +20,8 @@ begin simulation exmpl_7
 
   begin material
     constitutive model hooke
-    G 54.e9  # 53.e9 -> value used to create exmpls.tbl
-    K 129.e9  # 135.e9 -> value used to create exmpls.tbl
+    G {opt_g}  # 53.e9 -> value used to create exmpls.tbl
+    K {opt_k}  # 135.e9 -> value used to create exmpls.tbl
   end material
 
   begin optimization
@@ -44,16 +44,13 @@ begin simulation exmpl_7
     # optimizer does not send in invalid moduli that woudl crash the
     # simulation. the initial value must also be specified. initial value and
     # lower/upper bounds can be specified in any order.
-    optimize K, bounds = (125.e9, 150.e9), initial value = 129.e9
-    optimize G, bounds = (45.e9, 57.e9), initial value = 54.e9
+    optimize opt_k, bounds = (125.e9, 150.e9), initial value = 129.e9
+    optimize opt_g, bounds = (45.e9, 57.e9), initial value = 54.e9
 
-    # below we specify the "gold file" that has the results against which we
-    # compare the output from the simulation, along with the minimizing
-    # variables from that file. The optimization algorithm optimizes the
-    # parameters specified above by minimizing the difference between the
-    # minimizing variables in the gold file and the simulation output file.
-    gold file exmpls.gold
-    minimize sig11, sig22, sig33 versus time
+    # below we specify the obj_fn, it is a python file that computes the error
+    between the output and a known good result. The user is responsible for
+    providing the objective function file
+    obj_fn = min_sig_v_time.py
 
   end optimization
 

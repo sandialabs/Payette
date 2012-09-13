@@ -27,6 +27,7 @@ parameters using Payette.
 
 import os
 import sys
+import imp
 import shutil
 import numpy as np
 import scipy
@@ -46,6 +47,7 @@ import Toolset.KayentaParamConv as kpc
 IOPT = -1
 FAC = []
 FNEWEXT = ".0x312.gold"
+UM = None
 
 
 class Optimize(object):
@@ -92,22 +94,12 @@ class Optimize(object):
         # check the optimization variables
         self.check_params()
 
-        # check minimization variables
-        self.check_min_parameters()
-
         if self.data["verbosity"]:
             pu.log_message("Optimizing {0}".format(job), noisy=True)
             pu.log_message("Optimization variables: {0}"
                            .format(", ".join(self.data["optimize"])),
                            noisy=True)
-            minvars = ", ".join([x[1:] for x in self.data["minimize"]["vars"]])
-            pu.log_message("Minimization variables: {0}".format(minvars),
-                           noisy=True)
-            if self.data["minimize"]["abscissa"] is not None:
-                pu.log_message("using {0} as abscissa"
-                               .format(self.data["minimize"]["abscissa"][1:]),
-                               noisy=True)
-            pu.log_message("Gold file: {0}".format(self.data["gold file"]),
+            pu.log_message("Objective function file: {0}".format(UM.__file__),
                            noisy=True)
             if self.data["options"]:
                 pu.log_message("Optimization options: {0}"
@@ -169,20 +161,6 @@ class Optimize(object):
         self.index = psi.SimulationIndex(base_dir)
 
         # copy gold file to base_dir
-        gold_f = os.path.join(
-            base_dir, os.path.basename(self.data["gold file"]))
-        shutil.copyfile(self.data["gold file"], gold_f)
-
-        # extract only what we want from the gold file
-        exargs = [gold_f, "--silent", "--xout"]
-        if self.data["minimize"]["abscissa"] is not None:
-            exargs.append(self.data["minimize"]["abscissa"])
-        exargs.extend(self.data["minimize"]["vars"])
-        pe.extract(exargs)
-
-        # extract created a file basename(gold_f).xout, change ext to .xgold
-        xgold = gold_f.replace(".gold", ".xgold")
-        shutil.move(gold_f.replace(".gold", ".xout"), xgold)
 
         # Initial guess for opt_params are those from input. opt_params must
         # be in a consistent order throughout, here we arbitrarily set that
@@ -197,7 +175,7 @@ class Optimize(object):
             continue
 
         # set up args and call optimzation routine
-        opt_args = [opt_nams, self.data, base_dir, xgold, self.index]
+        opt_args = [opt_nams, self.data, base_dir, self.index]
         opt_method = self.data["optimization method"]["method"]
         opt_options = {"maxiter": self.data["maximum iterations"],
                        "xtol": self.data["tolerance"],
@@ -278,8 +256,7 @@ class Optimize(object):
         None
 
         """
-        gold_f = None
-        minimize = {"abscissa": None, "vars": []}
+        global UM
         allowed_methods = {
             "simplex": {"method": "Nelder-Mead", "name": "fmin"},
             "powell": {"method": "Powell", "name": "fmin_powell"},
@@ -292,7 +269,6 @@ class Optimize(object):
         tolerance = 1.e-4
         disp = False
         optimize = {}
-        fix = {}
 
         # get options first -> must come first because some options have a
         # default method different than the global default of simplex
@@ -326,33 +302,7 @@ class Optimize(object):
                 item = item.replace(pat, repl)
             item = item.split()
 
-            if "gold" in item[0].lower() and "file" in item[1].lower():
-                if not os.path.isfile(item[2]):
-                    pu.report_error("gold file {0} not found".format(item[2]))
-
-                else:
-                    gold_f = item[2]
-
-            elif "minimize" in item[0].lower():
-                # get variables to minimize during the optimization
-                min_vars = item[1:]
-                for min_var in min_vars:
-                    if min_var == "versus":
-                        val = min_vars[min_vars.index("versus") + 1]
-                        if val[0] != "@":
-                            val = "@" + val
-                        minimize["abscissa"] = val
-                        break
-
-                    if min_var[0] != "@":
-                        min_var = "@" + min_var
-
-                    if min_var not in minimize["vars"]:
-                        minimize["vars"].append(min_var)
-
-                    continue
-
-            elif "optimize" in item[0].lower():
+            if "optimize" in item[0].lower():
                 # set up this parameter to optimize
                 key = item[1]
                 vals = item[2:]
@@ -389,21 +339,30 @@ class Optimize(object):
                 optimize[key]["bounds"] = bounds
                 optimize[key]["initial value"] = init_val
 
-            elif "fix" in item[0].lower():
-                # set up this parameter to fix
-                key = item[1]
-                vals = item[2:]
+            elif "obj_fn" in item[0].lower():
+                # user supplied objective function
+                fnam = item[-1]
+                if not os.path.isfile(fnam):
+                    pu.report_error("obj_fn {0} not found".format(fnam))
+                    continue
 
-                init_val = None
-                if "initial" in vals:
-                    idx = vals.index("initial")
-                    if vals[idx + 1] == "value":
-                        idx = idx + 1
-                        init_val = float(vals[idx+1])
+                if os.path.splitext(fnam)[1] not in (".py",):
+                    pu.report_error("obj_fn {0} must be .py file".format(fnam))
+                    continue
 
-                fix[key] = {}
-                fix[key]["initial value"] = init_val
+                pymod, pypath = pu.get_module_name_and_path(fnam)
+                try:
+                    fobj, path, desc = imp.find_module(pymod, pypath)
+                    UM = imp.load_module(pymod, fobj, path, desc)
+                    fobj.close()
+                except ImportError:
+                    pu.report_error("obj_fn {0} not imported".format(fnam))
+                    continue
 
+                if not hasattr(UM, "obj_fn"):
+                    pu.report_error("obj_fn must define a 'obj_fn' function")
+
+            # below are options for the scipy optimizing routines
             elif "maxiter" in item[0].lower():
                 maxiter = int(item[1])
 
@@ -430,18 +389,6 @@ class Optimize(object):
 
             continue
 
-        if gold_f is None:
-            pu.report_error("No gold file given for optimization problem")
-
-        else:
-            if not os.path.isfile(gold_f):
-                pu.report_error("gold file {0} not found".format(gold_f))
-            else:
-                gold_f = os.path.realpath(gold_f)
-
-        if not minimize["vars"]:
-            pu.report_error("no parameters to minimize given")
-
         if not optimize:
             pu.report_error("no parameters to optimize given")
 
@@ -449,23 +396,14 @@ class Optimize(object):
             if val["initial value"] is None:
                 pu.report_error("no initial value given for {0}".format(key))
 
-        for key, val in fix.items():
-            if val["initial value"] is None:
-                pu.report_error("no initial value given for {0}".format(key))
-            if key.lower() in [x.lower() for x in optimize]:
-                pu.report_error("cannot fix and optimize {0}".format(key))
-
         if pu.error_count():
             pu.report_and_raise_error("stopping due to previous errors")
 
-        self.data["gold file"] = gold_f
-        self.data["minimize"] = minimize
         self.data["optimize"] = optimize
         self.data["maximum iterations"] = maxiter
         self.data["tolerance"] = tolerance
         self.data["optimization method"] = opt_method
         self.data["disp"] = disp
-        self.data["fix"] = fix
 
         return
 
@@ -485,64 +423,16 @@ class Optimize(object):
 
         # Remove from the material block the optimized parameters. Current
         # values will be inserted in to the material block for each run.
-        param_nams, initial_vals = [], []
+        preprocessing = []
+        pu.log_message("Calling model with initial parameters")
         for key, val in self.data["optimize"].items():
-            param_nams.append(key)
-            initial_vals.append(val["initial value"])
-        job_inp = pip.replace_params_and_name(
-            self.data["baseinp"], self.data["basename"],
-            param_nams, initial_vals)
-
+            preprocessing.append(
+                "{0} = {1}".format(key, val["initial value"]))
+        job_inp = pip.preprocess_input_deck(self.data["baseinp"],
+                                            preprocessing=preprocessing)
         the_model = pc.Payette(job_inp)
-        param_table = the_model.material.constitutive_model.parameter_table
-
-        # remove cruft
-        for ext in (".log", ".props", ".math1", ".math2", ".prf", ".out"):
-            try:
-                os.remove(self.data["basename"] + ext)
-            except OSError:
-                pass
-            continue
-
-        # check that the optimize variables are in this models parameters
-        not_in = [x for x in self.data["optimize"] if x.lower() not in
-                  [y.lower() for y in param_table.keys()]]
-        if not_in:
-            pu.report_error(
-                "Optimization parameter[s] {0} not in model parameters"
-                .format(", ".join(not_in)))
-
-        if pu.error_count():
-            pu.report_and_raise_error("exiting due to previous errors")
-
-        return
-
-    def check_min_parameters(self):
-
-        r"""Using the extract function in Payette_extract.py, check that the
-        minimization parameters exist in the gold file.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        extraction : int
-            0 if successfull, nonzero otherwise
-
-        """
-
-        exargs = [self.data["gold file"], "--silent"]
-        if self.data["minimize"]["abscissa"] is not None:
-            exargs.append(self.data["minimize"]["abscissa"])
-        exargs.extend(self.data["minimize"]["vars"])
-        extraction = pe.extract(exargs)
-
-        if extraction:
-            pu.report_and_raise_error(
-                "error extracting minimization variables from {0}"
-                .format(self.data["gold file"]))
+        if pu.warn_count():
+            pu.report_and_raise_error("exiting due to initial warnings")
 
         return
 
@@ -662,7 +552,7 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
     return xopt * FAC
 
 
-def func(xcall, xnams, data, base_dir, xgold, index):
+def func(xcall, xnams, data, base_dir, index):
 
     r"""Objective function
 
@@ -676,8 +566,6 @@ def func(xcall, xnams, data, base_dir, xgold, index):
         Current best guess for optimized parameters
     data : dict
         Optimization class data container
-    xgold : str
-        File path to gold file
 
     Returns
     -------
@@ -697,7 +585,7 @@ def func(xcall, xnams, data, base_dir, xgold, index):
 
     # replace the optimize variables with the updated and write params to file
     msg = []
-    param_nams, param_vals = [], []
+    preprocessing = []
     variables = {}
     with open(os.path.join(job_dir, job + ".opt"), "w") as fobj:
         fobj.write("Parameters for iteration {0:d}\n".format(IOPT + 1))
@@ -719,15 +607,16 @@ def func(xcall, xnams, data, base_dir, xgold, index):
                 return 1.e3
 
             pstr = "{0} = {1:12.6E}".format(nam, opt_val * FAC[idx])
-            param_nams.append(nam)
-            param_vals.append(opt_val * FAC[idx])
+            preprocessing.append(
+                "{0} = {1}".format(nam, opt_val * FAC[idx]))
             variables[nam] = opt_val * FAC[idx]
             fobj.write(pstr + "\n")
             msg.append(pstr)
             continue
 
-    job_inp = pip.replace_params_and_name(data["baseinp"], job,
-                                          param_nams, param_vals)
+    job_inp = pip.preprocess_input_deck(data["baseinp"],
+                                        preprocessing=preprocessing)
+    job_inp[0] = "begin simulation {0}".format(job)
 
     if data["verbosity"]:
         pu.log_message("Iteration {0:03d}, trial parameters: {1}"
@@ -759,25 +648,7 @@ def func(xcall, xnams, data, base_dir, xgold, index):
     if not os.path.isfile(out_f):
         pu.report_and_raise_error("out file {0} not created".format(out_f))
 
-    exargs = [out_f, "--silent", "--xout"]
-    if data["minimize"]["abscissa"] is not None:
-        exargs.append(data["minimize"]["abscissa"])
-    exargs.extend(data["minimize"]["vars"])
-    pe.extract(exargs)
-    xout = out_f.replace(".out", ".xout")
-
-    if data["minimize"]["abscissa"] is not None:
-        # find the rms error between the out and gold
-        errors = pu.compare_out_to_gold_rms(xgold, xout)
-
-    else:
-        errors = pu.compare_file_cols(xgold, xout)
-
-    if errors[0]:
-       pu.report_and_raise_error("Resolve previous errors")
-
-    error = math.sqrt(np.sum(errors[1] ** 2) / float(len(errors[1])))
-    error = np.amax(np.abs(errors[1]))
+    error = UM.obj_fn(out_f)
 
     with open(os.path.join(job_dir, job + ".opt"), "a") as fobj:
         fobj.write("error = {0:12.6E}\n".format(error))

@@ -271,7 +271,7 @@ class InputParser(object):
         iline = 0
 
         user_input = _remove_all_comments(raw_user_input, cchars)
-        user_input = _preprocess_input_deck(user_input)
+        user_input = preprocess_input_deck(user_input)
 
         # infinite loop for reading the input file and getting all inserted
         # files
@@ -800,7 +800,7 @@ def _remove_all_comments(lines, cchars):
     return stripped_lines
 
 
-def _preprocess_input_deck(lines):
+def preprocess_input_deck(lines, preprocessing=None):
     """ process a preprocessing input block
 
     Parameters
@@ -814,11 +814,12 @@ def _preprocess_input_deck(lines):
         preprocessed new line separated list of the user input
 
     """
-    idx_0, idx_f, preprocessing = _find_block(lines, "preprocessing")
-    if not preprocessing:
-        return lines
+    if preprocessing is None:
+        idx_0, idx_f, preprocessing = _find_block(lines, "preprocessing")
+        if not preprocessing:
+            return lines
 
-    lines = remove_block(lines, "preprocessing")
+        lines = remove_block(lines, "preprocessing")
 
     # replacement and math characters
     rchars = ",="

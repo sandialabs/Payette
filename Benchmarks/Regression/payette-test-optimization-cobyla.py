@@ -21,9 +21,10 @@ class Test(PayetteTest):
                            self.infile]
         self.material = "elastic"
         self.aux_files = [os.path.join(self.tdir, "optimization_tests.tbl"),
-                          os.path.join(self.tdir, "regression_tests.tbl")]
+                          os.path.join(self.tdir, "regression_tests.tbl"),
+                          os.path.join(self.tdir, "min_sig_v_time.py")]
 
-        self.compare_method = self.diff_files
+        self.compare_method = self.compare_opt_params
 
         self.owner = 'Tim Fuller'
         self.date = 'March 30, 2012'

@@ -861,6 +861,86 @@ class PayetteTest(object):
 
         return self.passcode
 
+    def compare_opt_params(self, gold=None, out=None):
+        """ compare gold with out """
+        if gold is None:
+            gold = self.baseline
+
+        if out is None:
+            out = self.outfile
+
+        # open the log file
+        log = TestLogger(self.name + ".diff","w")
+
+        errors = 0
+        if not isinstance(gold, (list, tuple)):
+            gold = [gold]
+
+        for goldf in gold:
+            if not os.path.isfile(goldf):
+                log.error(iam,"{0} not found".format(goldf))
+                errors += 1
+            continue
+
+        if not isinstance(out, (list, tuple)):
+            out = [out]
+
+        for outf in out:
+            if not os.path.isfile(outf):
+                log.error(iam,"{0} not found".format(outf))
+                errors += 1
+            continue
+
+        if len(gold) != len(out):
+            errors += 1
+            log.error(iam,"len(gold) != len(out)")
+            pass
+
+        if errors:
+            del log
+            return self.failcode
+
+        diff = 0
+
+        for goldf, outf in zip(gold, out):
+            bgold = os.path.basename(goldf)
+            xgold = open(goldf).readlines()
+            bout = os.path.basename(outf)
+            xout = open(outf).readlines()
+
+            gold_params, out_params = {}, {}
+            for line in xout[1:]:
+                nam, val = line.split("=")
+                out_params[nam] = float(val)
+            for line in xgold[1:]:
+                nam, val = line.split("=")
+                gold_params[nam] = float(val)
+            errors = []
+            for gp, gv in gold_params.items():
+                try:
+                    ov = out_params[gp]
+                except KeyError:
+                    diff += 1
+                    log.error("{0} not in output".format(param))
+                    continue
+                errors.append(abs(ov - gv) / gv)
+            error = max(errors)
+
+        diffed, failed = False, False
+        if error >= 10. * self.failtol:
+            failed = True
+        elif error >= 10. * self.difftol:
+            diffed = True
+        else:
+            pass
+
+        if diff or diffed:
+            return self.diffcode
+        elif failed:
+            return self.failcode
+
+        return self.passcode
+
 def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
     """ find the Payette tests
 
