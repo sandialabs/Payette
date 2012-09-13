@@ -47,7 +47,7 @@ import Toolset.KayentaParamConv as kpc
 IOPT = -1
 FAC = []
 FNEWEXT = ".0x312.gold"
-UM = None
+OBJFN = None
 
 
 class Optimize(object):
@@ -99,7 +99,7 @@ class Optimize(object):
             pu.log_message("Optimization variables: {0}"
                            .format(", ".join(self.data["optimize"])),
                            noisy=True)
-            pu.log_message("Objective function file: {0}".format(UM.__file__),
+            pu.log_message("Objective function file: {0}".format(OBJFN.__file__),
                            noisy=True)
             if self.data["options"]:
                 pu.log_message("Optimization options: {0}"
@@ -256,7 +256,7 @@ class Optimize(object):
         None
 
         """
-        global UM
+        global OBJFN
         allowed_methods = {
             "simplex": {"method": "Nelder-Mead", "name": "fmin"},
             "powell": {"method": "Powell", "name": "fmin_powell"},
@@ -353,13 +353,13 @@ class Optimize(object):
                 pymod, pypath = pu.get_module_name_and_path(fnam)
                 try:
                     fobj, path, desc = imp.find_module(pymod, pypath)
-                    UM = imp.load_module(pymod, fobj, path, desc)
+                    OBJFN = imp.load_module(pymod, fobj, path, desc)
                     fobj.close()
                 except ImportError:
                     pu.report_error("obj_fn {0} not imported".format(fnam))
                     continue
 
-                if not hasattr(UM, "obj_fn"):
+                if not hasattr(OBJFN, "obj_fn"):
                     pu.report_error("obj_fn must define a 'obj_fn' function")
 
             # below are options for the scipy optimizing routines
@@ -388,6 +388,9 @@ class Optimize(object):
                         disp = True
 
             continue
+
+        if OBJFN is None:
+            pu.report_error("no objective function given")
 
         if not optimize:
             pu.report_error("no parameters to optimize given")
@@ -648,7 +651,7 @@ def func(xcall, xnams, data, base_dir, index):
     if not os.path.isfile(out_f):
         pu.report_and_raise_error("out file {0} not created".format(out_f))
 
-    error = UM.obj_fn(out_f)
+    error = OBJFN.obj_fn(out_f)
 
     with open(os.path.join(job_dir, job + ".opt"), "a") as fobj:
         fobj.write("error = {0:12.6E}\n".format(error))
