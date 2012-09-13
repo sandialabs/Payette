@@ -74,17 +74,7 @@ optokens = [ "+", "-", "*", "/", "**", "^" ]
 tokens = optokens + [kwtoken] + [coltoken]
 opchoices = ["","print"]
 
-def extract(argv):
-
-    global SILENT
-
-    def col2int(col):
-        if col[0] == coltoken:
-            return int(col[1:])
-        else:
-            raise ExtractError(
-                "bad column specifier {0} sent to col2int".format(col), 5)
-        return
+def main(argv):
 
     usage =\
 """
@@ -159,9 +149,28 @@ def extract(argv):
         parser.error("Must specify file name")
         pass
 
-    SILENT = opts.SILENT
+    extracted_data = extract(passed_args, sep=opts.SEP, cols=opts.COLS,
+                             silent=opts.SILENT, write_xout=opts.XOUT,
+                             step=opts.STEP, disp=opts.DISP)
+    if opts.DISP:
+        return 0, extract_data
+    return 0
 
-    sep = {"space": " ", "tab": "\t", "comma": ","}[opts.SEP]
+def extract(passed_args, sep="space", cols=False, silent=True,
+            write_xout=False, step=1):
+    global SILENT
+
+    def col2int(col):
+        if col[0] == coltoken:
+            return int(col[1:])
+        else:
+            raise ExtractError(
+                "bad column specifier {0} sent to col2int".format(col), 5)
+        return
+
+    SILENT = silent
+
+    sep = {"space": " ", "tab": "\t", "comma": ","}[sep]
 
     args = args2dict(passed_args, sep)
 
@@ -181,7 +190,7 @@ def extract(argv):
         to_extract = arg["extract"]
 
         # only print out column names
-        if opts.COLS:
+        if cols:
             print_cols(fnam,arg["file header"])
             continue
 
@@ -221,10 +230,10 @@ def extract(argv):
 
             continue
 
-        xout = fnam + ".xout" if opts.XOUT else None
+        xout = fnam + ".xout" if write_xout else None
         logger = Logger(xout, "w")
         logger.write(header)
-        for i in range(0, len(data), int(opts.STEP)):
+        for i in range(0, len(data), int(step)):
             datline = data[i]
 
             # write out data to file
@@ -238,12 +247,7 @@ def extract(argv):
 
         continue
 
-    retval = 0
-
-    if opts.DISP:
-        return retval, data
-
-    return retval
+    return data
 
 def ffrmt(x):
     return "{0:12.5E}".format(x)
@@ -527,7 +531,7 @@ class Logger(object):
 
 if __name__ == "__main__":
 
-    EXTRACTION = extract(sys.argv[1:])
+    EXTRACTION = main(sys.argv[1:])
 
     sys.exit(EXTRACTION)
     """Return values:

@@ -294,8 +294,8 @@ class Payette(object):
     # private methods
     def _write_extraction(self):
         """ write out the requested extraction """
-        exargs = [self.outfile, "--silent", "--xout"] + self.extraction_vars
-        pe.extract(exargs)
+        exargs = [self.outfile] + self.extraction_vars
+        pe.extract(exargs, silent=True, write_xout=True)
         return
 
     def _write_mathplot(self):

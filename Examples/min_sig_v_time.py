@@ -12,8 +12,7 @@ if not os.path.isfile(GOLD_F):
 # extract only what we want from the gold and output files
 COMP = ["@sig11", "@sig22", "@sig33"]
 NC = len(COMP)
-EXARGS = ["--silent", "--disp=1", "@time"]
-XG = np.array(pe.extract([GOLD_F] + EXARGS + COMP)[1])
+XG = np.array(pe.extract([GOLD_F] + ["@time"] + COMP, silent=True))
 
 
 def obj_fn(*args):
@@ -40,7 +39,7 @@ def obj_fn(*args):
     out_f = args[0]
 
     # extract only what we want from the gold and output files
-    xo = np.array(pe.extract([out_f] + EXARGS + COMP)[1])
+    xo = np.array(pe.extract([out_f] + ["@time"] + COMP, silent=True))
 
     # do the comparison
     anrmsd, armsd = np.empty(NC), np.empty(NC)

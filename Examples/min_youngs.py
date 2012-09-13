@@ -5,14 +5,25 @@ import Source.Payette_extract as pe
 
 # Do operations on the gold file at the module level so they are only done once
 DIR = os.path.dirname(os.path.realpath(__file__))
-GOLD_F = os.path.join(DIR, "optimization_tests.tbl")
+GOLD_F = os.path.join(DIR, "exmpls.gold")
 if not os.path.isfile(GOLD_F):
     pu.report_and_raise_error("{0} not found".format(GOLD_F))
 
 # extract only what we want from the gold and output files
-COMP = ["@sig11", "@sig22", "@sig33"]
+COMP = ["@strain11", "@sig11"]
 NC = len(COMP)
-XG = np.array(pe.extract([GOLD_F] + ["@time"] + COMP, silent=True))
+XG = np.array(pe.extract([GOLD_F] + COMP, silent=True))
+
+# find the Young's modulus
+EG = []
+EPS, SIG = XG[:, 0], XG[:, 1]
+for IDX in range(len(SIG) - 1):
+    DEPS = EPS[IDX + 1] - EPS[IDX]
+    DSIG = SIG[IDX + 1] - SIG[IDX]
+    if abs(DEPS) > 1.e-16:
+        EG.append(DSIG / DEPS)
+    continue
+EG = np.mean(np.array(EG))
 
 
 def obj_fn(*args):
@@ -31,7 +42,7 @@ def obj_fn(*args):
     Notes
     -----
     With this objective function, the maximum root mean squared error between
-    SIG11, SIG22, and SIG33 from the simulation output and the gold result is
+    the Young's modulus computed from the gold file and the output file is
     returned as the error.
 
     """
@@ -39,14 +50,16 @@ def obj_fn(*args):
     out_f = args[0]
 
     # extract only what we want from the gold and output files
-    xo = np.array(pe.extract([out_f] + ["@time"] + COMP, silent=True))
+    xo = np.array(pe.extract([out_f] + COMP, silent=True))
 
     # do the comparison
-    anrmsd, armsd = np.empty(NC), np.empty(NC)
-    for idx in range(1, NC + 1):
-        rmsd, nrmsd = pu.compute_rms(XG[:, 0], XG[:, idx], xo[:, 0], xo[:, idx])
-        anrmsd[idx-1] = nrmsd
-        armsd[idx-1] = rmsd
+    Eo = []
+    for idx in range(len(xo[:, 0]) - 1):
+        deps = xo[:, 0][idx + 1] - xo[:, 0][idx]
+        dsig = xo[:, 1][idx + 1] - xo[:, 1][idx]
+        if abs(deps) > 1.e-16:
+            Eo.append(dsig / deps)
         continue
-
-    return np.amax(np.abs(anrmsd))
+    Em = np.mean(np.array(Eo))
+    error = np.abs((EG - Em) / EG)
+    return error

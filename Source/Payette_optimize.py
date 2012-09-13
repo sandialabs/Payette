@@ -503,7 +503,7 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
     has_bounds = [x for j in bounds for x in j if x is not None]
     if meth in ["nelder-mead", "powell"] and has_bounds:
         pu.log_warning(
-            "Method {0} cannot handle constraints nor bounds directly."
+            "Method {0} does not enforce bounds.  Bounds will be ignored"
             .format(method))
 
     if has_bounds:
@@ -603,11 +603,11 @@ def func(xcall, xnams, data, base_dir, index):
             # user specified bounds -> essentially, we are using a penalty
             # method of sorts to force the bounds we want.
             lbnd, ubnd = data["optimize"][nam]["bounds"]
-            if lbnd is not None and opt_val < lbnd/FAC[idx]:
+            if lbnd is not None and opt_val < lbnd / FAC[idx]:
                 return 1.e3
 
-            if ubnd is not None and opt_val > ubnd/FAC[idx]:
-                return 1.e3
+#            if ubnd is not None and opt_val > ubnd / FAC[idx]:
+#                return 1.e3
 
             pstr = "{0} = {1:12.6E}".format(nam, opt_val * FAC[idx])
             preprocessing.append(

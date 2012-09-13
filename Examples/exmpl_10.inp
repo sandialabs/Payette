@@ -30,7 +30,7 @@ begin simulation exmpl_10
     tolerance 1.e-6  # tolerance between out and gold file [1.e-4]
     optimize opt_k, bounds = (125.e9, 150.e9), initial value = 129.e9
     optimize opt_g, bounds = (45.e9, 57.e9), initial value = 54.e9
-    obj_fn = min_sig.py
+    obj_fn = min_youngs.py
   end optimization
 
 end simulation
