@@ -1,22 +1,30 @@
+"""This file provides a recipe for computing the error between the expected
+Young's modulus and the simulated.
+"""
 import os, sys
 import numpy as np
 import Source.Payette_utils as pu
 import Source.Payette_extract as pe
 
-COMP = ["@strain11", "@sig11"]
+
+def exargs(fnam):
+    return fnam, "@strain11", "@sig11"
 
 def init(*args):
     """Initialize data needed to compute the error
 
     """
+
     # Do operations on the gold file here so that they are only done once
-    fdir = os.path.dirname(os.path.realpath(__file__))
-    gold_f = os.path.join(fdir, "exmpls.gold")
-    if not os.path.isfile(gold_f):
+    gold_f = args[0]
+    if gold_f is None:
+        pu.report_and_raise_error("no obj_dat given for Opt_youngs")
+
+    elif not os.path.isfile(gold_f):
         pu.report_and_raise_error("{0} not found".format(gold_f))
 
     # extract only what we want from the gold and output files
-    xg = np.array(pe.extract([gold_f] + COMP, silent=True))
+    xg = np.array(pe.extract(exargs(gold_f), silent=True))
 
     # find the Young's modulus
     Eg = []
@@ -77,7 +85,7 @@ def obj_fn(*args):
     out_f = args[0]
 
     # extract only what we want from the gold and output files
-    xo = np.array(pe.extract([out_f] + COMP, silent=True))
+    xo = np.array(pe.extract(exargs(out_f), silent=True))
 
     # do the comparison
     Eo = []

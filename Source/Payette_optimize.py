@@ -35,8 +35,9 @@ import scipy.optimize
 import math
 from copy import deepcopy
 
+import Payette_config as pc
 import Source.Payette_utils as pu
-import Source.Payette_container as pc
+import Source.Payette_container as pcntnr
 import Source.Payette_extract as pe
 import Source.Payette_input_parser as pip
 import Source.runopts as ro
@@ -269,6 +270,7 @@ class Optimize(object):
         tolerance = 1.e-4
         disp = False
         optimize = {}
+        obj_dat = None
 
         # get options first -> must come first because some options have a
         # default method different than the global default of simplex
@@ -343,8 +345,11 @@ class Optimize(object):
                 # user supplied objective function
                 fnam = item[-1]
                 if not os.path.isfile(fnam):
-                    pu.report_error("obj_fn {0} not found".format(fnam))
-                    continue
+                    ftry = os.path.join(pc.PC_OPTREC, fnam)
+                    if not os.path.isfile(ftry):
+                        pu.report_error("obj_fn {0} not found".format(fnam))
+                        continue
+                    fnam = ftry
 
                 if os.path.splitext(fnam)[1] not in (".py",):
                     pu.report_error("obj_fn {0} must be .py file".format(fnam))
@@ -361,6 +366,14 @@ class Optimize(object):
 
                 if not hasattr(OBJFN, "obj_fn"):
                     pu.report_error("obj_fn must define a 'obj_fn' function")
+
+            elif "obj_dat" in item[0].lower():
+                # user supplied objective function "gold" data
+                fnam = item[-1]
+                if not os.path.isfile(fnam):
+                    pu.report_error("obj_dat {0} not found".format(fnam))
+                    continue
+                obj_dat = fnam
 
             # below are options for the scipy optimizing routines
             elif "maxiter" in item[0].lower():
@@ -394,7 +407,7 @@ class Optimize(object):
         else:
             # initialize the module, if the user desires
             try:
-                OBJFN.init()
+                OBJFN.init(obj_dat)
             except AttributeError:
                 pass
 
@@ -440,7 +453,7 @@ class Optimize(object):
                 "{0} = {1}".format(key, val["initial value"]))
         job_inp = pip.preprocess_input_deck(self.data["baseinp"],
                                             preprocessing=preprocessing)
-        the_model = pc.Payette(job_inp)
+        the_model = pcntnr.Payette(job_inp)
         if pu.warn_count():
             pu.report_and_raise_error("exiting due to initial warnings")
 
@@ -634,7 +647,7 @@ def func(xcall, xnams, data, base_dir, index):
                        noisy=True)
 
     # instantiate Payette object
-    the_model = pc.Payette(job_inp)
+    the_model = pcntnr.Payette(job_inp)
 
     # run the job
     solve = the_model.run_job()

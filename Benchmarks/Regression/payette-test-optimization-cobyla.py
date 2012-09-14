@@ -15,14 +15,13 @@ class Test(PayetteTest):
         self.infile = "{0}.inp".format(os.path.join(self.tdir, self.name))
         self.outfile = "{0}.opt/{0}.opt".format(self.name)
         self.baseline = "{0}.gold".format(os.path.join(self.tdir, self.name))
-        self.keywords = ["builtin", "medium", "regression",
-                         "optimization", "cobyla"]
+        self.keywords = ["builtin", "medium", "regression", "optimization",
+                         "cobyla"]
         self.runcommand = ["payette", "--no-writeprops",
                            self.infile]
         self.material = "elastic"
         self.aux_files = [os.path.join(self.tdir, "optimization_tests.tbl"),
-                          os.path.join(self.tdir, "regression_tests.tbl"),
-                          os.path.join(self.tdir, "min_sig_v_time.py")]
+                          os.path.join(self.tdir, "regression_tests.tbl")]
 
         self.compare_method = self.compare_opt_params
 
