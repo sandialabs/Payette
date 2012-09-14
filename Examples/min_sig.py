@@ -42,13 +42,13 @@ def obj_fn(*args):
     xo = np.array(pe.extract([out_f] + COMP, silent=True))
 
     # do the comparison
-    anrmsd, armsd = np.empty(NC), np.empty(NC)
+    anrmsd = []
     for idx in range(NC):
         rmsd = np.sqrt(np.mean((XG[:, idx] - xo[:, idx]) ** 2))
         dnom = abs(np.amax(xo[:, idx]) - np.amin(xo[:, idx]))
         nrmsd = rmsd / dnom if dnom >= 2.e-16 else rmsd
-        anrmsd[idx] = nrmsd
-        armsd[idx] = rmsd
+        anrmsd.append(nrmsd)
         continue
 
-    return np.amax(np.abs(anrmsd))
+    error = np.amax(np.abs(np.array(anrmsd)))
+    return error

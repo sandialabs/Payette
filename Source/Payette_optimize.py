@@ -391,6 +391,13 @@ class Optimize(object):
 
         if OBJFN is None:
             pu.report_error("no objective function given")
+        else:
+            # initialize the module, if the user desires
+            try:
+                OBJFN.init()
+            except AttributeError:
+                pass
+
 
         if not optimize:
             pu.report_error("no parameters to optimize given")
