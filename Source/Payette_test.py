@@ -910,9 +910,13 @@ class PayetteTest(object):
 
             gold_params, out_params = {}, {}
             for line in xout[1:]:
+                if not line.split() or line.strip()[0] in ("#", ):
+                    continue
                 nam, val = line.split("=")
                 out_params[nam] = float(val)
             for line in xgold[1:]:
+                if not line.split() or line.strip()[0] in ("#", ):
+                    continue
                 nam, val = line.split("=")
                 gold_params[nam] = float(val)
             errors = []
@@ -923,7 +927,8 @@ class PayetteTest(object):
                     diff += 1
                     log.error("{0} not in output".format(param))
                     continue
-                errors.append(abs(ov - gv) / gv)
+                dnom = gv if abs(gv) > np.finfo(np.float).eps else 1.
+                errors.append(abs(ov - gv) / dnom)
             error = max(errors)
 
         diffed, failed = False, False

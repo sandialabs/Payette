@@ -13,7 +13,7 @@ class Test(PayetteTest):
         self.tdir = os.path.dirname(os.path.realpath(__file__))
 
         self.infile = "{0}.inp".format(os.path.join(self.tdir, self.name))
-        self.outfile = "{0}.out".format(self.name)
+        self.outfile = "{0}/{0}.opt".format(self.name)
         self.baseline = "{0}.gold".format(os.path.join(self.tdir, self.name))
         self.keywords = ["builtin", "long", "regression",
                          "optimization", "shearfit"]
@@ -21,7 +21,7 @@ class Test(PayetteTest):
                            self.infile]
         self.aux_files = [os.path.join(self.tdir, "shearfit_prin.tbl"), ]
 
-        self.compare_method = self.diff_files
+        self.compare_method = self.compare_opt_params
 
         self.owner = 'Tim Fuller'
         self.date = 'March 30, 2012'

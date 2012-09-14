@@ -15,13 +15,13 @@ class Test(PayetteTest):
         self.name = os.path.splitext(os.path.basename(__file__))[0]
         self.tdir = os.path.dirname(os.path.realpath(__file__))
 
-        self.infile = "{0}.gold".format(os.path.join(self.tdir,self.name))
+        self.infile = "{0}.gold".format(os.path.join(self.tdir, self.name))
         self.outfile = "{0}.xout".format(self.name)
-        self.baseline = "{0}.xgold".format(os.path.join(self.tdir,self.name))
-        self.keywords = ["payette", "regression", "fast",
-                         "extraction", "builtin"]
-        self.runcommand = ["extractPayette",self.infile,r"@time",
-                           r"@strain11",r"@sig11",r"2*@strain11",r"2*@sig11",r"2*%2"]
+        self.baseline = "{0}.xgold".format(os.path.join(self.tdir, self.name))
+        self.keywords = ["payette", "regression", "fast", "extraction", "builtin"]
+        self.runcommand = ["extractPayette", self.infile, r"@time",
+                           r"@strain11", r"@sig11", r"2*@strain11",
+                           r"2*@sig11", r"2*%2"]
 
         self.owner = "Tim Fuller"
         self.date = "February 28, 2012"
@@ -36,12 +36,12 @@ class Test(PayetteTest):
     def runTest(self):
         """ run the test """
 
-        run_command = self.run_command(self.runcommand,echof=self.outfile)
+        run_command = self.run_command(self.runcommand, echof=self.outfile)
 
         if run_command != 0:
             return self.failtoruncode
 
-        diff = self.diff_files(self.baseline,self.outfile)
+        diff = self.diff_files(self.baseline, self.outfile)
         if diff:
             return self.failcode
 
@@ -51,8 +51,8 @@ if __name__ == "__main__":
     import time
     test = Test()
     if "--cleanup" in sys.argv:
-        for ext in ["xout","diff","pyc","echo"]:
-            try: os.remove("%s.%s"%(test.name,ext))
+        for ext in ["xout", "diff", "pyc", "echo"]:
+            try: os.remove("%s.%s"%(test.name, ext))
             except: pass
             continue
         pass
@@ -63,6 +63,6 @@ if __name__ == "__main__":
         run_test = test.runTest()
         dtp = time.time()-t0
         if run_test == test.passcode:
-            print("%s PASSED(%fs)"%(test.name,dtp))
+            print("%s PASSED(%fs)"%(test.name, dtp))
         else:
-            print("%s DATA EXTRACTION DIFFED(%fs)"%(test.name,dtp))
+            print("%s DATA EXTRACTION DIFFED(%fs)"%(test.name, dtp))

@@ -151,7 +151,7 @@ def main(argv):
 
     extracted_data = extract(passed_args, sep=opts.SEP, cols=opts.COLS,
                              silent=opts.SILENT, write_xout=opts.XOUT,
-                             step=opts.STEP, disp=opts.DISP)
+                             step=opts.STEP)
     if opts.DISP:
         return 0, extract_data
     return 0
@@ -467,14 +467,14 @@ def header2dict(header):
     return dicthead
 
 def bad_op(op,args):
-    sys.stout.write("""bad operation specification "{0}" in "{1}".
+    sys.stdout.write("""bad operation specification "{0}" in "{1}".
 Operations between entries must not be padded with any whitespace in the
 argument list.  i.e., specify @kw1+@kw2 and not @kw1 + @kw2"""
                     .format(op," ".join(args)))
     return 1
 
 def ambiguous_op(op,args):
-    sys.stoud.write("ambiguous operation specification '{0}' in '{1}'"
+    sys.stdout.write("ambiguous operation specification '{0}' in '{1}'"
                     .format(op," ".join(args)))
     return 3
 
