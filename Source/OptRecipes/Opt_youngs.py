@@ -1,5 +1,6 @@
-"""This file provides a recipe for computing the error between the expected
-Young's modulus and the simulated.
+"""Provides a recipe for computing the error between the expected Young's
+modulus and the simulated.
+
 """
 import os, sys
 import numpy as np

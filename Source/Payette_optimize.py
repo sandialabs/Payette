@@ -270,7 +270,8 @@ class Optimize(object):
         tolerance = 1.e-4
         disp = False
         optimize = {}
-        obj_dat = None
+        min_legacy = {"abscissa": None, "vars": []}
+        gold_f = None
 
         # get options first -> must come first because some options have a
         # default method different than the global default of simplex
@@ -303,6 +304,12 @@ class Optimize(object):
             for pat, repl in ((",", " "), ("=", " "), ("(", " "), (")", " "),):
                 item = item.replace(pat, repl)
             item = item.split()
+
+            # remove "in" from list
+            try:
+                item.remove("in")
+            except ValueError:
+                pass
 
             if "optimize" in item[0].lower():
                 # set up this parameter to optimize
@@ -341,6 +348,25 @@ class Optimize(object):
                 optimize[key]["bounds"] = bounds
                 optimize[key]["initial value"] = init_val
 
+            elif "minimize" in item[0].lower():
+                # get variables to minimize during the optimization
+                min_vars = item[1:]
+                for min_var in min_vars:
+                    if min_var == "versus":
+                        val = min_vars[min_vars.index("versus") + 1]
+                        if val[0] != "@":
+                            val = "@" + val
+                        min_legacy["abscissa"] = val
+                        break
+
+                    if min_var[0] != "@":
+                        min_var = "@" + min_var
+
+                    if min_var not in min_legacy["vars"]:
+                        min_legacy["vars"].append(min_var)
+
+                    continue
+
             elif "obj_fn" in item[0].lower():
                 # user supplied objective function
                 fnam = item[-1]
@@ -367,13 +393,14 @@ class Optimize(object):
                 if not hasattr(OBJFN, "obj_fn"):
                     pu.report_error("obj_fn must define a 'obj_fn' function")
 
-            elif "obj_dat" in item[0].lower():
+            if "gold" in item[0].lower() and "file" in item[1].lower():
                 # user supplied objective function "gold" data
                 fnam = item[-1]
                 if not os.path.isfile(fnam):
-                    pu.report_error("obj_dat {0} not found".format(fnam))
-                    continue
-                obj_dat = fnam
+                    pu.report_error("gold file {0} not found".format(fnam))
+
+                else:
+                    gold_f = fnam
 
             # below are options for the scipy optimizing routines
             elif "maxiter" in item[0].lower():
@@ -402,15 +429,26 @@ class Optimize(object):
 
             continue
 
+        # check that minimum info was given
+        if min_legacy["vars"]:
+            if OBJFN is not None:
+                if "Opt_legacy" not in os.path.basename(OBJFN.__file__):
+                    pu.report_error(
+                        "Specification of 'minimize' in optimization block "
+                        "requires obj_fn to be Opt_legacy.py, instead "
+                        "{0} was given".format(os.path.basename(OBJFN.__file__)))
+            else:
+                fnam = os.path.join(pc.PC_OPTREC, "Opt_legacy.py")
+                pymod, pypath = pu.get_module_name_and_path(fnam)
+                fobj, path, desc = imp.find_module(pymod, pypath)
+                OBJFN = imp.load_module(pymod, fobj, path, desc)
+                fobj.close()
+
+            if gold_f is None:
+                pu.report_error("No gold file given for optimization problem")
+
         if OBJFN is None:
             pu.report_error("no objective function given")
-        else:
-            # initialize the module, if the user desires
-            try:
-                OBJFN.init(obj_dat)
-            except AttributeError:
-                pass
-
 
         if not optimize:
             pu.report_error("no parameters to optimize given")
@@ -419,8 +457,15 @@ class Optimize(object):
             if val["initial value"] is None:
                 pu.report_error("no initial value given for {0}".format(key))
 
+        # check for errors up to this point
         if pu.error_count():
             pu.report_and_raise_error("stopping due to previous errors")
+
+        # initialize the module, if the user desires
+        try:
+            OBJFN.init(gold_f, min_legacy["abscissa"], min_legacy["vars"])
+        except AttributeError:
+            pass
 
         self.data["optimize"] = optimize
         self.data["maximum iterations"] = maxiter

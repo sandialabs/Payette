@@ -1,5 +1,6 @@
-"""This file provides a recipe for computing the maximum error between the
+"""Provides a recipe for computing the maximum error between the
 expected stress and the simulated
+
 """
 import os, sys
 import numpy as np

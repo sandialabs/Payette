@@ -1,5 +1,6 @@
-"""Provides a recipe for computing the maximum error between the expected
-stress vs. time slope and the simulated.
+"""Provides a recipe for computing the maximum error between the values of
+variables from a known Payette result and a simulated result. Using "versus"
+time computes error of slope.
 
 """
 import os, sys
@@ -7,16 +8,17 @@ import numpy as np
 import Source.Payette_utils as pu
 import Source.Payette_extract as pe
 
-#
-NC = 3
 
-def exargs(fnam):
-    return fnam, "@time", "@sig11", "@sig22", "@sig33"
+HAS_ABSCISSA = False
+NC = None
+
 
 def init(*args):
     """Initialize data needed to compute the error
 
     """
+
+    global NC, HAS_ABSCISSA
 
     # Do operations on the gold file here so that they are only done once
     gold_f = args[0]
@@ -26,11 +28,28 @@ def init(*args):
     elif not os.path.isfile(gold_f):
         pu.report_and_raise_error("{0} not found".format(gold_f))
 
+    # get vars to minimize
+    abscissa = args[1]
+    minvars = args[2]
+    NC = len(minvars)
+
+    if abscissa is not None:
+        HAS_ABSCISSA = True
+        minvars = [abscissa] + minvars
+
     # extract only what we want from the gold and output files
-    xg = np.array(pe.extract(exargs(gold_f), silent=True))
+    xg = np.array(pe.extract(exargs(gold_f, initial=minvars), silent=True))
 
     _xg(initial=xg)
     return
+
+
+def exargs(fnam, mv=[None], initial=None):
+    if initial is not None:
+        if not isinstance(initial, (list, tuple)):
+            initial = [initial]
+        mv[0] = initial
+    return [fnam] + mv[0]
 
 
 def _xg(xg=[None], initial=None):
@@ -51,7 +70,9 @@ def _xg(xg=[None], initial=None):
     """
     if initial is not None:
         xg[0] = np.array(initial)
-    return xg[0][:, 0], xg[0][:, 1:]
+    if HAS_ABSCISSA:
+        return xg[0][:, 0], xg[0][:, 1:]
+    return xg[0]
 
 
 def obj_fn(*args):
@@ -78,16 +99,27 @@ def obj_fn(*args):
     # extract only what we want from the gold and output files
     out_f = args[0]
     dat = np.array(pe.extract(exargs(out_f), silent=True))
-    to, xo = dat[:, 0], dat[:, 1:]
-
+    gdat = _xg()
+    if HAS_ABSCISSA:
+        to, xo = dat[:, 0], dat[:, 1:]
+        tg, xg = gdat[0], gdat[1]
+    else:
+        xo = dat
+        xg = gdat
 
     # do the comparison
-    anrmsd, armsd = np.empty(NC), np.empty(NC)
-    tg, xg = _xg()
-    for idx in range(NC):
-        rmsd, nrmsd = pu.compute_rms(tg, xg[:, idx], to, xo[:, idx])
-        anrmsd[idx] = nrmsd
-        armsd[idx] = rmsd
-        continue
+    anrmsd = np.empty(NC)
+    if HAS_ABSCISSA:
+        for idx in range(NC):
+            rmsd, nrmsd = pu.compute_rms(tg, xg[:, idx], to, xo[:, idx])
+            anrmsd[idx] = nrmsd
+            continue
+    else:
+        for idx in range(NC):
+            rmsd = np.sqrt(np.mean((xg[:, idx] - xo[:, idx]) ** 2))
+            dnom = abs(np.amax(xo[:, idx]) - np.amin(xo[:, idx]))
+            nrmsd = rmsd / dnom if dnom >= 2.e-16 else rmsd
+            anrmsd[idx] = nrmsd
+            continue
 
     return np.amax(np.abs(anrmsd))

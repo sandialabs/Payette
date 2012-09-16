@@ -50,8 +50,8 @@ begin simulation exmpl_7
     # below we specify the obj_fn, it is a python file that computes the error
     between the output and a known good result. The user is responsible for
     providing the objective function file
-    obj_fn = Opt_sig_v_time.py
-    obj_dat exmpls.gold
+    obj_fn in Opt_sig_v_time.py
+    gold file exmpls.gold
   end optimization
 
 end simulation

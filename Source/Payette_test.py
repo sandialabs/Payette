@@ -863,6 +863,7 @@ class PayetteTest(object):
 
     def compare_opt_params(self, gold=None, out=None):
         """ compare gold with out """
+        iam = "compare_opt_params"
         if gold is None:
             gold = self.baseline
 
