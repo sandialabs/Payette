@@ -34,7 +34,7 @@ import Source.Payette_iterative_solvers as citer
 import Source.Payette_kinematics as pk
 import Source.Payette_utils as pu
 import Source.Payette_tensor as pt
-import Source.runopts as ro
+import runopts as ro
 from Source.Payette_unit_manager import UnitManager as UnitManager
 
 np.set_printoptions(precision=4)

@@ -27,7 +27,7 @@ import math
 import sys
 import numpy as np
 
-import Source.runopts as ro
+import runopts as ro
 
 class BoundaryError(Exception):
     """Boundar exception class"""

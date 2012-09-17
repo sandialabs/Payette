@@ -27,7 +27,7 @@ from distutils import sysconfig
 from copy import deepcopy
 from numpy.f2py import main as f2py
 
-import Payette_config as pc
+import config as cfg
 import Source.Payette_utils as pu
 from Source.Payette_build import BuildError as BuildError
 
@@ -82,7 +82,7 @@ class MaterialBuilder(object):
         if self.signature_file is not None:
             self.format_signature_file()
 
-            if not pc.PC_F2PY_CALLBACK:
+            if not cfg.F2PY["callback"]:
                 self.pre_directives.append("-DNOPYCALLBACK")
 
             if not os.path.isfile(self.signature_file):
@@ -91,7 +91,7 @@ class MaterialBuilder(object):
 
         # include directories
         self.incdirs = [ ".", "{0}".format(self.source_directory),
-                         "{0}".format(pc.PC_MTLS_INCLUDES) ]
+                         "{0}".format(cfg.INCLUDES) ]
         if incdirs is not None:
             if not isinstance(incdirs, (list, tuple)):
                 incdirs = [incdirs]
@@ -116,9 +116,8 @@ class MaterialBuilder(object):
             self.libdirs.extend(libs)
 
         # f2py opts
-        f2py_opts = compiler_info["f2py"]
-        self.f2pyopts = [f2py_opts["compiler"],"-c"] + f2py_opts["options"]
-
+        f2py_opts = compiler_info["f2py"]["options"]
+        self.f2pyopts = ["f2py", "-c"] + f2py_opts
         pass
 
     def build_extension_module(self):
@@ -152,7 +151,7 @@ class MaterialBuilder(object):
 
         # f2py pulls its arguments from sys.argv. Here, we build sys.argv to what
         # f2py expects. Later sys.argv will be restored.
-        ffiles = self.source_files + [pc.PC_MIG_UTILS]
+        ffiles = self.source_files + [cfg.MIG_UTILS]
         incsearch = ["-I{0}".format(x) for x in self.incdirs]
         libsearch = ["-L{0}".format(x) for x in self.libdirs]
         libs = ["-l{0}".format(x) for x in self.libs]
@@ -206,7 +205,7 @@ class MaterialBuilder(object):
             build = imp.load_module(py_mod, fp, pathname, description)
             fp.close()
         except ImportError:
-            new_name = os.path.join(pc.PC_AUX, self.libname)
+            new_name = os.path.join(cfg.AUX, self.libname)
             shutil.move(self.libname, new_name)
             msg = ("\n\tWARNING: {0} failed to import.  ".format(self.libname) +
                    "\n\tTo diagnose, go to: {0}".format(new_name) +
@@ -228,7 +227,7 @@ class MaterialBuilder(object):
 
         """ format signature file from original sigature file """
 
-        if pc.PC_F2PY_CALLBACK:
+        if cfg.F2PY["callback"]:
             return
 
         sigf_lines = open(self.signature_file,"r").readlines()

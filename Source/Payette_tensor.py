@@ -41,7 +41,7 @@ from scipy import linalg
 from math import sqrt
 
 import Source.Payette_utils as pu
-import Source.runopts as ro
+import runopts as ro
 
 
 DI3 = [[0, 1, 2], [0, 1, 2]]

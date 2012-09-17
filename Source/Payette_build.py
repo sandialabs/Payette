@@ -43,9 +43,9 @@ try:
 except ImportError:
     import pickle
 
-import Payette_config as pc
+import config as cfg
 import Source.Payette_utils as pu
-import Source.runopts as ro
+import runopts as ro
 import Source.Payette_xml_parser as px
 import Source.Payette_model_index as pmi
 from Source.Payette_xml_parser import XMLParserError as XMLParserError
@@ -115,6 +115,12 @@ def build_payette(argv):
         default=1,
         help="number of simultaneous jobs [default: %default]")
     parser.add_option(
+        "--dbg",
+        dest="DBG",
+        action="store_true",
+        default=False,
+        help="Compile (f2py) with debug information [default: %default]")
+    parser.add_option(
         "-a",
         dest="BUILDALL",
         action="store_true",
@@ -137,7 +143,7 @@ def build_payette(argv):
 
     # ------- Sandia National Labs specific material directories ------------ #
     # The following option is only valid if the user configured with Lambda
-    if pc.LAMBDA_MDLS:
+    if cfg.LAMBDA:
         help_message = "Build the Lambda models"
     else:
         help_message = "Payette must be configured for Lambda models to use -L"
@@ -148,7 +154,7 @@ def build_payette(argv):
         default=False,
         help=help_message + " [default: %default]")
     # The following option is only valid if the user configured with Alegra
-    if pc.ALEGRA_MDLS:
+    if cfg.ALEGRA:
         help_message = "Build the Alegra models"
     else:
         help_message = "Payette must be configured for Alegra models to use -A"
@@ -168,7 +174,7 @@ def build_payette(argv):
 
     ro.set_global_option("VERBOSITY", opts.VERBOSITY, default=True)
 
-    pu.log_message(pc.PC_INTRO, pre="")
+    pu.log_message(cfg.INTRO, pre="")
 
     # determine if we build all materials, or just a selection
     requested_materials = opts.mtllib
@@ -193,55 +199,38 @@ def build_payette(argv):
         if not os.path.isdir(opts.AUG_DIR):
             parser.error("{0} not found".format(opts.AUG_DIR))
         payette_mtls_file = os.path.join(opts.AUG_DIR,
-                                         os.path.basename(pc.PC_MTLS_FILE))
+                                         os.path.basename(cfg.MTLDB))
         payette_libdir = opts.AUG_DIR
         for dirnam, dirs, files in os.walk(opts.AUG_DIR):
             search_directories.append(dirnam)
 
-    elif opts.LAMBDA:
-        if not pc.LAMBDA_MDLS:
+    if opts.LAMBDA:
+        if not cfg.LAMBDA:
             parser.error("Lambda models not configured")
-
-        _lambda, _lambda_mdls = pc.LAMBDA_MDLS[0], pc.LAMBDA_MDLS[1:]
-        payette_mtls_file = os.path.join(
-            _lambda, os.path.basename(pc.PC_MTLS_FILE))
-        payette_libdir = _lambda
-        search_directories.extend(_lambda_mdls)
+        payette_mtls_file = cfg.LAMBDA["mtldb"]
+        payette_libdir = cfg.DOTPAYETTE
+        search_directories.extend(cfg.LAMBDA["mtldirs"])
 
     elif opts.ALEGRA:
-        if not pc.ALEGRA_MDLS:
+        if not cfg.ALEGRA:
             parser.error("Alegra models not configured")
-
-        _alegra_mdls = pc.ALEGRA_MDLS[0]
-        payette_mtls_file = os.path.join(
-            _alegra_mdls, os.path.basename(pc.PC_MTLS_FILE))
-        payette_libdir = _alegra_mdls
-        search_directories.append(_alegra_mdls)
+        payette_mtls_file = cfg.ALEGRA["mtldb"]
+        payette_libdir = cfg.DOTPAYETTE
+        search_directories.extend(cfg.ALEGRA["mtldirs"])
 
     else:
-        payette_mtls_file = pc.PC_MTLS_FILE
-        payette_libdir = pc.PC_MTLS_LIBRARY
-        material_directories = pc.PC_MTLDIRS
-        material_directories.extend([os.path.expanduser(x) for x in opts.MTLDIRS])
-        for directory in material_directories:
-            for item in os.walk(directory):
-                dirnam = os.path.realpath(item[0])
-                if dirnam not in search_directories:
-                    search_directories.append(dirnam)
-                continue
+        payette_mtls_file = cfg.MTLDB
+        payette_libdir = cfg.LIBDIR
+        search_directories.extend(cfg.MTLDIRS)
+    search_directories = list(set(search_directories))
 
     # prepare compiler options
-    if pc.PC_FCOMPILER:
-        f2pyopts = ["--fcompiler={0}".format(pc.PC_FCOMPILER)]
-    else:
-        f2pyopts = ["--f77exec={0}".format(pc.PC_F77EXEC),
-                    "--f90exec={0}".format(pc.PC_F90EXEC)]
-    if pc.PC_F2PYDBG:
+    f2pyopts = ["--f{0}exec={1}".format(x, cfg.F2PY["fexe"]) for x in ("77", "90")]
+    if opts.DBG:
         f2pyopts.append("--debug")
 
     # compiler options to send to the fortran build scripts
-    compiler_info = {"f2py": {"compiler": pc.PC_F2PY[0],
-                              "options": f2pyopts}}
+    compiler_info = {"f2py": {"options": f2pyopts},}
 
     # intro message
     pu.log_message("Building Payette\n")
@@ -316,7 +305,7 @@ class BuildPayette(object):
         self.errors = 0
 
         if libdir is None:
-            libdir = pc.PC_MTLS_LIBRARY
+            libdir = cfg.LIBRARY
         self.libdir = libdir
 
         pass
@@ -381,7 +370,7 @@ class BuildPayette(object):
                 pu.log_warning(
                     "Duplicate material name {0}, skipping".format(name))
                 continue
-            libname = name + pc.PC_EXT_MOD_FEXT
+            libname = name + cfg.EXT_MOD_FEXT
 
             if (self.requested_materials and
                 name.lower() not in [x.lower() for x in self.requested_materials]):
@@ -548,7 +537,7 @@ class BuildPayette(object):
 
         # remove cruft
         for ftmp in [x for x in
-                     os.listdir(pc.PC_TOOLS) if x.endswith(("so", "o"))]:
+                     os.listdir(cfg.TOOLSET) if x.endswith(("so", "o"))]:
             os.remove(ftmp)
             continue
 

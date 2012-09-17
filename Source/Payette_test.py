@@ -37,7 +37,7 @@ if __name__ == "__main__":
     srcd = os.path.dirname(thisd)
     sys.path.append(srcd)
 
-import Payette_config as pc
+import config as cfg
 import Source.Payette_utils as pu
 import Source.Payette_model_index as pmi
 
@@ -263,13 +263,13 @@ class PayetteTest(object):
         if os.path.isfile(exenam):
             found = True
 
-        elif exenam in pc.PC_EXES:
-            exenam = pc.PC_EXES[exenam]
+        elif exenam in cfg.EXECUTABLES:
+            exenam = cfg.EXECUTABLES["path"]
             found = True
 
         else:
             path = os.getenv("PATH").split(os.pathsep)
-            path.insert(0, pc.PC_TOOLS)
+            path.insert(0, cfg.TOOLSET)
             for p in path:
                 exenam = os.path.join(p,exenam)
                 if os.path.isfile(exenam):
@@ -965,7 +965,7 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
 
     """
 
-    model_index = pmi.ModelIndex(pc.PC_MTLS_FILE)
+    model_index = pmi.ModelIndex(cfg.MTLDB)
 
     iam = "find_tests"
 
@@ -994,7 +994,7 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
         if errors:
             pu.report_and_raise_error("stopping due to previous errors")
     else:
-        test_dirs = [pc.PC_TESTS]
+        test_dirs = [cfg.TESTS]
 
     # reqkws are user specified keywords
     errors = 0
@@ -1029,7 +1029,7 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
                      fbase[0] == "." or
                      fbase == "__init__" or
                      fbase == "__test_dir__" or
-                     fbase == "Payette_config" or
+                     fbase == "config" or
                      fbase == "template" ):
                     continue
 

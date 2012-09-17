@@ -24,15 +24,15 @@
 from numpy import concatenate, array, zeros
 from math import sqrt
 
+import config as cfg
 from Source.Payette_utils import (
     report_and_raise_error, log_warning, log_message, parse_token)
 from Source.Payette_tensor import SYM_MAP, iso, dev, mag, ddp
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
-from Payette_config import PC_F2PY_CALLBACK
 from Toolset.elastic_conversion import compute_elastic_constants
 
 try:
-    import Source.Materials.Library.plastic as mtllib
+    import plastic as mtllib
     imported = True
 except:
     imported = False
@@ -101,7 +101,7 @@ class Plastic(ConstitutiveModelPrototype):
 
         else:
             a = [1, self.nsv, dt, self.mui, sigold, d, xtra]
-            if PC_F2PY_CALLBACK:
+            if cfg.F2PY["callback"]:
                 a.extend([report_and_raise_error, log_message])
             sig, xtra = mtllib.plast_calc(*a)
 
@@ -175,14 +175,14 @@ class Plastic(ConstitutiveModelPrototype):
     def _check_props(self, mui):
         props = array(mui)
         a = [props]
-        if PC_F2PY_CALLBACK:
+        if cfg.F2PY["callback"]:
             a.extend([report_and_raise_error, log_message])
         ui = mtllib.plast_chk(*a)
         return ui
 
     def _set_field(self, ui):
         a = []
-        if PC_F2PY_CALLBACK:
+        if cfg.F2PY["callback"]:
             a.extend([report_and_raise_error, log_message])
         return mtllib.plast_rxv(*a)
 

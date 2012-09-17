@@ -24,7 +24,7 @@ from __future__ import print_function
 
 import os,sys
 
-import Payette_config as pc
+import config as cfg
 from Source.Payette_material_builder import MaterialBuilder
 from Source.Payette_build import BuildError as BuildError
 
@@ -48,7 +48,7 @@ class Build(MaterialBuilder):
         srcs = ["plastic.f90"]
         self.source_files = [os.path.join(self.source_directory, x)
                              for x in srcs]
-        self.source_files.append(os.path.join(pc.PC_FORTRAN,
+        self.source_files.append(os.path.join(cfg.FORTRAN,
                                               "tensor_toolkit.f90"))
 
         try:

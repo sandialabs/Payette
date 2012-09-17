@@ -37,7 +37,7 @@ import Source.Payette_utils as pu
 import Source.Payette_container as pc
 import Source.Payette_input_parser as pip
 import Source.Payette_sim_index as psi
-import Source.runopts as ro
+import runopts as ro
 
 
 class Permutate(object):

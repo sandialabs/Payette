@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from Payette_config import *
+from config import *
 from Source.Payette_test import PayetteTest
 from Source.Payette_run import run_payette
 

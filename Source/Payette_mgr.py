@@ -16,10 +16,10 @@ EXENAM = "payette"
 
 # import Payette specific files
 try:
-    import Payette_config as pc
+    import config as cfg
 except ImportError:
     sys.exit("Payette must first be configured before execution")
-import Source.runopts as ro
+import runopts as ro
 import Source.Payette_utils as pu
 from Source.Payette_run import run_payette
 
@@ -51,7 +51,7 @@ OPTIONS
       There are a set of options recognized by the payette script, which are
       listed here.  If an option is given which is not listed here, it is
       passed through to the different Payette modules.
-""".format(pc.PC_PYINT)
+""".format(cfg.PYINT)
 
 
 class PassThroughOptionParser(OptionParser):
@@ -164,7 +164,7 @@ def main(argv):
 
     # ---------------------- Sandia National Labs specific material directories
     # The following option is only valid if the user configured with Lambda
-    if pc.LAMBDA_MDLS:
+    if cfg.LAMBDA:
         help_message = "Use Lambda models"
     else:
         help_message = "Payette must be configured for Lambda models to use -L"
@@ -175,7 +175,7 @@ def main(argv):
         default=False,
         help=help_message + " [default: %default]")
     # The following option is only valid if the user configured with Alegra
-    if pc.ALEGRA_MDLS:
+    if cfg.ALEGRA:
         help_message = "Run with the Alegra models"
     else:
         help_message = "Payette must be configured for Alegra models to use -A"
@@ -334,15 +334,13 @@ def main(argv):
         if not os.path.isdir(opts.AUG_DIR):
             parser.error("{0} not found".format(opts.AUG_DIR))
         material_index = os.path.join(
-            opts.AUG_DIR, os.path.basename(pc.PC_MTLS_FILE))
+            opts.AUG_DIR, os.path.basename(cfg.MTLDB))
     elif opts.LAMBDA:
-        material_index = os.path.join(
-            pc.LAMBDA_MDLS[0], os.path.basename(pc.PC_MTLS_FILE))
+        material_index = cfg.LAMBDA["mtldb"]
     elif opts.ALEGRA:
-        material_index = os.path.join(
-            pc.ALEGRA_MDLS[0], os.path.basename(pc.PC_MTLS_FILE))
+        material_index = cfg.ALEGRA["mtldb"]
     else:
-        material_index = pc.PC_MTLS_FILE
+        material_index = cfg.MTLDB
 
     if not os.path.isfile(material_index):
         pu.report_and_raise_error(
@@ -351,7 +349,7 @@ def main(argv):
     ro.set_global_option("MTLDB", material_index, default=True)
 
     if not argv:
-        if not pc.VIZ_COMPATIBLE:
+        if not cfg.VIZ_COMPATIBLE:
             sys.exit("Visualization not supported by your Python distribution")
         # Launch the Gui and exit
         import Source.Viz_ModelSelector as vms
@@ -359,7 +357,7 @@ def main(argv):
         sys.exit(pmms.configure_traits())
 
     if opts.verbosity:
-        pu.log_message(pc.PC_INTRO, pre="")
+        pu.log_message(cfg.INTRO, pre="")
 
     # determine file type given, whether output files for viewing, input files
     # for running, or barf files for barf processing
@@ -487,7 +485,7 @@ def _visualize_results(simulation_info=None, outfiles=None):
     outfiles : list
        list of output files to visualize
     """
-    if not pc.VIZ_COMPATIBLE:
+    if not cfg.VIZ_COMPATIBLE:
         pu.log_warning("Visualization not supported by your Python distribution")
         return
 
@@ -562,7 +560,7 @@ def _write_summary_to_screen():
     all_dirs, all_files = [], []
     code_exts = [".py", ".pyf", "", ".F", ".C", ".f", ".f90"]
     all_exts = code_exts + [".inp", ".tex", ".pdf"]
-    for dirnam, dirs, files in os.walk(pc.PC_ROOT):
+    for dirnam, dirs, files in os.walk(cfg.ROOT):
         if ".git" in dirnam:
             continue
         all_dirs.extend([os.path.join(dirnam, d) for d in dirs])
@@ -576,7 +574,7 @@ def _write_summary_to_screen():
     num_infiles = len([x for x in all_files if x.endswith(".inp")])
     num_pyfiles = len([x for x in all_files
                        if x.endswith(".py") or x.endswith(".pyf")])
-    pu.log_message(pc.PC_INTRO, pre="")
+    pu.log_message(cfg.INTRO, pre="")
     pu.log_message("Summary of Project:", pre="")
     pu.log_message("\tNumber of files in project:         {0:d}"
                    .format(num_files), pre="")

@@ -25,7 +25,7 @@
 
 import numpy as np
 
-import Payette_config as pc
+import config as cfg
 import Source.Payette_utils as pu
 import Source.Payette_model_index as pmi
 from Source.Payette_data_container import DataContainer
@@ -61,7 +61,7 @@ built correctly.  To check, go to
 and try importing the material's extension module directly in a python
 session.  If it does not import, you will need to rebuild the extension module.
 If rebuilding Payette does not fix the problem, please contact the
-Payette developers.""".format(self.constitutive_model.name, pc.PC_MTLS_LIBRARY)
+Payette developers.""".format(self.constitutive_model.name, cfg.LIBRARY)
             pu.report_and_raise_error(msg)
 
         self.eos_model = self.constitutive_model.eos_model

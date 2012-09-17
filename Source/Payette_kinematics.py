@@ -28,7 +28,7 @@ import numpy.linalg as la
 
 import Source.Payette_iterative_solvers as piter
 import Source.Payette_utils as pu
-import Source.runopts as ro
+import runopts as ro
 
 from Source.Payette_tensor import I3X3, powm, expm, logm, sqrtm, to_array
 

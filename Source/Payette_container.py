@@ -33,13 +33,13 @@ import shutil
 from copy import deepcopy
 from textwrap import fill as textfill
 
-import Payette_config as pc
+import config as cfg
 import Source.Payette_driver as pd
 import Source.Payette_utils as pu
 import Source.Payette_extract as pe
 import Source.Payette_boundary as pb
 import Source.Payette_input_parser as pip
-import Source.runopts as ro
+import runopts as ro
 from Source.Payette_material import Material
 from Source.Payette_data_container import DataContainer
 from Source.Payette_boundary import BoundaryError as BoundaryError
@@ -163,8 +163,8 @@ class Payette(object):
         now = datetime.datetime.now()
         pu.write_to_simlog("Date: {0}".format(now.strftime("%A %B %d, %Y")))
         pu.write_to_simlog("Time: {0}".format(now.strftime("%H:%M:%S")))
-        pu.write_to_simlog("Platform: {0}".format(pc.PC_OSTYPE))
-        pu.write_to_simlog("Python interpreter: {0}".format(pc.PC_PYINT))
+        pu.write_to_simlog("Platform: {0}".format(cfg.OSTYPE))
+        pu.write_to_simlog("Python interpreter: {0}".format(cfg.PYINT))
 
         # write description
         pu.write_to_simlog("Description: ")
@@ -373,7 +373,6 @@ class Payette(object):
                 fobj.write("{0:s} ={1:12.5E}\n".format(param, val))
                 continue
         return
-
 
     def _setup_out_file(self, file_name):
         """set up the ouput files"""

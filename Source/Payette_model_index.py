@@ -32,9 +32,9 @@ try:
 except ImportError:
     import pickle
 
-import Payette_config as pc
+import config as cfg
 import Source.Payette_utils as pu
-import Source.runopts as ro
+import runopts as ro
 
 
 class ModelIndexError(Exception):
@@ -121,8 +121,8 @@ class ModelIndex(object):
     def dump(self):
         """Dump self.constitutive_models to a file"""
         # dup the index file
-        if pc.PC_ROOT in self.index_file:
-            stubf = "PAYETTE_ROOT" + self.index_file.split(pc.PC_ROOT)[1]
+        if cfg.ROOT in self.index_file:
+            stubf = "PAYETTE_ROOT" + self.index_file.split(cfg.ROOT)[1]
         else:
             stubf = self.index_file
         sys.stdout.write(
@@ -202,7 +202,7 @@ class ModelIndex(object):
 def remove_index_file():
     """remove the index file"""
     try:
-        os.remove(pc.PC_MTLS_FILE)
+        os.remove(ro.MTLDB)
     except OSError:
         pass
     return

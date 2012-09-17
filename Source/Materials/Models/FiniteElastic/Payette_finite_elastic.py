@@ -23,14 +23,14 @@
 
 from numpy import array, zeros
 
+import config as cfg
 from Source.Payette_utils import log_warning, report_and_raise_error, log_message
 from Source.Payette_tensor import ata, push, I6
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
-from Payette_config import PC_F2PY_CALLBACK
 from Toolset.elastic_conversion import compute_elastic_constants
 
 try:
-    import Source.Materials.Library.finite_elastic as mtllib
+    import finite_elastic as mtllib
     imported = True
 except:
     imported = False
@@ -112,7 +112,7 @@ class FiniteElastic(ConstitutiveModelPrototype):
 
         else:
             a = [1, self.mui, F]
-            if PC_F2PY_CALLBACK:
+            if cfg.F2PY["callback"]:
                 a.extend([report_and_raise_error, log_message])
             E, pk2, sig = mtllib.finite_elast_calc(*a)
 
@@ -141,7 +141,7 @@ class FiniteElastic(ConstitutiveModelPrototype):
     def _fort_set_up(self, mui):
         props = array(mui)
         a = [props]
-        if PC_F2PY_CALLBACK:
+        if cfg.F2PY["callback"]:
             a.extend([report_and_raise_error, log_message])
         ui = mtllib.finite_elast_chk(*a)
         return ui

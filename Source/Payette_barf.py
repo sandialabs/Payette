@@ -53,7 +53,6 @@ import sys
 import numpy as np
 import pickle
 
-import Payette_config as pc
 import Source.Payette_utils as pu
 import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr

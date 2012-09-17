@@ -32,15 +32,9 @@ import pickle
 import inspect
 from textwrap import fill as textfill
 
-import Payette_config as pc
+import config as cfg
 import Source.Payette_extract as pe
-import Source.runopts as ro
-
-if not os.path.isfile(os.path.join(
-        os.path.dirname(os.path.realpath(__file__)),"../Payette_config.py")):
-    report_and_raise_error(
-        "Payette_config.py must be written by configure.py")
-
+import runopts as ro
 
 SIMLOG = None
 EPSILON = np.finfo(np.float).eps
@@ -218,7 +212,7 @@ def setup_logger(logfile, mode="w"):
     global SIMLOG
     SIMLOG = open(logfile, mode)
     if mode == "w":
-        SIMLOG.write(pc.PC_INTRO + "\n")
+        SIMLOG.write(cfg.INTRO + "\n")
     return
 
 
@@ -696,4 +690,3 @@ def get_super_classes(data):
             super_class_names.append(super_class.name)
         continue
     return super_class_names
-

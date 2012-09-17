@@ -1,220 +1,13 @@
-# The MIT License
-
-# Copyright (c) 2011 Tim Fuller
-
-# License for the specific language governing rights and limitations under
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included
-# in all copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-from __future__ import print_function
-import os
-import os.path as osp
-import sys
-import optparse
-import subprocess
+#!/usr/bin/env python
+import os, sys
 from distutils import sysconfig
+import subprocess
+import optparse
+import shutil
 
 __version__ = "1.0.1"
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
-
-def check_exists(itemnam, item):
-    """ check if item exists on file system """
-
-    if not isinstance(item, (list, tuple)):
-        item = [item]
-
-    errors = 0
-    for tmp in item:
-        if not osp.isdir(tmp) and not osp.isfile(tmp):
-            errors += 1
-            logerr("{0} not found [name: {1}]".format(tmp, itemnam))
-
-    return errors
-
-
-def find_mtl_directories(dirpath, exclude=[]):
-    """Walk through dirpath and find directories that have Payette control
-    files
-
-    Parameters
-    ----------
-    dirpath : str
-       path to directory to search
-
-    Returns
-    -------
-    mtl_directories : list
-       list of directories containing control files
-    """
-    return [dirnam for dirnam, dirs, files in os.walk(dirpath)
-            if (".svn" not in dirnam and
-                ".git" not in dirnam and
-                dirnam not in exclude and
-                any("_control.xml" in y for y in files))]
-
-def begmes(msg, pre="", end="  "):
-
-    """ begin message """
-
-    print("{0}{1}...".format(pre, msg), end=end)
-    return
-
-
-def endmes(msg, pre="", end="\n"):
-
-    """ end message """
-
-    print("{0}{1}".format(pre, msg), end=end)
-    return
-
-
-def loginf(msg, pre="", end="\n"):
-
-    """ log info """
-
-    print("{0}INFO: {1}".format(pre, msg), end=end)
-    return
-
-
-def logmes(msg, pre="", end="\n"):
-
-    """ log message """
-
-    print("{0}{1}".format(pre, msg), end=end)
-    return
-
-
-def logwrn(msg, pre="", end="\n"):
-
-    """ log warning """
-
-    print("{0}WARNING: {1}".format(pre, msg), end=end)
-    return
-
-
-def logerr(msg, pre="", end="\n"):
-
-    """ log error """
-
-    print("{0}ERROR: {1}".format(pre, msg), end=end)
-    return
-
-
-def dictfrmt(key, val):
-
-    """ format dictionary for pretty printing """
-
-    if isinstance(val, str):
-        return '{0} = "{1}"'.format(key, val)
-    return '{0} = {1}'.format(key, val)
-
-
-def get_exe_path(exe):
-
-    """ return the absolute path to the executable exe """
-
-    if osp.isfile(exe):
-        return exe
-
-    try:
-        path = os.getenv("PATH").split(os.pathsep)
-    except AttributeError:
-        path = []
-
-    for dirname in path:
-        if osp.isfile(osp.join(dirname, exe)):
-            return osp.join(dirname, exe)
-
-    sys.exit("ERROR: executable {0} not found".format(exe))
-
-
-def write_f2py(pyint, destdir):
-
-    """
-    write out f2py. we write out our own to ensure that we use the right python
-    interpreter. I just copied this verbatim from my installation of f2py,
-    replacing the interpreter on the shebang line with PC_PYINT
-
-    HOWEVER, after writing this, I remembered that we never use f2py from the
-    command line, but import it directly from numpy, so this is unnecessary...
-    """
-
-    f2py_file = """#!{0}
-# See http://cens.ioc.ee/projects/f2py2e/
-import os, sys
-for mode in ["g3-numpy", "2e-numeric", "2e-numarray", "2e-numpy"]:
-    try:
-        i=sys.argv.index("--"+mode)
-        del sys.argv[i]
-        break
-    except ValueError: pass
-os.environ["NO_SCIPY_IMPORT"]="f2py"
-if mode=="g3-numpy":
-    sys.stderr.write("G3 f2py support is not implemented, yet.\\n")
-    sys.exit(1)
-elif mode=="2e-numeric":
-    from f2py2e import main
-elif mode=="2e-numarray":
-    sys.argv.append("-DNUMARRAY")
-    from f2py2e import main
-elif mode=="2e-numpy":
-    from numpy.f2py import main
-else:
-    sys.stderr.write("Unknown mode: " + repr(mode) + "\\n")
-    sys.exit(1)
-main()
-""".format(pyint)
-    f2py = osp.join(destdir, "f2py")
-    with open(f2py, "w") as fnew:
-        for line in f2py_file:
-            fnew.write(line)
-    os.chmod(f2py, 0o750)
-    return
-
-
-ERRORS = 0
-
-
-# --- compatibility checks
-(MAJOR, MINOR, MICRO, RELEASELEVEL, SERIAL) = sys.version_info
-if (MAJOR != 3 and MAJOR != 2) or (MAJOR == 2 and MINOR < 6):
-    raise SystemExit("Payette requires Python >= 2.6\n")
-
-# --- numpy check
-try:
-    import numpy
-    PC_NUMPY_VER = numpy.__version__
-except ImportError:
-    logerr("numpy not importable")
-    ERRORS += 1
-
-# --- scipy check
-try:
-    import scipy
-    PC_SCIPY_VER = scipy.__version__
-except ImportError:
-    logerr("scipy not importable")
-    ERRORS += 1
-
-if ERRORS:
-    sys.exit("configure.py: ERROR: fix previously trapped errors")
-
-# --- intro message
-PC_INTRO = """
+__intro__ = """
         PPPPPPPPP      A  Y     Y  EEEEE  TTTTTTTTTTT  TTTTTTTTTTT  EEEEEE
        P        P    A A   Y   Y  E            T            T      E
       P        P   A   A    Y Y  E            T            T      E
@@ -226,221 +19,24 @@ PC_INTRO = """
                               An Object Oriented Material Model Driver
 {0}
 """.format(" "*(62 - len(__version__)) + "version " + __version__)
+(major, minor, micro, releaselevel, serial) = sys.version_info
 
-# --- spacing used for logs to console
-SPACE = "      "
+# --- Environmental variables used by Payette
+USER_ENV = {"DOTPAYETTE": os.getenv("DOTPAYETTE"),
+            "BENCHDIR": os.getenv("PAYETTE_BENCHDIR"),
+            "MTLDIR": os.getenv("PAYETTE_MTLDIR"),
+            "LAMBDA": os.getenv("LAMBDA_ROOT"),
+            "ALEGRA": os.getenv("ALEGRANEVADA"),}
 
-# --- All environmental variables used by Payette are listed here
-ENV_BENCHDIR = "PAYETTE_BENCHDIR"
-ENV_MTLDIR = "PAYETTE_MTLDIR"
-ENV_LAMBDA = "LAMBDA_ROOT"
-ENV_ALEGRA = "ALEGRANEVADA"
+# supported fortran vendors
+FORTRAN_VENDORS = {"gnu": {"exe": "gfortran", "pre": "-E"}}
 
-# --- base level directories
-THIS_FILE = osp.realpath(__file__)
-PC_ROOT = osp.dirname(THIS_FILE)
-PC_AUX = osp.join(PC_ROOT, "Aux")
-PC_DOCS = osp.join(PC_ROOT, "Documents")
-PC_SOURCE = osp.join(PC_ROOT, "Source")
-PC_OPTREC = osp.join(PC_SOURCE, "OptRecipes")
-PC_TESTS = [osp.join(PC_ROOT, "Benchmarks")]
-USER_TESTS = os.getenv(ENV_BENCHDIR, "")
-PC_TESTS.extend([x for x in USER_TESTS.split(os.pathsep) if x])
-PC_TOOLS = osp.join(PC_ROOT, "Toolset")
-PC_FOUND_TESTS = osp.join(PC_TOOLS, "__found_tests__.py")
-
-# modify sys.path
-if PC_ROOT not in sys.path:
-    sys.path.append(PC_ROOT)
-
-ERRORS += check_exists("PC_ROOT", PC_ROOT)
-ERRORS += check_exists("PC_AUX", PC_AUX)
-check_exists("PC_DOCS", PC_DOCS)
-ERRORS += check_exists("PC_SOURCE", PC_SOURCE)
-ERRORS += check_exists("PC_TESTS", PC_TESTS)
-ERRORS += check_exists("PC_TOOLS", PC_TOOLS)
-
-# --- python interpreter info
-PC_PYINT = osp.realpath(sys.executable)
-SAGE = True if "sage" in PC_PYINT.lower() else False
-PC_PYVER = "python" if not SAGE else "sage -python"
-PC_PYVER = "{0} {1}.{2}.{3}".format(PC_PYVER,MAJOR,MINOR,MICRO)
-
-# --- Payette executable files
-PC_EXTRACT = osp.join(PC_SOURCE, "Payette_extract.py")
-PC_EXTRACTPAYETTE = (osp.join(PC_TOOLS, "extractPayette"), PC_EXTRACT)
-
-PC_MGR = osp.join(PC_SOURCE, "Payette_mgr.py")
-PC_RUNPAYETTE = (osp.join(PC_TOOLS, "payette"), PC_MGR)
-
-PC_BUILD = osp.join(PC_SOURCE, "Payette_build.py")
-PC_BUILDPAYETTE = (osp.join(PC_TOOLS, "buildPayette"), PC_BUILD)
-
-PC_RUNTEST = osp.join(PC_SOURCE, "Payette_runtest.py")
-PC_TESTPAYETTE = (osp.join(PC_TOOLS, "testPayette"), PC_RUNTEST)
-
-PC_F2PY = (osp.join(PC_TOOLS,"f2py"), None)
-PC_BUILT_EXES = {"payette": PC_RUNPAYETTE,
-                 "testPayette": PC_TESTPAYETTE,
-                 "buildPayette": PC_BUILDPAYETTE,
-                 "extractPayette": PC_EXTRACTPAYETTE,
-                 "f2py": PC_F2PY}
-PC_EXES = {}
-for exe_nam, exe_info in PC_BUILT_EXES.items():
-    exe_path, py_path = exe_info
-    PC_EXES[exe_nam] = exe_path
-    continue
-
-# --- configuration files
-PC_CONFIG_FILE = osp.join(PC_ROOT, "Payette_config.py")
-
-# --- subdirectories of PC_AUX
-PC_INPUTS = osp.join(PC_ROOT, "Aux/Inputs")
-ERRORS += check_exists("PC_INPUTS", PC_INPUTS)
-
-# --- subdirectories of PC_SOURCE
-
-# PC_MTLDIRS is the directory where we search for Payette material models
-PC_MTLS = osp.join(PC_SOURCE, "Materials")
-ERRORS += check_exists("PC_MTLS", PC_MTLS)
-PC_MTLDIRS = [osp.join(PC_MTLS, "Models")]
-USER_MTLS = os.getenv(ENV_MTLDIR, "")
-PC_MTLDIRS.extend([x for x in USER_MTLS.split(os.pathsep) if x])
-
-# expand PC_MTLDIRS
-for mtl_d in [x for x in PC_MTLDIRS]:
-    if osp.isdir(mtl_d):
-        PC_MTLDIRS.extend(find_mtl_directories(mtl_d, exclude=PC_MTLS))
-    continue
-
-# ------- Sandia National Labs specific material directories ---------------- #
-# LAMBDA_MDLS contains directories where we search for Lambda models
-LAMBDA = os.getenv(ENV_LAMBDA)
-LAMBDA_MDLS = []
-if LAMBDA is not None:
-    if not osp.isdir(LAMBDA):
-        logerr("{0} not found".format(LAMBDA))
-        ERRORS += 1
-    else:
-        if "library/models" not in LAMBDA:
-            LAMBDA = osp.join(LAMBDA, "library/models")
-        if not osp.isdir(LAMBDA):
-            logerr("expected to find {0} but did not".format(LAMBDA))
-            ERRORS += 1
-        else:
-            LAMBDA_MDLS.extend(find_mtl_directories(LAMBDA, exclude=PC_MTLS))
-            LAMBDA_MDLS.insert(0, LAMBDA.replace("/library/models", ""))
-
-# ALEGRA contains directories where we search for Alegra models
-ALEGRA = os.getenv(ENV_ALEGRA)
-ALEGRA_MDLS = []
-if ALEGRA is not None:
-    if not osp.isdir(ALEGRA):
-        logerr("{0} not found".format(ALEGRA))
-        ERRORS += 1
-    else:
-        _alegra = osp.join(ALEGRA, "alegra/material_libs/utils/payette")
-        if not osp.isdir(_alegra):
-            logerr("expected to find {0} but did not".format(_alegra))
-            ERRORS += 1
-        else:
-            ALEGRA_MDLS.append(_alegra)
-# --------------------------------------------------------------------------- #
-
-PC_FORTRAN = osp.join(PC_SOURCE, "Fortran")
-PC_MIG_UTILS = osp.join(PC_FORTRAN, "migutils.F")
-ERRORS += check_exists("PC_MIG_UTILS", PC_MIG_UTILS)
-
-# --- Subdirectories of PC_MTLS
-PC_MTLS_LIBRARY = osp.join(PC_MTLS, "Library")
-PC_MTLS_INCLUDES = osp.join(PC_MTLS, "Includes")
-PC_MTLS_FILE = osp.join(PC_SOURCE, "payette_materials.db")
-ERRORS += check_exists("PC_MTLS_LIBRARY", PC_MTLS_LIBRARY)
-ERRORS += check_exists("PC_MTLS_INCLUDES", PC_MTLS_INCLUDES)
-
-# --- extension module file extension
-PC_EXT_MOD_FEXT = sysconfig.get_config_var("SO")
-
-# --- get platform
-PC_OSTYPE = sys.platform
-
-# Store all of the above information for writing to the PC_CONFIG_FILE. We
-# waited to write it til now so that we would only write it if everything was
-# configured correctly.
-PAYETTE_CONFIG = {}
-PAYETTE_CONFIG["PC_PYINT"] = PC_PYINT
-PAYETTE_CONFIG["PC_PYVER"] = PC_PYVER
-PAYETTE_CONFIG["PC_ROOT"] = PC_ROOT
-PAYETTE_CONFIG["PC_AUX"] = PC_AUX
-PAYETTE_CONFIG["PC_DOCS"] = PC_DOCS
-PAYETTE_CONFIG["PC_SOURCE"] = PC_SOURCE
-PAYETTE_CONFIG["PC_OPTREC"] = PC_OPTREC
-PAYETTE_CONFIG["PC_TESTS"] = PC_TESTS
-PAYETTE_CONFIG["PC_TOOLS"] = PC_TOOLS
-PAYETTE_CONFIG["PC_FOUND_TESTS"] = PC_FOUND_TESTS
-PAYETTE_CONFIG["PC_MTLS"] = PC_MTLS
-PAYETTE_CONFIG["PC_MTLDIRS"] = PC_MTLDIRS
-PAYETTE_CONFIG["PC_FORTRAN"] = PC_FORTRAN
-PAYETTE_CONFIG["PC_MIG_UTILS"] = PC_MIG_UTILS
-PAYETTE_CONFIG["PC_MTLS_LIBRARY"] = PC_MTLS_LIBRARY
-PAYETTE_CONFIG["PC_MTLS_INCLUDES"] = PC_MTLS_INCLUDES
-PAYETTE_CONFIG["PC_MTLS_FILE"] = PC_MTLS_FILE
-PAYETTE_CONFIG["PC_INPUTS"] = PC_INPUTS
-PAYETTE_CONFIG["PC_EXT_MOD_FEXT"] = PC_EXT_MOD_FEXT
-PAYETTE_CONFIG["PC_OSTYPE"] = PC_OSTYPE
-PAYETTE_CONFIG["PC_RUNTEST"] = PC_RUNTEST
-PAYETTE_CONFIG["PC_MGR"] = PC_MGR
-PAYETTE_CONFIG["PC_BUILD"] = PC_BUILD
-PAYETTE_CONFIG["PC_EXTRACT"] = PC_EXTRACT
-PAYETTE_CONFIG["PC_EXES"] = PC_EXES
-PAYETTE_CONFIG["PC_CONFIG_FILE"] = PC_CONFIG_FILE
-PAYETTE_CONFIG["PC_F2PY"] = PC_F2PY
-PAYETTE_CONFIG["PC_RUNPAYETTE"] = PC_RUNPAYETTE
-PAYETTE_CONFIG["PC_TESTPAYETTE"] = PC_TESTPAYETTE
-PAYETTE_CONFIG["PC_BUILDPAYETTE"] = PC_BUILDPAYETTE
-PAYETTE_CONFIG["PC_EXTRACTPAYETTE"] = PC_EXTRACTPAYETTE
-PAYETTE_CONFIG["PC_BUILT_EXES"] = PC_BUILT_EXES
-PAYETTE_CONFIG["PC_NUMPY_VER"] = PC_NUMPY_VER
-PAYETTE_CONFIG["PC_SCIPY_VER"] = PC_SCIPY_VER
-PAYETTE_CONFIG["VIZ_COMPATIBLE"] = False
-PAYETTE_CONFIG["LAMBDA_MDLS"] = LAMBDA_MDLS
-PAYETTE_CONFIG["ALEGRA_MDLS"] = ALEGRA_MDLS
-
-# --- set up the environment
-ENV = {}
-ENVS = ["MPLCONFIGDIR", "PYTHONPATH", "ECLDIR", "GPDOCDIR", "RHOME",
-        "GP_DATA_DIR", "PKG_CONFIG_PATH", "PYTHONHOME", "LD_LIBRARY_PATH",
-        "LIBRARY_PATH", "DYLD_LIBRARY_PATH", "PATH", "SINGULAR_EXECUTABLE",
-        "SINGULARPATH"]
-
-# Fortran compiler for extension libraries
-FORT = "gfortran"
-
-# --- if running with sage, configure the sage environment
-if SAGE:
-    # get the sage environment to save
-    for skey, sval in os.environ.items():
-        if "sage" in sval.lower() or "sage" in skey.lower():
-            ENVS.append(skey)
-            continue
-        sage_local = os.environ.get("SAGE_LOCAL")
-        if sage_local is not None:
-            FORT = (osp.join(sage_local, "gfortran") if
-                    osp.isfile(osp.join(sage_local, "gfortran")) else
-                    FORT)
-
-if ERRORS:
-    sys.exit("configure.py: ERROR: fix previously trapped errors")
-
-
-def configure_payette(argv):
-
-    """ create and write configuration file """
+def configure(argv):
+    """Parse user arguments and create the Payette configuration"""
 
     # *************************************************************************
     # -- command line option parsing
-    usage = ("usage: python %prog [options]\nmust be executed from "
-             "{0}".format(PC_ROOT))
+    usage = "usage: python %prog [options]"
     parser = optparse.OptionParser(usage=usage, version="%prog 1.0")
     parser.add_option(
         "-o",
@@ -453,27 +49,9 @@ def configure_payette(argv):
         dest="FCOMPILER",
         action="store",
         type="choice",
-        choices=(None, "gnu95"),
-        default=None,
+        choices=("gnu",),
+        default="gnu",
         help="Specify Fortran compiler type by vendor [default: %default]")
-    parser.add_option(
-        "--f77exec",
-        dest="F77EXEC",
-        action="store",
-        default=FORT,
-        help="Specify the path F77 to compiler [default: %default]")
-    parser.add_option(
-        "--f2py-debug",
-        dest="F2PYDBG",
-        action="store_true",
-        default=False,
-        help="Compile (f2py) with debugging information [default: %default]")
-    parser.add_option(
-        "--f90exec",
-        dest="F90EXEC",
-        action="store",
-        default=FORT,
-        help="Specify the path F90 to compiler [default: %default]")
     parser.add_option(
         "--no-callback",
         dest="NOCALLBACK",
@@ -511,285 +89,418 @@ def configure_payette(argv):
         default=sys.dont_write_bytecode,
         help="Don't write bytecode files [default: %default]")
     parser.add_option(
+        "-E",
+        dest="SKIPENVIRON",
+        action="store_true",
+        default=False,
+        help="Do not use user environment [default: %default]")
+    parser.add_option(
+        "--snl",
+        dest="SNL",
+        action="store_true",
+        default=False,
+        help="Configure to build SNL libraries by default [default: %default]")
+    parser.add_option(
         "--no-clean",
         dest="NOCLEAN",
         action="store_true",
         default=False,
         help="Don't clean when configuring [default: %default]")
+    parser.add_option(
+        "--deployed",
+        dest="DEPLOYED",
+        action="store_true",
+        default=False,
+        help="Configure to be deployed to many users [default: %default]")
 
-    opts = parser.parse_args(argv)[0]
+    opts, args = parser.parse_args(argv)
+
+    logmes(__intro__)
+    if opts.DEPLOYED:
+        opts.DONTWRITEBYTECODE = True
 
     sys.dont_write_bytecode = opts.DONTWRITEBYTECODE
 
-    try:
-        os.remove(PC_CONFIG_FILE)
-    except OSError:
-        pass
-
-    try:
-        os.remove(PC_CONFIG_FILE + "c")
-    except OSError:
-        pass
-
-    errors = 0
+    use_env = not opts.SKIPENVIRON
+    cfg = PayetteConfig(use_env=use_env, use_snl=opts.SNL,
+                        fcompiler=opts.FCOMPILER, deployed=opts.DEPLOYED)
 
     # clean up first
     if not opts.NOCLEAN:
-        clean_payette = os.path.join(PC_TOOLS, "cleanPayette")
-        subprocess.call(clean_payette, shell=True)
-
-    # --- visualization check
-    display = os.environ.get("DISPLAY")
-    loginf( "Checking if visualizaton suite it supported by Python distribution")
-    if display is not None:
-        try:
-            # support for MacPorts install of enthought tools
-            from enthought.traits.api import (
-                HasStrictTraits, Instance, String, Button,
-                Bool, List, Str, Property, HasPrivateTraits, on_trait_change)
-            from enthought.traits.ui.api import (
-                View, Item, HSplit, VGroup, Handler,
-                TabularEditor, HGroup, UItem)
-            from enthought.traits.ui.tabular_adapter import TabularAdapter
-            loginf("Visualizaton suite supported by Python distribution")
-            PAYETTE_CONFIG["VIZ_COMPATIBLE"] = True
-
-        except ImportError:
-            loginf("Visualizaton suite not supported by Python distribution")
-
-    else:
-        loginf("DISPLAY not set, visualization suite cannot be imported")
+        clean_payette()
 
     # configure Payette
-    loginf("configuring Payette environment")
+    logmes("Configuring Payette environment")
+    cfg.set_callback_mode(mode=not opts.NOCALLBACK)
 
-    # f2py call back
-    if MAJOR == 3 or SAGE:
-        opts.NOCALLBACK = True
-    PAYETTE_CONFIG["PC_F2PY_CALLBACK"] = not opts.NOCALLBACK
+    # add to tests
+    _user_tests = [os.path.expanduser(x) for x in opts.BENCHDIRS]
+    cfg.add_user_tests(_user_tests)
 
-    # f2py fortran compiler options
-    if opts.FCOMPILER:
-        PAYETTE_CONFIG["PC_FCOMPILER"] = opts.FCOMPILER
-        PAYETTE_CONFIG["PC_F77EXEC"] = None
-        PAYETTE_CONFIG["PC_F90EXEC"] = None
-    else:
-        PAYETTE_CONFIG["PC_FCOMPILER"] = None
-        PAYETTE_CONFIG["PC_F77EXEC"] = get_exe_path(opts.F77EXEC)
-        PAYETTE_CONFIG["PC_F90EXEC"] = get_exe_path(opts.F90EXEC)
-    PAYETTE_CONFIG["PC_F2PYDBG"] = opts.F2PYDBG
-
-    # add to benchmark dir
-    for dirnam in opts.BENCHDIRS:
-        dirnam = osp.expanduser(dirnam)
-        if osp.isdir(dirnam):
-            is_test_dir = False
-            for item in os.walk(dirnam):
-                if "__test_dir__.py" in item[-1]:
-                    is_test_dir = True
-                    PC_TESTS.append(dirnam)
-                    break
-                continue
-            if not is_test_dir:
-                errors += 1
-                logerr("__test_dir__.py not found in {0}".format(dirnam))
-        else:
-            errors += 1
-            logerr("benchmark directory {0} not found".format(dirnam))
-        continue
-
-    # add to materials dir
-    for dirnam in opts.MTLDIRS:
-        dirnam = osp.expanduser(dirnam)
-        if osp.isdir(dirnam):
-            PC_MTLDIRS.append(dirnam)
-        else:
-            errors += 1
-            logerr("material directory {0} not found".format(dirnam))
-        continue
-    sys.path.extend(PC_MTLDIRS)
+    # add to materials
+    _user_mtls = [os.path.expanduser(x) for x in opts.MTLDIRS]
+    cfg.add_user_mtls(_user_mtls)
 
     # check for Lambda
     if opts.LAMBDA is not None:
-        _lambda = osp.expanduser(opts.LAMBDA)
-        if LAMBDA_MDLS:
-            errors += 1
-            logerr("Environment variable LAMBDA_ROOT already specified")
-        elif not osp.isdir(_lambda):
-            errors += 1
-            logerr("{0} not found".format(_lambda))
+        _lambda = os.path.expanduser(opts.LAMBDA)
+        if cfg._lambda is not None:
+            logerr("Environment variable {0} already specified".format(LAMBDA))
         else:
             if "library/models" not in _lambda:
-                _lambda = osp.join(_lambda, "library/models")
-            if not osp.isdir(_lambda):
-                    logerr("expected to find {0} but did not".format(_lambda))
-                    errors += 1
-            else:
-                LAMBDA_MDLS.extend(find_mtl_directories(_lambda, exclude=PC_MTLS))
-                LAMBDA_MDLS.insert(0, _lambda.replace("/library/models", ""))
+                _lambda = os.path.join(_lambda, "library/models")
+            cfg.add_user_mtls(_lambda)
 
-    # check for Alegra
     if opts.ALEGRA is not None:
-        _alegra = osp.expanduser(opts.ALEGRA)
-        if ALEGRA_MDLS:
-            errors += 1
-            logerr("Environment variable ALEGRANEVADA already specified")
-        elif not osp.isdir(_alegra):
-            errors += 1
-            logerr("{0} not found".format(_alegra))
+        _alegra = os.path.expanduser(opts.ALEGRA)
+        if cfg.alegra is not None:
+            logerr("Environment variable {0} already specified".format(ALEGRA))
         else:
-            _alegra = osp.join(_alegra, "alegra/material_libs/utils/payette")
-            if not osp.isdir(_alegra):
-                logerr("expected to find {0} but did not".format(_alegra))
-                errors += 1
-            else:
-                ALEGRA_MDLS.append(_alegra)
-
-    if errors:
-        sys.exit("ERROR: stopping due to previous errors")
-
-    # get current environment
-    for item in ENVS:
-        if item in os.environ:
-            ENV[item] = os.environ[item]
-        continue
-    if sys.dont_write_bytecode:
-        ENV["PYTHONDONTWRITEBYTECODE"]="X"
-    else:
-        ENV["PYTHONDONTWRITEBYTECODE"]=""
-
-    # make sure PC_ROOT is first on PYTHONPATH
-    pypath = os.pathsep.join([PC_ROOT, PC_TOOLS]) # + PC_MTLDIRS)
-#    if LAMBDA_MDLS:
-#        pypath = pypath + os.pathsep + os.pathsep.join(LAMBDA_MDLS)
-#    if "PYTHONPATH" in ENV:
-#        pypath += (
-#            os.pathsep +
-#            os.pathsep.join([x for x in ENV["PYTHONPATH"].split(os.pathsep)
-#                             if x not in pypath.split(os.pathsep)]))
-    ENV["PYTHONPATH"] = pypath
+            if "alegra/material_libs/utils/payette" not in _alegra:
+                _alegra = os.path.join(_alegra,
+                                       "alegra/material_libs/utils/payette")
+            cfg.add_user_mtls(_alegra)
 
     # ------ Report on environmental variables --------------------------------
-    loginf("checking for Payette-related environmental variables")
-    if USER_MTLS == "":
-        logmes("{0} not set".format(ENV_MTLDIR), pre=SPACE)
-    else:
-        logmes("{0} set".format(ENV_MTLDIR), pre=SPACE)
+    if use_env:
+        logmes("Checking for Payette-related environmental variables")
+        for key, val in USER_ENV.items():
+            msg = "not set" if val is None else "set"
+            logmes("{0} {1}".format(key, msg), pre="indent")
 
-    if USER_TESTS == "":
-        logmes("{0} not set".format(ENV_BENCHDIR), pre=SPACE)
-    else:
-        logmes("{0} set".format(ENV_BENCHDIR), pre=SPACE)
+    # ------ Write out the configuration file and executable files ------------
+    cfg.write_cfg()
+    cfg.write_exes()
+    return
 
-    if not LAMBDA_MDLS:
-        logmes("Lambda models not configured", pre=SPACE)
-    else:
-        logmes("Lambda models configured", pre=SPACE)
 
-    if not ALEGRA_MDLS:
-        logmes("Alegra models not configured", pre=SPACE)
-    else:
-        logmes("Alegra models configured", pre=SPACE)
-    # -------------------------------------------------------------------------
+class PayetteConfig:
+    errors = 0
 
-    # write the the configuration file
-    begmes("writing Payette_config.py", pre=SPACE)
-    with open(PC_CONFIG_FILE, "w") as fnew:
-        fnew.write(PREAMBLE + "\n" +
-                   'PC_INTRO = """{0}"""\n'.format(PC_INTRO))
-        for key, val in PAYETTE_CONFIG.items():
-            fnew.write(dictfrmt(key, val) + "\n")
+    # --- base directories
+    intro = __intro__
+    root = os.path.dirname(os.path.realpath(__file__))
+    aux = os.path.join(root, "Aux")
+    inputs = os.path.join(root, "Aux/Inputs")
+    docs = os.path.join(root, "Documents")
+    source = os.path.join(root, "Source")
+    optrec = os.path.join(source, "OptRecipes")
+    tests = [os.path.join(root, "Benchmarks")]
+    toolset = os.path.join(root, "Toolset")
+    fortran = os.path.join(source, "Fortran")
+
+    # materials is the directory where we search for Payette material models
+    materials = os.path.join(source, "Materials")
+    models = os.path.join(materials, "Models")
+    library = os.path.join(materials, "Library")
+    includes = os.path.join(materials, "Includes")
+    mtldirs = [models]
+
+    # user environment defaults
+    _lambda = {}
+    alegra = {}
+    user_mtls = []
+    user_tests = []
+
+    # --- files files
+    prev_tests = os.path.join(toolset, "__prev_tests__.py")
+    mig_utils = os.path.join(fortran, "migutils.F")
+    runopts = os.path.join(root, ".payette/runopts")
+
+    # --- built executables
+    executables = [
+        {"name": "extractPayette",
+         "pyfile": os.path.join(source, "Payette_extract.py"),
+         "path": os.path.join(toolset, "extractPayette")},
+        {"name": "payette",
+         "pyfile": os.path.join(source, "Payette_mgr.py"),
+         "path": os.path.join(toolset, "payette")},
+        {"name": "buildPayette",
+         "pyfile": os.path.join(source, "Payette_build.py"),
+         "path": os.path.join(toolset, "buildPayette")},
+        {"name": "testPayette",
+         "pyfile": os.path.join(source, "Payette_runtest.py"),
+         "path": os.path.join(toolset, "testPayette")},]
+
+    # --- python interpreter info
+    pyint = os.path.realpath(sys.executable)
+    sage = True if "sage" in pyint.lower() else False
+    pyver = "python" if not sage else "sage -python"
+    pyver = "{0} {1}.{2}.{3}".format(pyver, major, minor, micro)
+    ext_mod_fext = sysconfig.get_config_var("SO")
+
+    # --- custom environment
+    # --- set up the environment
+    env = {}
+    envs = ["MPLCONFIGDIR", "PYTHONPATH", "ECLDIR", "GPDOCDIR", "RHOME",
+            "GP_DATA_DIR", "PKG_CONFIG_PATH", "PYTHONHOME", "LD_LIBRARY_PATH",
+            "LIBRARY_PATH", "DYLD_LIBRARY_PATH", "PATH", "SINGULAR_EXECUTABLE",
+            "SINGULARPATH"]
+
+    # --- platform info
+    ostype = sys.platform.lower()
+
+    # --- f2py setup
+    f2py = {"fexe": "gfortran", "f2py": "f2py",
+            "callback": major != 3 and not sage,}
+
+    # --- visualization
+    viz_compatible = False
+
+    def __init__(self, use_env=True, use_snl=False, fcompiler="gnu",
+                 deployed=False):
+        """Check prerequisites and initialize the PayetteConfig object
+
+        Parameters
+        ----------
+        use_env : bool
+            Use the user environment when configuring
+
+        """
+        # -- check prerequisites
+        self.check_prereqs()
+        if self.root not in sys.path:
+            sys.path.append(self.root)
+
+        # --- dotpayette directory
+        self.deployed = deployed
+        if self.deployed:
+            self.dotpayette = self.root
+            self.libdir = self.library
+        else:
+            if use_env and USER_ENV["DOTPAYETTE"] is not None:
+                self.dotpayette = os.path.realpath(USER_ENV["DOTPAYETTE"])
+            elif "darwin" in self.ostype:
+                self.dotpayette = os.path.expanduser("~/Library/Preferences/Payette")
+            else:
+                self.dotpayette = os.path.expanduser("~/.payette")
+            self.libdir = self.dotpayette
+
+        try: os.makedirs(self.dotpayette)
+        except OSError: pass
+
+        self.config_file = os.path.join(self.dotpayette, "config.py")
+        self.mtldb = os.path.join(self.dotpayette, "materials.db")
+
+        # --- setup user environment defined defaults
+        self.use_env = use_env
+        self.use_snl = use_snl
+        if self.use_env:
+            if not self.deployed:
+                self.setup_from_user_env()
+            self.setup_snl()
+
+        # --- if running with sage, configure the sage environment
+        if self.sage:
+            self.config_sage()
+
+        # --- f2py setup
+        self.setup_f2py(fcompiler)
+
+        # --- set up the rest of the environment
+        self.setup_env()
+
+        # remove current configuration file
+        remove(self.config_file)
+
+        # --- check if enthought is installed
+        self.check_viz()
+
+        if self.errors:
+            raise SystemExit(
+                "configure.py: ERROR: fix previously trapped errors")
+        pass
+
+    def check_prereqs(self):
+        """Check that the python interpreter satisifies the prerequisites
+
+        """
+        # check where we are being executed
+        fpath = os.path.basename(__file__)
+        if sys.argv[0] != fpath:
+            raise SystemExit(
+                "configure.py must be executed from {0}".format(self.root))
+        if not os.path.isdir(os.path.join(self.root, ".payette")):
+            raise SystemExit(
+                "configure.py must be executed in the Payette root directory")
+
+        if (major != 3 and major != 2) or (major == 2 and minor < 6):
+            raise SystemExit("Payette requires Python >= 2.6\n")
+
+        # --- numpy check
+        try: import numpy
+        except ImportError: raise SystemExit("numpy not importable")
+
+        # --- scipy check
+        try: import scipy
+        except ImportError: raise SystemExit("scipy not importable")
+
+    def expand_mtldirs(self):
+        """Expand mtldirs to only include those with control files
+
+        """
+        self.mtldirs = self.walk_mtldirs()
+        return
+
+    def walk_mtldirs(self, path=None):
+        """Walk through mtldirs and find directories that have Payette control
+        files
+
+        """
+        if path is None:
+            path = self.mtldirs
+        if not isinstance(path, (list, tuple)):
+            path = [path]
+
+        mtldirs = []
+        for mtldir in path:
+            mtldirs.extend([dirnam for dirnam, dirs, files in os.walk(mtldir)
+                            if (".svn" not in dirnam and
+                                ".git" not in dirnam and
+                                any("_control.xml" in y for y in files))])
             continue
-        fnew.write("if PC_ROOT not in sys.path: "
-                   "sys.path.append(PC_ROOT)\n")
-        fnew.write("sys.path.extend(PC_MTLDIRS)\n")
-        if LAMBDA_MDLS:
-            fnew.write("sys.path.extend(LAMBDA_MDLS)\n")
-        for key, val in ENV.items():
-            fnew.write('os.environ["{0}"] = "{1}"\n'.format(key, val))
+        return list(set(mtldirs))
+
+    def expand_tests(self):
+        """Walk through tests and find directories that have __test_dir__.py
+        files
+
+        """
+        tests = []
+        for d in self.tests:
+            tests.extend([dirnam for dirnam, dirs, files in os.walk(d)
+                          if "__test_dir__.py" in files])
+        self.tests = list(set(tests))
+        return
+
+    def exists(self, paths):
+        """ check if item exists on file system """
+        retval = True
+        if not isinstance(paths, (list, tuple)):
+            paths = [paths]
+        for path in paths:
+            if not os.path.exists(path):
+                retval = False
+                self.increment_error_count("{0} not found".format(path))
             continue
+        return retval
 
-    endmes("Payette_config.py written")
+    def setup_from_user_env(self):
+        """Extend the base configuration by including information from the
+        user environment
 
-    # try importing the file we just wrote to test if it is importable
-    try:
-        import Payette_config
-        if not Payette_config.PC_BUILT_EXES:
-            pass
-    except ImportError:
-        print("ERROR: Payette_config.py not importable")
-        raise
+        """
+        _user_tests = USER_ENV["BENCHDIR"]
+        if _user_tests is not None:
+            self.user_tests = [x for x in _user_tests.split(os.pathsep)]
+            self.add_user_tests(self.user_tests)
 
-    loginf("Payette environment configured")
+        _user_mtls = USER_ENV["MTLDIR"]
+        if _user_mtls is not None:
+            _user_mtls = [x for x in _user_mtls.split(os.pathsep)]
+            self.add_user_mtls(_user_mtls)
 
-    return ERRORS
+        return
 
+    def setup_snl(self):
+        """Extend the base configuration by including information from the
+        user environment - specific to SNL
 
-def create_payette_exececutables():
+        """
+        # lambda models
+        _lambda = USER_ENV["LAMBDA"]
+        if _lambda is not None:
+            if "library/models" not in _lambda:
+                _lambda = os.path.join(_lambda, "library/models")
+            self._lambda["libdir"] = self.libdir
+            self._lambda["mtldirs"] = self.walk_mtldirs(path=_lambda)
+            self._lambda["mtldb"] = os.path.join(
+                self.dotpayette, "lambda_materials.db")
+            if self.use_snl:
+                self.add_user_mtls(_lambda)
 
-    """ create the Payette executables """
+        # alegra models
+        _alegra = USER_ENV["ALEGRA"]
+        if _alegra is not None:
+            if "alegra/material_libs/utils/payette" not in _alegra:
+                _alegra = os.path.join(_alegra,
+                                       "alegra/material_libs/utils/payette")
+            self.alegra["libdir"] = self.libdir
+            self.alegra["mtldirs"] = self.walk_mtldirs(path=_alegra)
+            self.alegra["mtldb"] = os.path.join(
+                self.dotpayette, "alegra_materials.db")
+            if self.use_snl:
+                self.add_user_mtls(_alegra)
+        return
 
-    loginf("writing executable scripts")
+    def add_user_tests(self, user_tests):
+        """Extend the base configuration by including information from the
+        user environment
 
-    # message for executables that require Payette be built
-    exit_msg = """if [ ! -f {0} ]; then
-   echo "buildPayette must be executed to create {0}"
-   exit
-fi
-""".format(PC_MTLS_FILE)
-
-    for name, files in PC_BUILT_EXES.items():
-
-        exe_path, py_file = files
-
-        # remove the executable first
-        try:
-            os.remove(exe_path)
-        except OSError:
-            pass
-
-        begmes("writing {0}".format(name), pre=SPACE)
-
-        if name == "f2py":
-            write_f2py(PC_PYINT, PC_TOOLS)
-            endmes("{0} script written".format(name))
-            continue
-
-        with open(exe_path, "w") as fnew:
-            fnew.write("#!/bin/sh -f\n")
-            for key, val in ENV.items():
-                fnew.write("export {0}={1}\n".format(key, val))
+        """
+        # extend tests to include user tests
+        if not isinstance(user_tests, (list, tuple)):
+            user_tests = [user_tests]
+        for dirnam in user_tests:
+            if not os.path.isdir(dirnam):
+                self.increment_error_count("{0} not found".format(dirnam))
                 continue
-            fnew.write("PYTHON={0}\n".format(PC_PYINT))
-            fnew.write("PYFILE={0}\n".format(py_file))
-            fnew.write("$PYTHON $PYFILE $*\n")
+            self.tests.append(dirnam)
+            continue
+        return
 
-        os.chmod(exe_path, 0o750)
-        endmes("{0} script written".format(name))
-        continue
+    def add_user_mtls(self, user_mtls):
+        """Extend the base configuration by including information from the
+        user environment
 
-    path = osp.join(PC_TOOLS, "pconfigure")
-    begmes("writing pconfigure", pre=SPACE)
-    with open(path, "w") as fnew:
-        fnew.write("#!/bin/sh -f\n")
-        fnew.write("cd {0}\n".format(PC_ROOT))
-        fnew.write("{0} {1}\n".format(PC_PYINT, " ".join(sys.argv)))
-    os.chmod(path, 0o750)
-    endmes("pconfigure written")
+        """
+        # extend materials to include user materials
+        mtldirs = []
+        if not isinstance(user_mtls, (list, tuple)):
+            user_mtls = [user_mtls]
+        for dirnam in user_mtls:
+            if not os.path.isdir(dirnam):
+                self.increment_error_count("{0} not found".format(dirnam))
+                continue
+            mtldirs.append(dirnam)
+            continue
+        self.mtldirs.extend(self.walk_mtldirs(mtldirs))
+        return
 
-    loginf("executable scripts written\n")
+    def setup_env(self):
+        """get current environment
 
-    return ERRORS
+        """
+        for item in self.envs:
+            if item in os.environ:
+                self.env[item] = os.environ[item]
+            continue
+        if sys.dont_write_bytecode:
+            self.env["PYTHONDONTWRITEBYTECODE"]="X"
+        else:
+            self.env["PYTHONDONTWRITEBYTECODE"]=""
 
+        # make sure root is first on PYTHONPATH
+        pypath = os.pathsep.join([self.root, self.dotpayette])
+        self.env["PYTHONPATH"] = pypath
+        return
 
-PREAMBLE = \
-"""# *************************************************************************** #
+    def write_cfg(self):
+        """Write the configuration file"""
+        self.expand_tests()
+        self.expand_mtldirs()
+
+        logmes("writing {0}".format(self.config_file), end="...")
+        attributes = sorted(dir(self))
+        with open(self.config_file, "w") as fobj:
+            fobj.write("""\
+# *************************************************************************** #
 #                                                                             #
 # This file was generated automatically by the Payette. It contains important #
 # global Payette parameters that are configured at build time.                #
 #                                                                             #
 # This file is intended to be imported by files in Payette like               #
-# "from Payette_config import XXXXX"                                          #
+# "from config import XXXXX"                                                  #
 # where XXXXXX is a specific variable.                                        #
 #                                                                             #
 # DO NOT EDIT THIS FILE. This entire file is regenerated automatically each   #
@@ -802,30 +513,203 @@ PREAMBLE = \
 # *************************************************************************** #
 import sys
 import os
-"""
+""")
+            for attrnam in attributes:
+                attr = getattr(self, attrnam)
+                if "instancemethod" in str(type(attr)):
+                    continue
+                elif attrnam in ("__doc__", "__module__"):
+                    continue
+                if attrnam[0] in ("_", ):
+                    attrnam = attrnam[1:]
+                fobj.write("{0} = {1}\n".format(attrnam.upper(), repr(attr)))
+                continue
+            fobj.write("if ROOT not in sys.path: sys.path.append(ROOT)\n")
+            # add all material directories to sys.path
+            fobj.write("for PATH in MTLDIRS:\n"
+                       "    if os.path.basename(PATH) != 'code': "
+                       "sys.path.append(PATH)\n")
+            fobj.write("if LIBDIR not in sys.path: sys.path.append(LIBDIR)\n")
+            for key, val in self.env.items():
+                fobj.write("os.environ[{0}] = {1}\n"
+                           .format(repr(key), repr(val)))
+                continue
+        logmes("{0} written".format(os.path.basename(self.config_file)),
+               pre="indent")
 
+        # copy the runopts file
+        src = os.path.join(self.root, ".payette/runopts")
+        dest = os.path.join(self.dotpayette, "runopts.py")
+        remove(dest)
+        shutil.copyfile(src, dest)
+        return
+
+    def config_sage(self):
+        """configure for running with sage"""
+        # get the sage environment to save
+        for skey, sval in os.environ.items():
+            if "sage" in sval.lower() or "sage" in skey.lower():
+                self.envs.append(skey)
+                continue
+            sage_local = os.environ.get("SAGE_LOCAL")
+            if sage_local is not None:
+                sage_gfortran = os.path.join(sage_local, "gfortran")
+                if os.path.isfile(sage_gfortran):
+                    self.fcompiler = sage_gfortran
+            continue
+        return
+
+    def check_viz(self):
+        # --- visualization check
+        display = os.environ.get("DISPLAY")
+        logmes(
+            "Checking if visualizaton suite it supported by Python distribution")
+        if display is not None:
+            try:
+                # see if enthought tools are installed
+                from enthought.traits.api import (
+                    HasStrictTraits, Instance, String, Button,
+                    Bool, List, Str, Property, HasPrivateTraits, on_trait_change)
+                from enthought.traits.ui.api import (
+                    View, Item, HSplit, VGroup, Handler,
+                    TabularEditor, HGroup, UItem)
+                from enthought.traits.ui.tabular_adapter import TabularAdapter
+                logmes("Visualizaton suite supported by Python distribution")
+                self.viz_compatible = True
+
+            except ImportError:
+                logmes("Visualizaton suite not supported by Python distribution")
+
+        else:
+            logmes("DISPLAY not set, visualization suite cannot be imported")
+
+    def set_callback_mode(self, mode):
+        """
+
+        Parameter
+        ---------
+        mode : bool
+        """
+        self.f2py["callback"] = mode
+        return
+
+    def increment_error_count(self, message):
+        self.errors += 1
+        logerr(message)
+        return
+
+    def write_exes(self):
+        """ create the Payette executables """
+
+        logmes("Writing executable scripts")
+
+        # message for executables that require Payette be built
+        for executable in self.executables:
+            name = executable["name"]
+            pyfile = executable["pyfile"]
+            path = os.path.join(self.toolset, name)
+
+            # remove the executable first
+            remove(path)
+            logmes("writing {0}".format(name), pre="indent", end="...      ")
+            with open(path, "w") as fobj:
+                fobj.write("#!/bin/sh -f\n")
+                for key, val in self.env.items():
+                    fobj.write("export {0}={1}\n".format(key, val))
+                    continue
+                fobj.write("PYTHON={0}\n".format(self.pyint))
+                fobj.write("PYFILE={0}\n".format(pyfile))
+                fobj.write("$PYTHON $PYFILE $*\n")
+
+            os.chmod(path, 0o750)
+            logmes("{0} script written".format(name), pre="")
+            continue
+
+        path = os.path.join(self.toolset, "pconfigure")
+        logmes("writing pconfigure", pre="indent", end="...      ")
+        with open(path, "w") as fobj:
+            fobj.write("#!/bin/sh -f\n")
+            fobj.write("cd {0}\n".format(self.root))
+            fobj.write("{0} {1}\n".format(self.pyint, " ".join(sys.argv)))
+        os.chmod(path, 0o750)
+        logmes("pconfigure written", pre="")
+
+        logmes("Executable scripts written")
+
+        return
+
+    def setup_f2py(self, fcompiler):
+        """Setup the f2py executable
+
+        """
+        # get fortran executables
+        fortran = FORTRAN_VENDORS.get(fcompiler)
+        if fortran is None:
+            raise SystemExit(
+                "{0} not a supported fortran vendor".format(fcompiler))
+        pypath = os.path.dirname(self.pyint)
+        fexe = get_exe_path(fortran["exe"], path=pypath)
+        if fexe is None:
+            fexe = get_exe_path(fortran["exe"])
+            if fexe is None:
+                raise SystemExit(
+                    "fortran executable {0} not found".format(fortran["exe"]))
+
+        self.f2py["fexe"] = fexe
+        return
+
+
+def clean_payette():
+    root = os.path.dirname(os.path.realpath(__file__))
+    cp = os.path.join(root, "Toolset/cleanPayette")
+    subprocess.call(cp, shell=True)
+    return
+
+
+def remove(paths):
+    """Remove paths"""
+    if not isinstance(paths, (list, tuple)):
+        paths = [paths]
+
+    for path in paths:
+        pyc = path + ".c" if path.endswith(".py") else None
+        try: os.remove(path)
+        except OSError: pass
+        try: os.remove(pyc)
+        except OSError: pass
+        except TypeError: pass
+        continue
+    return
+
+
+def logmes(message, pre="INFO: ", end="\n"):
+    """ log info """
+    if pre.lower() == "indent":
+        pre = " " * 6
+    for line in message.split("\n"):
+        if not line.split():
+            continue
+        sys.stdout.write("{0}{1}{2}".format(pre, line, end))
+    return
+
+
+def logerr(message, pre="ERROR: ", end="\n"):
+    """ log error """
+    logmes(message, pre=pre, end=end)
+    return
+
+
+def get_exe_path(exenam, syspath=[], path=None):
+    """Get the full path to exenam"""
+    if not syspath:
+        syspath.append(os.getenv("PATH", "").split(os.pathsep))
+    search_path = syspath[0] if path is None else [path]
+    for dirnam in search_path:
+        exepath = os.path.join(dirnam, exenam)
+        if os.path.isfile(exepath):
+            return exepath
+    else:
+        return None
 
 if __name__ == "__main__":
-
-    if any("vers" in x for x in sys.argv):
-        sys.exit("Payette, version " + __version__)
-
-    if sys.argv[0] != osp.basename(__file__):
-        sys.exit("configure.py must be executed from {0}".format(PC_ROOT))
-
-    # introduce yourself
-    logmes(PC_INTRO)
-
-    # now configure
-    CONFIGURE = configure_payette(sys.argv[1:])
-    if CONFIGURE > 0:
-        sys.exit("ERROR: configure failed\n")
-
-    # and write the executables
-    WRITE_EXE = create_payette_exececutables()
-    if WRITE_EXE > 0:
-        sys.exit("ERROR: failed to write executables\n")
-
-    # all done
-    loginf("configuration complete")
-
+    sys.exit(configure(sys.argv[1:]))

@@ -45,7 +45,7 @@ import datetime
 import getpass
 import re
 
-import Payette_config as pc
+import config as cfg
 import Source.Payette_utils as pu
 import Source.Payette_notify as pn
 from Source.Payette_test import find_tests
@@ -187,7 +187,7 @@ def test_payette(argv):
     # number of processors
     nproc = min(mp.cpu_count(), opts.nproc)
 
-    pu.log_message(pc.PC_INTRO, pre="", noisy=True)
+    pu.log_message(cfg.INTRO, pre="", noisy=True)
 
     if opts.REBASELINE:
         if not args:
@@ -219,7 +219,7 @@ def test_payette(argv):
 
     # find tests
     pu.log_message("Testing Payette", noisy=True)
-    test_dirs = pc.PC_TESTS
+    test_dirs = cfg.TESTS
     for dirnam in opts.BENCHDIRS:
         dirnam = os.path.expanduser(dirnam)
         if not os.path.isdir(dirnam):
@@ -240,12 +240,12 @@ def test_payette(argv):
     if opts.testfile:
         try:
             pu.log_message("Using Payette tests from\n{0}"
-                           .format(" " * 6 + pc.PC_FOUND_TESTS), noisy=True)
-            conforming = load(open(pc.PC_FOUND_TESTS, "r"))
+                           .format(" " * 6 + cfg.PREV_TESTS), noisy=True)
+            conforming = load(open(cfg.PREV_TESTS, "r"))
             errors = 0
         except IOError:
             pu.log_warning(
-                "test file {0} not imported".format(pc.PC_FOUND_TESTS))
+                "test file {0} not imported".format(cfg.PREV_TESTS))
 
     if conforming is None:
         pu.log_message("Gathering Payette tests from\n{0}"
@@ -259,7 +259,7 @@ def test_payette(argv):
         medium_tests = [val for key, val in found_tests["medium"].items()]
         long_tests = [val for key, val in found_tests["long"].items()]
         conforming = long_tests + medium_tests + fast_tests
-        dump(conforming, open(pc.PC_FOUND_TESTS, "w"))
+        dump(conforming, open(cfg.PREV_TESTS, "w"))
 
     # find mathematica notebooks
     mathnbs = {}
@@ -433,7 +433,7 @@ def test_payette(argv):
          "   Username:         {0:<}\n".format(getpass.getuser()) +
          "   Hostname:         {0:<}\n".format(os.uname()[1]) +
          "   Platform:         {0:<}\n".format(sys.platform) +
-         "   Python Version:   {0:<}\n".format(pc.PC_PYVER))
+         "   Python Version:   {0:<}\n".format(cfg.PYVER))
 
     # List each category (diff, fail, notrun, and pass) and the tests
     test_result_statuses = test_res.keys()
@@ -553,10 +553,7 @@ def _run_test(args):
     try:
         testbase = __test_dir__.DIRECTORY
     except AttributeError:
-        if pc.PC_TESTS[0] in py_file:
-            testbase = py_dir.split(pc.PC_TESTS[0] + os.sep)[1]
-        else:
-            testbase = os.path.split(os.path.dirname(py_file))[1]
+        testbase = os.path.split(os.path.dirname(py_file))[1]
 
     benchdir = os.path.join(opts.testresdir, testbase, test.name)
 
@@ -811,7 +808,7 @@ def _get_test_module(py_file):
 
 if __name__ == "__main__":
 
-    if not os.path.isfile(pc.PC_MTLS_FILE):
+    if not os.path.isfile(cfg.MTLDB):
         pu.report_and_raise_error(
             "buildPayette must be executed before tests can be run")
 

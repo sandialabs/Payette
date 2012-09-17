@@ -30,7 +30,7 @@ import imp
 import warnings
 import Source.Payette_tensor as pt
 import Source.Payette_utils as pu
-import Source.runopts as ro
+import runopts as ro
 import Source.Payette_xml_parser as px
 from Source.Payette_xml_parser import XMLParserError as XMLParserError
 from Source.Payette_unit_manager import UnitManager as UnitManager

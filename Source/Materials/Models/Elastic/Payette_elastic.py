@@ -23,14 +23,14 @@
 import sys
 from numpy import array
 
+import config as cfg
 from Source.Payette_utils import log_warning, log_message, report_and_raise_error
 from Source.Payette_tensor import iso, dev
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
-from Payette_config import PC_F2PY_CALLBACK
 from Toolset.elastic_conversion import compute_elastic_constants
 
 try:
-    import Source.Materials.Library.elastic as mtllib
+    import elastic as mtllib
     imported = True
 except:
     imported = False
@@ -99,7 +99,7 @@ class Elastic(ConstitutiveModelPrototype):
 
         else:
             a = [1, dt, self.mui, sigold, d]
-            if PC_F2PY_CALLBACK:
+            if cfg.F2PY["callback"]:
                 a.extend([report_and_raise_error, log_message])
             sig = mtllib.elast_calc(*a)
 
@@ -128,7 +128,7 @@ class Elastic(ConstitutiveModelPrototype):
     def _fort_set_up(self, mui):
         props = array(mui)
         a = [props]
-        if PC_F2PY_CALLBACK:
+        if cfg.F2PY["callback"]:
             a .extend([report_and_raise_error, log_message])
         ui = mtllib.elast_chk(*a)
         return ui

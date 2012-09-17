@@ -35,12 +35,12 @@ import scipy.optimize
 import math
 from copy import deepcopy
 
-import Payette_config as pc
+import config as cfg
 import Source.Payette_utils as pu
 import Source.Payette_container as pcntnr
 import Source.Payette_extract as pe
 import Source.Payette_input_parser as pip
-import Source.runopts as ro
+import runopts as ro
 import Source.Payette_sim_index as psi
 import Toolset.KayentaParamConv as kpc
 
@@ -371,7 +371,7 @@ class Optimize(object):
                 # user supplied objective function
                 fnam = item[-1]
                 if not os.path.isfile(fnam):
-                    ftry = os.path.join(pc.PC_OPTREC, fnam)
+                    ftry = os.path.join(cfg.OPTREC, fnam)
                     if not os.path.isfile(ftry):
                         pu.report_error("obj_fn {0} not found".format(fnam))
                         continue
@@ -438,7 +438,7 @@ class Optimize(object):
                         "requires obj_fn to be Opt_legacy.py, instead "
                         "{0} was given".format(os.path.basename(OBJFN.__file__)))
             else:
-                fnam = os.path.join(pc.PC_OPTREC, "Opt_legacy.py")
+                fnam = os.path.join(cfg.OPTREC, "Opt_legacy.py")
                 pymod, pypath = pu.get_module_name_and_path(fnam)
                 fobj, path, desc = imp.find_module(pymod, pypath)
                 OBJFN = imp.load_module(pymod, fobj, path, desc)

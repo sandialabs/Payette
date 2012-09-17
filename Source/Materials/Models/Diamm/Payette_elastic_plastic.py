@@ -23,16 +23,15 @@
 
 from numpy import array
 
+import config as cfg
 from Source.Payette_utils import parse_token, report_and_raise_error, log_message
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 try:
-    import Source.Materials.Library.elastic_plastic as mtllib
+    import elastic_plastic as mtllib
     imported = True
 except:
     imported = False
     pass
-
-from Payette_config import PC_F2PY_CALLBACK
 
 class ElasticPlastic(ConstitutiveModelPrototype):
 
@@ -121,7 +120,7 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         sigold = matdat.get_data("stress")
         svold = matdat.get_data("extra variables")
         a = [1, dt, self.ui, sigold, d, svold]
-        if PC_F2PY_CALLBACK:
+        if cfg.F2PY["callback"]:
             a.extend([report_and_raise_error, log_message])
         a.append(self.nsv)
         signew, svnew, usm = mtllib.diamm_calc(*a)
@@ -137,14 +136,14 @@ class ElasticPlastic(ConstitutiveModelPrototype):
     def _check_props(self,**kwargs):
         props = array(self.ui0)
         a = [props]
-        if PC_F2PY_CALLBACK:
+        if cfg.F2PY["callback"]:
             a.extend([report_and_raise_error, log_message])
         ui = mtllib.dmmchk(*a)
         return ui
 
     def _set_field(self,*args,**kwargs):
         a = [self.ui]
-        if PC_F2PY_CALLBACK:
+        if cfg.F2PY["callback"]:
             a.extend([report_and_raise_error, log_message])
         return mtllib.dmmrxv(*a)
 

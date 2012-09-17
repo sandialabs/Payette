@@ -21,6 +21,7 @@ Payette*.tar.gz
 
 # Payette files
 Toolset/__found_tests__.py
+Toolset/__prev_tests__.py
 *.cols
 *.out
 *.xout

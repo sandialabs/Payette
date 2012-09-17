@@ -2,7 +2,7 @@
 
 import subprocess
 
-from Payette_config import *
+from config import *
 from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):

@@ -6,7 +6,7 @@
 # *************************************************************************** #
 
 import sys
-import Payette_config as pc
+import config as cfg
 
 # --- runtime configurable options
 DISP = 1
@@ -26,7 +26,7 @@ CHECK_SETUP = False
 WRITE_INPUT = False
 WARNING = "warn"
 SIMDIR = None
-MTLDB = pc.PC_MTLS_FILE
+MTLDB = cfg.MTLDB
 
 # not set through command line
 EFIELD_SIM = False

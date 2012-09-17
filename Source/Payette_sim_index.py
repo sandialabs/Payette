@@ -32,7 +32,7 @@ except ImportError:
     import pickle
 
 from Source.Payette_utils import who_is_calling
-import Source.runopts as ro
+import runopts as ro
 
 
 class SimulationIndexError(Exception):

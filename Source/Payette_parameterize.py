@@ -33,7 +33,7 @@ import scipy.optimize
 import Source.Payette_utils as pu
 import Source.Payette_input_parser as pip
 import Source.Payette_model_index as pmi
-import Source.runopts as ro
+import runopts as ro
 import Toolset.KayentaParamConv as kpc
 
 # Module level variables

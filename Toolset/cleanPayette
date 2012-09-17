@@ -13,19 +13,32 @@ if any(x in ("-h", "-help", "--help", "help") for x in sys.argv):
 
 SOEXT = sysconfig.get_config_var("SO")
 
+OSTYPE = sys.platform.lower()
+DOTPAYETTE = os.getenv("DOTPAYETTE")
+if DOTPAYETTE is None:
+    if "darwin" in OSTYPE:
+        DOTPAYETTE = os.path.expanduser("~/Library/Preferences/Payette")
+    else:
+        DOTPAYETTE = os.path.expanduser("~/.payette")
+
 PATS_TO_REMOVE = ["*.pyc", "*.pyo", "Payette_config.py",
                   "*{0}".format(SOEXT),
                   "payette_materials.db", "installed_materials.pkl",
                   "__found_tests__.py",
                   "*.log", "*.echo", "*.prf", "*.diff", "*.xout", "*.out",
-                  "*.math1", "*.math2", "*.props", "*.vtable", "*.dtable", ]
+                  "*.math1", "*.math2", "*.props", "*.vtable", "*.dtable",
+                  "*materials.db", "config.py", "runopts.py"]
 
-DIRS_TO_CLEAN = ["Aux", "Benchmarks", "Documents", "Examples",
-                 "Source", "Toolset",]
+DIRS_TO_CLEAN = [RDIR]
+DIRS_TO_CLEAN.extend([os.path.join(RDIR, x) for x in
+                      ["Aux", "Benchmarks", "Documents", "Examples",
+                       "Source", "Toolset",]])
+if os.path.isdir(DOTPAYETTE):
+    DIRS_TO_CLEAN.append(DOTPAYETTE)
 
 for directory in DIRS_TO_CLEAN:
     for dirnam, dirs, files in os.walk(os.path.join(RDIR, directory)):
-        if ".svn" in dirnam or ".git" in dirnam:
+        if ".svn" in dirnam or ".git" in dirnam or ".payette" in dirnam:
             continue
 
         for fnam in files:

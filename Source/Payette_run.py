@@ -38,14 +38,14 @@ import time
 import multiprocessing as mp
 import logging
 
-import Payette_config as pc
+import config as cfg
 import Source.Payette_utils as pu
 import Source.Payette_container as pcntnr
 import Source.Payette_optimize as po
 import Source.Payette_permutate as pp
 import Source.Payette_parameterize as pparam
 import Source.Payette_input_parser as pip
-import Source.runopts as ro
+import runopts as ro
 
 def run_payette(siminp=None, restart=False, timing=False, cchar=None,
                 nproc=ro.NPROC, disp=ro.DISP, verbosity=ro.VERBOSITY):

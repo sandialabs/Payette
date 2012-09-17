@@ -24,7 +24,6 @@ from __future__ import print_function
 
 import os,sys
 
-import Payette_config as pc
 from Source.Payette_material_builder import MaterialBuilder
 from Source.Payette_build import BuildError as BuildError
 
