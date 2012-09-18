@@ -45,8 +45,6 @@ class Viz_Plot2D(HasTraits):
 
     def __init__(self, **traits):
          HasTraits.__init__(self, **traits)
-         self.high_time = float(max(self.plot_data[0][:,0]))
-         self.low_time = float(min(self.plot_data[0][:,0]))
          self.time_data_labels = {}
          self.axis_index = 0
          self.runs_shown = [True] * len(self.run_names)
@@ -80,6 +78,8 @@ class Viz_Plot2D(HasTraits):
     def change_plot(self, indices):
          self.plot_indices = indices
          self.container.components[:] = []
+         self.high_time = float(max(self.plot_data[0][:,0]))
+         self.low_time = float(min(self.plot_data[0][:,0]))
          value_mapper = None
          index_mapper = None
          plots = {}
