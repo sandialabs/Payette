@@ -33,17 +33,11 @@ class ChangeAxis(HasStrictTraits):
         ms = SingleSelect(choices=self.headers, plot=self.Plot_Data)
         ms.configure_traits(handler=ChangeAxisHandler())
 
-    view = View(VGroup(
-                      Item('Change_X_Axis',
-                           enabled_when='Change_X_Axis_Enabled==True',
-                           show_label = False),
-                      show_border=True,
-                      padding=15
-                      ),
-                width=150,
-                height=50,
-                resizable=True
-               )
+    view = View(Item('Change_X_Axis',
+                     enabled_when='Change_X_Axis_Enabled==True',
+                     show_label=False
+                     )
+                )
 
 class SingleSelectAdapter(TabularAdapter):
     columns = [ ('Payette Outputs', 'myvalue') ]
@@ -119,8 +113,24 @@ class Viz_ModelPlot(HasStrictTraits):
     headers = List(Str)
     Multi_Select = Instance(MultiSelect)
     Change_Axis = Instance(ChangeAxis)
+    Reset_Zoom = Button('Reset Zoom')
+    Reload_Data = Button('Reload Data')
     file_paths = List(String)
     file_variables = List(String)
+    
+    def _Reset_Zoom_fired(self):
+        self.Plot_Data.change_plot(self.Plot_Data.plot_indices)
+        
+    def _Reload_Data_fired(self):
+        self.headers = pu.get_header(self.file_paths[0])
+        data = []
+        for file_path in self.file_paths:
+            data.append(pu.read_data(file_path))
+        self.Plot_Data.plot_data=data
+        self.Plot_Data.headers = self.headers
+        self.Multi_Select.choices = self.headers
+        self.Change_Axis.headers = self.headers
+        self.Plot_Data.change_plot(self.Plot_Data.plot_indices)
 
     def __init__(self, **traits):
         HasStrictTraits.__init__(self, **traits)
@@ -187,6 +197,12 @@ def create_Viz_ModelPlot(window_name, **kwargs):
                                   show_label=False, width=224, height=668, springy=True, resizable=True),
                              Item('Change_Axis',
                                   show_label=False),
+                             Item('Reset_Zoom',
+                                 # enabled_when='Change_X_Axis_Enabled==True',
+                                  show_label = False),
+                             Item('Reload_Data',
+                                 # enabled_when='Change_X_Axis_Enabled==True',
+                                  show_label = False),
                              ),
                        Item('Plot_Data',
                             show_label=False, width=800, height=768, springy=True, resizable=True)
