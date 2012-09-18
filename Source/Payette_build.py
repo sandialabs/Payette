@@ -198,13 +198,12 @@ def build_payette(argv):
     if opts.AUG_DIR is not None:
         if not os.path.isdir(opts.AUG_DIR):
             parser.error("{0} not found".format(opts.AUG_DIR))
-        payette_mtls_file = os.path.join(opts.AUG_DIR,
-                                         os.path.basename(cfg.MTLDB))
+        payette_mtls_file = os.path.join(
+            opts.AUG_DIR, "auxiliary_materials.db")
         payette_libdir = opts.AUG_DIR
-        for dirnam, dirs, files in os.walk(opts.AUG_DIR):
-            search_directories.append(dirnam)
+        search_directories.extend(walk_mtldirs(opts.AUG_DIR))
 
-    if opts.LAMBDA:
+    elif opts.LAMBDA:
         if not cfg.LAMBDA:
             parser.error("Lambda models not configured")
         payette_mtls_file = cfg.LAMBDA["mtldb"]
@@ -222,6 +221,7 @@ def build_payette(argv):
         payette_mtls_file = cfg.MTLDB
         payette_libdir = cfg.LIBDIR
         search_directories.extend(cfg.MTLDIRS)
+
     search_directories = list(set(search_directories))
 
     # prepare compiler options
@@ -627,6 +627,23 @@ def _build_lib(args):
         pass
 
     return build_error
+
+
+def walk_mtldirs(path):
+    """Walk through mtldirs and find directories that have Payette control
+    files
+
+    """
+    if not isinstance(path, (list, tuple)):
+        path = [path]
+    mtldirs = []
+    for mtldir in path:
+        mtldirs.extend([dirnam for dirnam, dirs, files in os.walk(mtldir)
+                        if (".svn" not in dirnam and
+                            ".git" not in dirnam and
+                            any("_control.xml" in y for y in files))])
+        continue
+    return list(set(mtldirs))
 
 
 if __name__ == "__main__":

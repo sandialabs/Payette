@@ -20,9 +20,8 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-from __future__ import print_function
-
 import os,sys
+from shutil import copyfile
 
 import config as cfg
 from Source.Payette_material_builder import MaterialBuilder
@@ -45,14 +44,19 @@ class Build(MaterialBuilder):
     def build_extension_module(self):
 
         # fortran files
-        srcs = ["plastic.f90"]
-        self.source_files = [os.path.join(self.source_directory, x)
-                             for x in srcs]
-        self.source_files.append(os.path.join(cfg.FORTRAN,
-                                              "tensor_toolkit.f90"))
+        eos_file = os.getenv("EOS_MODULI_FILE")
+        if eos_file is None:
+            eos_file = os.path.join(self.source_directory, "plastic_eos.f90")
+
+        tens_tools = os.path.join(cfg.FORTRAN, "tensor_toolkit.f90")
+        self.source_files.extend([tens_tools, eos_file])
+        f_srcs = ["plastic_mod.f90", "plastic.f90"]
+        self.source_files.extend([os.path.join(self.source_directory, x)
+                                  for x in f_srcs])
 
         try:
             retval = self.build_extension_module_with_f2py()
+
         except BuildError as error:
             sys.stderr.write("ERROR: {0}".format(error.message))
             retval = error.errno

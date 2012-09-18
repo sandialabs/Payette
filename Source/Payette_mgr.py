@@ -331,10 +331,11 @@ def main(argv):
         parser.error("-D, -L, and -A must be specified independently")
 
     if opts.AUG_DIR is not None:
-        if not os.path.isdir(opts.AUG_DIR):
-            parser.error("{0} not found".format(opts.AUG_DIR))
         material_index = os.path.join(
-            opts.AUG_DIR, os.path.basename(cfg.MTLDB))
+            opts.AUG_DIR, "auxiliary_materials.db")
+        if not os.path.isfile(material_index):
+            pu.report_and_raise_error("{0} not found".format(material_index))
+        sys.path.append(opts.AUG_DIR)
     elif opts.LAMBDA:
         material_index = cfg.LAMBDA["mtldb"]
     elif opts.ALEGRA:

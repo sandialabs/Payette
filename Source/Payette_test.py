@@ -563,9 +563,6 @@ class PayetteTest(object):
         for val in to_compare:
             gidx = goldheader.index(val)
             oidx = outheader.index(val)
-            mxg = (np.amax(np.abs(gold[:, gidx])) if
-                   np.amax(np.abs(gold[:, gidx])) != 0. else 1.)
-
             rmsd, nrmsd = pu.compute_rms(gold[:,0], gold[:,gidx],
                                          out[:,0], out[:,oidx])
 

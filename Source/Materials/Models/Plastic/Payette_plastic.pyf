@@ -18,47 +18,48 @@ end python module payette__user__routines
 
 python module plastic ! in
     interface  ! in :plastic
-        subroutine plast_calc(nblk,ninsv,dt,ui,sig,d,sv)
+        subroutine plastic_calc(nblk,ninsv,dt,ui,sig,d,sv)
             use payette__user__routines
-            integer, parameter :: nprop=6
-            integer, parameter :: nsv=7
+            integer, parameter :: nprop=52
+            integer, parameter :: nsv=21
             integer, intent(in) :: ninsv
-            double precision intent(in) :: dt
-            double precision dimension(nprop),intent(in) :: ui
-            double precision dimension(6),intent(in,out) :: sig
-            double precision dimension(6),intent(in) :: d
-            double precision dimension(nsv),intent(in,out) :: sv
+            real*8 intent(in) :: dt
+            real*8 dimension(nprop),intent(in) :: ui
+            real*8 dimension(6),intent(in,out) :: sig
+            real*8 dimension(6),intent(in) :: d
+            real*8 dimension(nsv),intent(in,out) :: sv
             intent(callback) report_and_raise_error
             external report_and_raise_error
             intent(callback) log_message
             external log_message
-        end subroutine plast_calc
-        subroutine plast_chk(ui) ! in :diamm:.//diamm_mig.F
+        end subroutine plastic_calc
+        subroutine plastic_chk(ui) ! in :diamm:.//diamm_mig.F
             use payette__user__routines
-            integer, parameter :: nprop=6
-            integer, parameter :: nsv=7
-            double precision dimension(nprop),intent(in,out) :: ui
+            integer, parameter :: nprop=52
+            integer, parameter :: nsv=21
+            real*8 dimension(nprop),intent(in,out) :: ui
             intent(callback) report_and_raise_error
             external report_and_raise_error
             intent(callback) log_message
             external log_message
-        end subroutine plast_chk
-        subroutine plast_rxv(nx,namea,keya,rinit,iadvct)
+        end subroutine plastic_chk
+        subroutine plastic_rxv(ui,nx,namea,keya,rinit,iadvct)
             use payette__user__routines
-            integer, parameter :: nprop=6
-            integer, parameter :: nsv=7
+            integer, parameter :: nprop=52
+            integer, parameter :: nsv=21
             integer,parameter :: mxn=nsv*80
             integer,parameter :: mxk=nsv*10
             integer intent(out) :: nx
             character dimension(mxn),intent(out) :: namea
             character dimension(mxk),intent(out) :: keya
-            double precision dimension(nsv),intent(out) :: rinit
+            real*8 dimension(nsv),intent(out) :: rinit
+            real*8 dimension(nprop),intent(in) :: ui
             integer dimension(nsv),intent(out) :: iadvct
             intent(callback) report_and_raise_error
             external report_and_raise_error
             intent(callback) log_message
             external log_message
-        end subroutine plast_rxv
+        end subroutine plastic_rxv
     end interface
 end python module plastic
 

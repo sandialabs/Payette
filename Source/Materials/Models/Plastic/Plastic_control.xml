@@ -14,6 +14,8 @@
   <Files>
     <Core>
       plastic.f90
+      plastic_mod.f90
+      plastic_eos.f90
       Payette_plastic.py
     </Core>
     <Interface type="payette">
@@ -29,63 +31,129 @@
 
   <ModelParameters>
     <Key>plastic</Key>
-    <Aliases>elastic plastic, von mises</Aliases>
 
     <Units>SI</Units>
 
-    <Parameter name="LAM" order="0"  type="double" default="0" units="PRESSURE_UNITS">
-      First Lame parameter = G(E-2G)/(3G-E) = K-2G/3
-    </Parameter>
-    <Parameter name="G"   order="1"  type="double" default="0" units="PRESSURE_UNITS" aliases="MU, G0, SHMOD, SHEAR MODULUS">
-      Shear modulus (= 2nd Lame parameter, mu) = E/2/(1+nu)
-    </Parameter>
-    <Parameter name="E"   order="2"  type="double" default="0" units="PRESSURE_UNITS" aliases="YOUNGS, YOUNGS MODULUS">
-      Young's modulus = 3K(1-2nu) = 2G(1+nu) = 9KG/(3K+G)
-    </Parameter>
-    <Parameter name="NU"  order="3"  type="double" default="0" units="PRESSURE_UNITS" aliases="POISSONS, POISSONS RATIO">
-      Poisson's ratio = (3K-E)/6K = lam/2/(lam+G)
-    </Parameter>
-    <Parameter name="K"   order="4"  type="double" default="0" units="PRESSURE_UNITS" aliases="B0, BKMOD, BULK MODULUS">
+    <Parameter name="K"   order="0"  type="double" default="0" units="PRESSURE_UNITS" aliases="B0, BKMOD, BULK MODULUS">
       Bulk modulus = E/3/(1-2nu) = lam + 2G/3
     </Parameter>
-    <Parameter name="H"   order="5"  type="double" default="0" units="PRESSURE_UNITS" aliases="CONSTRAINED MODULUS">
-      Constrained modulus = 2G+lam = 3K-2lam = K + 4G/3
+    <Parameter name="MU"   order="1"  type="double" default="0" units="PRESSURE_UNITS" aliases="G, G0, SHMOD, SHEAR MODULUS">
+      Shear modulus (= 2nd Lame parameter, mu) = E/2/(1+nu)
     </Parameter>
-    <Parameter name="KO"  order="6"  type="double" default="0" units="NO_UNITS"      >
-      SIGy/SIGx in uniaxial strain = nu/(1-nu)
+    <Parameter name="NU" order="2" type="double" default="0.0" units="NO_UNITS">
+      Poisson's ratio
     </Parameter>
-    <Parameter name="CL"  order="7"  type="double" default="0" units="VELOCITY_UNITS">
-      Longitudinal wave speed = sqrt(H/rho)
+    <Parameter name="A0"   order="3" type="double" default="0" units="PRESSURE_UNITS" aliases="Y0, YIELD STRENGTH">
+      Shear strength
     </Parameter>
-    <Parameter name="CT"  order="8"  type="double" default="0" units="VELOCITY_UNITS">
-      Shear (TRANSVERSE) wave speed = sqrt(G/rho)
+    <Parameter name="A1"   order="4" type="double" default="0" units="NO_UNITS">
+      Linear yield pressure parameter
     </Parameter>
-    <Parameter name="CO"  order="9"  type="double" default="0" units="VELOCITY_UNITS">
-      Bulk/plastic wave speed = sqrt(K/rho)=SQRT(cl^2-4(ct^2)/3)
+    <Parameter name="A2"   order="5" type="double" default="0" units="NO_UNITS">
+      Free yield surface parameter
     </Parameter>
-    <Parameter name="CR"  order="10" type="double" default="0" units="VELOCITY_UNITS">
-      Thin rod elastic wave speed = sqrt(E/rho)
+    <Parameter name="A3"   order="6" type="double" default="0" units="NO_UNITS">
+      Free yield surface parameter
     </Parameter>
-    <Parameter name="RHO" order="11" type="double" default="0" units="DENSITY_UNITS"  aliases="DENSITY">
-      Density
-    </Parameter>
-    <Parameter name="Y"   order="12" type="double" default="0" units="PRESSURE_UNITS" aliases="Y0, A1, YIELD STRENGTH">
-      Yield strength in tension
-    </Parameter>
-    <Parameter name="A"   order="13" type="double" default="0" units="PRESSURE_UNITS">
+    <Parameter name="C0"   order="7" type="double" default="0" units="PRESSURE_UNITS">
       Kinematic hardening parameter
     </Parameter>
-    <Parameter name="C"   order="14" type="double" default="0" units="PRESSURE_UNITS">
+    <Parameter name="C1"   order="8" type="double" default="0" units="PRESSURE_UNITS">
       Isotropic hardening parameter
     </Parameter>
-    <Parameter name="M"   order="15" type="double" default="0" units="NO_UNITS"      >
-      Isotropic hardening parameter
+    <Parameter name="C2"   order="9" type="double" default="0" units="NO_UNITS">
+      Isotropic hardening power parameter
     </Parameter>
+    <Parameter name="A0F"   order="10" type="double" default="0" units="PRESSURE_UNITS">
+      Failed A0
+    </Parameter>
+    <Parameter name="A1F"   order="11" type="double" default="0" units="NO_UNITS">
+      Failed A1
+    </Parameter>
+    <Parameter name="GF"   order="12" type="double" default="0" units="NO_UNITS">
+      Plastic strain to failure
+    </Parameter>
+    <Parameter name="SF"   order="13" type="double" default="0" units="NO_UNITS">
+      Fail speed
+    </Parameter>
+    <Parameter name="NLF"   order="14" type="double" default="0" units="NO_UNITS">
+      Nonlocal factor
+    </Parameter>
+    <Parameter name="DEJAVU"   order="15" type="double" default="0" units="NO_UNITS">
+      Dejavu
+    </Parameter>
+    <Parameter name="FREE04"   order="16" type="double" default="0" units="NO_UNITS"> </Parameter>
+    <Parameter name="FREE03"   order="17" type="double" default="0" units="NO_UNITS"> </Parameter>
+    <Parameter name="FREE02"   order="18" type="double" default="0" units="NO_UNITS"> </Parameter>
+    <Parameter name="FREE01"   order="19" type="double" default="0" units="NO_UNITS"> </Parameter>
+    <Parameter name="EOSID"   order="20"  type="double" default="0" units="NO_UNITS">
+      Equation of state ID.
+    </Parameter>
+    <Parameter name="R0" order="21" type="double" default="0" units="DENSITY_UNITS"  aliases="DENSITY, RHO">
+      Density
+    </Parameter>
+    <Parameter name="T0" order="22" type="double" default="298" units="TEMPERATURE_UNITS">
+      initial temperature
+    </Parameter>
+    <Parameter name="CS" order="23" type="double" default="0.0" units="VELOCITY_UNITS">
+      initial soundspeed
+    </Parameter>
+    <Parameter name="S1" order="24" type="double" default="0.0" units="NO_UNITS">
+      linear us/up coefficient
+    </Parameter>
+    <Parameter name="GRPAR" order="25" type="double" default="0.0" units="NO_UNITS">
+      Gruneisen parameter
+    </Parameter>
+    <Parameter name="CV" order="26" type="double" default="0.0" units="SPECIFIC_HEAT_UNITS" aliases="SPHT">
+      specific heat
+    </Parameter>
+    <Parameter name="EOS01" order="27" type="double" default="0.0" units="SPECIFIC_ENERGY_UNITS" aliases="ESFTMG">
+      shift in energy fit
+    </Parameter>
+    <Parameter name="EOS02" order="28" type="double" default="0.0" units="DENSITY_UNITS" aliases="RPMG">
+      initial porous density
+    </Parameter>
+    <Parameter name="EOS03" order="29" type="double" default="0.0" units="PRESSURE_UNITS" aliases="PSMG">
+      crushup pressure
+    </Parameter>
+    <Parameter name="EOS04" order="30" type="double" default="0.0" units="PRESSURE_UNITS" aliases="PEMG">
+      pressure at elastic limit
+    </Parameter>
+    <Parameter name="EOS05" order="31" type="double" default="0.0" units="VELOCITY_UNITS" aliases="CEMG">
+      soundspeed of foam
+    </Parameter>
+    <Parameter name="EOS06" order="32" type="double" default="0.0" units="NO_UNITS" aliases="NSUBMG">
+      subcycle factor
+    </Parameter>
+    <Parameter name="EOS07" order="33" type="double" default="0.0" units="NO_UNITS" aliases="S2MG">
+      quadratic us/up coefficient
+    </Parameter>
+    <Parameter name="EOS08" order="34" type="double" default="1.0" units="NO_UNITS" aliases="TYPMG">
+      type indicator
+    </Parameter>
+    <Parameter name="EOS09" order="35" type="double" default="0.0" units="VELOCITY_UNITS" aliases="BMG"></Parameter>
+    <Parameter name="EOS10" order="36" type="double" default="1.0" units="NO_UNITS" aliases="XBMG"></Parameter>
+    <Parameter name="EOS11" order="37" type="double" default="1.0" units="NO_UNITS" aliases="NBMG"></Parameter>
+    <Parameter name="EOS12" order="38" type="double" default="2.0" units="NO_UNITS" aliases="PWRMG"></Parameter>
+    <Parameter name="DC01" order="39" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC02" order="40" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC03" order="41" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC04" order="42" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC05" order="43" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC06" order="44" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC07" order="45" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC08" order="46" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC09" order="47" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC10" order="48" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC11" order="49" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC12" order="50" type="double" default="0.0" units="NO_UNITS"></Parameter>
+    <Parameter name="DC13" order="51" type="double" default="0.0" units="NO_UNITS"></Parameter>
 
-    <Material name="AL_6061"   dist="unlimited" E="68.9e9"  NU="0.330" Y="276.e6" aliases="Aluminum"/>
-    <Material name="TIB2"      dist="unlimited" E="565e9"   NU="0.108" Y="1.8e9"  aliases="Titanium Diboride"/>
-    <Material name="TI_6AL_4V" dist="unlimited" E="113.8e9" NU="0.342" Y="880.e6" aliases="Titanium"/>
-    <Material name="COPPER" dist="unlimited" Y="5.196000E+07" G="4.45E10" NU=".355"/>
+    <!-- Parameterized materials -->
+    <Material name="steel" dist="uur" A0="1.650000E+08" CV="1.000000E+04" GRPAR="1.650000E+00" EOSID="1." R0="7.850000E+03" CS="5.883510E+03" NU=".2939"/>
+
+    <Material name="copper" dist="uur" A0="5.196000E+07" CV="4.560000E+02" GRPAR="1.990000E+00" EOSID="1" R0="8.930000E+03" S1="1.489000E+00" CS="3.940000E+03" NU=".355"/>
+
 
   </ModelParameters>
 

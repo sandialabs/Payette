@@ -21,8 +21,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from numpy import concatenate, array, zeros
-from math import sqrt
+import sys
+import numpy as np
 
 import config as cfg
 from Source.Payette_utils import (
@@ -43,43 +43,33 @@ class Plastic(ConstitutiveModelPrototype):
     def __init__(self, control_file, *args, **kwargs):
         super(Plastic, self).__init__(control_file, *args, **kwargs)
 
-        self.imported = True if self.code == "python" else imported
-
         # register parameters
+        self.imported = imported
         self.register_parameters_from_control_file()
 
         pass
 
     # public methods
     def set_up(self, matdat):
-        iam = self.name + ".set_up"
 
         # parse parameters
         self.parse_parameters()
 
-        # the plastic model only needs the bulk and shear modulus, but the
-        # user could have specified any one of the many elastic moduli.
-        # Convert them and get just the bulk and shear modulus
-        eui = compute_elastic_constants(*self.ui0[0:12])
-        for key, val in eui.items():
-            if key.upper() not in self.parameter_table:
-                continue
-            idx = self.parameter_table[key.upper()]["ui pos"]
-            self.ui0[idx] = val
+        # check parameters
+        a = [np.array(self.ui0)]
+        if cfg.F2PY["callback"]:
+            a.extend([report_and_raise_error, log_message])
+        self.ui = mtllib.plastic_chk(*a)
 
-        # Payette wants ui to be the same length as ui0, but we don't want to
-        # work with the entire ui, so we only pick out what we want
-        mu, k = self.ui0[1], self.ui0[4]
-        self.ui = self.ui0
-        mui = array([k, mu] + self.ui0[12:].tolist())
-
-        if self.code == "python":
-            self.mui, nxtra, xtra, names, keys = self._py_set_up(mui)
-        else:
-            self.mui, nxtra, xtra, names, keys = self._fort_set_up(mui)
+        a = [np.array(self.ui)]
+        if cfg.F2PY["callback"]:
+            a.extend([report_and_raise_error, log_message])
+        nxtra, namea, keya, xtra, iadvct = mtllib.plastic_rxv(*a)
+        names = parse_token(nxtra, namea)
+        keys = parse_token(nxtra, keya)
 
         self.nsv = nxtra
-        self.bulk_modulus, self.shear_modulus = self.mui[0], self.mui[1]
+        self.bulk_modulus, self.shear_modulus = self.ui[0], self.ui[1]
 
         # register extra variables
         matdat.register_xtra_vars(nxtra, names, keys, xtra)
@@ -96,168 +86,12 @@ class Plastic(ConstitutiveModelPrototype):
         sigold = matdat.get_data("stress")
         xtra = matdat.get_data("extra variables")
 
-        if self.code == "python":
-            sig, xtra = _py_update_state(self.mui, dt, d, sigold, xtra)
-
-        else:
-            a = [1, self.nsv, dt, self.mui, sigold, d, xtra]
-            if cfg.F2PY["callback"]:
-                a.extend([report_and_raise_error, log_message])
-            sig, xtra = mtllib.plast_calc(*a)
+        a = [1, self.nsv, dt, self.ui, sigold, d, xtra]
+        if cfg.F2PY["callback"]:
+            a.extend([report_and_raise_error, log_message])
+        sig, xtra = mtllib.plastic_calc(*a)
 
         # store updated data
         matdat.store_data("extra variables", xtra)
         matdat.store_data("stress", sig)
-
-    def _py_set_up(self, mui):
-
-        k, mu, y, a, c, m = mui
-
-        if k <= 0.:
-            report_and_raise_error("Bulk modulus K must be positive")
-
-        if mu <= 0.:
-            report_and_raise_error("Shear modulus MU must be positive")
-
-        if y < 0.:
-            report_and_raise_error("Yield strength Y must be positive")
-
-        if y == 0:
-            y = 1.e99
-
-        if a < 0.:
-            report_and_raise_error(
-                "Kinematic hardening modulus A must be non-negative")
-
-        if c < 0.:
-            report_and_raise_error(
-                "Isotropic hardening modulus C must be non-negative")
-
-        if m < 0:
-            report_and_raise_error(
-                "Isotropic hardening power M must be non-negative")
-        elif m == 0:
-            if c != 0:
-                log_warning(
-                    "Isotropic hardening modulus C being set 0 because M = 0")
-            c = 0.
-
-        # poisson's ratio
-        nu = (3. * k - 2 * mu) / (6 * k + 2 * mu)
-        if nu < 0.:
-            log_warning("negative Poisson's ratio")
-
-        ui = array([k, mu, y, a, c, m])
-
-        # register state variables
-        names, keys = [], []
-
-        # equivalent plastic strain
-        names.append("distortional plastic strain")
-        keys.append("gam")
-
-        # back stress
-        for i in range(6):
-            names.append("{0} component of back stress".format(SYM_MAP[i]))
-            keys.append("BSIG{0}".format(SYM_MAP[i]))
-            continue
-        nxtra = len(keys)
-        xtra = zeros(nxtra)
-        return ui, nxtra, xtra, names, keys
-
-    def _fort_set_up(self, mui):
-        ui = self._check_props(mui)
-        nxtra, namea, keya, xtra, iadvct = self._set_field(ui)
-        names = parse_token(nxtra, namea)
-        keys = parse_token(nxtra, keya)
-        return ui, nxtra, xtra, names, keys
-
-    def _check_props(self, mui):
-        props = array(mui)
-        a = [props]
-        if cfg.F2PY["callback"]:
-            a.extend([report_and_raise_error, log_message])
-        ui = mtllib.plast_chk(*a)
-        return ui
-
-    def _set_field(self, ui):
-        a = []
-        if cfg.F2PY["callback"]:
-            a.extend([report_and_raise_error, log_message])
-        return mtllib.plast_rxv(*a)
-
-def _py_update_state(ui, dt, d, sigold, xtra):
-
-    iam = "plastic._py_update_state"
-
-    # passed quantities
-    de = d * dt
-    gam = xtra[0]
-    bstress = xtra[1:]
-    k, mu, y0, a, c, m = ui
-    threek, twomu = 3. * k, 2. * mu
-
-    # elastic predictor
-    dsig = threek * iso(de) + twomu * dev(de)
-    sig = sigold + dsig
-
-    # elastic predictor relative to back stress - shifted stress
-    xi = sig - bstress
-
-    # deviator of shifted stress and its magnitude
-    xid = dev(xi)
-    rt2j2 = mag(xid)
-
-    # yield stress
-    y = y0 if c == 0. else y0 + c * gam ** (1 / m)
-    radius = sqrt(2. / 3.) * y
-
-    # check yield
-    facyld = 0. if rt2j2 - radius <= 0. else 1.
-    rt2j2 += (1. - facyld) # avoid any divide by zero
-
-    # yield surface normal and return direction
-    #                   df/dsig
-    #            n = -------------,  p = C : n
-    #                 ||df/dsig||
-    #
-    #            df           xid         || df ||      1
-    #           ---- = ----------------,  ||----|| = -------
-    #           dsig    root2 * radius    ||dsig||    root2
-    n = xid / rt2j2  #radius
-    p = threek * iso(n) + twomu * dev(n)
-
-    # consistency parameter
-    #                  n : dsig
-    #         dlam = -----------,  H = dfda : ha + dfdy * hy
-    #                 n : p - H
-
-    # numerator
-    num = ddp(n, dsig)
-
-    # denominator
-    ha = 2. / 3. * a * dev(n)
-    dfda = -xid / sqrt(2.) / rt2j2 # radius
-    hy = 0. if c == 0. else m * c * ((y - y0) / c) ** ((m - 1) / m)
-    dfdy = -1. / sqrt(3.)
-    H = sqrt(2.) * (ddp(dfda, ha) + dfdy * hy)
-    dnom = ddp(n, p) - H + (1. - facyld) # avoid any divide by zero
-
-    dlam = facyld * num / dnom
-    if dlam < 0.:
-        report_and_raise_error("negative dlam")
-
-    # equivalet plastic strain
-    gam += dlam * mag(dev(n))
-
-    # update back stress
-    bstress = bstress + 2. / 3. * a * dlam * dev(n)
-
-    # update stress
-    sig = sig - dlam * p
-
-    # store data
-    xtra = concatenate((array([gam]), bstress))
-
-    return sig, xtra
-
+        return
