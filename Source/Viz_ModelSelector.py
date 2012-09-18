@@ -1,4 +1,4 @@
-from enthought.traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant, Enum
+from enthought.traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant, Enum, Tuple, File, on_trait_change
 from enthought.traits.ui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, InstanceEditor, ListEditor, Spring, Action, Handler
 from enthought.traits.ui.tabular_adapter import TabularAdapter
 
@@ -7,6 +7,7 @@ import Payette_xml_parser as px
 
 from Viz_ModelData import PayetteModel, PayetteModelParameter, PayetteMaterial, PayetteMaterialParameter
 from Viz_ModelRunner import ModelRunner, IModelRunnerCallbacks
+import Viz_Utility as vu
 
 class PayetteInputStringPreview(HasStrictTraits):
     class ISPHandler(Handler):
@@ -43,72 +44,28 @@ class PayetteMaterialModelSelector(HasStrictTraits):
     run_button = Button("Run Material Model")
     model_index = pmi.ModelIndex()
     rerun = Bool(False)
+    supplied_data = List(Tuple(String, File))
     callbacks = Instance(IModelRunnerCallbacks)
 
     def __init__(self, **traits):
         HasStrictTraits.__init__(self, **traits)
         if self.models is None or len(self.models) < 1:
-            self.loadModels()
-
-    def loadModels(self):
-        for modelName in self.model_index.constitutive_models():
-            control_file = self.model_index.control_file(modelName)
-            cmod = self.model_index.constitutive_model_object(modelName)
-            cmod_obj = cmod(control_file)
-            if self.model_type != 'any' and self.model_type not in cmod_obj.material_type:
-                continue
-
-            params = []
-            for param in cmod_obj.get_parameter_names_and_values():
-                params.append(
-                    PayetteModelParameter(name = param[0], description = param[1], distribution = 'Specified',
-                                          specified = param[2])
-                )
-
-            model = PayetteModel(model_name = modelName, parameters = params, model_type = [cmod_obj.material_type])
-            model.on_trait_change(self.update_sim_name, 'selected_material')
-            self.models.append(model)
-
-        self.selected_model = self.models[0]
-
-    def _selected_model_changed(self, info):
-        if info is None or len(info.materials) > 0:
-            return
-
-        info.materials = self.loadModelMaterials(info.model_name)
+            self.models = vu.loadModels()
+            if len(self.models) > 0:
+                self.selected_model = self.models[0]
+            for model in self.models:
+                model.supplied_data = self.supplied_data
 
     def _simulation_name_changed(self, info):
         self.auto_generated = False
 
+    @on_trait_change('selected_model.selected_material')
     def update_sim_name(self):
         if self.auto_generated:
             if self.selected_model is not None and self.selected_model.selected_material is not None:
                 self.simulation_name = self.selected_model.model_name + "_" + self.selected_model.selected_material.name
             # A trick to reset the flag, since _simulation_name_changed() is called first
             self.auto_generated = True
-
-    def loadModelMaterials(self, modelName):
-        if modelName not in self.model_index.constitutive_models():
-            return []
-
-        materials = []
-        material_database = self.model_index.control_file(modelName)
-        if material_database is not None:
-            xml_obj = px.XMLParser(material_database)
-            mats = xml_obj.get_parameterized_materials()
-            for mat in mats:
-                name, aliases = mat
-
-                parameters = []
-                for param in xml_obj.get_material_parameterization(mat[0]):
-                    key, default = param
-                    if key == "Units":
-                        continue
-                    parameters.append(PayetteMaterialParameter(name = key, default = default))
-                materials.append(PayetteMaterial(name = name, aliases = aliases, defaults = parameters))
-
-
-        return materials
 
     def _run_button_fired(self, event):
         runner = ModelRunner(simulation_name=self.simulation_name, material_models=[self.selected_model],
@@ -123,7 +80,7 @@ class PayetteMaterialModelSelector(HasStrictTraits):
         preview.configure_traits()
 
 
-    view = View(
+    traits_view = View(
         VGroup(
             HGroup(
                 VGroup(
@@ -184,6 +141,6 @@ class PayetteMaterialModelSelector(HasStrictTraits):
     )
 
 if __name__ == "__main__":
-    pm = PayetteMaterialModelSelector(model_type='any')
+    pm = PayetteMaterialModelSelector(model_type='any', supplied_data = [('Foo', 'elastic_al_6061.out')])
     pm.configure_traits()
 

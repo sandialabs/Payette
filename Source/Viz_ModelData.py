@@ -1,6 +1,8 @@
-from enthought.traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant, Enum, Event
-from enthought.traits.ui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, TableEditor, InstanceEditor, ListEditor, Spring, ObjectColumn
+from enthought.traits.api import HasStrictTraits, List, Instance, String, BaseInt, Int, Float, Bool, Property, Button, Constant, Enum, Event, Tuple, File, Dict, cached_property
+from enthought.traits.ui.api import View, Label, Group, HGroup, VGroup, Item, UItem, TabularEditor, TableEditor, InstanceEditor, ListEditor, Spring, ObjectColumn, EnumEditor, CheckListEditor
 from enthought.traits.ui.tabular_adapter import TabularAdapter
+
+import Payette_utils as pu
 
 import random
 
@@ -177,18 +179,84 @@ class PayetteModel(HasStrictTraits):
     EFSTAR = Float(1.0)
     AMPL = Float(1.0)
     RATFAC = Float(1.0)
-    leg_defaults = Enum('Custom', 'Uniaxial Strain', 'Biaxial Strain',
-                        'Spherical Strain', 'Uniaxial Stress',
-                        'Biaxial Stress', 'Spherical Stress')
+    leg_defaults = String
+    leg_default_types = List(String, 
+                             ['Custom', 'Uniaxial Strain', 'Biaxial Strain',
+                              'Spherical Strain', 'Uniaxial Stress',
+                              'Biaxial Stress', 'Spherical Stress'])
     legs = List(PayetteLeg, [PayetteLeg()])
+    supplied_data = List(Tuple(String, File))
+    supplied_data_names = Property(List(String), depends_on='supplied_data')
+    leg_data_name = String
+    leg_data_file = Property(File, depends_on='leg_data_name')
+    leg_data_time = Dict(String, String,
+                         {
+                             'Time': 'time',
+                             'Delta Time': 'dtime'
+                         }
+                        )
+    leg_data_time_names = Property(String, depends_on='leg_data_time')
+    selected_leg_data_time = String
+    leg_data_type = Dict(String, Tuple(String, Int),
+                         {
+                             'Strain Rate': ('strain rate', 6),
+                             'Strain': ('strain', 6),
+                             'Stress Rate': ('stress rate', 6),
+                             'Stress': ('stress', 6),
+                             'Deformation Gradient': ('deformation gradient', 9),
+                             'Electric Field': ('electric field', 3),
+                             'Displacement': ('displacement', 3),
+                             'VStrain': ('vstrain', 1),
+                             'Pressure': ('pressure', 1),
+                         }
+                        )
+    leg_data_type_names = Property(String, depends_on='leg_data_type')
+    selected_leg_data_type = String
+    leg_data_columns = List(String)
+    selected_leg_data_columns = List(String)
+
     permutation_method = Enum('Zip', 'Combine')
     cell = Event
 
     def __init__(self, **traits):
         HasStrictTraits.__init__(self, **traits)
+
         for param in self.parameters:
             if param.name == "R0" and param.value is not None:
                 param.on_trait_change(self.update_density(param), 'value')
+
+    def _supplied_data_changed(self, trait):
+        if 'Data' not in self.leg_default_types:
+            self.leg_default_types.append('Data')
+
+    @cached_property
+    def _get_supplied_data_names(self):
+        return map(lambda x: x[0], self.supplied_data)
+
+    @cached_property
+    def _get_leg_data_file(self):
+        name = self.leg_data_name
+        for v in self.supplied_data:
+            if v[0] == name:
+                return v[1]
+        return ''
+
+    @cached_property
+    def _get_leg_data_time_names(self):
+        return self.leg_data_time.keys()
+
+    @cached_property
+    def _get_leg_data_type_names(self):
+        return self.leg_data_type.keys()
+
+    def _leg_data_name_changed(self, value):
+        if len(self.leg_data_file) < 1:
+            return ['']
+
+        columns = pu.get_header(self.leg_data_file)
+        if columns is None:
+            columns = ['']
+        self.leg_data_columns = columns
 
     def _selected_material_changed(self, info):
         if info is None:
@@ -288,7 +356,9 @@ class PayetteModel(HasStrictTraits):
 
     boundary_legs_view = View(
         HGroup(
-            Item('leg_defaults', style='simple'),
+            Item('leg_defaults', 
+                 editor=EnumEditor(name='leg_default_types'),
+                 style='simple'),
             VGroup(
                 Item('TSTAR',label='TSTAR'),
                 Item('FSTAR',label='FSTAR')
@@ -311,6 +381,32 @@ class PayetteModel(HasStrictTraits):
             editor = ListEditor(
                 style='custom'
             ),
+            visible_when='leg_defaults != "Data"',
+        ),
+        VGroup(
+            Item('leg_data_name',
+                 editor=EnumEditor(name='supplied_data_names'),
+                 label='Data to use',
+                 style='simple',
+                ),
+            HGroup(
+                Item('selected_leg_data_time',
+                     editor=EnumEditor(name='leg_data_time_names'),
+                     label='Time',
+                     style='simple'
+                    ),
+                Item('selected_leg_data_type',
+                     editor=EnumEditor(name='leg_data_type_names'),
+                     label='Deformation Type',
+                     style='simple'
+                    ),
+            ),
+            Item('selected_leg_data_columns',
+                 editor=CheckListEditor(name='leg_data_columns', cols=10),
+                 label='Columns to use',
+                 style='custom',
+                ),
+            visible_when='leg_defaults == "Data"',
         ),
         style='custom',
     )

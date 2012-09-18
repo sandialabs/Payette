@@ -1,10 +1,13 @@
 from enthought.traits.api import (HasStrictTraits, String, Int, List,
                                   Property, Button, Instance, File,
-                                  Enum, implements, cached_property)
+                                  Enum, Interface, implements,
+                                  cached_property)
 from enthought.traits.ui.api import (View, HGroup, VGroup, Item,
-                                     UItem, ListEditor, TabularEditor, Label)
+                                     UItem, ListEditor, TabularEditor, Label,
+                                    Handler)
 from enthought.traits.ui.tabular_adapter import TabularAdapter
 from enthought.traits.ui.menu import OKButton, CancelButton
+from enthought.traits.ui.message import message
 
 import uuid
 import os
@@ -20,6 +23,8 @@ from Viz_ModelSelector import PayetteMaterialModelSelector
 from Viz_ModelPlot import create_Viz_ModelPlot
 from Viz_Search import filter_metadata
 from Viz_DataImport import DataImportDialog
+from Viz_Utility import message_box
+#from Viz_Optimizer import VizOptimizer
 
 class MetadataTabularAdapter(TabularAdapter):
     columns = [('Name', 'name'), ('Model Type', 'model_type'), ('Data Type', 'data_type'), ('Created', 'created_timestamp')]
@@ -53,15 +58,49 @@ class MetadataTabularAdapter(TabularAdapter):
 class ModelTypeDialog(HasStrictTraits):
     model_type = Enum('Solid Mechanics', 'Equation of State')
 
-    trait_view = View(
-        Label('Choose a Model Type'),
-        UItem('model_type'),
+    traits_view = View(
+        VGroup(
+            Label('Choose a Model Type'),
+            UItem('model_type'),
+            padding=10,
+        ),
         buttons=[CancelButton, OKButton],
         kind='modal',
-        title='Choose a Model Type'
+        title='Choose a Model Type',
     )
 
+class IControlWindow(Interface):
+    """
+    This class serves as an interface for use in the VisualizationHandler
+    below. It doesn't define any functions, but mainly ensures that only
+    the ControlWindow can be passed as a parameter.
+    """
+    pass
+
+class VisualizationHandler(Handler):
+    """
+    Prompts the user to save the closed visualization if they desire.
+    """
+
+    control_window = Instance(IControlWindow)
+    metadata = Instance(VizMetaData)
+    original = Instance(VizMetaData)
+
+    def close(self, info, is_ok):
+        result = message_box('Do you wish to save these visualization parameters?', 'Close Visualization',
+                             ['Cancel', None, 'Don\'t Save', 'Save'])
+        if result == 'Cancel':
+            return False
+
+        if result == 'Save':
+            self.metadata.successful = True
+            self.metadata.plot = info.object
+            self.control_window.files.append(self.metadata)
+
+        return True
+
 class ControlWindow(HasStrictTraits):
+    implements(IControlWindow)
     implements(IModelRunnerCallbacks)
 
     search_string = String
@@ -126,34 +165,53 @@ class ControlWindow(HasStrictTraits):
 
         selector = PayetteMaterialModelSelector(models=[metadata.model],
                                                 selected_model=metadata.model,
-                                                simulation_name=self.GenerateRerunName(metadata.name),
+                                                simulation_name=self.GenerateName(metadata.name, 'rerun'),
                                                 auto_generated=False,
                                                 callbacks=self,
                                                 rerun=True
                                                )
         selector.configure_traits()
 
-    def _optimize_button_fired(self):
-        pass
-
     def _visualize_button_fired(self):
         metadata = self.selected_metadata
+        previous = None
+        if metadata.data_type == 'Visualization':
+            previous = metadata.clone_traits()
+            previous.object_id = str(uuid.uuid1())
+
         args = {}
         if len(metadata.index_file) > 0:
             args['index file'] = os.path.join(metadata.base_directory, metadata.index_file)
         elif len(metadata.out_file) > 0:
             args['output file'] = os.path.join(metadata.base_directory, metadata.out_file)
 
-        create_Viz_ModelPlot(metadata.name, **args)
+        now = datetime.datetime.now()
+
+        metadata2 = VizMetaData(
+            name = self.GenerateName(metadata.name, 'viz'),
+            base_directory = metadata.base_directory,
+            data_type = 'Visualization',
+            model_type = metadata.model_type,
+            created_date = now.date(),
+            created_time = now.time(),
+            session_id = self.session_id
+        )
+
+        create_Viz_ModelPlot(metadata.name, handler=VisualizationHandler(
+            control_window=self, metadata=metadata2, original=metadata), metadata=previous, **args)
 
     def _optimize_button_fired(self):
-        pass
+        message_box('This functionality is not yet implemented', 'Not Implemented', ['OK'])
+        #metadata = self.selected_metadata
+        #gold_file = os.path.join(metadata.base_directory, metadata.out_file)
+        #optimizer = VizOptimizer(gold_file=gold_file)
+        #optimizer.configure_traits()
 
-    def GenerateRerunName(self, name):
-        match = re.search('(.*\.rerun)([0-9]+)$', name)
+    def GenerateName(self, name, prefix):
+        match = re.search('(.*\\.%s)([0-9]+)$' % (prefix), name)
         if match is not None:
             return match.group(1) + str(int(match.group(2)) + 1)
-        return name + '.rerun1'
+        return name + ('.%s1' % (prefix))
 
     def _import_button_fired(self):
         selector = DataImportDialog(destination='.')

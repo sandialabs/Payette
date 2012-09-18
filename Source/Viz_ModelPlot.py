@@ -142,7 +142,7 @@ class Viz_ModelPlot(HasStrictTraits):
         self.Multi_Select = MultiSelect(choices=self.headers, plot=self.Plot_Data)
         self.Change_Axis = ChangeAxis(Plot_Data=self.Plot_Data, headers=self.headers)
 
-def create_Viz_ModelPlot(window_name, **kwargs):
+def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
     """Create the plot window
 
     Parameters
@@ -159,6 +159,28 @@ def create_Viz_ModelPlot(window_name, **kwargs):
     files is created. The index file has information about where the
     individual output files are located.
     """
+
+    view = View(HSplit(
+                       VGroup(
+                             Item('Multi_Select',
+                                  show_label=False, width=224, height=668, springy=True, resizable=True),
+                             Item('Change_Axis',
+                                  show_label=False),
+                             ),
+                       Item('Plot_Data',
+                            show_label=False, width=800, height=768, springy=True, resizable=True)
+                      ),
+                style='custom',
+                width=1124,
+                height=868,
+                resizable=True,
+                title=window_name)
+
+
+    if metadata is not None:
+        metadata.plot.configure_traits(view=view)
+        return
+
     output_file = kwargs.get("output file")
     index_file = kwargs.get("index file")
 
@@ -212,10 +234,10 @@ def create_Viz_ModelPlot(window_name, **kwargs):
                 height=868,
                 resizable=True,
                 title=window_name)
-
+    
     main_window = Viz_ModelPlot(file_paths=output_files, file_variables=variables)
 
-    main_window.configure_traits(view=view)
+    main_window.configure_traits(view=view, handler=handler)
 
 if __name__ == "__main__":
     import argparse

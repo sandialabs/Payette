@@ -7,6 +7,7 @@ import datetime
 from enthought.traits.api import HasStrictTraits, List, Instance, String, Interface
 
 import Source.Payette_run as pr
+import Source.Payette_utils as pu
 from Viz_ModelData import PayetteModel
 from Viz_MetaData import VizMetaData
 from Viz_ModelPlot import create_Viz_ModelPlot
@@ -26,7 +27,20 @@ class ModelRunner(HasStrictTraits):
 
             self.RunInputString(inputString, material)
 
-    def RunInputString(self, inputString, material):
+    def RunOptimization(self, optimizer):
+        if len(self.material_models) != 1:
+            pu.report_and_raise_error("Optimization supports only one model!")
+            return
+
+        material = self.material_models[0]
+        
+        inputString = self.CreateModelInputString(material, optimizer)
+
+        print inputString
+
+        self.RunInputString(inputString, material, 'Optimization')
+
+    def RunInputString(self, inputString, material, run_type='Simulation'):
         #output = StringIO.StringIO()
         oldout = sys.stdout
         #sys.stdout = output
@@ -52,13 +66,25 @@ class ModelRunner(HasStrictTraits):
                 output_file = ''
             else:
                 base_dir,output_file = os.path.split(output_file)
+            extra_files = siminfo.get('extra files')
+            if extra_files is not None and len(extra_files) > 0:
+                surface_file = extra_files['surface file']
+                path_files = []
+                for k,v in extra_files['path files'].iteritems():
+                    path_file = os.path.split(v)[1]
+                    path_files.append((k, path_file))
+            else:
+                surface_file = ''
+                path_files = []
 
             metadata = VizMetaData(
                 name = self.simulation_name,
                 base_directory = base_dir,
                 index_file = index_file,
                 out_file = output_file,
-                data_type = 'Simulation',
+                surface_file = surface_file,
+                path_files = path_files,
+                data_type = run_type,
                 model_type = ', '.join(material.model_type),
                 created_date = now.date(),
                 created_time = now.time(),
@@ -73,7 +99,7 @@ class ModelRunner(HasStrictTraits):
         # simulation. Pass it directly to create_Viz_ModelPlot
         create_Viz_ModelPlot(self.simulation_name, **siminfo)
 
-    def CreateModelInputString(self, material):
+    def CreateModelInputString(self, material, optimization=None):
         result = (
             "begin simulation %s\n"
             "  begin material\n"
@@ -93,6 +119,9 @@ class ModelRunner(HasStrictTraits):
             result += self.CreateMechanicalBoundaryInput(material)
 
         result += self.CreatePermutation(material)
+
+        if optimization is not None:
+            result += self.CreateOptimization(optimization)
 
         result += "end simulation\n"
         return result
@@ -143,6 +172,47 @@ class ModelRunner(HasStrictTraits):
 
         return result
 
+    def CreateOptimization(self, optimization):
+        optimize_params = ""
+        for param in optimization.optimize_vars:
+            if not param.enabled:
+                continue
+            optimize_params += "    optimize %s" % (param.name)
+            if param.use_bounds:
+                optimize_params += ", bounds = (%f, %f)" % (param.bounds_min, param.bounds_max)
+            optimize_params += ", initial value = %f\n" % (param.initial_value)
+
+        minimize_vars = []
+        for var in optimization.minimize_vars:
+            if var.enabled:
+                minimize_vars.append(var.name)
+
+        versus = ""
+        if optimization.minimize_versus != "None":
+            versus = "versus " + optimization.minimize_versus
+
+        result = ("  begin optimization\n"
+                  "    method %s\n"
+                  "    maxiter %d\n"
+                  "    tolerance %f\n"
+                  "    disp 0\n"
+                  "\n"
+                  "%s\n"
+                  "\n"
+                  "    gold file %s\n"
+                  "    minimize %s %s\n"
+                  "\n"
+                  "  end optimization\n"
+                 ) % (
+                     optimization.method.lower(),
+                     optimization.max_iterations,
+                     optimization.tolerance,
+                     optimize_params,
+                     optimization.gold_file,
+                    ', '.join(minimize_vars),
+                     versus
+                 )
+        return result
 
     def CreateEOSBoundaryInput(self, material):
         # XXX Need a less hardcoded way to do this
