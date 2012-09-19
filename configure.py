@@ -26,7 +26,8 @@ USER_ENV = {"DOTPAYETTE": os.getenv("DOTPAYETTE"),
             "BENCHDIR": os.getenv("PAYETTE_BENCHDIR"),
             "MTLDIR": os.getenv("PAYETTE_MTLDIR"),
             "LAMBDA": os.getenv("LAMBDA_ROOT"),
-            "ALEGRA": os.getenv("ALEGRANEVADA"),}
+            "ALEGRA": None, #os.getenv("ALEGRANEVADA"),
+            }
 
 # supported fortran vendors
 FORTRAN_VENDORS = {"gnu": {"exe": "gfortran", "pre": "-E"}}
@@ -95,12 +96,6 @@ def configure(argv):
         default=False,
         help="Do not use user environment [default: %default]")
     parser.add_option(
-        "--snl",
-        dest="SNL",
-        action="store_true",
-        default=False,
-        help="Configure to build SNL libraries by default [default: %default]")
-    parser.add_option(
         "--no-clean",
         dest="NOCLEAN",
         action="store_true",
@@ -117,14 +112,13 @@ def configure(argv):
 
     logmes(__intro__)
     if opts.DEPLOYED:
-        sys.exit("deployed config not complete")
         opts.DONTWRITEBYTECODE = True
 
     sys.dont_write_bytecode = opts.DONTWRITEBYTECODE
 
     use_env = not opts.SKIPENVIRON
-    cfg = PayetteConfig(use_env=use_env, use_snl=opts.SNL,
-                        fcompiler=opts.FCOMPILER, deployed=opts.DEPLOYED)
+    cfg = PayetteConfig(use_env=use_env, fcompiler=opts.FCOMPILER,
+                        deployed=opts.DEPLOYED)
 
     # clean up first
     if not opts.NOCLEAN:
@@ -197,15 +191,13 @@ class PayetteConfig:
     includes = os.path.join(materials, "Includes")
     mtldirs = [models]
 
-    # user environment defaults
-    _lambda = {}
-    alegra = {}
-    user_mtls = []
-    user_tests = []
+    # --- Payette configuration files
+    hdir = os.path.join(root, ".payette")
+    config_file = os.path.join(hdir, "config.py")
 
-    # --- files files
+    # fortran files
     mig_utils = os.path.join(fortran, "migutils.F")
-    runopts = os.path.join(root, ".payette/runopts")
+    tensor_tools = os.path.join(fortran, "tensor_toolkit.f90")
 
     # --- built executables
     executables = [
@@ -247,8 +239,7 @@ class PayetteConfig:
     # --- visualization
     viz_compatible = False
 
-    def __init__(self, use_env=True, use_snl=False, fcompiler="gnu",
-                 deployed=False):
+    def __init__(self, use_env=True, fcompiler="gnu", deployed=False):
         """Check prerequisites and initialize the PayetteConfig object
 
         Parameters
@@ -280,18 +271,16 @@ class PayetteConfig:
         # location of material database file and library directory
         self.libdir = self.library
         self.mtldb = os.path.join(self.libdir, "materials.db")
+        self.auxdb = "auxiliary_materials.db"
 
         # files that go in the dotpayette directory
-        self.config_file = os.path.join(self.dotpayette, "config.py")
+        self.user_config_file = os.path.join(self.dotpayette, "user_config.py")
         self.prev_tests = os.path.join(self.dotpayette, "__prev_tests__.py")
 
         # --- setup user environment defined defaults
         self.use_env = use_env
-        self.use_snl = use_snl
-        if self.use_env:
-            if not self.deployed:
-                self.setup_from_user_env()
-                self.setup_snl_user_env()
+        if self.use_env and not self.deployed:
+            self.setup_from_user_env()
 
         # --- if running with sage, configure the sage environment
         if self.sage:
@@ -303,15 +292,13 @@ class PayetteConfig:
         # --- set up the rest of the environment
         self.setup_env()
 
-        # remove current configuration file
-        remove(self.config_file)
-
         # --- check if enthought is installed
         self.check_viz()
 
         if self.errors:
             raise SystemExit(
                 "configure.py: ERROR: fix previously trapped errors")
+
         pass
 
     def check_prereqs(self):
@@ -323,7 +310,7 @@ class PayetteConfig:
         if sys.argv[0] != fpath:
             raise SystemExit(
                 "configure.py must be executed from {0}".format(self.root))
-        if not os.path.isdir(os.path.join(self.root, ".payette")):
+        if not os.path.isdir(os.path.join(self.hdir)):
             raise SystemExit(
                 "configure.py must be executed in the Payette root directory")
 
@@ -395,31 +382,19 @@ class PayetteConfig:
         """
         _user_tests = USER_ENV["BENCHDIR"]
         if _user_tests is not None:
-            self.user_tests = [x for x in _user_tests.split(os.pathsep)]
-            self.add_user_tests(self.user_tests)
+            self.add_user_tests(_user_tests.split(os.pathsep))
 
         _user_mtls = USER_ENV["MTLDIR"]
         if _user_mtls is not None:
             _user_mtls = [x for x in _user_mtls.split(os.pathsep)]
             self.add_user_mtls(_user_mtls)
-        return
 
-    def setup_snl_user_env(self):
-        """Extend the base configuration by including information from the
-        user environment - specific to SNL
-
-        """
         # lambda models
         _lambda = USER_ENV["LAMBDA"]
         if _lambda is not None:
             if "library/models" not in _lambda:
                 _lambda = os.path.join(_lambda, "library/models")
-            self._lambda["libdir"] = self.dotpayette
-            self._lambda["mtldirs"] = self.walk_mtldirs(path=_lambda)
-            self._lambda["mtldb"] = os.path.join(
-                self.dotpayette, "lambda_materials.db")
-            if self.use_snl:
-                self.add_user_mtls(_lambda)
+            self.add_user_mtls(_lambda)
 
         # alegra models
         _alegra = USER_ENV["ALEGRA"]
@@ -427,12 +402,7 @@ class PayetteConfig:
             if "alegra/material_libs/utils/payette" not in _alegra:
                 _alegra = os.path.join(_alegra,
                                        "alegra/material_libs/utils/payette")
-            self.alegra["libdir"] = self.dotpayette
-            self.alegra["mtldirs"] = self.walk_mtldirs(path=_alegra)
-            self.alegra["mtldb"] = os.path.join(
-                self.dotpayette, "alegra_materials.db")
-            if self.use_snl:
-                self.add_user_mtls(_alegra)
+            self.add_user_mtls(_alegra)
         return
 
     def add_user_tests(self, user_tests):
@@ -483,8 +453,18 @@ class PayetteConfig:
             self.env["PYTHONDONTWRITEBYTECODE"]=""
 
         # make sure root is first on PYTHONPATH
-        pypath = os.pathsep.join([self.root, self.dotpayette])
-        self.env["PYTHONPATH"] = pypath
+        pypath = []
+        tmp = self.env.get("PYTHONPATH")
+        if tmp is not None:
+            for path in tmp.split(os.pathsep):
+                if os.path.isdir(path) and path not in pypath:
+                    pypath.append(path)
+                continue
+        if self.root not in pypath:
+            pypath.append(self.root)
+        if self.hdir not in pypath:
+            pypath.append(self.hdir)
+        self.env["PYTHONPATH"] = os.pathsep.join(pypath)
         return
 
     def write_cfg(self):
@@ -492,8 +472,22 @@ class PayetteConfig:
         self.expand_tests()
         self.expand_mtldirs()
 
-        logmes("writing {0}".format(self.config_file), end="...  ")
-        attributes = sorted(dir(self))
+        # setup lists of attributes for the global and user configuration files
+        do_not_write = ("__doc__", "__module__", "env", "envs", "errors",
+                        "dotpayette", "config_file",
+                        "user_config_file", "use_env")
+        user_attributes = ("prev_tests",)
+        global_attributes = [x for x in sorted(dir(self)) if
+                             x not in user_attributes and
+                             x not in do_not_write]
+
+        # remove current configuration files
+        remove(self.config_file)
+        remove(self.user_config_file)
+
+        logmes("writing {0}".format(os.path.basename(self.config_file)),
+               end="...  ")
+        attributes = global_attributes
         with open(self.config_file, "w") as fobj:
             fobj.write("""\
 # *************************************************************************** #
@@ -516,25 +510,12 @@ class PayetteConfig:
 import sys
 import os
 """)
-            do_not_write = ("__doc__", "__module__", "env", "envs", "errors",)
-
-            not_for_deployment = ("dotpayette", )
-            if self.deployed:
-                fobj.write("DOTPAYETTE = os.getenv('DOTPAYETTE')\n")
+            fobj.write("from user_config import *\n")
             for attrnam in attributes:
                 attr = getattr(self, attrnam)
                 if "instancemethod" in str(type(attr)):
                     continue
-                elif attrnam.lower() in do_not_write:
-                    continue
-                elif self.deployed and attrnam.lower() in not_for_deployment:
-                    continue
-                if attrnam[0] in ("_", ):
-                    attrnam = attrnam[1:]
                 attribute = repr(attr)
-                if self.deployed and self.dotpayette in attribute:
-                    post = attribute.replace(self.dotpayette + os.path.sep, "")
-                    attribute = "os.path.join(DOTPAYETTE, {0})".format(post)
                 fobj.write("{0} = {1}\n".format(attrnam.upper(), attribute))
                 continue
             fobj.write("if ROOT not in sys.path: sys.path.append(ROOT)\n")
@@ -542,15 +523,53 @@ import os
             fobj.write("for PATH in MTLDIRS:\n"
                        "    if os.path.basename(PATH) != 'code': "
                        "sys.path.append(PATH)\n")
-            fobj.write("if LIBDIR not in sys.path: sys.path.append(LIBDIR)\n")
         logmes("{0} written".format(os.path.basename(self.config_file)),
                pre="")
 
-        # copy the runopts file
-        src = os.path.join(self.root, ".payette/runopts")
-        dest = os.path.join(self.dotpayette, "runopts.py")
-        remove(dest)
-        shutil.copyfile(src, dest)
+        # write the user configuration file
+        attributes = user_attributes
+        if self.deployed:
+            user_config = self.user_config_file + ".copy"
+        else:
+            self.user_config_file
+        with open(user_config, "w") as fobj:
+            fobj.write("""\
+# *************************************************************************** #
+#                                                                             #
+# This file was generated automatically by the Payette. It contains important #
+# global Payette parameters that are configured at build time.                #
+#                                                                             #
+# This file is intended to be imported by files in Payette like               #
+# "from config import XXXXX"                                                  #
+# where XXXXXX is a specific variable.                                        #
+#                                                                             #
+# DO NOT EDIT THIS FILE. This entire file is regenerated automatically each   #
+# time configure.py is run. Any changes you make to this file will be         #
+# overwritten.                                                                #
+#                                                                             #
+# If changes are needed, please contact the Payette developers so that changes#
+# can be made to the build scripts.                                           #
+#                                                                             #
+# *************************************************************************** #
+import sys
+import os
+""")
+            fobj.write(
+                "DOTPAYETTE = os.path.dirname(os.path.realpath(__file__))\n")
+            for attrnam in attributes:
+                attr = getattr(self, attrnam)
+                if "instancemethod" in str(type(attr)):
+                    continue
+                attribute = repr(attr)
+                if self.dotpayette in attribute:
+                    post = attribute.replace(self.dotpayette, "")
+                    if post[1] == os.sep:
+                        post = post.replace(os.sep, "")
+                    attribute = "os.path.join(DOTPAYETTE, {0})".format(post)
+                fobj.write("{0} = {1}\n".format(attrnam.upper(), attribute))
+                continue
+            fobj.write(
+                "if DOTPAYETTE not in sys.path: sys.path.append(DOTPAYETTE)\n")
         return
 
     def config_sage(self):
@@ -613,6 +632,7 @@ import os
         logmes("Writing executable scripts")
 
         # message for executables that require Payette be built
+        do_not_include = ("pythonpath", )
         for executable in self.executables:
             name = executable["name"]
             pyfile = executable["pyfile"]
@@ -623,10 +643,15 @@ import os
             logmes("writing {0}".format(name), pre="indent", end="...  ")
             with open(path, "w") as fobj:
                 fobj.write("#!/bin/sh -f\n")
-                if self.deployed and name == "payette":
-                    fobj.write(self.deployed_payette_pre())
+                if self.deployed:
+                    fobj.write(self.get_dotpayette())
+                else:
+                    fobj.write("export DOTPAYETTE={0}\n"
+                               .format(self.dotpayette))
+                fobj.write("export PYTHONPATH={0}:$DOTPAYETTE\n"
+                           .format(self.env["PYTHONPATH"]))
                 for key, val in self.env.items():
-                    if self.deployed and "pythonpath" in key.lower():
+                    if key.lower() in do_not_include:
                         continue
                     fobj.write("export {0}={1}\n".format(key, val))
                     continue
@@ -671,29 +696,24 @@ import os
         self.f2py["fexe"] = fexe
         return
 
-    def deployed_payette_pre(self):
+    def get_dotpayette(self):
         return """\
 ostype=`uname -a | tr '[A-Z]' '[a-z]'`
-DIR="$( cd "$( dirname "${{BASH_SOURCE[0]}}" )" && pwd )"
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 if [ -n "$(echo $ostype | grep 'darwin')" ];
 then
-    ${{DOTPAYETTE:=$HOME/Library/Preferences/Payette}} >& /dev/null
+    ${DOTPAYETTE:=$HOME/Library/Preferences/Payette} >& /dev/null
 else
-    ${{DOTPAYETTE:=$HOME/.payette}} >& /dev/null
+    ${DOTPAYETTE:=$HOME/.payette} >& /dev/null
 fi
 export DOTPAYETTE=$DOTPAYETTE
 if [ ! -d "$DOTPAYETTE" ]; then
     mkdir -p $DOTPAYETTE
 fi
 if [ ! -f "$DOTPAYETTE/config.py" ]; then
-    cp $DIR/../.payette/config.py "$DOTPAYETTE/."
+    cp $DIR/../.payette/user_config.py.copy "$DOTPAYETTE/user_config.py"
 fi
-if [ ! -f "$DOTPAYETTE/runopts.py" ]; then
-    cp $DIR/../.payette/runopts.py "$DOTPAYETTE/."
-fi
-export PYTHONPATH={0}:$DOTPAYETTE
-""".format(self.root)
-
+"""
 
 def clean_payette():
     root = os.path.dirname(os.path.realpath(__file__))

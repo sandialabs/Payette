@@ -155,37 +155,12 @@ def main(argv):
         default=False,
         help="Display visualization window upon completion [default: %default]")
     parser.add_option(
-        "-D",
-        dest="AUG_DIR",
+        "-A",
+        dest="AUXMTL",
         action="store",
         default=None,
         help=("Alternate directory to find material database "
               "file [default: %default]"))
-
-    # ---------------------- Sandia National Labs specific material directories
-    # The following option is only valid if the user configured with Lambda
-    if cfg.LAMBDA:
-        help_message = "Use Lambda models"
-    else:
-        help_message = "Payette must be configured for Lambda models to use -L"
-    parser.add_option(
-        "-L",
-        dest="LAMBDA",
-        action="store_true",
-        default=False,
-        help=help_message + " [default: %default]")
-    # The following option is only valid if the user configured with Alegra
-    if cfg.ALEGRA:
-        help_message = "Run with the Alegra models"
-    else:
-        help_message = "Payette must be configured for Alegra models to use -A"
-    parser.add_option(
-        "-A",
-        dest="ALEGRA",
-        action="store_true",
-        default=False,
-        help=help_message + " [default: %default]")
-    # ------------------ end Sandia National Labs specific material directories
 
     # the following options have defaults set in runopt.py, later, we pass the
     # user requested options back to runopt.py so they are set of the rest of
@@ -326,28 +301,26 @@ def main(argv):
     ro.set_command_line_options(opts)
 
     # ----------------------------------------------- start: get the user input
-    incompat = (opts.AUG_DIR, opts.LAMBDA, opts.ALEGRA, )
-    if len([x for x in incompat if bool(x)]) > 1:
-        parser.error("-D, -L, and -A must be specified independently")
-
-    if opts.AUG_DIR is not None:
-        material_index = os.path.join(
-            opts.AUG_DIR, "auxiliary_materials.db")
-        if not os.path.isfile(material_index):
-            pu.report_and_raise_error("{0} not found".format(material_index))
-        sys.path.append(opts.AUG_DIR)
-    elif opts.LAMBDA:
-        material_index = cfg.LAMBDA["mtldb"]
-    elif opts.ALEGRA:
-        material_index = cfg.ALEGRA["mtldb"]
+    if opts.AUXMTL is not None:
+        if os.path.isfile(opts.AUXMTL):
+            material_db = opts.AUXMTL
+        elif os.path.isfile(os.path.join(opts.AUXMTL, cfg.AUXDB)):
+            material_db = os.path.join(opts.AUXMTL, cfg.AUXDB)
+        elif os.path.isfile(os.path.join(cfg.DOTPAYETTE, opts.AUXMTL)):
+            material_db = os.path.join(cfg.DOTPAYETTE, opts.AUXMTL)
+        elif os.path.isfile(os.path.join(cfg.DOTPAYETTE, opts.AUXMTL + ".db")):
+            material_db = os.path.join(cfg.DOTPAYETTE, opts.AUXMTL + ".db")
+        else:
+            pu.report_and_raise_error("{0} not found".format(opts.AUXMTL))
+        sys.path.insert(0, os.path.dirname(material_db))
     else:
-        material_index = cfg.MTLDB
+        material_db = cfg.MTLDB
 
-    if not os.path.isfile(material_index):
+    if not os.path.isfile(material_db):
         pu.report_and_raise_error(
             "buildPayette must first be executed to create\n\t{0}"
-            .format(material_index))
-    ro.set_global_option("MTLDB", material_index, default=True)
+            .format(material_db))
+    ro.set_global_option("MTLDB", material_db, default=True)
 
     if not argv:
         if not cfg.VIZ_COMPATIBLE:
@@ -359,6 +332,8 @@ def main(argv):
 
     if opts.verbosity:
         pu.log_message(cfg.INTRO, pre="")
+        pu.log_message("Using material database {0}"
+                       .format(os.path.basename(material_db)))
 
     # determine file type given, whether output files for viewing, input files
     # for running, or barf files for barf processing

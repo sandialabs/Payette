@@ -18,7 +18,8 @@ foo
 # documentation auxilary
 Documents/Documentation/_build/html/_downloads/payette_v-*.tar.gz
 Payette*.tar.gz
-.payette/*.py
+.payette/config.py
+.payette/user_config*
 
 # Payette files
 Toolset/__found_tests__.py

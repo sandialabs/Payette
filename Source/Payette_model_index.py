@@ -89,7 +89,7 @@ class ModelIndex(object):
         """return the installed constitutive models dict"""
         return self._installed_constitutive_models.keys()
 
-    def store(self, name, libname, clsname, intrfc, cntrl, aliases,
+    def store(self, name, libname, libdir, clsname, intrfc, cntrl, aliases,
               param_file=None, param_cls=None):
         """Store all kwargs in to the index dict
 
@@ -99,6 +99,8 @@ class ModelIndex(object):
           material name
         libname : str
           library name
+        libdir : str
+          directory where library is located
         clsname : str
           material class name
         intrfc : str
@@ -112,7 +114,7 @@ class ModelIndex(object):
         self._installed_constitutive_models[name] = {
             "libname": libname, "class name": clsname,
             "interface file": intrfc, "control file": cntrl,
-            "aliases": aliases,
+            "aliases": aliases, "libdir": libdir,
             "parameterization file": param_file,
             "parameterization class": param_cls,}
 
@@ -165,9 +167,15 @@ class ModelIndex(object):
         constitutive_model = self.constitutive_model(model_name)
         return constitutive_model.get("control file")
 
+    def library_directory(self, model_name):
+        """ get the library directory for the material """
+        constitutive_model = self.constitutive_model(model_name)
+        return constitutive_model.get("libdir")
+
     def constitutive_model_object(self, model_name):
         """ get the actual model object """
         constitutive_model = self.constitutive_model(model_name)
+        sys.path.insert(0, constitutive_model.get("libdir"))
         py_mod, py_path = pu.get_module_name_and_path(
             constitutive_model["interface file"])
         cls_nam = constitutive_model["class name"]

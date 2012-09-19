@@ -70,7 +70,7 @@ def build_payette(argv):
     parser = optparse.OptionParser(usage=usage, version="buildPayette 1.0")
     parser.add_option(
         "-m",
-        dest="mtllib",
+        dest="MTLLIB",
         action="append",
         default=[],
         help="specify material libraries to build: [default: ['all']]")
@@ -134,37 +134,12 @@ def build_payette(argv):
         help=("Additional directories to scan for materials, accumulated "
               "[default: %default]."))
     parser.add_option(
-        "-D",
-        dest="AUG_DIR",
+        "-A",
+        dest="AUXMTL",
         action="store",
         default=None,
         help=("Augment existing materials by building in place the "
               "materials in the passed directory [default: %default]."))
-
-    # ------- Sandia National Labs specific material directories ------------ #
-    # The following option is only valid if the user configured with Lambda
-    if cfg.LAMBDA:
-        help_message = "Build the Lambda models"
-    else:
-        help_message = "Payette must be configured for Lambda models to use -L"
-    parser.add_option(
-        "-L",
-        dest="LAMBDA",
-        action="store_true",
-        default=False,
-        help=help_message + " [default: %default]")
-    # The following option is only valid if the user configured with Alegra
-    if cfg.ALEGRA:
-        help_message = "Build the Alegra models"
-    else:
-        help_message = "Payette must be configured for Alegra models to use -A"
-    parser.add_option(
-        "-A",
-        dest="ALEGRA",
-        action="store_true",
-        default=False,
-        help=help_message + " [default: %default]")
-    # ----------------------------------------------------------------------- #
 
     (opts, args) = parser.parse_args(argv)
 
@@ -177,7 +152,7 @@ def build_payette(argv):
     pu.log_message(cfg.INTRO, pre="")
 
     # determine if we build all materials, or just a selection
-    requested_materials = opts.mtllib
+    requested_materials = opts.MTLLIB
     if opts.DSC:
         requested_materials.append("domain_switching_ceramic")
     if opts.KMM:
@@ -191,31 +166,26 @@ def build_payette(argv):
 
     # directories to search for materials
     search_directories = []
-    incompat = [opts.AUG_DIR, opts.LAMBDA, opts.ALEGRA]
-    if len([x for x in incompat if bool(x)]) > 1:
-        parser.error("-D, -L, and -A must be specified independently")
 
-    if opts.AUG_DIR is not None:
-        if not os.path.isdir(opts.AUG_DIR):
-            parser.error("{0} not found".format(opts.AUG_DIR))
-        payette_mtls_file = os.path.join(
-            opts.AUG_DIR, "auxiliary_materials.db")
-        payette_libdir = opts.AUG_DIR
-        search_directories.extend(walk_mtldirs(opts.AUG_DIR))
+    if opts.AUXMTL is not None:
+        # user can specify AUXMTL as either
+        # -A/path/to/auxdir
+        # in which case we build the materials in place in /path/to/auxdir, or
+        # -A/path/to/auxdir:mtldb_name
+        # in which case we build the materials in DOTPAYETTE
+        auxmtl = opts.AUXMTL.split(os.pathsep)
+        mtldir = auxmtl[0]
+        if not os.path.isdir(mtldir):
+            parser.error("{0} not found".format(mtldir))
+        try:
+            payette_mtls_file = os.path.join(cfg.DOTPAYETTE, auxmtl[1])
+            if not payette_mtls_file.endswith(".db"):
+                payette_mtls_file += ".db"
+        except IndexError:
+            payette_mtls_file = os.path.join(mtldir, cfg.AUXDB)
 
-    elif opts.LAMBDA:
-        if not cfg.LAMBDA:
-            parser.error("Lambda models not configured")
-        payette_mtls_file = cfg.LAMBDA["mtldb"]
-        payette_libdir = cfg.DOTPAYETTE
-        search_directories.extend(cfg.LAMBDA["mtldirs"])
-
-    elif opts.ALEGRA:
-        if not cfg.ALEGRA:
-            parser.error("Alegra models not configured")
-        payette_mtls_file = cfg.ALEGRA["mtldb"]
-        payette_libdir = cfg.DOTPAYETTE
-        search_directories.extend(cfg.ALEGRA["mtldirs"])
+        payette_libdir = os.path.dirname(payette_mtls_file)
+        search_directories.extend(walk_mtldirs(mtldir))
 
     else:
         payette_mtls_file = cfg.MTLDB
@@ -233,14 +203,15 @@ def build_payette(argv):
     compiler_info = {"f2py": {"options": f2pyopts},}
 
     # intro message
-    pu.log_message("Building Payette\n")
+    pu.log_message("Building Payette materials\n")
 
     # instantiate the BuildPayette object
     build = BuildPayette(
         search_directories=search_directories,
         requested_materials=requested_materials,
         compiler_info=compiler_info,
-        libdir=payette_libdir)
+        libdir=payette_libdir,
+        verbosity=opts.VERBOSITY)
 
     build.collect_all_materials()
 
@@ -278,7 +249,7 @@ class BuildError(Exception):
 class BuildPayette(object):
 
     def __init__(self, search_directories=None, requested_materials=None,
-                 compiler_info=None, libdir=None):
+                 compiler_info=None, libdir=None, verbosity=1):
 
         # verify each search directory exists
         if not search_directories:
@@ -307,6 +278,7 @@ class BuildPayette(object):
         if libdir is None:
             libdir = cfg.LIBRARY
         self.libdir = libdir
+        self.verbosity = verbosity
 
         pass
 
@@ -319,10 +291,11 @@ class BuildPayette(object):
             if not any(x in dirnam for x in search_dirs):
                 search_dirs.append(dirnam)
             continue
-        pu.log_message(
-            "finding Payette material model interface files from:\n{0}"
-            .format("\n".join([SPACE + x.replace(os.path.expanduser("~"), "~")
-                               for x in search_dirs])))
+        if self.verbosity > 1:
+            pu.log_message(
+                "finding Payette material model interface files from:\n{0}"
+                .format("\n".join([SPACE + x.replace(os.path.expanduser("~"), "~")
+                                   for x in search_dirs])))
 
         self._get_payette_mtls()
 
@@ -451,6 +424,7 @@ class BuildPayette(object):
             self.materials_to_build[name] = {
                 "name": name,
                 "libname": libname,
+                "libdir": self.libdir,
                 "build script": build_script,
                 "aliases": aliases,
                 "interface file": interface_file,
@@ -560,9 +534,10 @@ class BuildPayette(object):
                 model_index.remove_model(material)
             else:
                 model_index.store(
-                    material, info["libname"], info["class name"],
-                    info["interface file"], info["control file"],
-                    info["aliases"], info["parameterization file"],
+                    material, info["libname"], info["libdir"],
+                    info["class name"], info["interface file"],
+                    info["control file"], info["aliases"],
+                    info["parameterization file"],
                     info["parameterization class"])
             continue
         model_index.dump()
