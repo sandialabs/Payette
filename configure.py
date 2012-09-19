@@ -531,7 +531,7 @@ import os
         if self.deployed:
             user_config = self.user_config_file + ".copy"
         else:
-            self.user_config_file
+            user_config = self.user_config_file
         with open(user_config, "w") as fobj:
             fobj.write("""\
 # *************************************************************************** #
