@@ -116,7 +116,7 @@ def configure(argv):
 
     sys.dont_write_bytecode = opts.DONTWRITEBYTECODE
 
-    use_env = not opts.SKIPENVIRON
+    use_env = not opts.SKIPENVIRON and not opts.DEPLOYED
     cfg = PayetteConfig(use_env=use_env, fcompiler=opts.FCOMPILER,
                         deployed=opts.DEPLOYED)
 
@@ -160,7 +160,10 @@ def configure(argv):
     if use_env:
         logmes("Checking for Payette-related environmental variables")
         for key, val in USER_ENV.items():
-            msg = "not set" if val is None else "set"
+            if val is not None:
+                msg = "set to {0}".format(val)
+            else:
+                msg = "not set"
             logmes("{0} {1}".format(key, msg), pre="indent")
 
     # ------ Write out the configuration file and executable files ------------
@@ -256,6 +259,7 @@ class PayetteConfig:
         # --- dotpayette directory
         self.deployed = deployed
         if self.deployed:
+            self.use_env = False
             self.dotpayette = os.path.join(self.root, ".payette")
         else:
             if USER_ENV["DOTPAYETTE"] is not None:
@@ -528,10 +532,8 @@ import os
 
         # write the user configuration file
         attributes = user_attributes
-        if self.deployed:
-            user_config = self.user_config_file + ".copy"
-        else:
-            user_config = self.user_config_file
+        user_config = os.path.join(
+            self.hdir, os.path.basename(self.user_config_file) + ".copy")
         with open(user_config, "w") as fobj:
             fobj.write("""\
 # *************************************************************************** #
@@ -570,6 +572,8 @@ import os
                 continue
             fobj.write(
                 "if DOTPAYETTE not in sys.path: sys.path.append(DOTPAYETTE)\n")
+        if not self.deployed:
+            shutil.copyfile(user_config, self.user_config_file)
         return
 
     def config_sage(self):
@@ -643,13 +647,11 @@ import os
             logmes("writing {0}".format(name), pre="indent", end="...  ")
             with open(path, "w") as fobj:
                 fobj.write("#!/bin/sh -f\n")
-                if self.deployed:
-                    fobj.write(self.get_dotpayette())
-                else:
-                    fobj.write("export DOTPAYETTE={0}\n"
-                               .format(self.dotpayette))
-                fobj.write("export PYTHONPATH={0}:$DOTPAYETTE\n"
-                           .format(self.env["PYTHONPATH"]))
+                pypath = self.env["PYTHONPATH"]
+                if not self.deployed:
+                    fobj.write("DOTPAYETTE={0}\n".format(self.dotpayette))
+                fobj.write(self.get_dotpayette())
+                fobj.write("export PYTHONPATH={0}:$DOTPAYETTE\n".format(pypath))
                 for key, val in self.env.items():
                     if key.lower() in do_not_include:
                         continue
@@ -698,19 +700,22 @@ import os
 
     def get_dotpayette(self):
         return """\
-ostype=`uname -a | tr '[A-Z]' '[a-z]'`
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-if [ -n "$(echo $ostype | grep 'darwin')" ];
-then
-    ${DOTPAYETTE:=$HOME/Library/Preferences/Payette} >& /dev/null
-else
-    ${DOTPAYETTE:=$HOME/.payette} >& /dev/null
+if [ -z "${DOTPAYETTE:+x}" ]; then
+    ostype=`uname -a | tr '[A-Z]' '[a-z]'`
+    if [ -n "$(echo $ostype | grep 'darwin')" ];
+    then
+        DOTPAYETTE=$HOME/Library/Preferences/Payette
+    else
+        DOTPAYETTE=$HOME/.payette
+    fi
 fi
-export DOTPAYETTE=$DOTPAYETTE
 if [ ! -d "$DOTPAYETTE" ]; then
+    echo "INFO: Creating $DOTPAYETTE"
     mkdir -p $DOTPAYETTE
 fi
-if [ ! -f "$DOTPAYETTE/config.py" ]; then
+if [ ! -f "$DOTPAYETTE/user_config.py" ]; then
+    echo "INFO: Copying user_config.py to $DOTPAYETTE"
     cp $DIR/../.payette/user_config.py.copy "$DOTPAYETTE/user_config.py"
 fi
 """
