@@ -373,9 +373,11 @@ class PayetteConfig:
         if not isinstance(paths, (list, tuple)):
             paths = [paths]
         for path in paths:
+            if dirnam is '':
+                continue
             if not os.path.exists(path):
                 retval = False
-                self.increment_error_count("{0} not found".format(path))
+                self.increment_error_count("'{0}' not found".format(path))
             continue
         return retval
 
@@ -418,8 +420,10 @@ class PayetteConfig:
         if not isinstance(user_tests, (list, tuple)):
             user_tests = [user_tests]
         for dirnam in user_tests:
+            if dirnam is '':
+                continue
             if not os.path.isdir(dirnam):
-                self.increment_error_count("{0} not found".format(dirnam))
+                self.increment_error_count("'{0}' not found".format(dirnam))
                 continue
             self.tests.append(dirnam)
             continue
@@ -434,9 +438,12 @@ class PayetteConfig:
         mtldirs = []
         if not isinstance(user_mtls, (list, tuple)):
             user_mtls = [user_mtls]
+        
         for dirnam in user_mtls:
+            if dirnam is '':
+                continue
             if not os.path.isdir(dirnam):
-                self.increment_error_count("{0} not found".format(dirnam))
+                self.increment_error_count("'{0}' not found".format(dirnam))
                 continue
             mtldirs.append(dirnam)
             continue
@@ -595,7 +602,7 @@ import os
         # --- visualization check
         display = os.environ.get("DISPLAY")
         logmes(
-            "Checking if visualizaton suite it supported by Python distribution")
+            "Checking if visualizaton suite is supported by Python distribution")
         if display is not None:
             try:
                 # see if enthought tools are installed
