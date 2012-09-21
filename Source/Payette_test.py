@@ -738,7 +738,7 @@ class PayetteTest(object):
         return
 
 
-    def runFromTerminal(self,argv,compare_method=None):
+    def runFromTerminal(self, argv, compare_method=None):
 
         if "--cleanup" in argv or "-c" in argv:
             self.clean_tracks()

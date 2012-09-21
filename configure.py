@@ -118,7 +118,7 @@ def configure(argv):
 
     use_env = not opts.SKIPENVIRON and not opts.DEPLOYED
     cfg = PayetteConfig(use_env=use_env, fcompiler=opts.FCOMPILER,
-                        deployed=opts.DEPLOYED)
+                        deployed=opts.DEPLOYED, callback=not opts.NOCALLBACK)
 
     # clean up first
     if not opts.NOCLEAN:
@@ -126,7 +126,6 @@ def configure(argv):
 
     # configure Payette
     logmes("Configuring Payette environment")
-    cfg.set_callback_mode(mode=not opts.NOCALLBACK)
 
     # add to tests
     _user_tests = [os.path.expanduser(x) for x in opts.BENCHDIRS]
@@ -242,7 +241,8 @@ class PayetteConfig:
     # --- visualization
     viz_compatible = False
 
-    def __init__(self, use_env=True, fcompiler="gnu", deployed=False):
+    def __init__(self, use_env=True, fcompiler="gnu", deployed=False,
+                 callback=True):
         """Check prerequisites and initialize the PayetteConfig object
 
         Parameters
@@ -289,6 +289,9 @@ class PayetteConfig:
         # --- if running with sage, configure the sage environment
         if self.sage:
             self.config_sage()
+            self.set_callback_mode(mode=False)
+        else:
+            self.set_callback_mode(mode=callback)
 
         # --- f2py setup
         self.setup_f2py(fcompiler)
@@ -438,7 +441,7 @@ class PayetteConfig:
         mtldirs = []
         if not isinstance(user_mtls, (list, tuple)):
             user_mtls = [user_mtls]
-        
+
         for dirnam in user_mtls:
             if dirnam is '':
                 continue

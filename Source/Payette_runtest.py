@@ -37,7 +37,6 @@ import os
 import optparse
 import time
 import shutil
-import platform
 import multiprocessing as mp
 from shutil import copyfile, rmtree
 from pickle import dump, load
@@ -56,6 +55,8 @@ from Source.Payette_container import PayetteError as PayetteError
 CWD = os.getcwd()
 WIDTH_TERM = 80
 WIDTH_INFO = 25
+TEST_INFO = ".test.info"
+RESDIR = os.path.join(CWD, "TestResults.{0}".format(cfg.OSTYPE))
 
 
 def test_payette(argv):
@@ -104,31 +105,25 @@ def test_payette(argv):
               "[default: %default]."))
     parser.add_option(
         "-D",
-        dest="testresdir",
+        dest="TESTRESDIR",
         action="store",
-        default=os.path.join(CWD, "TestResults.{0}".format(platform.system())),
-        help=("Directory to run tests [default: %default]."))
+        default=RESDIR,
+        help="Directory to run tests [default: %default].")
     parser.add_option(
         "-F",
-        dest="forcererun",
+        dest="FORCERERUN",
         action="store_true",
         default=False,
         help="Force benchmarks to be run again [default: %default].")
     parser.add_option(
         "-j", "--nproc",
-        dest="nproc",
+        dest="NPROC",
         type=int,
         default=1,
         action="store")
     parser.add_option(
-        "-b", "--buildpayette",
-        dest="buildpayette",
-        action="store_true",
-        default=False,
-        help="build payette [default: %default].")
-    parser.add_option(
         "-p", "--postprocess",
-        dest="postprocess",
+        dest="POSTPROCESS",
         action="store_true",
         default=False,
         help="Generate plots for run tests [default: %default]")
@@ -146,19 +141,19 @@ def test_payette(argv):
         help="Ignore noncomforming tests [default: %default]")
     parser.add_option(
         "-u",
-        dest="testfile",
+        dest="TESTFILE",
         action="store_true",
         default=False,
         help=("Use previously generated test file, -F is implied "
               "[default: %default]"))
     parser.add_option(
         "-S",
-        dest="switch",
+        dest="SWITCH",
         action="store",
         default=None,
         help=("Switch material A for B [usage -S'A:B'] [default: %default]"))
     parser.add_option(
-        "--rebaseline",
+        "-b", "--rebaseline",
         dest="REBASELINE",
         action="store_true",
         default=False,
@@ -176,49 +171,38 @@ def test_payette(argv):
         dest="INDEX_NAME",
         action="store_true",
         default=False,
-        help=("Print only the benchmark name, -i must also be specified "
-              "[default: %default]."))
+        help="Print benchmark names, -i is implied [default: %default].")
 
     (opts, args) = parser.parse_args(argv)
 
-    if opts.switch is not None:
+    if opts.SWITCH is not None:
         pu.log_warning("switching materials is an untested feature")
 
     # number of processors
-    nproc = min(mp.cpu_count(), opts.nproc)
+    nproc = min(mp.cpu_count(), opts.NPROC)
 
     pu.log_message(cfg.INTRO, pre="", noisy=True)
 
     if opts.REBASELINE:
-        if not args:
-            args = list(set([os.path.splitext(os.path.basename(x))[0]
-                             for x in os.listdir(os.getcwd())]))
-            if len(args) > 1:
-                print args
-                sys.exit("Could not determine which test to rebaseline")
-
-        for arg in args:
-            fpath = os.path.realpath(os.path.expanduser(arg))
-            fnam, fext = os.path.splitext(fpath)
-            old = os.path.realpath(fnam + ".gold")
-            new = fnam + ".out"
-            errors = 0
-            for f in (old, new):
-                if not os.path.isfile(f):
-                    errors += 1
-                    sys.stderr.write("ERROR: {0} not found\n".format(f))
-                continue
-            if errors:
-                sys.stdout.write("ERROR: Test not rebaselined\n")
-                continue
-            sys.stdout.write("Rebaseling {0}\n".format(os.path.basename(fnam)))
-            shutil.move(new, old)
-            sys.stdout.write("{0} rebaselined\n".format(os.path.basename(fnam)))
-            continue
-        sys.exit("Rebaselining complete\n")
+        sys.exit(rebaseline_tests(args))
 
     # find tests
     pu.log_message("Testing Payette", noisy=True)
+
+    # if we are running testPayette in a test result directory, just run that
+    # test
+    if os.path.isfile(os.path.join(CWD, TEST_INFO)):
+        lines = open(os.path.join(CWD, TEST_INFO)).readlines()
+        for line in lines:
+            line = line.split("=")
+            if line[0] == "FILE":
+                pyfile = line[1]
+                break
+        else:
+            pu.report_error("FILE not found in {0}".format(test_info))
+        _run_the_test(pyfile, postprocess=opts.POSTPROCESS)
+        return
+
     test_dirs = cfg.TESTS
     for dirnam in opts.BENCHDIRS:
         dirnam = os.path.expanduser(dirnam)
@@ -237,7 +221,7 @@ def test_payette(argv):
 
     t_start = time.time()
     conforming = None
-    if opts.testfile:
+    if opts.TESTFILE:
         try:
             pu.log_message("Using Payette tests from\n{0}"
                            .format(" " * 6 + cfg.PREV_TESTS), noisy=True)
@@ -292,6 +276,8 @@ def test_payette(argv):
                    .format(len(conforming), t_find),
                    noisy=True)
 
+    if opts.INDEX_NAME:
+        opts.INDEX = True
     if opts.INDEX:
         out = sys.stderr
         out.write("\nBENCHMARK INDEX\n\n")
@@ -329,16 +315,11 @@ def test_payette(argv):
     t_start = time.time()
 
     # Make a TestResults directory named "TestResults.{platform}"
-    if opts.buildpayette:
-        if os.path.isdir(opts.testresdir):
-            testresdir0 = "{0}_0".format(opts.testresdir)
-            shutil.move(opts.testresdir, testresdir0)
+    if not os.path.isdir(opts.TESTRESDIR):
+        os.mkdir(opts.TESTRESDIR)
 
-    if not os.path.isdir(opts.testresdir):
-        os.mkdir(opts.testresdir)
-
-    summhtml = os.path.join(opts.testresdir, "summary.html")
-    respkl = os.path.join(opts.testresdir, "Previous_Results.pkl")
+    summhtml = os.path.join(opts.TESTRESDIR, "summary.html")
+    respkl = os.path.join(opts.TESTRESDIR, "Previous_Results.pkl")
     try:
         old_results = load(open(respkl, "r"))
     except IOError:
@@ -374,7 +355,7 @@ def test_payette(argv):
     pu.log_message("=" * WIDTH_TERM, pre="", noisy=True)
 
     # copy the mathematica notebooks to the output directory
-    _copy_mathematica_nbs(mathnbs, opts.testresdir)
+    _copy_mathematica_nbs(mathnbs, opts.TESTRESDIR)
 
     # all_results is a large list of the summary of every test.
     # Go through it and use the information to construct the test_res
@@ -432,7 +413,7 @@ def test_payette(argv):
          "   Date complete:    {0:<}\n".format(str_date) +
          "   Username:         {0:<}\n".format(getpass.getuser()) +
          "   Hostname:         {0:<}\n".format(os.uname()[1]) +
-         "   Platform:         {0:<}\n".format(sys.platform) +
+         "   Platform:         {0:<}\n".format(cfg.OSTYPE) +
          "   Python Version:   {0:<}\n".format(cfg.PYVER))
 
     # List each category (diff, fail, notrun, and pass) and the tests
@@ -487,7 +468,7 @@ def test_payette(argv):
             continue
         continue
 
-    for dirnam, dirs, files in os.walk(opts.testresdir):
+    for dirnam, dirs, files in os.walk(opts.TESTRESDIR):
         for name in files:
             fbase, fext = os.path.splitext(name)
             delext = [".so", ".pyo", ".pyc"]
@@ -500,13 +481,6 @@ def test_payette(argv):
     # dump results and write html summary
     dump(test_res, open(respkl, "w"))
     write_html_summary(summhtml, test_res)
-
-    if opts.buildpayette:
-        shutil.rmtree(opts.testresdir)
-        try:
-            shutil.move(testresdir0, opts.testresdir)
-        except:
-            pass
 
     if ndiff and nfail:
         retval = -1
@@ -531,7 +505,7 @@ def _run_test(args):
     py_dir = os.path.dirname(py_file)
 
     # check for switched materials
-    switch = opts.switch
+    switch = opts.SWITCH
     if switch is not None:
         switch = [x.lower() for x in switch.split(":")]
 
@@ -555,12 +529,12 @@ def _run_test(args):
     except AttributeError:
         testbase = os.path.split(os.path.dirname(py_file))[1]
 
-    benchdir = os.path.join(opts.testresdir, testbase, test.name)
+    benchdir = os.path.join(opts.TESTRESDIR, testbase, test.name)
 
     # check if benchmark has been run
     ran = [(y, x) for y in old_results for x in old_results[y] if x == test.name]
 
-    if not (opts.forcererun or opts.testfile) and ran and os.path.isdir(benchdir):
+    if not (opts.FORCERERUN or opts.TESTFILE) and ran and os.path.isdir(benchdir):
         pu.log_message(
             "{0}".format(test.name) +
             " " * (50 - len(test.name)) +
@@ -630,43 +604,20 @@ def _run_test(args):
             # switch the material
             _switch_materials(files=test_files, switch=switch)
 
+    # write out hidden test file with some relevant info
+    with open(os.path.join(benchdir, TEST_INFO), "w") as fobj:
+        fobj.write("NAME={0}\n".format(test.name))
+        fobj.write("PLATFORM={0}\n".format(cfg.OSTYPE))
+        fobj.write("KEYWORDS={0}\n".format(", ".join(test.keywords)))
+        fobj.write("FILE={0}\n".format(os.path.basename(py_file)))
+
     # delete the current test instance, and instantiate new from the files
     # just copied. Move to the new directory and run the test
     del py_module, test
     os.chdir(benchdir)
-
-    py_module = _get_test_module(test_py_file)
-    test = py_module.Test()
-    starttime = time.time()
-    try:
-        retcode = test.runTest()
-    except PayetteError as error:
-        retcode = 66
-        pu.log_warning(error.message)
-
-    if opts.postprocess and os.path.isfile(test.outfile):
-        pp.postprocess(test.outfile, verbosity=0)
-
-    retcode = ("bad input" if retcode == test.badincode else
-               "pass" if retcode == test.passcode else
-               "diff" if retcode == test.diffcode else
-               "fail" if retcode == test.failcode else
-               "failed to run" if retcode == test.failtoruncode else
-               "unkown")
-
-    # Print output at completion
-    tcompletion = time.time() - starttime
-    info_string = "{0} ({1:6.02f}s)".format(retcode.upper(), tcompletion)
-    pu.log_message(
-        "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
-        "{0:>{1}s}".format(info_string, WIDTH_INFO), pre="", noisy=True)
-
-    # return to the directory we came from
+    result = _run_the_test(test_py_file, postprocess=opts.POSTPROCESS)
     os.chdir(CWD)
-    result = {test.name: {"status": retcode,
-                          "keywords": test.keywords,
-                          "completion time": tcompletion,
-                          "benchmark directory": benchdir}}
+
     return result
 
 
@@ -723,7 +674,7 @@ def write_html_summary(fname, results):
                     status = stat
 
                 for myfile in files:
-                    if myfile.endswith(".out.html") and opts.postprocess:
+                    if myfile.endswith(".out.html") and opts.POSTPROCESS:
                         fobj.write("<li><a href='{0}'>PostProcessing</a>\n"
                                    .format(os.path.join(tresd, myfile)))
                 fobj.write("<li>Keywords: {0}\n".format(keywords))
@@ -804,6 +755,76 @@ def _get_test_module(py_file):
     py_module = imp.load_module(py_mod, fobj, pathname, description)
     fobj.close()
     return py_module
+
+
+def rebaseline_tests(args):
+    if not args:
+        args = list(set([os.path.splitext(os.path.basename(x))[0]
+                         for x in os.listdir(os.getcwd())]))
+        if len(args) > 1:
+            print args
+            sys.stdout.write("Could not determine which test to rebaseline\n")
+            return
+
+    for arg in args:
+        fpath = os.path.realpath(os.path.expanduser(arg))
+        fnam, fext = os.path.splitext(fpath)
+        old = os.path.realpath(fnam + ".gold")
+        new = fnam + ".out"
+        errors = 0
+        for f in (old, new):
+            if not os.path.isfile(f):
+                errors += 1
+                sys.stderr.write("ERROR: {0} not found\n".format(f))
+            continue
+        if errors:
+            sys.stdout.write("ERROR: Test not rebaselined\n")
+            continue
+        sys.stdout.write("Rebaseling {0}\n".format(os.path.basename(fnam)))
+        shutil.move(new, old)
+        sys.stdout.write("{0} rebaselined\n".format(os.path.basename(fnam)))
+        continue
+    sys.stdout.write("Rebaselining complete\n")
+    return
+
+
+def _run_the_test(the_test, postprocess=False):
+    """Run the test in the_test
+
+    """
+    py_module = _get_test_module(the_test)
+    test = py_module.Test()
+    starttime = time.time()
+    try:
+        retcode = test.runTest()
+    except PayetteError as error:
+        retcode = 66
+        pu.log_warning(error.message)
+
+    retcode = ("bad input" if retcode == test.badincode else
+               "pass" if retcode == test.passcode else
+               "diff" if retcode == test.diffcode else
+               "fail" if retcode == test.failcode else
+               "failed to run" if retcode == test.failtoruncode else
+               "unkown")
+
+    # Print output at completion
+    tcompletion = time.time() - starttime
+    info_string = "{0} ({1:6.02f}s)".format(retcode.upper(), tcompletion)
+    pu.log_message(
+        "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
+        "{0:>{1}s}".format(info_string, WIDTH_INFO), pre="", noisy=True)
+
+    # return to the directory we came from
+    result = {test.name: {"status": retcode,
+                          "keywords": test.keywords,
+                          "completion time": tcompletion,
+                          "benchmark directory": os.getcwd()}}
+
+    if postprocess and os.path.isfile(test.outfile):
+        pp.postprocess(test.outfile, verbosity=0)
+
+    return result
 
 
 if __name__ == "__main__":

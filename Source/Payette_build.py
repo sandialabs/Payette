@@ -203,7 +203,7 @@ def build_payette(argv):
     compiler_info = {"f2py": {"options": f2pyopts},}
 
     # intro message
-    pu.log_message("Building Payette materials\n")
+    pu.log_message("Building Payette materials")
 
     # instantiate the BuildPayette object
     build = BuildPayette(
