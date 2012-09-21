@@ -9,6 +9,7 @@ from enthought.traits.api import HasStrictTraits, Instance, String, Button, \
                          Bool, List, Str, Property, HasPrivateTraits, on_trait_change
 from enthought.traits.ui.api import View, Item, HSplit, VGroup, Handler, TabularEditor, HGroup, UItem
 from enthought.traits.ui.tabular_adapter import TabularAdapter
+from enthought.pyface.api import FileDialog, OK
 
 Change_X_Axis_Enabled = True
 
@@ -72,6 +73,32 @@ class SingleSelect(HasPrivateTraits):
     def _selected_modified ( self, object, name, new ):
         self.plot.change_axis(object.choices.index(object.selected))
 
+class SingleSelectOverlayFilesAdapter(TabularAdapter):
+    columns = [ ('Overlay File Name', 'myvalue') ]
+
+    myvalue_text = Property
+
+    def _get_myvalue_text(self):
+        return self.item
+
+class SingleSelectOverlayFiles(HasPrivateTraits):
+    choices  = List(Str)
+    selected = Str
+
+    view = View(
+        HGroup(
+            UItem('choices',
+                  editor     = TabularEditor(
+                                   show_titles  = True,
+                                   selected     = 'selected',
+                                   editable     = False,
+                                   multi_select = False,
+                                   adapter      = SingleSelectOverlayFilesAdapter())
+        )),
+        width=224,
+        height=100
+    )
+
 class MultiSelectAdapter(TabularAdapter):
     columns = [ ('Payette Outputs', 'myvalue') ]
 
@@ -96,7 +123,7 @@ class MultiSelect(HasPrivateTraits):
                                    adapter      = MultiSelectAdapter())
         )),
         width=224,
-        height=668,
+        height=568,
         resizable=True
     )
 
@@ -115,12 +142,15 @@ class Viz_ModelPlot(HasStrictTraits):
     Change_Axis = Instance(ChangeAxis)
     Reset_Zoom = Button('Reset Zoom')
     Reload_Data = Button('Reload Data')
+    Load_Overlay = Button('Open Overlay')
+    Close_Overlay = Button('Close Overlay')
+    Single_Select_Overlay_Files = Instance(SingleSelectOverlayFiles)
     file_paths = List(String)
     file_variables = List(String)
-    
+
     def _Reset_Zoom_fired(self):
         self.Plot_Data.change_plot(self.Plot_Data.plot_indices)
-        
+
     def _Reload_Data_fired(self):
         self.headers = pu.get_header(self.file_paths[0])
         data = []
@@ -132,6 +162,34 @@ class Viz_ModelPlot(HasStrictTraits):
         self.Change_Axis.headers = self.headers
         self.Plot_Data.change_plot(self.Plot_Data.plot_indices)
 
+    def _Close_Overlay_fired(self):
+        if self.Single_Select_Overlay_Files.selected:
+            index = self.Single_Select_Overlay_Files.choices.index(self.Single_Select_Overlay_Files.selected)
+            self.Single_Select_Overlay_Files.choices.remove(self.Single_Select_Overlay_Files.selected)
+            del self.Plot_Data.overlay_plot_data[self.Single_Select_Overlay_Files.selected]
+            if not self.Single_Select_Overlay_Files.choices:
+                self.Single_Select_Overlay_Files.selected = ""
+            else:
+                if index >= len(self.Single_Select_Overlay_Files.choices):
+                    index = len(self.Single_Select_Overlay_Files.choices) - 1
+                self.Single_Select_Overlay_Files.selected = self.Single_Select_Overlay_Files.choices[index]
+            self.Plot_Data.change_plot(self.Plot_Data.plot_indices)
+
+    def _Load_Overlay_fired(self):
+        dialog = FileDialog(action="open")
+        dialog.open()
+        if dialog.return_code == OK:
+            for eachfile in dialog.paths:
+                try:
+                    overlay_data = pu.read_data(eachfile)
+                    overlay_headers = pu.get_header(eachfile)
+                    self.Plot_Data.overlay_plot_data[os.path.basename(eachfile)] = overlay_data
+                    self.Plot_Data.overlay_headers[os.path.basename(eachfile)] = overlay_headers
+                    self.Single_Select_Overlay_Files.choices.append(os.path.basename(eachfile))
+                except:
+                    print "Error reading overlay data in file " + eachfile
+            self.Plot_Data.change_plot(self.Plot_Data.plot_indices)
+
     def __init__(self, **traits):
         HasStrictTraits.__init__(self, **traits)
         self.headers = pu.get_header(self.file_paths[0])
@@ -141,6 +199,7 @@ class Viz_ModelPlot(HasStrictTraits):
         self.Plot_Data = Viz_Plot2D(plot_data=data,run_names=self.file_variables, headers=self.headers, axis_index=0)
         self.Multi_Select = MultiSelect(choices=self.headers, plot=self.Plot_Data)
         self.Change_Axis = ChangeAxis(Plot_Data=self.Plot_Data, headers=self.headers)
+        self.Single_Select_Overlay_Files = SingleSelectOverlayFiles(choices=[])
 
 def create_Viz_ModelPlot(window_name, **kwargs):
     """Create the plot window
@@ -193,16 +252,22 @@ def create_Viz_ModelPlot(window_name, **kwargs):
 
     view = View(HSplit(
                        VGroup(
-                             Item('Multi_Select',
-                                  show_label=False, width=224, height=668, springy=True, resizable=True),
+                             Item('Multi_Select', show_label=False),
                              Item('Change_Axis',
                                   show_label=False),
                              Item('Reset_Zoom',
-                                 # enabled_when='Change_X_Axis_Enabled==True',
                                   show_label = False),
                              Item('Reload_Data',
-                                 # enabled_when='Change_X_Axis_Enabled==True',
                                   show_label = False),
+                             VGroup(
+                                    HGroup(
+                                          Item('Load_Overlay',
+                                               show_label = False, springy=True),
+                                          Item('Close_Overlay',
+                                               show_label = False, springy=True),
+                                          ),
+                                    Item('Single_Select_Overlay_Files', show_label=False, resizable=False),
+                                    show_border=True)
                              ),
                        Item('Plot_Data',
                             show_label=False, width=800, height=768, springy=True, resizable=True)
