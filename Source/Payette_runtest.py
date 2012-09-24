@@ -203,6 +203,16 @@ def test_payette(argv):
         _run_the_test(pyfile, postprocess=opts.POSTPROCESS)
         return
 
+    # if the user passed in python test files, just run those tests
+    pyargs = [x for x in args if x.endswith(".py")]
+    if pyargs:
+        for pyarg in pyargs:
+            if not os.path.isfile(pyarg):
+                pu.report_error("{0} not found".format(pyarg))
+            _run_the_test(pyarg, postprocess=opts.POSTPROCESS)
+            continue
+        return
+
     test_dirs = cfg.TESTS
     for dirnam in opts.BENCHDIRS:
         dirnam = os.path.expanduser(dirnam)

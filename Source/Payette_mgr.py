@@ -337,7 +337,7 @@ def main(argv):
 
     # determine file type given, whether output files for viewing, input files
     # for running, or barf files for barf processing
-    oexts = (".out", ".dat", ".pkl")
+    oexts = (".out", ".dat", ".pkl", ".gold")
     iexts = (".barf", ".inp", ".i",)
     rexts = (".prf", )
     oargs, iargs, uargs, bargs, rargs = [], [], [], [], []
