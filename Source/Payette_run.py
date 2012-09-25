@@ -45,7 +45,7 @@ import Source.Payette_container as pcntnr
 import Source.Payette_optimize as po
 import Source.Payette_permutate as pp
 import Source.Payette_parameterize as pparam
-import Aux.newparse as pip
+import Source.Payette_input_parser as pip
 import runopts as ro
 
 def run_payette(siminp=None, restart=False, timing=False,

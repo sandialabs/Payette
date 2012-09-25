@@ -33,7 +33,7 @@ class ModelRunner(HasStrictTraits):
             return
 
         material = self.material_models[0]
-        
+
         inputString = self.CreateModelInputString(material, optimizer)
 
         print inputString
@@ -48,8 +48,7 @@ class ModelRunner(HasStrictTraits):
         # tjf: run_payette can be invoked with disp=1 and then it returns a
         # tjf: dictionary with some extra information. I pass that extra
         # tjf: information to the CreatePlotWindow method.
-        siminp = inputString.split("\n")
-        siminfo = pr.run_payette(siminp=siminp, disp=1)[0]
+        siminfo = pr.run_payette(siminp=inputString, disp=1)[0]
         sys.stdout = oldout
 
         if self.callbacks is None:
@@ -107,7 +106,25 @@ class ModelRunner(HasStrictTraits):
         % (self.simulation_name, material.model_name))
 
         for p in material.parameters:
-            result += "    %s = %s\n" % (p.name, p.default)
+
+            # For permutation and optimization jobs, the parameter is not
+            # specified as
+            #    key = val
+            # in the input file but
+            #    key = {key}
+            # so that the input parser can preprocess key with the current
+            # value.  Here we determine how to set key
+
+            print dir(p)
+            if p.distribution != "Specified":
+                val = "{{{0}}}".format(p.name)
+            else:
+                val = p.default
+            if optimization is not None:
+                #@tjf: code to determine if p is optimized or not so that the
+                #proper form for "val" can be written to the input
+                pu.report_and_raise_error("Support code needed")
+            result += "    %s = %s\n" % (p.name, val)
 
         result += "  end material\n"
 

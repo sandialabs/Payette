@@ -25,7 +25,7 @@ parameters using Payette.
 
 """
 
-import os, sys
+import os, sys, re
 import numpy as np
 import scipy
 import scipy.optimize
@@ -110,14 +110,14 @@ def get_logger(name, fpath=None):
     return logger["object"]
 
 
-def parameterizer(input_lines):
+def parameterizer(ilines):
     r"""docstring -> needs to be completed """
 
     # get the optimization block
-    job_inp = pip.InputParser(input_lines)
+    ui = pip.InputParser(ilines)
 
     # check for compatible constitutive model
-    constitutive_model = job_inp.user_options["constitutive model"]
+    constitutive_model = ui.get_option("CONSTITUTIVE_MODEL")
     model_index = pmi.ModelIndex()
     parameterizer = model_index.parameterizer(constitutive_model)
     if parameterizer is None:
@@ -126,28 +126,29 @@ def parameterizer(input_lines):
             "module defined".format(constitutive_model))
 
     # check for required directives
-    req_directives = ("constitutive model", "material", )
-    job_directives = job_inp.input_options()
+    req_directives = ("CONSTITUTIVE_MODEL", )
+    job_directives = ui.options()
     for directive in req_directives:
         if directive not in job_directives:
             raise ParameterizeError(
                 "Required directive {0} not found".format(directive))
 
-    return parameterizer(job_inp)
+    ilines = ui.user_input()
+    return parameterizer(ui)
 
 
 class Parameterize(object):
     r"""docstring -> needs to be completed """
 
-    def __init__(self, job, *args, **kwargs):
-        r""" Initialization """
+    def __init__(self, ui, *args, **kwargs):
+        """ Initialization """
 
         # the name is the name of the material
-        self.job_directives = job.input_options()
-        self.name = self.job_directives["material"]
+        self.job_directives = ui.options()
+        self.name = ui.name
         self.fext = ".opt"
         self.verbosity = ro.VERBOSITY
-        self.job = job
+        self.ui = ui
 
         pass
 
@@ -161,96 +162,109 @@ class Parameterize(object):
         """Parse the Kayenta parameterization blocks
 
         """
+        self.b = block
+        def find_option(option, default=None):
+            option = ".*".join(option.split())
+            pat = r"(?i)\b{0}\s".format(option)
+            fpat = pat + r".*"
+            option = re.search(fpat, self.b)
+            if option:
+                s, e = option.start(), option.end()
+                option = self.b[s:e]
+                self.b = self.b[:s].strip() + self.b[e:]
+                option = re.sub(pat, "", option)
+                option = re.sub(r"[\,=]", " ", option).strip()
+            else:
+                option = default
+            return option
 
         # defaults
-        data_f = None
         optimize = {}
         fix = {}
         options = {}
 
-        # parse the shearfit block
-        for item in block:
+        # get the data file
+        data_f = find_option("data file")
+        if data_f is not None and not os.path.isfile(data_f):
+            pu.report_error("{0} not found".format(data_f))
 
-            for pat in ",=()":
-                item = item.replace(pat, " ")
-            item = item.split()
+        # get variables to optimize
+        optmz = []
+        while True:
+            opt = find_option("optimize")
+            if opt is None:
+                break
+            optmz.append(re.sub(r"[\(\)]", "", opt).lower().split())
+            continue
+        for item in optmz:
+            key, vals = item[0], item[1:]
+            optimize[key] = {"bounds": [None, None],
+                             "initial value": None}
 
-            if not item:
-                continue
+            if "bounds" in vals:
+                try:
+                    idx = vals.index("bounds") + 1
+                    bounds = [float(x) for x in vals[idx:idx+2]]
+                except ValueError:
+                    bounds = [None, None]
+                    pu.report_error("Bounds requires 2 arguments")
 
-            token = item[0].lower()
+                if bounds[0] > bounds[1]:
+                    pu.report_error(
+                        "lower bound {0} > upper bound {1} for {2}"
+                        .format(bounds[0], bounds[1], key))
+                optimize[key]["bounds"] = bounds
 
-            if " ".join(item[0:2]).lower() == "data file":
-                data_f = os.path.realpath(item[2])
-                if not data_f:
-                    pu.report_error("data file {0} not found".format(data_f))
-
-            elif "optimize" in token:
-                # set up this parameter to optimize
-                key = item[1]
-                vals = item[2:]
-
-                bounds = (None, None)
-                init_val = None
-
-                # upper bound
-                if "bounds" in vals:
-                    try:
-                        idx = vals.index("bounds") + 1
-                        bounds = [float(x) for x in vals[idx:idx+2]]
-                    except ValueError:
-                        pu.report_error("bounds requires 2 arguments")
-
-                    if bounds[0] > bounds[1]:
-                        pu.report_error(
-                            "lower bound {0} > upper bound {1} for {2}"
-                            .format(bounds[0], bounds[1], key))
-
-                if "initial" in vals:
-                    idx = vals.index("initial")
-                    if vals[idx + 1] == "value":
-                        idx = idx + 1
-                        try:
-                            init_val = float(vals[idx+1])
-                        except ValueError:
-                            pu.report_error("excpected float for initial value")
-
-                optimize[key] = {"bounds": bounds, "initial value": init_val,}
-
-            elif "fix" in token:
-                # set up this parameter to fix
-                key = item[1]
-                vals = item[2:]
-                init_val = None
-                if "initial" in vals:
-                    idx = vals.index("initial")
-                    if vals[idx + 1] == "value":
-                        idx = idx + 1
-                        try:
-                            init_val = float(vals[idx+1])
-                        except ValueError:
-                            pu.report_error("excpected float for initial value")
-
-                fix[key] = {"initial value": init_val}
-
-            else:
-                key = token.upper()
-                if len(item) == 1:
-                    val = True
+            if "initial" in vals:
+                idx = vals.index("initial")
+                if vals[idx + 1] == "value":
+                    idx = idx + 1
+                    ival = float(vals[idx+1])
                 else:
-                    val = " ".join(item[1:])
-                options[key] = val
-
+                    ival = None
+                optimize[key]["initial value"] = ival
             continue
 
-        if data_f is None:
-            pu.report_error("No data file given for shearfit problem")
+        # get variables to fix
+        fixed = []
+        while True:
+            tmp = find_option("fix")
+            if tmp is None:
+                break
+            fixed.append(re.sub(r"[\(\)]", "", tmp))
+            continue
+        for item in fixed:
+            key = item.split()[0]
+            init_val = re.search(r"(?i)\binitial.*value\s.*", item)
+            if init_val is None:
+                pu.report_error("Expected initial value for {0}".format(key))
+                continue
+            s, e = init_val.start(), init_val.end()
+            init_val = re.sub(r"(?i)\binitial.*value\s", "", item[s:e]).strip()
+            try:
+                init_val = float(init_val)
+            except ValueError:
+                pu.report_error(
+                    "Excpected float for initial value for {0}".format(key))
+            fix[key] = {"initial value": init_val}
+
+        for item in self.b.split("\n"):
+            item = re.sub(r"[\,=\(\)]", " ", item).split()
+            if not item:
+                continue
+            key = item[0].upper()
+            if len(item) == 1:
+                val = True
+            else:
+                val = " ".join(item[1:])
+            options[key] = val
+            continue
 
         for key, val in fix.items():
             if key.lower() in [x.lower() for x in optimize]:
-                pu.report_error("cannot fix and optimize {0}".format(key))
+                pu.report_error("Cannot fix and optimize {0}".format(key))
 
         if pu.error_count():
-            pu.report_and_raise_error("stopping due to previous errors")
+            pu.report_and_raise_error("Stopping due to previous errors")
 
         return data_f, optimize, fix, options

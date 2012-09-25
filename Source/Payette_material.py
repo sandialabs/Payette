@@ -30,7 +30,7 @@ import config as cfg
 import Source.Payette_utils as pu
 import Source.Payette_model_index as pmi
 from Source.Payette_data_container import DataContainer
-from Aux.newparse import I_EQ
+from Source.Payette_input_parser import I_EQ
 
 
 class Material:

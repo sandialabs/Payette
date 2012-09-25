@@ -22,8 +22,8 @@ begin simulation exmpl_13
 
   begin material
     constitutive model hooke
-    G 53.e9
-    K 135.e9
+    G = {smod}
+    K = {bmod}
   end material
 
   begin permutation
@@ -34,8 +34,8 @@ begin simulation exmpl_13
 
     # below we specify which parameters to permutation
     method zip # [zip] {zip, combination}
-    permutate K, range = (100.e9, 200.e9, 10) # [] {range, sequence}
-    permutate G, range = (40.e9, 60.e9, 10)
+    permutate bmod, range = (100.e9, 200.e9, 10) # [] {range, sequence}
+    permutate smod, range = (40.e9, 60.e9, 10)
 
   end permutation
 

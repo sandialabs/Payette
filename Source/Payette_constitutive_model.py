@@ -33,7 +33,7 @@ import Source.Payette_utils as pu
 import Source.Payette_xml_parser as px
 from Source.Payette_xml_parser import XMLParserError as XMLParserError
 from Source.Payette_unit_manager import UnitManager as UnitManager
-from Aux.newparse import I_EQ
+from Source.Payette_input_parser import I_EQ
 
 
 class ConstitutiveModelPrototype(object):

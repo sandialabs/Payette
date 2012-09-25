@@ -38,7 +38,7 @@ import Source.Payette_driver as pd
 import Source.Payette_utils as pu
 import Source.Payette_extract as pe
 import Source.Payette_boundary as pb
-import Aux.newparse as pip
+import Source.Payette_input_parser as pip
 import runopts as ro
 from Source.Payette_material import Material
 from Source.Payette_data_container import DataContainer
@@ -79,11 +79,11 @@ class Payette(object):
 
     """
 
-    def __init__(self, input_lines):
+    def __init__(self, ilines):
 
         # instantiate the user input object
-        self.input_lines = input_lines
-        self.ui = pip.InputParser(input_lines)
+        self.ilines = ilines
+        self.ui = pip.InputParser(ilines)
 
         delete = not ro.KEEP
 
@@ -180,7 +180,7 @@ class Payette(object):
         # instantiate the material object
         material = self.ui.find_block("material")
         if material is None:
-            raise InputParserError(
+            pu.report_and_raise_error(
                 "Material block not found for {0}".format(self.name))
         self.material = Material(material)
         self.matdat = self.material.material_data()
@@ -188,27 +188,17 @@ class Payette(object):
         # get the boundary and legs blocks
         boundary, legs = self.ui.find_nested_blocks("boundary", ("legs", ))
         if boundary is None:
-            raise InputParserError(
+            pu.report_and_raise_error(
                 "Boundary block not found for {0}".format(self.name))
         if not self.material.eos_model and legs is None:
-            raise InputParserError(
+            pu.report_and_raise_error(
                 "Legs block not found for {0}".format(self.name))
-        self.boundary = pip.Boundary(boundary, legs)
 
         # solid and eos materials have different boundary classes
-#        if not self.material.eos_model:
-#            Boundary = pb.Boundary
-#        else:
-#            Boundary = pb.EOSBoundary
-#
-#        try:
-#            bkwargs = {"boundary": boundary, "legs": legs, "efield": efield}
-#            self.boundary = Boundary(**bkwargs)
-#
-#        except BoundaryError as error:
-#            pu.report_and_raise_error(
-#                "Boundary object failed with the following error:\n{0}"
-#                .format(error.message), caller="anonymous")
+        if not self.material.eos_model:
+            self.boundary = pb.Boundary(boundary, legs)
+        else:
+            self.boundary = pb.EOSBoundary(boundary, legs)
 
         self.t0 = self.boundary.initial_time()
         self.tf = self.boundary.termination_time()
@@ -627,7 +617,7 @@ class Payette(object):
                     "simulation name": self.name,
                     "simulation directory": self.simdir}
 
-    def finish(self):
+    def finish(self, wipe=False, wipeall=False):
         """finish up"""
 
         # restore runopts
@@ -649,6 +639,15 @@ class Payette(object):
         if self.write_input:
             self.write_input_file()
 
+        if wipe or wipeall:
+            # remove cruft
+            for ext in (".log", ".props", ".math1", ".math2", ".prf"):
+                try: os.remove(self.name + ext)
+                except OSError: pass
+                continue
+        if wipeall:
+            try: os.remove(self.name + ".out")
+            except OSError: pass
         return
 
     def simulation_data(self):

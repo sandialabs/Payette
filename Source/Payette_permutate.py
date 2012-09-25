@@ -24,10 +24,10 @@
 parameters using Payette.
 
 """
-
 import os
 import sys
 import shutil
+import re
 import numpy as np
 import multiprocessing as mp
 from copy import deepcopy
@@ -43,56 +43,46 @@ import runopts as ro
 class Permutate(object):
     r"""docstring -> needs to be completed """
 
-    def __init__(self, input_lines):
+    def __init__(self, ilines):
 
-        # extract the permutation block and delete it so that it is not read
-        # again
-        job_inp = pip.InputParser(input_lines)
-        job = job_inp.get_simulation_key()
-        if "simdir" in job_inp.input_options() or ro.SIMDIR is not None:
+        # get the permutation block
+        ui = pip.InputParser(ilines)
+        self.name = ui.name
+
+        regex = re.compile(r"simdir", re.I|re.M)
+        if regex.search("\n".join(ui.options())) or ro.SIMDIR is not None:
             pu.report_and_raise_error(
                 "cannot specify simdir for permutation jobs")
+        permutate = ui.find_block("permutation")
+        self.pblock = permutate
 
-        permutate = job_inp.get_block("permutation")
-        input_lines = job_inp.get_input_lines(skip="permutation")
-
-        self.name = job
-
-        # save Perturbate information to single "data" dictionary
+        # save permutation information to single "data" dictionary
         self.data = {}
-        self.data["basename"] = job
-        self.data["return level"] = ro.DISP
+        self.data["basename"] = self.name
         self.data["verbosity"] = ro.VERBOSITY
+        self.data["return level"] = ro.DISP
         self.data["fext"] = ".perm"
-        self.data["baseinp"] = input_lines
+        self.data["options"] = []
 
         # number of processors
-        nproc = int(job_inp.get_option("nproc")
-                    if job_inp.get_option("nproc") is not None else ro.NPROC)
-        self.data["nproc"] = nproc
+        nproc = int(ui.get_option("nproc", ro.NPROC))
+        self.data["nproc"] = min(mp.cpu_count(), nproc)
 
         # set verbosity to 0 for Payette simulation and save the payette
         # options to the data dictionary
         ro.set_global_option("VERBOSITY", 0, default=True)
 
-        # allowed directives
-        self.allowed_directives = ("method", "options", "permutate", )
-
-        # allowed options
-        self.allowed_options = ( )
-        self.conflicting_options = (( ))
-
-        # methods
+        # place holders for param_ranges and param_names
         self.method = None
-        self.allowed_methods = (("combination", "combine"), "zip")
-
-        # place holders for param_ranges and param_nams
         self.param_ranges = []
-        self.param_nams = []
+        self.param_names = []
         self.initial_vals = []
 
         # fill the data with the permutated information
-        self.get_params(permutate)
+        self.parse_permutation_block()
+        ilines = ui.user_input(pop=("permutation",))
+        ilines = re.sub(r"(?i)\btype\s.*", "type simulation", ilines)
+        self.data["baseinp"] = ilines
 
         # check the permutation variables
         self.check_params()
@@ -102,7 +92,7 @@ class Permutate(object):
             pu.log_message("Permutating job: {0}".format(self.data["basename"]),
                            noisy=True)
             pu.log_message("Permutated variables: {0}"
-                           .format(", ".join(self.param_nams)), noisy=True)
+                           .format(", ".join(self.param_names)), noisy=True)
             pu.log_message("Permutation method: {0}".format(self.method),
                            noisy=True)
 
@@ -159,15 +149,14 @@ class Permutate(object):
         # Save additional arguments to func in the global FARGS. This would be
         # handled better using something similar to scipy.optimize.py's
         # wrap_function, but that is not compatible with Pool.map.
-        args = ((x, self.param_nams, self.data, base_dir, self.index)
+        args = ((x, self.param_names, self.data, base_dir, self.index)
                 for x in self.param_ranges)
 
-        nproc = min(mp.cpu_count(), self.data["nproc"])
-        if nproc == 1:
+        if self.data["nproc"] == 1:
             results = [func(arg) for arg in args]
 
         else:
-            pool = mp.Pool(processes=nproc)
+            pool = mp.Pool(processes=self.data["nproc"])
             results = pool.map(func, args)
             pool.close()
             pool.join()
@@ -199,7 +188,7 @@ class Permutate(object):
         self.index.dump()
         return
 
-    def get_params(self, permutation_block):
+    def parse_permutation_block(self):
         r"""Get the required permutation information.
 
         Populates the self.data dict with information parsed from the
@@ -208,160 +197,106 @@ class Permutate(object):
 
         Parameters
         ----------
-        permutation_block : array_like
-            permutation block from input file
 
         Returns
         -------
         None
 
         """
+        # Allowed directives, options, methods. Defaults
+        adirctvs = ("method", "options", "permutate", )
+        allowed_methods = {
+            "combine": {"method": "Combination"},
+            "combination": {"method": "Combination"},
+            "zip": {"method": "Zip"},}
+        perm_method = allowed_methods["zip"]
         param_ranges = []
-        options = []
 
-        for item in permutation_block:
-
-            for char in ",=()[]":
-                item = item.replace(char, " ")
-                continue
-
-            item = item.split()
-            directive = item[0].lower()
-
-            if directive not in self.allowed_directives:
-                pu.report_error("unrecognized keyword \"{0}\" in permutation block"
-                                .format(directive))
-                continue
-
-            if directive == "options":
-
-                try:
-                    opt = [x.lower() for x in item[1:]]
-                except IndexError:
-                    pu.report_error(
-                        "no options given following 'option' directive")
-                    continue
-
-                if opt[0] in pu.flatten(self.allowed_methods):
-                    pu.log_warning(
-                        "using deprecated 'options' keyword to specify "
-                        "the {0} 'method'".format(opt[0]))
-                    directive = "method"
-
-                else:
-                    bad_opt = [x for x in opt if x not in self.allowed_options]
-                    if bad_opt:
-                        pu.report_error("options '{0:s}' not recognized"
-                                        .format(", ".join(bad_opt)))
-
-                    else:
-                        options.extend(opt)
-
-                    continue
-
-            if directive == "method":
-
-                # method must be one of the allowed_methods, and must only be
-                # specified once
-                try:
-                    meth = item[1]
-                except IndexError:
-                    pu.report_error(
-                        "no method given following 'method' directive")
-                    continue
-
-                if self.method is None:
-                    self.method = meth
-
-                else:
-                    pu.report_error("requested method '{0}' but method '{1}'"
-                                    .format(meth, self.method) +
-                              " already requested")
-                    continue
-
-                bad_meth = self.method not in pu.flatten(self.allowed_methods)
-                if bad_meth:
-                    pu.report_error(
-                        "method '{0:s}' not recognized, allowed methods are {1}"
-                        .format(self.method, ", ".join(self.allowed_methods)))
-                continue
-
-            if directive == "permutate":
-
-                # set up this parameter to permutate
-                try:
-                    key = item[1]
-                except IndexError:
-                    pu.report_error("No item given for permutate keyword")
-                    continue
-
-                try:
-                    vals = [x.lower() for x in item[2:]]
-                except IndexError:
-                    pu.report_error("No values given for permutate keyword {0}"
-                                    .format(key))
-                    continue
-
-                # specified range
-                p_range = None
-                if "range" in vals:
-                    p_range = ", ".join(vals[vals.index("range") + 1:])
-                    if len(p_range.split(",")) < 2:
-                        pu.report_error("range requires at least 2 arguments")
-                        continue
-
-                    elif len(p_range.split(",")) == 2:
-                        # default to 10 steps
-                        p_range += ", 10"
-
-                    p_range = eval("{0}({1})".format("np.linspace", p_range))
-
-                # specified sequence
-                elif "sequence" in vals:
-                    p_range = ", ".join(vals[vals.index("sequence") + 1:])
-                    p_range = eval("{0}([{1}])".format("np.array", p_range))
-
-                # default: same as sequence above, but without the "sequence"
-                # kw
-                else:
-                    p_range = ", ".join(vals)
-                    p_range = eval("{0}([{1}])".format("np.array", p_range))
-
-                # check that a range was given
-                if p_range is None or not len(p_range):
-                    pu.report_error("no range/sequence given for " + key)
-                    p_range = np.zeros(1)
-
-                p_range = p_range.tolist()
-                param_ranges.append(p_range)
-                self.param_nams.append(key)
-                self.initial_vals.append(p_range[0])
-
-                continue
-
+        # get options
+        while True:
+            option = self.find_pblock_option("option")
+            if option is None:
+                break
+            self.data["options"].append(option.lower())
             continue
 
+        # get method
+        method = self.find_pblock_option("method")
+        if method is not None:
+            method = method.lower()
+            perm_method = allowed_methods.get(method)
+            if perm_method is None:
+                pu.report_and_raise_error("invalid method {0}".format(method))
+
+        # get variables to permutate
+        permutate = []
+        while True:
+            perm = self.find_pblock_option("permutate")
+            if perm is None:
+                break
+            permutate.append(re.sub(r"[\(\)]", "", perm))
+            continue
+        for item in permutate:
+            key = item.split()[0]
+
+            # specified range
+            prange = None
+            srange = re.search(r"(?i)\brange\s", item)
+            sseq = re.search(r"(?i)\bsequence\s", item)
+
+            if srange is not None and sseq is not None:
+                pu.report_error(
+                    "Cannot specify both range and sequence for {0}"
+                    .format(key))
+                continue
+
+            if srange is not None:
+                # user specified a range
+                prange = item[srange.end():].split()
+                if len(prange) < 2:
+                    pu.report_error("range requires at least 2 arguments")
+                    continue
+
+                elif len(prange) == 2:
+                    # default to 10 steps
+                    prange.append("10")
+
+                prange = ", ".join(prange)
+                prange = eval("{0}({1})".format("np.linspace", prange))
+
+            elif sseq is not None:
+                # specified sequence
+                prange = ", ".join(item[sseq.end():].split())
+                prange = eval("{0}([{1}])".format("np.array", prange))
+
+            else:
+                # default: same as sequence above, but without "sequence"
+                prange = ", ".join(item.split()[1:])
+                prange = eval("{0}([{1}])".format("np.array", prange))
+
+            # check that a range was given
+            if prange is None or not len(prange):
+                pu.report_error("No range/sequence given for {0}".format(key))
+                prange = np.zeros(1)
+
+            param_ranges.append(prange.tolist())
+            self.param_names.append(key)
+            self.initial_vals.append(prange[0])
+            continue
+
+        # ---- Finish up ---------------------------------------------------- #
         if pu.error_count():
-            pu.report_and_raise_error("quiting due to previous errors")
+            pu.report_and_raise_error("Stopping due to previous errors")
 
-        # check for conflicting options
-        for item in self.conflicting_options:
-            conflict = [x for x in options if x in item]
-            if len(conflict) - 1:
-                pu.report_and_raise_error(
-                    "conflicting options \"{0}\" ".format(", ".join(conflict)) +
-                    "given in permuation block")
+        self.method = perm_method["method"]
 
-        if self.method is None:
-            self.method = "zip"
-
-        if "combin" in self.method:
+        if self.method == "Combination":
             param_ranges = list(product(*param_ranges))
 
         else:
             if len(set([len(x) for x in param_ranges])) - 1:
                 pu.report_and_raise_error(
-                    "number of permutations must be the same for "
+                    "Number of permutations must be the same for "
                     "all permutated parameters when using method: [zip]")
             param_ranges = zip(*param_ranges)
 
@@ -370,7 +305,6 @@ class Permutate(object):
         self.param_ranges = izip(
             ["{0:0{1}d}".format(x, pad) for x in range(nruns)], param_ranges)
         del param_ranges
-
         return
 
     def check_params(self):
@@ -386,38 +320,31 @@ class Permutate(object):
         None
 
         """
-
-        job_inp = pip.replace_params_and_name(
-            self.data["baseinp"], self.data["basename"],
-            self.param_nams, self.initial_vals)
-
-        # copy the job input and instantiate a Payette object
-        the_model = pc.Payette(job_inp)
-        param_table = the_model.material.constitutive_model.parameter_table
-
-        # remove cruft
-        for ext in (".log", ".props", ".math1", ".math2", ".prf", ".out"):
-            try:
-                os.remove(self.data["basename"] + ext)
-            except OSError:
-                pass
-            continue
-
-        # check that the visualize variables are in this models parameters
-        not_in = [x for x in self.param_nams if x.lower() not in
-                  [y.lower() for y in param_table.keys()]]
-
-        if not_in:
-            pu.report_error(
-                "permutated parameter[s] {0} not in model parameters"
-                .format(", ".join(not_in)))
-
-        if pu.error_count():
-            pu.report_and_raise_error("exiting due to previous errors")
-
-        the_model.finish()
-
+        preprocessor = ""
+        pu.log_message("Calling model with initial parameters")
+        for i, name in enumerate(self.param_names):
+            preprocessor += "{0} = {1}\n".format(name, self.initial_vals[i])
+        ui = pip.preprocess(self.data["baseinp"], preprocessor=preprocessor)
+        the_model = pc.Payette(ui)
+        if pu.warn_count():
+            pu.report_and_raise_error("Stopping due to initial warnings")
+        the_model.finish(wipeall=True)
         return
+
+    def find_pblock_option(self, option, default=None):
+        option = ".*".join(option.split())
+        pat = r"(?i)\b{0}\s".format(option)
+        fpat = pat + r".*"
+        option = re.search(fpat, self.pblock)
+        if option:
+            s, e = option.start(), option.end()
+            option = self.pblock[s:e]
+            self.pblock = (self.pblock[:s] + self.pblock[e:]).strip()
+            option = re.sub(pat, "", option)
+            option = re.sub(r"[\,=]", " ", option).strip()
+        else:
+            option = default
+        return option
 
 
 def func(args):
@@ -453,27 +380,28 @@ def func(args):
     os.mkdir(job_dir)
     os.chdir(job_dir)
 
-    # get the udpated input file
-    job_inp = pip.replace_params_and_name(data["baseinp"], job, xnams, xcall)
-
     # replace the visualize variables with the updated and write params to file
     msg = []
+    preprocessor = ""
     variables = {}
     with open(os.path.join(job_dir, job + data["fext"]), "w") as fobj:
         fobj.write("Parameters for job {0}\n".format(job_id))
         for nam, val in zip(xnams, xcall):
             pstr = "{0} = {1:12.6E}".format(nam, val)
+            preprocessor += "{0} = {1}\n".format(nam, val)
             variables[nam] = val
             fobj.write(pstr + "\n")
             msg.append(pstr)
             continue
 
+    ui = pip.preprocess(data["baseinp"], preprocessor=preprocessor)
+    ui = re.sub(r"(?i)\bname\s.*", "name {0}".format(job), ui)
     if data["verbosity"]:
         pu.log_message("Running job {0:s}, parameters: {1}"
                        .format(job_id, ", ".join(msg)), noisy=True)
 
     # instantiate Payette object
-    the_model = pc.Payette(job_inp)
+    the_model = pc.Payette(ui)
 
     # write out the input file, not actually used, but nice to have
     the_model.write_input = True

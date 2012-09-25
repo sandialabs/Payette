@@ -11,8 +11,8 @@ end legs
 end boundary
 begin material
 constitutive model elastic
-G 53.e9
-K 135.e9
+G {G}
+K {K}
 end material
 begin permutation
 options zip

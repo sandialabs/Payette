@@ -1,949 +1,636 @@
-# The MIT License
+#!/usr/bin/env python
+import re, sys, os
+from textwrap import fill as textfill
+import math
+import numpy as np
 
-# Copyright (c) 2011 Tim Fuller
-
-# License for the specific language governing rights and limitations under
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included
-# in all copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-
-"""Main payette input parsing class definitions"""
-
-import os, sys
-from Source.Payette_utils import who_is_calling
 import runopts as ro
+import Payette_utils as pu
+
+# --- module leve constants
+I_EQ = r"[:,=]"
+I_SEP = r"[:,;]"
 
 
-class InputError(Exception):
-    """InputParser exception class"""
+class InputParserError(Exception):
     def __init__(self, message):
         if not ro.DEBUG:
             sys.tracebacklimit = 0
-        caller = who_is_calling()
+        caller = pu.who_is_calling()
         self.message = message + " [reported by {0}]".format(caller)
-        super(InputError, self).__init__(self.message)
+        super(InputParserError, self).__init__(message)
+        pass
 
 
 class InputParser(object):
-    """Payette input class
+    """Payette user input class
+
+    Reads and sets up blocks from user input
 
     Raises
     ------
-    InputError
+    InputParserError
 
     """
 
-    def __init__(self, user_input=None):
-
-        self.input_errors = 0
-        self.input_warnings = 0
-
-        if user_input is None:
-            sys.exit("no user input sent to InputParser")
-
-        self.user_input = user_input
-
-        # main container for holding all user input
-        self.plot_keys = None
-        self.simkey = None
-        self.input_set = None
-        self.input_sets = None
-        self.parsed_user_input = None
-        self._read_input()
-
-        self.user_options = {}
-        self._parse_user_options()
-
-    def input_error(self, msg):
-        """Warn user of input error
-
-        Calculations are not stopped, the error just relayed to user.
-        self.errors is incremented.
+    def __init__(self, ilines=None):
+        """Initialize the InputParser object.
 
         Parameters
         ----------
-        self : class instance
-        msg : str
-          The message to print
-
-        """
-        caller = who_is_calling()
-        sys.stdout.flush()
-        sys.stderr.write("ERROR: {0} [reported by: {1}\n".format(msg, caller))
-        self.input_errors += 1
-        return
-
-    def log_warning(self, msg):
-        """Warn user of something
-
-        Calculations are not stopped, the warning just relayed to user.
-        self.warnings is incremented.
-
-        Parameters
-        ----------
-        self : class instance
-        msg : str
-          The message to print
-
-        """
-        if ro.WARNING == "ignore":
-            return
-        sys.stderr.write("WARNING: {0}\n".format(msg))
-        self.input_warnings += 1
-        return
-
-    def _read_input(self):
-        """ read a list of user inputs and return """
-
-        # get all of the input blocks for the file
-        self._parse_input_lines()
-        self._get_blocks()
-
-        nsims = len([x for x in self.input_sets if
-                     "simulation" in x or "parameterization" in x])
-        if nsims > 1:
-            raise InputError("Too many input sets encountered")
-
-        # input_sets contains a list of all blocks in the file, parse it to
-        # make sure that a simulation is given
-        major_blocks = ("simulation", "parameterization", )
-
-        recognized_blocks = ("boundary", "legs", "material",
-                             "optimization", "permutation", "enumeration",
-                             "mathplot", "name", "content", "extraction",
-                             "output", "description", "efield",
-                             "shearfit", "hydrofit")
-        incompatible_blocks = (("optimization", "permutation",),)
-
-        for input_set in self.input_sets:
-
-            sim_type = [x for x in input_set if x in major_blocks]
-            if len(sim_type) != 1:
-                keys = ", ".join(input_set.keys())
-                if ro.WARNING == "all":
-                    self.log_warning(
-                        "expected to find a simulation block but found: {0}"
-                        .format(keys))
-                continue
-            sim_type = sim_type[0]
-
-            # check for incompatibilities
-            bad_blocks = [x for x in input_set[sim_type]
-                          if x not in recognized_blocks]
-
-            if bad_blocks:
-                self.input_error(
-                    "unrecognized blocks: {0}".format(", ".join(bad_blocks)))
-
-            for item in incompatible_blocks:
-                bad_blocks = [x for x in input_set[sim_type] if x in item]
-                if len(bad_blocks) > 1:
-                    self.input_error(
-                        "{0} blocks incompatible, choose one"
-                        .format(", ".join(bad_blocks)))
-                continue
-
-
-            simkey = input_set[sim_type]["name"]
-            if not simkey and sim_type == "simulation":
-                self.input_error(
-                    'did not find simulation name.  Simulation block '
-                    'must be of form:\n'
-                    '\tbegin simulation <simulation name> ... end simulation')
-                continue
-
-            self.simkey = simkey
-            self.input_set = input_set[sim_type]
-
-            continue
-
-        if self.input_errors:
-            raise InputError("stopping due to previous errors")
-
-        if ro.WARNING == "error" and self.input_warnings:
-            raise InputError("stopping due to previous errors")
-
-        return
-
-    def _parse_user_options(self):
-        """Parse the input file for user specified options
-
-        Any items in the simulation block of an input file that are not in any
-        other blocks are considered user specified options.
-
-        Parameters
-        ----------
-        self : class instance
-
-        Updates
-        -------
-        self.user_options : dict
-          key:val pairs of user options
+        ilines : str
+            The user input
 
         Notes
         -----
-        If a user option is give in the form
-
-            key = val
-
-        we save the key:val pairs.  However, if given as
-
-            key
-
-        we save key:True.
-
-        """
-        for item in self.input_set["content"]:
-
-            # replace , ; : = with " " (space) and split
-            for pat in ",;:=":
-                item = item.replace(pat, " ")
-                continue
-            item = item.strip().split()
-
-            if len(item) == 1:
-                # only keyword given, value is True
-                key = item[0]
-                val = True
-
-            elif item[0].lower() == "write" and item[1].lower() == "input":
-                key = "WRITE_INPUT"
-                val = True
-
-            elif "constitutive" in item[0].lower():
-                key = "constitutive model"
-                val = item[-1].lower()
-
-            else:
-                # key and value given.  Determine key and value
-                key = item[0]
-                val = "_".join(item[1:])
-
-                try:
-                    val = float(val)
-
-                except (NameError, TypeError, SyntaxError, ValueError):
-                    val = str(val)
-
-            # save key:val pairs
-            self.user_options[key] = val
-
-            continue
-        return
-
-    def _parse_input_lines(self):
-        """Read the user input, inserting files if encountered
-
-        Parameters
-        ----------
-        user_input : list
-            New line separated list of the input file
-        cchars : list
-            List of comment characters
-
-        Returns
-        -------
-        all_input : list
-            All of the read input, including inserted files
+        ilines should be obtained by first sending the user input through
+        parse_user_input
 
         """
 
-        raw_user_input = self.user_input
-        insert_kws = ("insert", "include")
+        if ilines is None:
+            raise InputParserError("No user input sent to InputParser")
 
-        cchars = ("#", "$")
-        used_blocks = []
-        self.parsed_user_input = []
-        iline = 0
+        # --- required information ------------------------------------------ #
+        self.inp = find_block("input", ilines)
+        if self.inp is None:
+            raise InputParserError("User input not found")
 
-        user_input = _remove_all_comments(raw_user_input, cchars)
-        user_input = preprocess_input_deck(user_input)
+        # find the contents of the input block, popping found content along
+        # the way
+        content = get_content(self.inp)
+        self.name, content = find_item_name(content, "name", pop=True)
+        if self.name is None:
+            raise InputParserError("Simulation name not found")
+        self.stype, content = find_item_name(content, "type", pop=True)
+        self._options = parse_options(content)
+        pass
 
-        # infinite loop for reading the input file and getting all inserted
-        # files
-        while True:
+    def find_block(self, name, default=None):
+        """Class method to the public find_block method """
+        return find_block(name, self.inp, default=default)
 
-            # if we have gone through one time, reset user_input to be
-            # self.parsed_user_input and run through again until all inserted
-            # files have been read in
-            if iline == len(user_input):
-                if [x for x in self.parsed_user_input
-                    if x.split()[0] in insert_kws]:
-                    user_input = [x for x in self.parsed_user_input]
-                    self.parsed_user_input = []
-                    iline = 0
-                else:
-                    break
+    def find_nested_blocks(self, major, nested, default=None):
+        """Class method to the public find_nested_blocks """
+        return find_nested_blocks(major, nested, self.inp, default=default)
 
-            # get the next line of input
-            line = user_input[iline]
+    def options(self):
+        return self._options
 
-            # check for internal "use" directives "use" blocks allow repeating
-            # data among multiple simulations in a single file. For example,
-            # if you are running a single input file with 4 simulations each
-            # having the same material, you could have
-            #
-            # begin material
-            #   use material_block
-            # end material
-            #      .
-            #      .
-            #      .
-            # end simulation
-            #
-            # begin material_block
-            #   constitutive model ...
-            #   parameters
-            # end material_block
-            if line.split()[0] == "use":
-                block = " ".join(line.split()[1:])
-                # check if insert is given in file
-                idx_0, idx_f, block_insert = _find_block(user_input, block)
-                if idx_0 is None:
-                    raise InputError(
-                        "'use' block '{0:s}' not found".format(block))
-                elif idx_f is None:
-                    raise InputError(
-                        "end of 'use' block '{0:s}' not found".format(block))
+    def get_option(self, option, default=None):
+        return self._options.get(option, default)
 
-                used_blocks.append(block)
-                self.parsed_user_input.extend(block_insert)
-
-            # check for inserts
-            elif line.split()[0] in insert_kws:
-                insert = " ".join(line.split()[1:])
-
-                if not os.path.isfile(insert):
-                    raise InputError(
-                        "inserted file '{0:s}' not found".format(insert))
-
-                insert_lines = open(insert, "r").readlines()
-                self.parsed_user_input.extend(
-                    _remove_all_comments(insert_lines, cchars))
-
-            else:
-                self.parsed_user_input.append(line)
-
-            iline += 1
-
+    def user_input(self, pop=None):
+        lines = "begin input\n{0}\nend input".format(self.inp.strip())
+        if pop is None:
+            return lines
+        if not isinstance(pop, (list, tuple)):
+            pop = [pop]
+        for item in pop:
+            lines = pop_block(item, lines)
             continue
+        return lines
 
-        for block in list(set(used_blocks)):
-            self.parsed_user_input = remove_block(self.parsed_user_input, block)
 
-        return
-
-    def _get_blocks(self):
-        """ Find all input blocks in user_input.
-
-        Input blocks are blocks of instructions in
-
-            begin keyword [title]
-                   .
-                   .
-                   .
-            end keyword
-
-        blocks.
-
-        Parameters
-        ----------
-        user_input : array_like
-            Split user_input
-
-        Returns
-        -------
-        blocks : dict
-            Dictionary containing all blocks.
-            keys:
-                simulation
-                boundary
-                legs
-                special
-                mathplot
-
-        """
-
-        block_tree = []
-        block_stack = []
-        block = {}
-
-        for line in self.parsed_user_input:
-
-            split_line = line.strip().lower().split()
-
-            if not split_line:
-                continue
-
-            if split_line[0] == "begin":
-                # Encountered a new block. Before continuing, we need to
-                # decide what to do with it. Possibilities are:
-                #
-                #    1. Start a new block dictionary if this block is not
-                #    nested
-                #    2. Append this block to the previous if it is nested
-
-                # get the block type
-                try:
-                    block_typ = split_line[1]
-
-                except ValueError:
-                    raise InputError(
-                        "encountered a begin directive with no block type")
-
-                # get the (optional) block name
-                try:
-                    block_nam = "_".join(split_line[2:])
-
-                except ValueError:
-                    block_nam = None
-
-                new_block = {block_typ: {"name": block_nam, "content": [], }}
-
-                if not block_stack:
-                    # First encountered block, old block is now done, store it
-                    if block:
-                        block_tree.append(block)
-
-                    block = new_block
-
-                else:
-                    if block_typ in block[block_stack[0]]:
-                        raise InputError(
-                            "duplicate block \"{0}\" encountered"
-                            .format(block_typ))
-
-                    block[block_stack[0]][block_typ] = new_block[block_typ]
-
-                # Append the block type to the block stack. The block stack is a
-                # list of blocks we are currently in.
-                block_stack.append(block_typ)
-                continue
-
-            elif split_line[0] == "end":
-
-                # Reached the end of a block. Make sure that it is the end of
-                # the most current block.
-                try:
-                    block_typ = split_line[1]
-                except ValueError:
-                    raise InputError(
-                        "encountered a end directive with no block type")
-
-                if block_stack[-1] != block_typ:
-                    msg = ('unexpected "end {0}" directive, expected "end {1}"'
-                           .format(block_typ, block_stack[-1]))
-                    raise InputError(msg)
-
-                # Remove this block from the block stack
-                block_stack.pop()
-                try:
-                    block_typ = block_stack[-1]
-
-                except IndexError:
-                    block_typ = None
-
-                continue
-
-            # Currently in a block,
-            if not block_stack:
-                continue
-
-            if block_stack[0] == block_typ:
-                block[block_typ]["content"].append(line)
-
-            else:
-                block[block_stack[0]][block_typ]["content"].append(line)
-
-            continue
-
-        block_tree.append(block)
-
-        self.input_sets = block_tree
-        return
-
-
-
-    def get_input_set(self):
-        """return the input_set dict"""
-        return self.input_set
-
-    def get_simulation_key(self):
-        """The simulation key (name)"""
-        return self.simkey
-
-    def input_blocks(self):
-        """All blocks in input file"""
-        return self.input_set.keys()
-
-    def get_block(self, block_name):
-        """Get block block_name from input blocks"""
-        block = self.input_set.get(block_name)
-        if block is None:
-            for input_block in self.input_blocks():
-                if input_block.lower() == block_name.lower():
-                    block = self.input_set[block]
-                continue
-            else:
-                return None
-        return block["content"]
-
-    def set_block(self, block_name, content):
-        """Set the value of an input block"""
-        self.input_set[block_name]["content"] = content
-        return
-
-    def has_block(self, block_name):
-        """True if has block block_name, else False"""
-        return block_name in self.input_set
-
-    def get_input_lines(self, skip=None):
-        """Get the input lines"""
-
-        if skip is None:
-            skip = []
-        elif not isinstance(skip, (list, tuple)):
-            skip = [skip]
-
-        req_blocks = ("material", "boundary", "legs")
-        input_lines = []
-
-        # simulation block
-        input_lines.append("begin simulation {0}".format(self.simkey))
-        content = self.input_set["content"]
-        for item in content:
-            input_lines.append(item)
-            continue
-
-        # required blocks
-        for block in req_blocks:
-            content = self.input_set[block]["content"]
-            name = self.input_set[block]["name"]
-            input_lines.append("begin {0} {1}".format(block, name))
-            for item in content:
-                input_lines.append(item)
-                continue
-            if block == "boundary":
-                continue
-            input_lines.append("end {0}".format(block))
-            if block == "legs":
-                input_lines.append("end boundary")
-            continue
-
-        for key, val in self.input_set.items():
-            if not isinstance(val, dict) or key in skip:
-                continue
-
-            name = val["name"]
-            content = val["content"]
-            if key in req_blocks:
-                continue
-            input_lines.append("begin {0} {1}".format(key, name))
-            for item in content:
-                input_lines.append(item)
-                continue
-            input_lines.append("end {0}".format(key))
-        input_lines.append("end simulation")
-
-        return input_lines
-
-    def input_options(self):
-        """Get the input options"""
-        return self.user_options
-
-    def get_option(self, option):
-        try:
-            return self.user_options[option]
-
-        except KeyError:
-            key = [x for x in self.user_options
-                   if x.lower() == option.lower()]
-            if key:
-                return self.user_options[key[0]]
-            return None
-
-    def register_plot_keys(self, plot_keys):
-        """Register the plot keys to the InputParser class"""
-        if not isinstance(plot_keys, (list, tuple)):
-            plot_keys = [plot_keys]
-        self.plot_keys = plot_keys
-        return
-
-    def parse_output_block(self):
-        """parse the output block of the input file"""
-
-        if self.plot_keys is None:
-            raise InputError(
-                "Plot keys must be registered before parsing output block")
-
-        output = self.get_block("output")
-
-        supported_formats = ("ascii", )
-        out_format = "ascii"
-        out_vars = []
-        if output is None:
-            return self.plot_keys, out_format, None
-
-        for item in output:
-            for pat in ",;:":
-                item = item.replace(pat, " ")
-                continue
-
-            _vars = [x.upper() for x in item.split()]
-            if "FORMAT" in _vars:
-                try:
-                    idx = _vars.index("FORMAT")
-                    out_format = _vars[idx+1].lower()
-                except IndexError:
-                    self.log_warning(
-                        "format keyword found, but no format given")
-                continue
-
-            out_vars.extend(_vars)
-            continue
-
-        if out_format not in supported_formats:
-            raise InputError(
-                "output format {0} not supported, choose from {1}"
-                .format(out_format, ", ".join(supported_formats)))
-
-        if "ALL" in out_vars:
-            out_vars = self.plot_keys
-
-        bad_keys = [x for x in out_vars if x.lower() not in
-                    [y.lower() for y in self.plot_keys]]
-        if bad_keys:
-            self.log_warning(
-                "requested output variable{0:s} {1:s} not found"
-                .format("s" if len(bad_keys) > 1 else "", ", ".join(bad_keys)))
-
-        out_vars = [x.upper() for x in out_vars if x not in bad_keys]
-
-        if not out_vars:
-            raise InputError("no output variables found")
-
-        # remove duplicates
-        uniq = set(out_vars)
-        out_vars = [x for x in out_vars if x in uniq and not uniq.remove(x)]
-
-        if "TIME" not in out_vars:
-            out_vars.insert(0, "TIME")
-
-        elif out_vars.index("TIME") != 0:
-            out_vars.remove("TIME")
-            out_vars.insert(0, "TIME")
-
-        return out_vars, out_format, output["name"]
-
-    def parse_mathplot_block(self):
-        """parse the mathplot block of the input file"""
-
-        if self.plot_keys is None:
-            raise InputError(
-                "Plot keys must be registered before parsing output block")
-
-        mathplot_vars = []
-        mathplot = self.get_block("mathplot")
-
-        if mathplot is None:
-            return mathplot_vars
-
-        for item in mathplot:
-            for pat in ",;:":
-                item = item.replace(pat, " ")
-                continue
-            mathplot_vars.extend(item.split())
-            continue
-
-        bad_keys = [x for x in mathplot_vars if x.lower() not in
-                    [y.lower() for y in self.plot_keys]]
-        if bad_keys:
-            self.log_warning(
-                "requested mathplot variable{0:s} {1:s} not found"
-                .format("s" if len(bad_keys) > 1 else "", ", ".join(bad_keys)))
-
-        return [x.upper() for x in mathplot_vars if x not in bad_keys]
-
-
-    def parse_extraction_block(self):
-        """parse the extraction block of the input file"""
-
-        if self.plot_keys is None:
-            raise InputError(
-                "Plot keys must be registered before parsing extraction block")
-        low_keys = [x.lower() for x in self.plot_keys]
-
-        extraction_vars = []
-        extraction = self.get_block("extraction")
-
-        if extraction is None:
-            return extraction_vars
-
-        for items in extraction:
-            for pat in ",;:":
-                items = items.replace(pat, " ")
-                continue
-            items = items.split()
-            for item in items:
-                if item[0] not in ("%", "@") and not item[0].isdigit():
-                    self.log_warning(
-                        "unrecognized extraction request {0}".format(item))
-                    continue
-
-                elif item[1:].lower() not in low_keys:
-                    self.log_warning(
-                        "requested extraction variable {0} not found"
-                        .format(item))
-                    continue
-
-                extraction_vars.append(item)
-
-            continue
-
-        return [x.upper() for x in extraction_vars]
-
-
-def parse_user_input(raw_user_input, user_cchar=None):
-    """unfinished docstring """
-    cchars = ['#','$']
-    # comment characters
-    if user_cchar is not None:
-        cchars.append(user_cchar)
-
-    user_input = _remove_all_comments(raw_user_input, cchars)
-
-    use_blocks = []
-    all_inputs = []
-    current_input = []
-    in_simulation = False
-    in_parameterization = False
-    ending = None
-
-    # the user input can be of form begin [simulation, parameterization]
-    sim_types = ("simulation", "parameterization", )
-
-    for line in user_input:
-        line = " ".join(line.strip().split())
-        if any("begin {0}".format(x) in line.lower() for x in sim_types):
-            if current_input:
-                sys.exit(
-                    "beginning simulation encountered before end of previous")
-            else:
-                if "simulation" in line:
-                    ending = "end simulation"
-                    in_simulation = True
-                else:
-                    ending = "end parameterization"
-                    in_parameterization = True
-
-        if in_simulation or in_parameterization:
-            current_input.append(line)
-
-        else:
-            use_blocks.append(line)
-
-        if ending is not None and ending in line.lower():
-            all_inputs.append(current_input)
-            current_input = []
-            in_simulation = False
-            in_parameterization = False
-            continue
-
-        continue
-
-    if current_input:
-        if not any("end {0}".format(x) in current_input[-1] for x in sim_types):
-            sys.exit(
-                "end of simulation '{0}' not found".format(current_input[0]))
-
-    # check for the end of each simulation and insert 'use' blocks
-    for idx, item in enumerate(all_inputs):
-        if not any("end {0}".format(x) in item[-1] for x in sim_types):
-            sys.exit("end of simulation '{0}' not found".format(item[0]))
-
-        item.extend(use_blocks)
-        all_inputs[idx] = item
-        continue
-
-    return all_inputs
-
-
-def _remove_all_comments(lines, cchars):
-    """ remove all comments from lines """
-    stripped_lines = []
-    for line in lines:
-        line = line.strip()
-        # skip blank and comment lines
-        if not line.split() or line[0] in cchars:
-            continue
-
-        # remove inline comments
-        for cchar in cchars:
-            line = line.split(cchar)[0]
-
-        stripped_lines.append(line)
-        continue
-    return stripped_lines
-
-
-def preprocess_input_deck(lines, preprocessing=None):
-    """ process a preprocessing input block
+def parse_options(lines):
+    """Parse lines for options
 
     Parameters
     ----------
-    lines : list
-        new line separated list of the user input
+    lines : str
 
     Returns
     -------
-    preprocessed_lines : list
-        preprocessed new line separated list of the user input
+    options : dict
 
     """
-    if preprocessing is None:
-        idx_0, idx_f, preprocessing = _find_block(lines, "preprocessing")
-        if not preprocessing:
-            return lines
-
-        lines = remove_block(lines, "preprocessing")
-
-    # replacement and math characters
-    rchars = ",="
-    mchars = "+-/*"
-
-    # find substitutions
-    beg, end = "{}"
-    substitutions = {}
-    for line in preprocessing:
-        orig_line = line.strip()
-        for char in rchars:
-            line = line.replace(char, " ")
-        line = line.strip().split()
-        try:
-            key = line[0].replace(beg, "").replace(end, "")
-            # key = key[1:] if key[0] == "{" else key
-            # key = key[0:-1] if key[-1] == "}" else key
-            substitutions[key] = (
-                " ".join(line[1:]).replace(beg, "").replace(end, ""))
-        except IndexError:
-            raise InputError(
-                'Expected key = val pairs in preprocessing block, got "{0}"'
-                .format(orig_line))
+    options = {}
+    known_options = (re.compile(r"\bwrite.*input\b", re.I|re.M),
+                     re.compile(r"\bnowriteprops\b", re.I|re.M),
+                     re.compile(r"\brestart\b", re.I|re.M),)
+    for option in known_options:
+        found = option.search(lines)
+        if found:
+            s, e = found.start(), found.end()
+            key = re.sub(r"\s", "_", " ".join(lines[s:e].split())).upper()
+            lines = (lines[:s] + lines[e:]).strip()
+            options[key] = True
         continue
-    if not substitutions:
-        raise InputError("Empty preprocessing block encountered")
 
-    # go through lines and look for any substitutions
-    preprocessed_lines = []
-    for line in lines:
-        line = line.strip()
+    for line in lines.split("\n"):
+        line = re.sub(I_EQ, " ", line).split()
+        if not line:
+            continue
+        if len(line) == 1:
+            key, val = line[0].upper(), True
+        else:
+            key, val = "_".join(line[:-1]).upper(), line[-1]
+        options[key] = val
+        continue
 
-        # skip blank lines
-        if not line.split() or line[0] in "#$":
+    return options
+
+
+def find_item_name(lines, item, pop=False):
+    """Find the item name in lines
+
+    Parameters
+    ----------
+    lines : str
+        block of lines to search for item
+    item : str
+        item for which name is desired
+    pop : bool, optional
+        if True, return lines with item line popped off
+
+    Returns
+    -------
+    name : str
+        desired name
+    lines : str [only if pop]
+        lines with item line popped off
+
+    """
+    name = re.search(r"(?i)\b{0}\s.*".format(item), lines)
+    if name:
+        s, e = name.start(), name.end()
+        name = re.sub(r"\s", "_",
+                      re.sub(r"(?i)\b{0}\s".format(item),
+                             "", lines[s:e].strip()))
+        if pop:
+            lines = (lines[:s] + lines[e:]).strip()
+
+    if pop:
+        return name, lines
+    return name
+
+
+def get_content(lines, pop=False):
+    block = []
+    rlines, content = [], []
+    bexp = re.compile(r"\bbegin\s*", re.I|re.M)
+    eexp = re.compile(r"\bend\s.*", re.I|re.M)
+    for iline, line in enumerate(lines.split("\n")):
+        if bexp.search(line):
+            block.append(1)
+        if eexp.search(line):
+            block.pop()
+            rlines.append(line)
             continue
 
-        x0, x1, x2 = 0, line.find(beg), line.find(end)
-        nloops = 0
-        while True:
-            if list(set([x1, x2])) == [-1] or x2 < x1 or nloops > 20:
-                break
-
-            # This line contains at least 1 { } pairs, replace there contents
-            # with those in the preprocessing block
-            segment = line[x1+1:x2]
-            for sub, val in substitutions.items():
-                if sub in segment:
-                    segment = segment.replace(sub, val)
+        if not block:
+            content.append(line)
+            if pop:
                 continue
 
-            # evaluate any math characters
-            if any(x in mchars for x in segment):
-                segment = "{0:12.6E}".format(eval(segment))
-
-            # now replace the portion of line from { to } with the
-            # preprocessed content
-            line = line.replace(line[x1:x2+1], segment)
-            x0, x1, x2 = x2, line.find(beg, x2), line.find(end, x2+1)
-            nloops += 1
-            continue
-
-        preprocessed_lines.append(line)
+        rlines.append(line)
         continue
-    return preprocessed_lines
+
+    content = "\n".join([x for x in content if x])
+    rlines = "\n".join(rlines)
+    if pop:
+        return content, lines
+    return content
 
 
-def replace_params_and_name(lines, name, param_names, param_vals):
-    """Repace the values of parameter names in lines with those in param_vals
+def parse_user_input(lines):
+    """Find simulation and parameterization block in the user input
+
+    Parameters
+    ----------
+    lines : str
+        the user input
+
+    Returns
+    -------
+    simulations : dict
+       simulation_name:simulation input
+    parameterizations : dict
+       parameterization_name:parameterization input
 
     """
-    if not isinstance(param_names, (list, tuple)):
-        param_names = [param_names]
-    if not isinstance(param_vals, (list, tuple)):
-        param_vals = [param_vals]
-    if len(param_names) != len(param_vals):
-        raise InputError("len(param_names) != len(param_vals)")
 
-    nreplaced = 0
-    job_inp = []
+    # strip the input of comments and extra lines and preprocess
+    lines = fill_in_inserts(lines)
+    lines = preprocess(lines)
+    lines = strip_cruft(lines)
+
+    simulations = find_block("simulation", lines, findall=True)
+    opt = re.compile(r"\bbegin\s*optimization\b.*", re.I|re.M)
+    prm = re.compile(r"\bbegin\s*permutation\b.*", re.I|re.M)
+    post = "\nend input"
+    for name, content in simulations.items():
+        check_incompatibilities(content)
+        if opt.search(content):
+            stype = "optimization"
+        elif prm.search(content):
+            stype = "permutation"
+        else:
+            stype = "simulation"
+        preamble = "begin input\nname {0}\ntype {1}\n".format(name, stype)
+        content = preamble + content.strip() + post
+        simulations[name] = content
+        continue
+
+    parameterizations = find_block("parameterization", lines, findall=True)
+    stype = "parameterization"
+    for name, content in parameterizations.items():
+        check_incompatibilities(content)
+        preamble = "begin input\nname {0}\ntype {1}\n".format(name, stype)
+        content = preamble + content.strip() + post
+        simulations[name] = content
+        continue
+
+    return simulations.values()
+
+
+def check_incompatibilities(lines):
+    """Check the user input for any incompatible blocks
+
+    Parameters
+    ----------
+    lines : str
+        User input
+
+    """
+    incompatible_blocks = (("optimization", "permutation",),)
+    for blocks in incompatible_blocks:
+        incompatibilites = []
+        for block in blocks:
+            content = find_block(block, lines)
+            if content is None:
+                continue
+            incompatibilites.append(1)
+            continue
+        if len(incompatibilites) > 1:
+            raise InputParserError(
+                "Blocks: '{0}' incompatible in same input"
+                .format(", ".join(blocks)))
+        continue
+    return
+
+
+def strip_cruft(lines):
+    """Strip lines of blank lines and comments
+
+    Parameters
+    ----------
+    lines : str
+        user input
+
+    Returns
+    -------
+    lines : str
+        lines stripped of all comments and blank lines
+
+    """
+    if not isinstance(lines, (list, tuple)):
+        lines = lines.split("\n")
+
+    stripped = []
+    cmnt = re.compile(r"[#$]", re.I|re.M)
     for line in lines:
-        line = " ".join(line.strip().split())
-        if "begin simulation" in line:
-            line = "begin simulation {0}".format(name)
-            job_inp.append(line)
+        line = line.strip()
+        if not line.split():
+            continue
+        comment = cmnt.search(line)
+        if comment:
+            line = line[:comment.start()]
+        if line.split():
+            stripped.append(line)
+        continue
+    return "\n".join(stripped)
+
+
+def preprocess(lines, preprocessor=None):
+    """Preprocess lines
+
+    Parameters
+    ----------
+    lines : str
+        user input
+    preprocessor : str, optional
+        if preprocessor is None, find the preprocessing block in lines
+        else use the passed preprocessor block.
+
+    Returns
+    -------
+    lines : str
+        preprocessed user input
+
+    Notes
+    -----
+
+    """
+    if preprocessor is None:
+        preprocessor = find_block("preprocessing", lines)
+
+    if preprocessor is None:
+        return lines
+
+    # split the preprocessor into a list of (pattern, repl) pairs
+    preprocessor = [x.split()
+                    for x in re.sub(I_EQ, " ", preprocessor).split("\n") if x]
+
+    for pat, repl in preprocessor:
+        full = re.compile(r"{{.*{0:s}.*}}".format(pat), re.I|re.M)
+        while True:
+            found = full.search(lines)
+            if not found:
+                break
+            bn, en = found.start(), found.end()
+            npat = re.compile(re.escape(r"{0}".format(lines[bn:en])), re.I|re.M)
+            repl = re.sub(pat, repl, lines[bn+1:en-1])
+            if re.search("[\*+/\-]", repl):
+                repl = "{0:12.6E}".format(eval(repl))
+            lines = npat.sub(repl, lines)
+            continue
+        continue
+
+    return lines
+
+
+def find_nested_blocks(major, nested, lines, default=None):
+    """Find the nested blocks in major block of lines
+
+    Parameters
+    ----------
+    major : str
+        name of major block
+    nested : list
+        list of names of blocks to find in major
+    lines : str
+        lines to look for blocks
+    default : None, optional
+        default value
+
+    Returns
+    -------
+    blocks : list
+        blocks[0] is the major block
+        blocks[1:n] are the nested blocks (in order requested)
+
+    """
+    blocks = []
+    blocks.append(find_block(major, lines))
+    for name in nested:
+        bexp = re.compile(r"\bbegin\s*{0}\b.*".format(name), re.I|re.M)
+        eexp = re.compile(r"\bend\s*{0}\b.*".format(name), re.I|re.M)
+        start = bexp.search(blocks[0])
+        stop = eexp.search(blocks[0])
+        if start and not stop:
+            raise InputParserError("End of block {0} not found".format(name))
+        if not start:
+            blocks.append(default)
             continue
 
-        key = line.split()[0]
-        for idx, param in enumerate(param_names):
-            if param.lower() == key.lower():
-                line = ("{0} = {1}".format(param_names[idx], param_vals[idx]))
-                nreplaced += 1
+        s, e = start.end(), stop.start()
+        blocks.append(blocks[0][start.end():stop.start()])
+        blocks[0] = blocks[0][:start.start()] + blocks[0][stop.end():]
+        continue
+    return blocks
+
+
+def find_block(name, lines, default=None, findall=False, named=False):
+    """Find the input block of form
+        begin block [name]
+        ...
+        end block
+
+    Parameters
+    ----------
+    lines : str
+    name : str
+        the block name
+
+    Returns
+    -------
+    bname : str
+        the block name
+    block : str
+        the block of input
+    """
+    blocks = {}
+    pat = r"\bbegin\s*{0}\b".format(name)
+    fpat = pat + r".*"
+    namexp = re.compile(pat, re.I)
+    bexp = re.compile(fpat, re.I|re.M)
+    eexp = re.compile(r"\bend\s*{0}\b.*".format(name), re.I|re.M)
+    k = 0
+
+    named = True if findall else named
+
+    while True:
+        # get the block
+        start = bexp.search(lines)
+        stop = eexp.search(lines)
+
+        if findall and not start:
+            return blocks
+
+        if start and not stop:
+            raise InputParserError("End of block '{0}' not found".format(name))
+
+        if not start:
+            bname, block = None, default
+
+        else:
+            if named:
+                # block name is everything from "begin block" to end of line
+                s, e = start.start(), start.end()
+                bname = re.sub(r"\s", "_", namexp.sub("", lines[s:e]).strip())
+                if not bname:
+                    bname = "default_{0}".format(k)
+
+            block = lines[start.end():stop.start()].strip()
+
+        if not findall:
+            if named:
+                return bname, block
+            return block
+
+        k += 1
+        lines = lines[:start.start()] + lines[stop.end():]
+        blocks[bname] = block
+        continue
+
+    return blocks
+
+
+def pop_block(name, lines):
+    """Pop the input block from lines
+
+    Parameters
+    ----------
+    name : str
+        the block name
+    lines : str
+
+    Returns
+    -------
+    lines : str
+        lines with name popped
+
+    """
+    bexp = re.compile(r"\bbegin\s*{0}\b.*".format(name), re.I|re.M)
+    eexp = re.compile(r"\bend\s*{0}\b.*".format(name), re.I|re.M)
+    bexp, eexp = bexp.search(lines), eexp.search(lines)
+    if bexp and eexp:
+        s, e = bexp.start(), eexp.end()
+        lines = lines[:s].strip() + lines[e:]
+    return lines
+
+
+def fill_in_inserts(lines):
+    """Look for 'insert' commands in lines and insert then contents in place
+
+    Parameters
+    ----------
+    lines : str
+        User input
+
+    Returns
+    -------
+    lines : str
+        User input, modified in place, with inserts inserted
+
+    """
+    pat = r"^.*\binsert\b\s"
+    namexp = re.compile(pat, re.I)
+    fpat = pat + r".*"
+    regexp = re.compile(fpat, re.I|re.M)
+    while True:
+        lines = strip_cruft(lines)
+        found = regexp.search(lines)
+        if not found:
+            break
+
+        # insert command found, find name
+        s, e = found.start(), found.end()
+        name = namexp.sub("", lines[s:e])
+        insert = find_block(name, lines)
+        if insert is None:
+            fpath = os.path.realpath(os.path.expanduser(name))
+            try:
+                insert = open(fpath, "r").read()
+            except IOError:
+                raise InputParserError(
+                    "Cannot find insert: {0}".format(repr(name)))
+
+        # substitute the contents of the insert
+        lines = regexp.sub(insert, lines)
+        continue
+
+    return lines
+
+
+def parse_mathplot(mblock):
+    """parse the mathplot block of the input file
+
+    Parameters
+    ----------
+    mblock : str
+        the mathplot block
+
+    Returns
+    -------
+    mathplot : list
+        list of mathplot variables
+
+    """
+    mathplot = []
+    for item in mblock.split("\n"):
+        mathplot.extend([x.upper() for x in re.sub(I_SEP, " ", item).split()])
+        continue
+    return sorted(list(set(mathplot)))
+
+
+def parse_output(oblock):
+    """parse the output block of the input file
+
+    Parameters
+    ----------
+    oblock : str
+        the output block
+
+    Returns
+    -------
+    ovars : list
+        list of output variables
+    oformat : str
+        output format
+
+    """
+    oformats = ("ascii", )
+    ovars = []
+
+    if not oblock:
+        return ["ALL"], oformats[0]
+
+    oformat, oblock = find_item_name(oblock, "format", pop=True)
+    if oformat is None:
+        oformat = "ascii"
+
+    if oformat not in oformats:
+        raise InputParserError(
+            "Output format '{0}' not supported, choose from {1}"
+            .format(oformat, ", ".join(oformats)))
+
+    if re.search(r"(?i)\ball\b", oblock):
+        ovars.append("ALL")
+
+    else:
+        for item in oblock.split("\n"):
+            ovars.extend([x.upper() for x in re.sub(I_SEP, " ", item).split()])
             continue
 
-        job_inp.append(line)
+    specials = {
+        "stress": ["SIG11", "SIG22", "SIG33", "SIG12", "SIG23", "SIG13"],
+        "strain": ["EPS11", "EPS22", "EPS33", "EPS12", "EPS23", "EPS13"],
+        "efield": ["EFIELD1", "EFIELD2", "EFIELD3"],}
+
+    for idx, ovar in enumerate(ovars):
+        try:
+            ovars[idx] = specials[ovar.lower()]
+        except KeyError:
+            pass
+    ovars = sorted(list(set(flatten(ovars))))
+
+    if "TIME" not in ovars:
+        ovars.insert(0, "TIME")
+
+    elif ovars.index("TIME") != 0:
+        ovars.remove("TIME")
+        ovars.insert(0, "TIME")
+
+    return ovars, oformat
+
+
+def parse_extraction(eblock):
+    """Parse the extraction block of the input file
+
+    Parameters
+    ----------
+    eblock : str
+        The extraction block
+
+    """
+    extraction_vars = []
+    for items in eblock.split("\n"):
+        items = re.sub(I_SEP, " ", items).split()
+        for item in items:
+            if not re.search(r"^[%@]", item) and not item[0].isdigit():
+                pu.log_warning(
+                    "unrecognized extraction request {0}".format(item))
+                continue
+            extraction_vars.append(item)
         continue
-    if nreplaced != len(param_names):
-        raise InputError("could not replace all requested params")
-
-    return job_inp
+    return [x.upper() for x in extraction_vars]
 
 
-def _find_block(input_lines, block):
-    """ find block in input_lines """
-    block_lines = []
-    idx_0, idx_f = None, None
-    for idx, line in enumerate(input_lines):
-        sline = line.split()
-        if sline[0].lower() == "begin":
-            if sline[1] == block:
-                idx_0 = idx
-        elif sline[0].lower() == "end":
-            if sline[1] == block:
-                idx_f = idx
-        continue
-
-    if idx_0 is not None and idx_f is not None:
-        block_lines = input_lines[idx_0 + 1:idx_f]
-
-    return idx_0, idx_f, block_lines
-
-
-def remove_block(input_lines, block):
-    """ remove the requested block from input_lines """
-    idx_0, idx_f, lines = _find_block(input_lines, block)
-    del input_lines[idx_0:idx_f + 1]
-    return input_lines
-
+def flatten(x):
+    result = []
+    for el in x:
+        if isinstance(el, list): result.extend(flatten(el))
+        else: result.append(el)
+    return result

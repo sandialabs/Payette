@@ -40,7 +40,7 @@ import config as cfg
 import Source.Payette_utils as pu
 import Source.Payette_container as pcntnr
 import Source.Payette_extract as pe
-import Aux.newparse as pip
+import Source.Payette_input_parser as pip
 import runopts as ro
 import Source.Payette_sim_index as psi
 import Toolset.KayentaParamConv as kpc
@@ -55,35 +55,34 @@ OBJFN = None
 class Optimize(object):
     r"""docstring -> needs to be completed """
 
-    def __init__(self, input_lines):
+    def __init__(self, ilines):
         r""" Initialization """
 
         # get the optimization block
-        ui = pip.InputParser(input_lines)
-        job = ui.name
+        ui = pip.InputParser(ilines)
+        self.name = ui.name
 
         regex = re.compile(r"simdir", re.I|re.M)
         if regex.search("\n".join(ui.options())) or ro.SIMDIR is not None:
             pu.report_and_raise_error(
                 "cannot specify simdir for permutation jobs")
-
         optimize = ui.find_block("optimization")
-        self.name = job
+        self.oblock = optimize
 
-        # save Perturbate information to single "data" dictionary
+        # save optimization information to single "data" dictionary
         self.data = {}
-        self.data["basename"] = job
+        self.data["basename"] = self.name
         self.data["verbosity"] = ro.VERBOSITY
         self.data["return level"] = ro.DISP
         self.data["fext"] = ".opt"
         self.data["options"] = []
 
         # fill the data with the optimization information
-        self.oblock = optimize
         self.parse_optimization_block()
 
-        input_lines = ui.user_input(pop=("optimization",))
-        self.data["baseinp"] = input_lines
+        ilines = ui.user_input(pop=("optimization",))
+        ilines = re.sub(r"(?i)\btype\s.*", "type simulation", ilines)
+        self.data["baseinp"] = ilines
 
         # set the loglevel to 0 for Payette simulation and save the payette
         # options to the data dictionary
@@ -452,9 +451,7 @@ class Optimize(object):
         None
 
         """
-
-        # Remove from the material block the optimized parameters. Current
-        # values will be inserted in to the material block for each run.
+        # Run the model with initial values
         preprocessor = ""
         pu.log_message("Calling model with initial parameters")
         for key, val in self.data["optimize"].items():
@@ -462,8 +459,8 @@ class Optimize(object):
         ui = pip.preprocess(self.data["baseinp"], preprocessor=preprocessor)
         the_model = pcntnr.Payette(ui)
         if pu.warn_count():
-            pu.report_and_raise_error("exiting due to initial warnings")
-
+            pu.report_and_raise_error("Stopping due to initial warnings")
+        the_model.finish(wipeall=True)
         return
 
     def find_oblock_option(self, option, default=None):
