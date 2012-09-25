@@ -122,13 +122,6 @@ def main(argv):
         default=False,
         help="write summary to screen [default: %default]")
     parser.add_option(
-        "--cchar",
-        dest="cchar",
-        action="store",
-        default=None,
-        help=("Additional comment characters for input file "
-                "[default: %default]"))
-    parser.add_option(
         "--input-str",
         dest="inputstr",
         action="store",
@@ -409,10 +402,10 @@ def main(argv):
 
     # We are now to the point where we will call run_payette, this could be
     # with either a restart file, or with the contents of input files.
-    siminp = []
+    siminp = None
     if opts.inputstr:
         # user gave input directly
-        siminp.extend(opts.inputstr.split("\n"))
+        siminp = opts.inputstr
 
     restart = False
     if rargs:
@@ -420,16 +413,16 @@ def main(argv):
             pu.report_and_raise_error(
                 "{0:d} restart files given, but only 1 restart file "
                 "can be processed at a time".format(len(rargs)))
-        elif siminp:
+        elif siminp is not None:
             pu.report_and_raise_error(
                 "Restart files cannot be run with additional input")
-        siminp = [rargs[0]]
-        restart = True
+        restart = rargs[0]
 
     elif iargs:
         # go through input files and load contents
+        siminp = "" if siminp is None else siminp
         for iarg in iargs:
-            siminp.extend(open(iarg, "r").readlines())
+            siminp += open(iarg, "r").read()
             continue
     # ----------------------------------------------------- end: get user input
 
@@ -440,7 +433,7 @@ def main(argv):
 
     # call the run_payette function
     siminfo = run_payette(siminp=siminp, restart=restart, timing=opts.timing,
-                          cchar=opts.cchar, nproc=opts.nproc, disp=opts.disp,
+                          nproc=opts.nproc, disp=opts.disp,
                           verbosity=opts.verbosity)
 
     # visualize the results if requested

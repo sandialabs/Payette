@@ -1,7 +1,7 @@
 # Example 18
 # Title: exmpl_18
 # Author: Tim Fuller, tjfulle@sandia.gov
-# Keywords: table, insert, strain control, use block
+# Keywords: table, insert, strain control, insert block
 
 begin simulation exmpl_18
   nowriteprops
@@ -10,7 +10,7 @@ begin simulation exmpl_18
   # is a bit contrived, but if a file has several simulations, all with the
   # same material, or boundary, for example, being able to insert a block from
   # elsewhere in the file is useful.
-  use material_001
+  insert material_001
 
   begin boundary
     kappa = 0

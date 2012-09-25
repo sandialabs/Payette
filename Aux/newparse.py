@@ -1,39 +1,43 @@
 #!/usr/bin/env python
 import re, sys, os
 from textwrap import fill as textfill
+import math
 import numpy as np
+
+import runopts as ro
+import Payette_utils as pu
 
 # --- module leve constants
 I_EQ = r"[:,=]"
-I_SEP = r"[\.:,;]"
+I_SEP = r"[:,;]"
 DTYPES = {"strain rate": (1, 6), "strain": (2, 6), "stress rate": (3, 6),
           "stress": (4, 6), "deformation gradient": (5, 9),
           "electric field": (6, 3), "displacement": (8, 3), "vstrain": (2, 1),
           "pressure": (4, 1),}
 
-class UserInputError(Exception):
-#    def __init__(self, message):
-#        if not ro.DEBUG:
-#            sys.tracebacklimit = 0
-#        caller = who_is_calling()
-#        self.message = message + " [reported by {0}]".format(caller)
-#        super(UserInputError, self).__init__(message)
-    pass
+class InputParserError(Exception):
+    def __init__(self, message):
+        if not ro.DEBUG:
+            sys.tracebacklimit = 0
+        caller = pu.who_is_calling()
+        self.message = message + " [reported by {0}]".format(caller)
+        super(InputParserError, self).__init__(message)
+        pass
 
 
-class UserInput(object):
+class InputParser(object):
     """Payette user input class
 
     Reads and sets up blocks from user input
 
     Raises
     ------
-    UserInputError
+    InputParserError
 
     """
 
     def __init__(self, ilines=None):
-        """Initialize the UserInput object.
+        """Initialize the InputParser object.
 
         Parameters
         ----------
@@ -48,63 +52,44 @@ class UserInput(object):
         """
 
         if ilines is None:
-            raise UserInputError("No user input sent to UserInput")
+            raise InputParserError("No user input sent to InputParser")
 
         # --- required information ------------------------------------------ #
-        ui = find_block(ilines, "input")
-        if ui is None:
-            raise UserInputError("User input not found")
+        self.inp = find_block("input", ilines)
+        if self.inp is None:
+            raise InputParserError("User input not found")
 
         # find the contents of the input block, popping found content along
         # the way
-        content = get_content(ui)
-        name, content = find_item_name(content, "name", pop=True)
-        if name is None:
-            raise UserInputError("Simulation name not found")
-        typ, content = find_item_name(content, "type", pop=True)
-        options = parse_options(content)
-
-        # get the boundary and legs blocks
-        boundary, legs = find_nested_blocks(ui, "boundary", *("legs", ))
-        if boundary is None:
-            raise UserInputError(
-                "Boundary block not found for {0}".format(name))
-        if legs is None:
-            raise UserInputError(
-                "Legs block not found for {0}".format(name))
-        kappa, facs = parse_boundary(boundary)
-        legs = parse_legs(legs, kappa, *facs)
-
-        material = find_block(ui, "material")
-        if material is None:
-            raise UserInputError(
-                "Material block not found for {0}".format(name))
-
-        cmod, params = parse_material(material)
-        if cmod is None:
-            raise UserInputError(
-                "No constitutive model specified for {0}".format(name))
-
-        # --- optional information ------------------------------------------ #
-        mathplot = find_block(ui, "mathplot")
-        if mathplot is not None:
-            mathplot = parse_mathplot(mathplot)
-
-        output = find_block(ui, "output")
-        if output is not None:
-            output, oformat = parse_output(output)
-
-        description = find_block(ui, "description")
-        if description is None:
-            description = "  None"
-        else:
-            textfill(description, initial_indent="  ", subsequent_indent="  ")
-
-        print cmod, params, name, typ
-        for leg in legs:
-            print leg
-
+        content = get_content(self.inp)
+        self.name, content = find_item_name(content, "name", pop=True)
+        if self.name is None:
+            raise InputParserError("Simulation name not found")
+        self.stype, content = find_item_name(content, "type", pop=True)
+        self._options = parse_options(content)
         pass
+
+    def find_block(self, name, default=None):
+        """Class method to the public find_block method """
+        return find_block(name, self.inp, default=default)
+
+    def find_nested_blocks(self, major, nested, default=None):
+        """Class method to the public find_nested_blocks """
+        return find_nested_blocks(major, nested, self.inp, default=default)
+
+    def options(self):
+        return self._options
+
+    def user_input(self, pop=None):
+        lines = "begin input\n{0}\nend input".format(self.inp.strip())
+        if pop is None:
+            return lines
+        if not isinstance(pop, (list, tuple)):
+            pop = [pop]
+        for item in pop:
+            lines = pop_block(item, lines)
+            continue
+        return lines
 
 
 def dtypes(dtype=None):
@@ -127,451 +112,591 @@ def dtypes(dtype=None):
     return DTYPES.get(dtype.lower())
 
 
-def bcontrol(btype=None, value=None, _bcontrol={}):
-    """The boundary control parameters allowed for by Payette
+class Boundary(object):
+    def __init__(self, bblock, lblock):
 
-    Parameters
-    ----------
-    btype : str, optional [None]
-        boundary control parameter
-    value : float, optional [None]
-        value to set control parameter
+        # ---- set defaults ------------------------------------------------- #
+        self._kappa = 0.
+        self.stepfac, self.efac, self.tfac, self.sfac, self.ffac = [1.] * 5
+        self.effac, self.dfac = [1.] * 2
 
-    Returns
-    -------
-    C : int
-        Integer ID for deformation type
-    N : int
-        Length of deformation type
-    """
-    # initialize _bcontrol
-    if not _bcontrol:
         # structure of _bcontrol:
         # _bcontrol[key] = [type, default, extra [min, choices,]]
-        _bcontrol["kappa"] = [float, 0., None]
-        _bcontrol["estar"] = [float, 1., None]
-        _bcontrol["tstar"] = [float, 1., None]
-        _bcontrol["sstar"] = [float, 1., None]
-        _bcontrol["fstar"] = [float, 1., None]
-        _bcontrol["dstar"] = [float, 1., None]
-        _bcontrol["efstar"] = [float, 1., None]
-        _bcontrol["stepstar"] = [float, 1., 1.]
-        _bcontrol["ampl"] = [float, 1., None]
-        _bcontrol["ratfac"] = [float, 1., None]
-        _bcontrol["emit"] = ["choice", "all", ("all", "sparse",)]
-        _bcontrol["nprints"] = [int, 0, None]
-        _bcontrol["screenout"] = [bool, False, None]
+        self._bcontrol = {
+            "kappa": [float, 0., None], "estar": [float, 1., None],
+            "tstar": [float, 1., None], "sstar": [float, 1., None],
+            "fstar": [float, 1., None], "dstar": [float, 1., None],
+            "efstar": [float, 1., None], "stepstar": [float, 1., 1.],
+            "ampl": [float, 1., None], "ratfac": [float, 1., None],
+            "emit": ["choice", "all", ("all", "sparse",)],
+            "nprints": [int, 0, None], "screenout": [bool, False, None],}
 
-    if btype is None:
-        return _bcontrol.keys()
+        # intialize container for legs
+        # -- _legs has form
+        #    [[lnum, t, control, cij], ...]
+        self._legs = []
 
-    btype = btype.lower()
-    if btype not in _bcontrol:
-        raise UserInputError(
-            "{0} not a valid bcontrol parameter".format(btype))
+        # parse
+        self._parse_boundary(bblock)
+        self._parse_legs(lblock)
 
-    if value is None:
-        return _bcontrol[btype]
+        pass
 
-    default = _bcontrol[btype]
-    default[1] = default[0](value)
-    _bcontrol[btype] = default
-    return
+    def kappa(self):
+        return self.bcontrol("kappa")[1]
 
+    def initial_time(self):
+        return self._legs[0][1]
 
-def parse_boundary(bblock):
-    """Parse the boundary block
+    def termination_time(self):
+        return self._legs[-1][1]
 
-    Parameters
-    ----------
-    lblock : str
-        the legs block
+    def legs(self, idx=0):
+        return self._legs[idx:]
 
-    Returns
-    -------
+    def nprints(self):
+        return self.bcontrol("nprints")[1]
 
-    """
-    boundary_options = {}
+    def emit(self):
+        return self.bcontrol("emit")[1]
 
-    for line in bblock.split("\n"):
-        line = re.sub(I_EQ, " ", line).split()
-        if not line:
+    def screenout(self):
+        return self.bcontrol("screenout")[1]
+
+    def _parse_boundary(self, bblock):
+        """Parse the boundary block
+
+        Parameters
+        ----------
+        bblock : str
+            the boundary block
+
+        Returns
+        -------
+
+        """
+        boundary_options = {}
+
+        for line in bblock.split("\n"):
+            line = re.sub(I_EQ, " ", line).split()
+            if not line:
+                continue
+
+            if len(line) != 2:
+                raise InputParserError(
+                    "Boundary control items must be key = val pairs, got (0}"
+                    .format(line))
+
+            kwd, val = line
+            if kwd.lower() not in self.bcontrol():
+                try:
+                    boundary_options[kwd] = eval(val)
+                except (TypeError, ValueError):
+                    boundary_options[kwd] = val
+                continue
+
+            bc = self.bcontrol(kwd) # [type, default, extra]
+            if bc[0] == "choice":
+                choices = bc[2]
+                if val not in choices:
+                    raise InputParserError(
+                        "{0} must be one of {1}, got {2}"
+                        .format(kwd, ", ".join(choices), val))
+            else:
+                # get right type for val and check against min
+                val = bc[0](val)
+                if bc[2] is not None:
+                    val = max(bc[2], val)
+
+            self.bcontrol(kwd, val)
             continue
 
-        if len(line) != 2:
-            raise UserInputError(
-                "Boundary control items must be key = val pairs, got (0}"
-                .format(line))
+        # the following are from Brannon's MED driver
+        # estar is the "unit" of strain
+        # sstar is the "unit" of stress
+        # fstar is the "unit" of deformation gradient
+        # efstar is the "unit" of electric field
+        # dstar is the "unit" of displacement
+        # tstar is the "unit" of time
+        # All strains are multiplied by efac=ampl*estar
+        # All stresses are multiplied by sfac=ampl*sstar
+        # All deformation gradients are multiplied by ffac=ampl*fstar
+        # All electric fields are multiplied by effac=ampl*efstar
+        # All displacements are multiplied by dfac=ampl*dstar
+        # All times are multiplied by tfac=abs(ampl)*tstar/ratfac
 
-        kwd, val = line
-        if kwd.lower() not in bcontrol():
-            try:
-                boundary_options[kwd] = eval(val)
-            except (TypeError, ValueError):
-                boundary_options[kwd] = val
-            continue
+        # From these formulas, note that AMPL may be used to increase or
+        # decrease the peak strain without changing the strain rate. ratfac is
+        # the multiplier on strain rate and stress rate.
+        ampl = self.bcontrol("ampl")[1]
+        tstar = self.bcontrol("tstar")[1]
+        ratfac = self.bcontrol("ratfac")[1]
+        estar = self.bcontrol("estar")[1]
+        sstar = self.bcontrol("sstar")[1]
+        fstar = self.bcontrol("fstar")[1]
+        efstar = self.bcontrol("efstar")[1]
+        dstar = self.bcontrol("dstar")[1]
 
-        bc = bcontrol(kwd) # [type, default, extra]
-        if bc[0] == "choice":
-            choices = bc[2]
-            if val not in choices:
-                raise UserInputError(
-                    "{0} must be one of {1}, got {2}"
-                    .format(kwd, ", ".join(choices), val))
-        else:
-            # get right type for val and check against min
-            val = bc[0](val)
-            if bc[2] is not None:
-                val = max(bc[2], val)
+        # factors to be applied to deformation types
+        self._kappa = self.bcontrol("kappa")[1]
+        self.stepfac = self.bcontrol("stepstar")[1]
+        self.efac = ampl * estar
+        self.tfac = abs(ampl) * tstar / ratfac
+        self.sfac = ampl * sstar
+        self.ffac = ampl * fstar
+        self.effac = ampl * efstar
+        self.dfac = ampl * dstar
+        return
 
-        bcontrol(kwd, val)
-        continue
+    def bcontrol(self, btype=None, value=None):
+        """The boundary control parameters allowed for by Payette
 
-    # the following are from Brannon's MED driver
-    # estar is the "unit" of strain
-    # sstar is the "unit" of stress
-    # fstar is the "unit" of deformation gradient
-    # efstar is the "unit" of electric field
-    # dstar is the "unit" of displacement
-    # tstar is the "unit" of time
-    # All strains are multiplied by efac=ampl*estar
-    # All stresses are multiplied by sfac=ampl*sstar
-    # All deformation gradients are multiplied by ffac=ampl*fstar
-    # All electric fields are multiplied by effac=ampl*efstar
-    # All displacements are multiplied by dfac=ampl*dstar
-    # All times are multiplied by tfac=abs(ampl)*tstar/ratfac
+        Parameters
+        ----------
+        btype : str, optional [None]
+            boundary control parameter
+        value : float, optional [None]
+            value to set control parameter
 
-    # From these formulas, note that AMPL may be used to increase or
-    # decrease the peak strain without changing the strain rate. ratfac is
-    # the multiplier on strain rate and stress rate.
-    ampl = bcontrol("ampl")[1]
-    tstar = bcontrol("tstar")[1]
-    ratfac = bcontrol("ratfac")[1]
-    estar = bcontrol("estar")[1]
-    sstar = bcontrol("sstar")[1]
-    fstar = bcontrol("fstar")[1]
-    efstar = bcontrol("efstar")[1]
-    dstar = bcontrol("dstar")[1]
+        Returns
+        -------
+        C : int
+            Integer ID for deformation type
+        N : int
+            Length of deformation type
+        """
 
-    # factors to be applied to deformation types
-    kappa = bcontrol("kappa")[1]
-    stepfac = bcontrol("stepstar")[1]
-    efac = ampl * estar
-    tfac = abs(ampl) * tstar / ratfac
-    sfac = ampl * sstar
-    ffac = ampl * fstar
-    effac = ampl * efstar
-    dfac = ampl * dstar
-    return kappa, (tfac, stepfac, efac, sfac, ffac, effac, dfac)
+        if btype is None:
+            return self._bcontrol.keys()
 
-def parse_legs(lblock, kappa, *facs):
-    """Parse the legs block
+        btype = btype.lower()
+        if btype not in self._bcontrol:
+            raise InputParserError(
+                "{0} not a valid bcontrol parameter".format(btype))
 
-    Parameters
-    ----------
-    lblock : str
-        The legs block
-    kappa : float
-        The Seth-Hill parameter
-    facs : list
-        List of factors to multiply the deformation
-        facs[0] : time factor
-        facs[1] : step factor
-        facs[2] : strain factor
-        facs[3] : stress factor
-        facs[4] : deformation gradient factor
-        facs[5] : electric field factor
-        facs[6] : displacement factor
+        if value is None:
+            return self._bcontrol[btype]
 
-    Returns
-    -------
+        default = self._bcontrol[btype]
+        try:
+            default[1] = default[0](value)
+        except TypeError:
+            default[1] = value
+        self._bcontrol[btype] = default
+        return
 
-    """
-    legs = []
-    tfac, stepfac, efac, sfac, ffac, effac, dfac = facs
+    def _parse_legs(self, lblock):
+        """Parse the legs block
 
-    # determine if the user specified legs as a table
-    stress_control = False
-    using = re.search(r"(?i)\busing\b.*", lblock)
-    table = bool(using)
+        Parameters
+        ----------
+        lblock : str
+            The legs block
 
-    if table:
-        s, e = using.start(), using.end()
-        line = re.sub(r"(?i)\busing\b", " ", lblock[s:e])
-        lblock = lblock[:s].strip() + lblock[e:].strip()
-        ttype, cidxs, gcontrol = parse_leg_table_header(line)
+        Returns
+        -------
 
+        """
 
-    # --- first leg parsed, now go through rest
-    num = 0
-    time = 0.
-    for iline, line in enumerate(lblock.split("\n")):
-        line = line.split()
-        if not line:
-            continue
+        # determine if the user specified legs as a table
+        stress_control = False
+        using = re.search(r"(?i)\busing\b.*", lblock)
+        table = bool(using)
 
         if table:
-            control = gcontrol
-            if re.search(r"(?i)\btime\b", " ".join(line)):
-                # skip header row
+            num = -1
+            s, e = using.start(), using.end()
+            line = re.sub(r"(?i)\busing\b", " ", lblock[s:e])
+            lblock = (lblock[:s] + lblock[e:]).strip()
+            ttype, cidxs, gcontrol = self._parse_leg_table_header(line)
+
+        # --- first leg parsed, now go through rest
+        time = 0.
+        for iline, line in enumerate(lblock.split("\n")):
+            line = re.sub(I_SEP, " ", line)
+            line = line.split()
+            if not line:
                 continue
-            steps = int(1 * stepfac)
-            if ttype == "dt":
-                time += float(line[cidxs[0]])
-            else:
-                time = float(line[cidxs[0]])
-            # adjust the actual time using the time factor
-            ltime = tfac * time
-            try:
-                cij = [float(eval(line[i])) for i in cidxs[1:]]
-            except (IndexError, ValueError):
-                raise UserInputError(
-                    "Syntax error in leg {0}".format(num))
-        else:
-            # user specified leg in form:
-            # time, steps, control, values
 
-            # leg must have at least 5 values
-            if len(leg) < 4:
-                raise UserInputError(
-                    "leg {0} input must be of form:".format(num) +
-                    "\n\ttime, steps, type, c[ij]")
-
-            ltime = float(tfac * float(leg[0]))
-            steps = int(stepfac * float(leg[1]))
-            if num != 0 and steps == 0:
-                raise UserInputError(
-                    "Leg number {0} has no steps".format(num))
-
-            # get the control type
-            control = leg[2].strip()
-
-            # the remaining part of the line are the actual ij values of the
-            # deformation type
-            try:
-                cij = [float(eval(x)) for x in leg[3:]]
-            except ValueError:
-                raise BoundaryError("Syntax error in leg {0}".format(num))
-
-        # --- begin processing the cij -------------------------------------- #
-        # control should be a group of letters describing what type of
-        # control type the leg is. valid options are:
-        #  1: strain rate control
-        #  2: strain control
-        #  3: stress rate control
-        #  4: stress control
-        #  5: deformation gradient control
-        #  6: electric field
-        #  8: displacement
-        if any(x not in "1234568" for x in control):
-            raise UserInputError(
-                "Leg control parameters can only be one of [1234568]"
-                "got {0} for leg number {1:d}".format(control, num))
-
-        # stress control if any of the control types are 3 or 4
-        if not stress_control:
-            stress_control = any([x in "34" for x in control])
-
-        # we need to know what to do with each deformation value, so the
-        # length of the deformation values must be same as the control values
-        if len(control) != len(cij):
-            raise UserInputError(
-                "Length of leg control != number of control "
-                "items in leg {0:d}".format(num))
-
-        # get the electric field for current time and make sure it has length
-        # 3
-        efield, hold, efcntrl = [], [], "666"
-        for idx, ctype in enumerate(control):
-            if int(ctype) == 6:
-                efield.append(cij[idx])
-                hold.append(idx)
-                continue
-        efield.extend([0.] * (3 - len(efield)))
-
-        # separate out electric fields from deformations. electric field
-        # will be appended to end of control list
-        cij = [i for j, i in enumerate(cij) if j not in hold]
-        control = "".join(
-            [i for j, i in enumerate(control) if j not in hold])
-
-        if len(control) != len(cij):
-            raise UserInputError(
-                "Intermediate length of leg control != number of "
-                "control items in leg {0}".format(num))
-
-        # make sure that the control is consistent with the limitations set by
-        # Payette
-        if re.search(r"5", control):
-            # deformation gradient control check
-            if re.search(r"[^5]", control):
-                raise UserInputError(
-                    "Only components of deformation gradient "
-                    "are allowed with deformation gradient "
-                    "control in leg {0}, got '{1}'".format(num, control))
-
-            # check for valid deformation
-            defgrad = np.array([[cij[0], cij[1], cij[2]],
-                                [cij[3], cij[4], cij[5]],
-                                [cij[6], cij[7], cij[8]]])
-            jac = np.linalg.det(defgrad)
-            if jac <= 0:
-                raise UserInputError(
-                    "Inadmissible deformation gradient in leg "
-                    "{0} gave a Jacobian of {1:f}".format(num, jac))
-
-            # convert defgrad to strain E with associated rotation given by
-            # axis of rotation x and angle of rotation theta
-            rot, lstretch = np.linalg.qr(defgrad)
-            if np.max(np.abs(rot - np.eye(3))) > np.finfo(np.float).eps:
-                raise UserInputError(
-                    "Rotation encountered in leg {0}. ".format(num) +
-                    "rotations are not yet supported")
-
-        elif re.search(r"8", control):
-            # displacement control check
-
-            # like deformation gradient control, if displacement is specified
-            # for one, it must be for all
-            if re.search(r"[^8]", control):
-                raise UserInputError(
-                    "Only components of displacment are allowed with "
-                    "displacment control in leg {0}, got '{1}'"
-                    .format(num, control))
-
-            # must specify all components
-            elif len(cij) != 3:
-                raise UserInputError(
-                    "all 3 components of displacement must "
-                    "be specified for leg {0}".format(num))
-
-            # convert displacments to strains
-            # Seth-Hill generalized strain is defined
-            # strain = (1/kappa)*[(stretch)^kappa - 1]
-            # and
-            # stretch = displacement + 1
-
-            # In the limit as kappa->0, the Seth-Hill strain becomes
-            # strain = ln(stretch).
-            for j in range(3):
-                stretch = dfac * cij[j] + 1
-                if kappa != 0:
-                    cij[j] = 1 / kappa * (stretch ** kappa - 1.)
+            if table:
+                num += 1
+                control = gcontrol
+                if re.search(r"(?i)\btime\b", " ".join(line)):
+                    # skip header row
+                    continue
+                steps = int(1 * self.stepfac)
+                if ttype == "dt":
+                    time += float(line[cidxs[0]])
                 else:
-                    cij[j] = math.log(stretch)
+                    time = float(line[cidxs[0]])
+                # adjust the actual time using the time factor
+                ltime = self.tfac * time
+                try:
+                    cij = [float(eval(line[i])) for i in cidxs[1:]]
+                except (IndexError, ValueError):
+                    raise InputParserError(
+                        "Syntax error in leg {0}".format(num))
+            else:
+                # user specified leg in form:
+                # time, steps, control, values
+
+                # leg must have at least 5 values
+                if len(line) < 5:
+                    raise InputParserError(
+                        "leg {0} input must be of form:".format(num) +
+                        "\n\tnum, time, steps, type, c[ij]")
+
+                num = int(line[0])
+                ltime = float(self.tfac * float(line[1]))
+                steps = int(self.stepfac * float(line[2]))
+                if num != 0 and steps == 0:
+                    raise InputParserError(
+                        "Leg number {0} has no steps".format(num))
+
+                # get the control type
+                control = line[3].strip()
+
+                # the remaining part of the line are the actual ij values of the
+                # deformation type
+                try:
+                    cij = [float(eval(x)) for x in line[4:]]
+                except ValueError:
+                    raise BoundaryError("Syntax error in leg {0}".format(num))
+
+            # --- begin processing the cij -------------------------------------- #
+            # control should be a group of letters describing what type of
+            # control type the leg is. valid options are:
+            #  1: strain rate control
+            #  2: strain control
+            #  3: stress rate control
+            #  4: stress control
+            #  5: deformation gradient control
+            #  6: electric field
+            #  8: displacement
+            if any(x not in "1234568" for x in control):
+                raise InputParserError(
+                    "Leg control parameters can only be one of [1234568]"
+                    "got {0} for leg number {1:d}".format(control, num))
+
+            # stress control if any of the control types are 3 or 4
+            if not stress_control:
+                stress_control = any([x in "34" for x in control])
+
+            # we need to know what to do with each deformation value, so the
+            # length of the deformation values must be same as the control values
+            if len(control) != len(cij):
+                raise InputParserError(
+                    "Length of leg control != number of control "
+                    "items in leg {0:d}".format(num))
+
+            # get the electric field for current time and make sure it has length
+            # 3
+            efield, hold, efcntrl = [], [], "666"
+            for idx, ctype in enumerate(control):
+                if int(ctype) == 6:
+                    efield.append(cij[idx])
+                    hold.append(idx)
+                    continue
+            efield.extend([0.] * (3 - len(efield)))
+
+            # separate out electric fields from deformations. electric field
+            # will be appended to end of control list
+            cij = [i for j, i in enumerate(cij) if j not in hold]
+            control = "".join(
+                [i for j, i in enumerate(control) if j not in hold])
+
+            if len(control) != len(cij):
+                raise InputParserError(
+                    "Intermediate length of leg control != number of "
+                    "control items in leg {0}".format(num))
+
+            # make sure that the control is consistent with the limitations set by
+            # Payette
+            if re.search(r"5", control):
+                # deformation gradient control check
+                if re.search(r"[^5]", control):
+                    raise InputParserError(
+                        "Only components of deformation gradient "
+                        "are allowed with deformation gradient "
+                        "control in leg {0}, got '{1}'".format(num, control))
+
+                # check for valid deformation
+                defgrad = np.array([[cij[0], cij[1], cij[2]],
+                                    [cij[3], cij[4], cij[5]],
+                                    [cij[6], cij[7], cij[8]]])
+                jac = np.linalg.det(defgrad)
+                if jac <= 0:
+                    raise InputParserError(
+                        "Inadmissible deformation gradient in leg "
+                        "{0} gave a Jacobian of {1:f}".format(num, jac))
+
+                # convert defgrad to strain E with associated rotation given by
+                # axis of rotation x and angle of rotation theta
+                rot, lstretch = np.linalg.qr(defgrad)
+                if np.max(np.abs(rot - np.eye(3))) > np.finfo(np.float).eps:
+                    raise InputParserError(
+                        "Rotation encountered in leg {0}. ".format(num) +
+                        "rotations are not yet supported")
+
+            elif re.search(r"8", control):
+                # displacement control check
+
+                # like deformation gradient control, if displacement is specified
+                # for one, it must be for all
+                if re.search(r"[^8]", control):
+                    raise InputParserError(
+                        "Only components of displacment are allowed with "
+                        "displacment control in leg {0}, got '{1}'"
+                        .format(num, control))
+
+                # must specify all components
+                elif len(cij) != 3:
+                    raise InputParserError(
+                        "all 3 components of displacement must "
+                        "be specified for leg {0}".format(num))
+
+                # convert displacments to strains
+                # Seth-Hill generalized strain is defined
+                # strain = (1/kappa)*[(stretch)^kappa - 1]
+                # and
+                # stretch = displacement + 1
+
+                # In the limit as kappa->0, the Seth-Hill strain becomes
+                # strain = ln(stretch).
+                for j in range(3):
+                    stretch = self.dfac * cij[j] + 1
+                    if self._kappa != 0:
+                        cij[j] = 1 / self._kappa * (stretch ** self._kappa - 1.)
+                    else:
+                        cij[j] = math.log(stretch)
+                    continue
+
+                # displacements now converted to strains
+                control = "222222"
+                cij.extend([0., 0., 0.])
+
+            elif re.search(r"\b2\b", control):
+                # only one strain value given -> volumetric strain
+                evol = cij[0] * self.efac
+                if self._kappa * evol + 1. < 0.:
+                    raise InputParserError("1 + kappa * ev must be positive")
+
+                if self._kappa == 0.:
+                    eij = evol / 3.
+
+                else:
+                    eij = ((self._kappa * evol + 1.) ** (1. / 3.) - 1.)
+                    eij = eij / self._kappa
+
+                control = "222222"
+                cij = [eij, eij, eij, 0., 0., 0.]
+                efac_hold, self.efac = self.efac, 1.
+
+            elif re.search(r"\b4\b", control):
+                # only one stress value given -> pressure
+                pres = cij[0] * self.sfac
+                sij = -1. * pres
+                control = "444444"
+                cij = [sij, sij, sij, 0., 0., 0.]
+                sfac_hold, self.sfac = self.sfac, 1.
+
+            # fill in cij and control so that their lengths are always 9
+            # the electric field control is added to the end of control
+            if len(control) != len(cij):
+                raise InputParserError(
+                    "Final length of leg control != number of "
+                    "control items in leg {0}".format(num))
+
+            L = len(cij)
+            cij.extend([0.] * (9 - L) + efield)
+            control += "0" * (9 - L) + efcntrl
+
+            # we have read in all controled items and checked them, now we
+            # adjust them based on user input
+            for idx, ctype in enumerate(control):
+                ctype = int(ctype)
+                if ctype == 1 or ctype == 3:
+                    # adjust rates
+                    cij[idx] = self.ratfac * cij[idx]
+
+                elif ctype == 2:
+                    # adjust strain
+                    cij[idx] = self.efac * cij[idx]
+
+                    if self._kappa * cij[idx] + 1. < 0.:
+                        raise InputParserError(
+                            "1 + kappa*c[{0}] must be positive".format(idx))
+
+                elif ctype == 4:
+                    # adjust stress
+                    cij[idx] = self.sfac * cij[idx]
+
+                elif ctype == 5:
+                    # adjust deformation gradient
+                    cij[idx] = self.ffac * cij[idx]
+
+                elif ctype == 6:
+                    # adjust electric field
+                    cij[idx] = self.effac * cij[idx]
+
                 continue
 
-            # displacements now converted to strains
-            lcntrl = "222"
+            try: self.efac = efac_hold
+            except NameError: pass
+            try: self.sfac = sfac_hold
+            except NameError: pass
 
-        elif re.search(r"\b2\b", control):
-            # only one strain value given -> volumetric strain
-            evol = cij[0] * efac
-            if kappa * evol + 1. < 0.:
-                raise UserInputError("1 + kappa * ev must be positive")
+            # append to legs
+            self._legs.append([num, ltime, steps, control, np.array(cij)])
 
-            if kappa == 0.:
-                eij = evol / 3.
-
-            else:
-                eij = ((kappa * evol + 1.) ** (1. / 3.) - 1.) / kappa
-
-            lcntrl = "222"
-            cij = [eij, eij, eij]
-            efac_hold, efac = efac, 1.
-
-        elif re.search(r"\b4\b", control):
-            # only one stress value given -> pressure
-            pres = cij[0] * sfac
-            sij = -1. * pres
-            lcntrl = "444"
-            cij = [sij, sij, sij]
-            sfac_hold, sfac = sfac, 1.
-
-        # fill in cij and lcntrl so that their lengths are always 9
-        # the electric field control is added to the end of lcntrl
-        if len(control) != len(cij):
-            raise UserInputError(
-                "Final length of leg control != number of "
-                "control items in leg {0}".format(num))
-
-        L = len(cij)
-        cij.extend([0.] * (9 - L) + efield)
-        control += "0" * (9 - L) + efcntrl
-
-        # we have read in all controled items and checked them, now we
-        # adjust them based on user input
-        for idx, ctype in enumerate(control):
-            ctype = int(ctype)
-            if ctype == 1 or ctype == 3:
-                # adjust rates
-                cij[idx] = ratfac * cij[idx]
-
-            elif ctype == 2:
-                # adjust strain
-                cij[idx] = efac * cij[idx]
-
-                if kappa * cij[idx] + 1. < 0.:
-                    raise UserInputError(
-                        "1 + kappa*c[{0}] must be positive".format(idx))
-
-            elif ctype == 4:
-                # adjust stress
-                cij[idx] = sfac * cij[idx]
-
-            elif ctype == 5:
-                # adjust deformation gradient
-                cij[idx] = ffac * cij[idx]
-
-            elif ctype == 6:
-                # adjust electric field
-                cij[idx] = effac * cij[idx]
-
+            # increment
+            num += 1
             continue
 
-        try: efac = efac_hold
-        except NameError: pass
-        try: sfac = sfac_hold
-        except NameError: pass
+        if stress_control:
+            # stress and or stress rate is used to control this leg. For
+            # these cases, kappa is set to 0. globally.
+            if self._kappa != 0.:
+                self._kappa = 0.
+                sys.stdout.write(
+                    "WARNING: stress control boundary conditions "
+                    "only compatible with kappa=0. Kappa is being "
+                    "reset to 0. from {0:f}\n".format(kappa))
+                self.bcontrol("kappa", 0.)
 
+        # check that time is monotonic in lcontrol
+        time_0, time_f = 0., 0.
+        for ileg, leg in enumerate(self._legs):
+            if ileg == 0:
+                # set the initial time
+                time_0 = leg[1]
+                continue
 
-        # append to legs
-        legs.append([num, ltime, steps, control, np.array(cij)])
+            time_f = leg[1]
+            if time_f <= time_0:
+                raise InputParserError(
+                    "time must be monotonic from {0:d} to {1:d}"
+                    .format(leg[0] - 1, leg[0]))
 
-        # increment
-        num += 1
-        continue
+            time_0 = time_f
 
-    if stress_control:
-        # stress and or stress rate is used to control this leg. For
-        # these cases, kappa is set to 0. globally.
-        if kappa != 0.:
-            sys.stdout.write(
-                "WARNING: stress control boundary conditions "
-                "only compatible with kappa=0. Kappa is being "
-                "reset to 0. from {0:f}\n".format(kappa))
-            bcontrol("kappa", 0.)
+        if not ileg:
+            raise InputParserError("Only one time step found.")
 
-    # check that time is monotonic in lcontrol
-    time_0, time_f = 0., 0.
-    for ileg, leg in enumerate(legs):
-        if ileg == 0:
-            # set the initial time
-            time_0 = leg[1]
+        return
+
+    def _parse_leg_table_header(self, header):
+        """Parse the first leg of the legs block.
+
+        The first leg of the legs block may be in one of two forms.  The usual
+
+                      <leg_no>, <leg_t>, <leg_steps>, <leg_cntrl>, <c[ij]>
+
+        or, if the user is prescribing the legs through a table
+
+                      using <time, dt>, <deformation type> [from columns ...]
+
+        here, we determine what kind of legs the user is prescrbing.
+
+        Parameters
+        ----------
+        header : str
+            Header of the first leg in the legs block of the user input
+
+        Returns
+        -------
+        ttype : str
+            time type
+        cidxs : list
+            column indexes from table
+        control : str
+            control string
+
+        Raises
+        ------
+
+        Examples
+        --------
+        >>> parse_first_leg("using dt strain")
+        "dt", [0,1,2,3,4,5,6], "222222"
+
+        >>> parse_first_leg("using dt, strain, from columns 1:7")
+        "dt", [0,1,2,3,4,5,6], "222222"
+
+        >>> parse_first_leg([using dt stress from columns, 1,2,3,4,5,6,7")
+        "dt", [0,1,2,3,4,5,6], "444444"
+
+        >>> parse_first_leg("using dt strain from columns 1-7")
+        "dt", [0,1,2,3,4,5,6], "222222"
+
+        >>> parse_first_leg("using dt strain from columns, 1, 5 - 10")
+        "dt", [0,4,5,6,7,8,9,20], "222222"
+
+        >>> parse_first_leg("using dt strain from columns, 1, 5:7"])
+        "dt", [0,4,5,6], "222"
+
+        """
+
+        # determine the time specifier
+        ttypes = ("time", "dt")
+        for item in ttypes:
+            ttype = re.search(r"(?i)\b{0}\b".format(item), header)
+            if ttype:
+                s, e = ttype.start(), ttype.end()
+                ttype = header[s:e].lower()
+                break
             continue
+        if ttype is None:
+            raise InputParserError(
+                "time specifier '{0}' not found.  Choose from {1}"
+                .format(ttype, ", ".join(ttypes)))
+        header = re.sub(r"(?i)\b{0}\b".format(ttype), "", header).strip()
 
-        time_f = leg[1]
-        if time_f <= time_0:
-            raise UserInputError(
-                "time must be monotonic from {0:d} to {1:d}"
-                .format(leg[0] - 1, leg[0]))
+        # determine the deformation specifier
+        cspec = re.search(r"(?i)\bfrom.*columns\b.*", header)
+        if cspec is None:
+            dtype = " ".join(header.split()).lower()
+            dtype = re.sub(r"[\,]", "", dtype).strip().lower()
+            if dtype not in dtypes():
+                raise InputParserError(
+                    "Requested bad control type {0}".format(dtype))
+            C, N = dtypes(dtype)
 
-        time_0 = time_f
+            # use default column indexes
+            cidxs = range(N + 1)
 
-    if not ileg:
-        raise UserInputError("Only one time step found.")
+        else:
+            s, e = cspec.start(), cspec.end()
+            dtype = " ".join(header[:s].split())
+            dtype = re.sub(r"[\,]", "", dtype).strip().lower()
+            if dtype not in dtypes():
+                raise InputParserError(
+                    "Requested bad control type {0}".format(dtype))
+            C, N = dtypes(dtype)
 
-    return legs
+            cidxs = []
+            cspec = re.sub(r"\s|(?i)\bfrom.*columns\b", "", header[s:e]).strip()
+            cspec = re.sub(r"-", ":", cspec).split(",")
+            for item in cspec:
+                item = item.split(":")
+                if len(item) == 1:
+                    cidxs.append(int(item[0]) - 1)
+                else:
+                    for i in range(len(item) - 1):
+                        start, stop = int(item[i]) - 1, int(item[i+1])
+                        cidxs.extend(range(start, stop))
+                        continue
+                continue
+
+        if len(cidxs) > N + 1:
+            raise InputParserError("Too many columns specified")
+        if len(cidxs) < N + 1:
+            raise InputParserError("Too few columns specified")
+
+        control = "{0}".format(C) * N
+
+        return ttype, cidxs, control
+
 
 
 def parse_options(lines):
@@ -647,45 +772,10 @@ def find_item_name(lines, item, pop=False):
     return name
 
 
-def parse_material(mblock):
-    """Parse the material block.
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-    material : dict
-
-    """
-
-    # get the constitutive model name
-    pat = r"(?i)constitutive.*model"
-    fpat = pat + r".*"
-    cmod = re.search(fpat, mblock)
-    if cmod:
-        s, e = cmod.start(), cmod.end()
-        name = re.sub(r"\s", "_", re.sub(pat, "", mblock[s:e]).strip())
-        mblock = (mblock[:s] + mblock[e:]).strip()
-
-    # Only parameters are now left over, parse them
-    params = {}
-    for item in mblock.split("\n"):
-        item = re.sub(I_EQ, " ", item).split()
-        try:
-            params[item[0]] = eval(item[1])
-        except IndexError:
-            raise UserInputError(
-                "Parameters must be specified as 'key = value' pairs")
-        continue
-
-    return name, params
-
-
 def get_content(lines, pop=False):
     block = []
     rlines, content = [], []
-    bexp = re.compile(r"\bbegin\s.*", re.I|re.M)
+    bexp = re.compile(r"\bbegin\s*", re.I|re.M)
     eexp = re.compile(r"\bend\s.*", re.I|re.M)
     for iline, line in enumerate(lines.split("\n")):
         if bexp.search(line):
@@ -728,36 +818,37 @@ def parse_user_input(lines):
     """
 
     # strip the input of comments and extra lines and preprocess
-    lines = strip_cruft(fill_in_inserts(lines))
+    lines = fill_in_inserts(lines)
     lines = preprocess(lines)
+    lines = strip_cruft(lines)
 
-    simulations = find_block(lines, "simulation", findall=True)
+    simulations = find_block("simulation", lines, findall=True)
     opt = re.compile(r"\bbegin\s*optimization\b.*", re.I|re.M)
     prm = re.compile(r"\bbegin\s*permutation\b.*", re.I|re.M)
     post = "\nend input"
     for name, content in simulations.items():
         check_incompatibilities(content)
         if opt.search(content):
-            typ = "optimization"
-        if prm.search(content):
-            typ = "permutation"
+            stype = "optimization"
+        elif prm.search(content):
+            stype = "permutation"
         else:
-            typ = "simulation"
-        preamble = "begin input\nname {0}\ntype {1}\n".format(name, typ)
+            stype = "simulation"
+        preamble = "begin input\nname {0}\ntype {1}\n".format(name, stype)
         content = preamble + content.strip() + post
         simulations[name] = content
         continue
 
-    parameterizations = find_block(lines, "parameterization", findall=True)
-    typ = "parameterization"
+    parameterizations = find_block("parameterization", lines, findall=True)
+    stype = "parameterization"
     for name, content in parameterizations.items():
         check_incompatibilities(content)
-        preamble = "begin input\nname {0}\ntype {0}\n".format(name, typ)
+        preamble = "begin input\nname {0}\ntype {0}\n".format(name, stype)
         content = preamble + content.strip() + post
         simulations[name] = content
         continue
 
-    return simulations
+    return simulations.values()
 
 
 def check_incompatibilities(lines):
@@ -773,13 +864,13 @@ def check_incompatibilities(lines):
     for blocks in incompatible_blocks:
         incompatibilites = []
         for block in blocks:
-            content = find_block(lines, block)
+            content = find_block(block, lines)
             if content is None:
                 continue
             incompatibilites.append(1)
             continue
         if len(incompatibilites) > 1:
-            raise UserInputError(
+            raise InputParserError(
                 "Blocks: '{0}' incompatible in same input"
                 .format(", ".join(blocks)))
         continue
@@ -804,8 +895,7 @@ def strip_cruft(lines):
         lines = lines.split("\n")
 
     stripped = []
-    cchars = "#$"
-    cmnt = re.compile(r"|".join(r"{0}".format(x) for x in cchars), re.I|re.M)
+    cmnt = re.compile(r"[#$]", re.I|re.M)
     for line in lines:
         line = line.strip()
         if not line.split():
@@ -840,7 +930,10 @@ def preprocess(lines, preprocessor=None):
 
     """
     if preprocessor is None:
-        preprocessor = find_block(lines, "preprocessing")
+        preprocessor = find_block("preprocessing", lines)
+
+    if preprocessor is None:
+        return lines
 
     # split the preprocessor into a list of (pattern, repl) pairs
     preprocessor = [x.split()
@@ -860,31 +953,52 @@ def preprocess(lines, preprocessor=None):
             lines = npat.sub(repl, lines)
             continue
         continue
+
     return lines
 
 
-def find_nested_blocks(lines, major, *nested):
-    block = find_block(lines, major)
+def find_nested_blocks(major, nested, lines, default=None):
+    """Find the nested blocks in major block of lines
+
+    Parameters
+    ----------
+    major : str
+        name of major block
+    nested : list
+        list of names of blocks to find in major
+    lines : str
+        lines to look for blocks
+    default : None, optional
+        default value
+
+    Returns
+    -------
+    blocks : list
+        blocks[0] is the major block
+        blocks[1:n] are the nested blocks (in order requested)
+
+    """
     blocks = []
+    blocks.append(find_block(major, lines))
     for name in nested:
         bexp = re.compile(r"\bbegin\s*{0}\b.*".format(name), re.I|re.M)
         eexp = re.compile(r"\bend\s*{0}\b.*".format(name), re.I|re.M)
-        start = bexp.search(block)
-        stop = eexp.search(block)
+        start = bexp.search(blocks[0])
+        stop = eexp.search(blocks[0])
         if start and not stop:
-            raise UserInputError("End of block {0} not found".format(name))
+            raise InputParserError("End of block {0} not found".format(name))
         if not start:
-            blocks.append(None)
+            blocks.append(default)
             continue
 
         s, e = start.end(), stop.start()
-        blocks.append(block[start.end():stop.start()])
-        block = block[:start.start()] + block[stop.end():]
+        blocks.append(blocks[0][start.end():stop.start()])
+        blocks[0] = blocks[0][:start.start()] + blocks[0][stop.end():]
         continue
-    return [x.strip() for x in [block] + blocks]
+    return blocks
 
 
-def find_block(lines, name, findall=False, named=False):
+def find_block(name, lines, default=None, findall=False, named=False):
     """Find the input block of form
         begin block [name]
         ...
@@ -922,10 +1036,10 @@ def find_block(lines, name, findall=False, named=False):
             return blocks
 
         if start and not stop:
-            raise UserInputError("End of block '{0}' not found".format(name))
+            raise InputParserError("End of block '{0}' not found".format(name))
 
         if not start:
-            bname, block = None, None
+            bname, block = None, default
 
         else:
             if named:
@@ -950,6 +1064,30 @@ def find_block(lines, name, findall=False, named=False):
     return blocks
 
 
+def pop_block(name, lines):
+    """Pop the input block from lines
+
+    Parameters
+    ----------
+    name : str
+        the block name
+    lines : str
+
+    Returns
+    -------
+    lines : str
+        lines with name popped
+
+    """
+    bexp = re.compile(r"\bbegin\s*{0}\b.*".format(name), re.I|re.M)
+    eexp = re.compile(r"\bend\s*{0}\b.*".format(name), re.I|re.M)
+    bexp, eexp = bexp.search(lines), eexp.search(lines)
+    if bexp and eexp:
+        s, e = bexp.start(), eexp.end()
+        lines = lines[:s].strip() + lines[e:]
+    return lines
+
+
 def fill_in_inserts(lines):
     """Look for 'insert' commands in lines and insert then contents in place
 
@@ -969,6 +1107,7 @@ def fill_in_inserts(lines):
     fpat = pat + r".*"
     regexp = re.compile(fpat, re.I|re.M)
     while True:
+        lines = strip_cruft(lines)
         found = regexp.search(lines)
         if not found:
             break
@@ -976,13 +1115,13 @@ def fill_in_inserts(lines):
         # insert command found, find name
         s, e = found.start(), found.end()
         name = namexp.sub("", lines[s:e])
-        insert = find_block(lines, name)
+        insert = find_block(name, lines)
         if insert is None:
             fpath = os.path.realpath(os.path.expanduser(name))
             try:
                 insert = open(fpath, "r").read()
             except IOError:
-                raise UserInputError(
+                raise InputParserError(
                     "Cannot find insert: {0}".format(repr(name)))
 
         # substitute the contents of the insert
@@ -1031,16 +1170,21 @@ def parse_output(oblock):
     """
     oformats = ("ascii", )
     ovars = []
+
+    if not oblock:
+        return ["ALL"], oformats[0]
+
     oformat, oblock = find_item_name(oblock, "format", pop=True)
     if oformat is None:
         oformat = "ascii"
+
     if oformat not in oformats:
-        raise UserInputError(
+        raise InputParserError(
             "Output format '{0}' not supported, choose from {1}"
             .format(oformat, ", ".join(oformats)))
 
     if re.search(r"(?i)\ball\b", oblock):
-        ovarse.append("ALL")
+        ovars.append("ALL")
 
     else:
         for item in oblock.split("\n"):
@@ -1069,117 +1213,27 @@ def parse_output(oblock):
     return ovars, oformat
 
 
-def parse_leg_table_header(header):
-    """Parse the first leg of the legs block.
-
-    The first leg of the legs block may be in one of two forms.  The usual
-
-                  <leg_no>, <leg_t>, <leg_steps>, <leg_cntrl>, <c[ij]>
-
-    or, if the user is prescribing the legs through a table
-
-                  using <time, dt>, <deformation type> [from columns ...]
-
-    here, we determine what kind of legs the user is prescrbing.
+def parse_extraction(eblock):
+    """Parse the extraction block of the input file
 
     Parameters
     ----------
-    header : str
-        Header of the first leg in the legs block of the user input
-
-    Returns
-    -------
-    ttype : str
-        time type
-    cidxs : list
-        column indexes from table
-    control : str
-        control string
-
-    Raises
-    ------
-
-    Examples
-    --------
-    >>> parse_first_leg("using dt strain")
-    "dt", [0,1,2,3,4,5,6], "222222"
-
-    >>> parse_first_leg("using dt, strain, from columns 1:7")
-    "dt", [0,1,2,3,4,5,6], "222222"
-
-    >>> parse_first_leg([using dt stress from columns, 1,2,3,4,5,6,7")
-    "dt", [0,1,2,3,4,5,6], "444444"
-
-    >>> parse_first_leg("using dt strain from columns 1-7")
-    "dt", [0,1,2,3,4,5,6], "222222"
-
-    >>> parse_first_leg("using dt strain from columns, 1, 5 - 10")
-    "dt", [0,4,5,6,7,8,9,20], "222222"
-
-    >>> parse_first_leg("using dt strain from columns, 1, 5:7"])
-    "dt", [0,4,5,6], "222"
+    eblock : str
+        The extraction block
 
     """
-
-    # determine the time specifier
-    ttypes = ("time", "dt")
-    for item in ttypes:
-        ttype = re.search(r"(?i)\b{0}\b".format(item), header)
-        if ttype:
-            s, e = ttype.start(), ttype.end()
-            ttype = header[s:e].lower()
-            break
+    extraction_vars = []
+    for items in eblock.split("\n"):
+        items = re.sub(I_SEP, " ", items).split()
+        for item in items:
+            if not re.search(r"^[%@]", item) and not item[0].isdigit():
+                pu.log_warning(
+                    "unrecognized extraction request {0}".format(item))
+                continue
+            extraction_vars.append(item)
         continue
-    if ttype is None:
-        raise UserInputError(
-            "time specifier '{0}' not found.  Choose from {1}"
-            .format(ttype, ", ".join(ttypes)))
-    header = re.sub(r"(?i)\b{0}\b".format(ttype), "", header).strip()
+    return [x.upper() for x in extraction_vars]
 
-    # determine the deformation specifier
-    cspec = re.search(r"(?i)\bfrom.*columns\b.*", header)
-    if cspec is None:
-        dtype = " ".join(header.split()).lower()
-        dtype = re.sub(r"[\,]", "", dtype).strip().lower()
-        if dtype not in dtypes():
-            raise UserInputError(
-                "Requested bad control type {0}".format(dtype))
-        C, N = dtypes(dtype)
-
-        # use default column indexes
-        cidxs = range(N + 1)
-
-    else:
-        s, e = cspec.start(), cspec.end()
-        dtype = " ".join(header[:s].split())
-        dtype = re.sub(r"[\,]", "", dtype).strip().lower()
-        if dtype not in dtypes():
-            raise UserInputError(
-                "Requested bad control type {0}".format(dtype))
-        C, N = dtypes(dtype)
-
-        cidxs = []
-        cspec = re.sub(r"\s|(?i)\bfrom.*columns\b", "", header[s:e]).strip()
-        cspec = re.sub(r"-", ":", cspec).split(",")
-        for item in cspec:
-            item = item.split(":")
-            if len(item) == 1:
-                cidxs.append(int(item[0]) - 1)
-            else:
-                for i in range(len(item) - 1):
-                    start, stop = int(item[i]) - 1, int(item[i+1])
-                    cidxs.extend(range(start, stop))
-                    continue
-            continue
-
-    if len(cidxs) > N + 1:
-        raise UserInputError("Too many columns specified")
-    if len(cidxs) < N + 1:
-        raise UserInputError("Too few columns specified")
-
-    control = "{0}".format(C) * N
-
-    return ttype, cidxs, control
 
 def flatten(x):
     result = []
@@ -1187,22 +1241,3 @@ def flatten(x):
         if isinstance(el, list): result.extend(flatten(el))
         else: result.append(el)
     return result
-
-
-def main(argv):
-    try:
-        input_file = argv[0]
-    except IndexError:
-        input_file = "test.inp"
-
-    ilines = open(input_file, "r").read()
-    simulations = parse_user_input(ilines)
-
-    if not simulations:
-        raise UserInputError("No input found")
-
-    for simname, ilines in simulations.items():
-        ui = UserInput(ilines=ilines)
-
-if __name__ == "__main__":
-    main(sys.argv[1:])

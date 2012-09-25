@@ -23,17 +23,17 @@
 
 """Main constitutive model class file."""
 
-import numpy as np
+import os, imp, re, warnings
 import math
-import os
-import imp
-import warnings
+import numpy as np
+
+import runopts as ro
 import Source.Payette_tensor as pt
 import Source.Payette_utils as pu
-import runopts as ro
 import Source.Payette_xml_parser as px
 from Source.Payette_xml_parser import XMLParserError as XMLParserError
 from Source.Payette_unit_manager import UnitManager as UnitManager
+from Aux.newparse import I_EQ
 
 
 class ConstitutiveModelPrototype(object):
@@ -366,43 +366,32 @@ class ConstitutiveModelPrototype(object):
             return 1
 
         errors = 0
-        for line in user_params:
-            # strip and lowcase the line
-            line = line.strip().lower()
-
-            # replace "=" and "," with spaces and split
-            for char in "=,":
-                line = line.replace(char, " ")
-                continue
-            line = line.split()
+        for line in user_params.split("\n"):
+            line = re.sub(I_EQ, " ", line)
 
             # look for user specified materials from the material and matlabel
             # shortcuts
-            if line[0] == "material" or line[0] == "matlabel":
+            matlabel = re.search(r"(?i)\bmaterial\s|\bmatlabel\s", line)
+            if matlabel:
                 if self.control_file is None:
-                    msg = ("requested matlabel but "+ self.name +
-                           " does not provide a material data file")
-                    pu.report_and_raise_error(msg)
+                    pu.report_and_raise_error(
+                        "Requested matlabel but {0} does not provide a "
+                        "material data file".format(self.name))
 
-                try:
-                    matlabel = " ".join(line[1:])
-                except IndexError:
-                    pu.report_and_raise_error("empty matlabel encountered")
+                matlabel = line[matlabel.end():].strip()
+                if not matlabel:
+                    pu.report_and_raise_error("Empty matlabel encountered")
 
                 # matlabel found, now parse the file for names and values
-                self.material_data = self.parse_mtldb_file(material=matlabel)
-                for name, val in self.material_data:
+                matdat = self.parse_mtldb_file(material=matlabel)
+                for name, val in matdat:
                     self.user_input_params[name.upper()] = val
                     continue
 
                 continue
 
-            # the line is now of form
-            #     line = [string, string, ..., string]
-            # we assume that the last string is the value and anything up
-            # to the last is the name
-            name = "_".join(line[0:-1])
-            val = line[-1]
+            line = line.split()
+            name, val = "_".join(line[:-1]), line[-1]
             try:
                 # Horrible band-aid for poorly formatted fortran output.
                 # when it meant 1.0E+100, it spit out 1.0+100
@@ -412,9 +401,9 @@ class ConstitutiveModelPrototype(object):
                     val = float(val)
             except ValueError:
                 errors += 1
-                msg = ("could not convert {0} for parameter {1} to float"
-                       .format(val, name))
-                pu.log_warning(msg)
+                pu.log_warning(
+                    "could not convert {0} for parameter {1} to float"
+                    .format(val, name))
                 continue
 
             self.user_input_params[name.upper()] = val
@@ -476,6 +465,7 @@ class ConstitutiveModelPrototype(object):
         Jacobian matrix J = J_ij = dsigi / depsj.
 
         Parameters
+        ----------
         simdat : object
           simulation data container
         matdat : object
@@ -486,13 +476,14 @@ class ConstitutiveModelPrototype(object):
         j_sub : array_like
           Jacobian of the deformation J = dsig / deps
 
-        Notes ----- The submatrix returned is the one formed by the
-        intersections of the rows and columns specified in the vector
-        subscript array, v. That is, j_sub = J[v, v]. The physical array
-        containing this submatrix is assumed to be dimensioned j_sub[nv,
-        nv], where nv is the number of elements in v. Note that in the special
-        case v = [1,2,3,4,5,6], with nv = 6, the matrix that is returned is
-        the full Jacobian matrix, J.
+        Notes
+        -----
+        The submatrix returned is the one formed by the intersections of the
+        rows and columns specified in the vector subscript array, v. That is,
+        j_sub = J[v, v]. The physical array containing this submatrix is
+        assumed to be dimensioned j_sub[nv, nv], where nv is the number of
+        elements in v. Note that in the special case v = [1,2,3,4,5,6], with
+        nv = 6, the matrix that is returned is the full Jacobian matrix, J.
 
         The components of j_sub are computed numerically using a centered
         differencing scheme which requires two calls to the material model

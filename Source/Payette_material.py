@@ -23,12 +23,14 @@
 
 """Main Payette class """
 
+import re
 import numpy as np
 
 import config as cfg
 import Source.Payette_utils as pu
 import Source.Payette_model_index as pmi
 from Source.Payette_data_container import DataContainer
+from Aux.newparse import I_EQ
 
 
 class Material:
@@ -40,15 +42,30 @@ class Material:
 
     """
 
-    def __init__(self, model_name, user_params, *args, **kwargs):
+    def __init__(self, mblock, *args, **kwargs):
+        """Initialize the Payette material object
+
+        Parameters
+        ----------
+        mblock : str
+            the material block of the input file
+        *args : tuple
+        **kwargs : dict
+
+        """
+
+        # parse the material block of the input file
+        mname, uparams, uopts = _parse_material(mblock)
+        if mname is None:
+            pu.report_and_raise_error("No constitutive model specified for")
 
         # get the material's constitutive model object
         self.model_index = pmi.ModelIndex()
-        control_file = self.model_index.control_file(model_name)
-        cmod = self.model_index.constitutive_model_object(model_name)
+        control_file = self.model_index.control_file(mname)
+        cmod = self.model_index.constitutive_model_object(mname)
 
         # instantiate the constiutive model
-        self.constitutive_model = cmod(control_file, *args, **kwargs)
+        self.constitutive_model = cmod(control_file, *args, **uopts)
 
         # check if the model was successfully imported
         if not self.constitutive_model.imported:
@@ -83,7 +100,7 @@ Payette developers.""".format(self.constitutive_model.name, cfg.LIBRARY)
         register_default_data()
 
         # set up the constitutive model
-        self.constitutive_model.parse_user_params(user_params)
+        self.constitutive_model.parse_user_params(uparams)
         self.constitutive_model.set_up(self.matdat)
         self.constitutive_model.finish_setup(self.matdat)
         self.constitutive_model.initialize_state(self.matdat)
@@ -214,3 +231,65 @@ Payette developers.""".format(self.constitutive_model.name, cfg.LIBRARY)
 
     def initial_density(self):
         return self.constitutive_model.initial_density()
+
+
+def _parse_material(mblock):
+    """Parse the material block.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    material : dict
+
+    """
+
+    # get the constitutive model name
+    pat = r"(?i)constitutive.*model"
+    fpat = pat + r".*"
+    cmod = re.search(fpat, mblock)
+    if cmod:
+        s, e = cmod.start(), cmod.end()
+        name = re.sub(r"\s", "_", re.sub(pat, "", mblock[s:e]).strip())
+        mblock = (mblock[:s] + mblock[e:]).strip()
+
+    # --- get user options -------------------------------------------------- #
+    options = {}
+    pat = r"(?i)\boptions\b"
+    fpat = pat + r".*"
+    opts = re.search(fpat, mblock)
+    if opts:
+        s, e = opts.start(), opts.end()
+        opts = re.sub(pat, "", mblock[s:e].lower().strip()).split()
+        mblock = (mblock[:s] + mblock[e:]).strip()
+
+        # only Fortran option recognized
+        if "fortran" in opts:
+            options["code"] = "fortran"
+
+    # get the strength model name
+    pat = r"(?i)strength.*model"
+    fpat = pat + r".*"
+    smod = re.search(fpat, mblock)
+    if smod:
+        s, e = smod.start(), smod.end()
+        smod = re.sub(r"\s", "_", re.sub(pat, "", mblock[s:e]).strip())
+        options["strength model"] = smod
+        mblock = (mblock[:s] + mblock[e:]).strip()
+
+    # element tracking
+    pat = r"(?i)element.*tracking"
+    fpat = pat + r".*"
+    etrack = re.search(fpat, mblock)
+    if etrack:
+        options["strength model"] = True
+        s, e = etrack.start(), etrack.end()
+        mblock = (mblock[:s] + mblock[e:]).strip()
+
+    # Only parameters are now left over in mblock
+
+    return name, mblock, options
+
+
+

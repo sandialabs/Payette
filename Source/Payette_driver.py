@@ -83,7 +83,7 @@ def eos_driver(the_model, **kwargs):
     simdat.ensure_all_registered_data_have_valid_units()
     matdat.ensure_all_registered_data_have_valid_units()
 
-    nprints = the_model.boundary.nprints()
+    nprints = simdat.NPRINTS
 
     # get boundary data
     density_range = the_model.boundary.density_range()
@@ -357,8 +357,7 @@ def solid_driver(the_model, **kwargs):
 
     # --- data
     ileg = int(simdat.get_data("leg number"))
-    leg_control = the_model.boundary.get_leg_control_params()
-    legs = leg_control[ileg:]
+    legs = the_model.boundary.legs(ileg)
     lnl = len(str(len(legs)))
     simsteps = simdat.get_data("number of steps")
     t_beg = simdat.get_data("time")
@@ -412,6 +411,7 @@ def solid_driver(the_model, **kwargs):
 
         # read inputs and initialize for this leg
         lnum, t_end, nsteps, ltype, prdef = leg
+        ltype = [int(x) for x in ltype]
         lns = len(str(nsteps))
         delt = t_end - t_beg
         if delt == 0.:
@@ -423,8 +423,7 @@ def solid_driver(the_model, **kwargs):
             except ValueError:
                 pass
 
-        nprints = (the_model.boundary.nprints()
-                   if the_model.boundary.nprints() else nsteps)
+        nprints = (simdat.NPRINTS if simdat.NPRINTS else nsteps)
         if simdat.EMIT == "sparse":
             nprints = min(10,nsteps)
         print_interval = max(1, int(nsteps / nprints))

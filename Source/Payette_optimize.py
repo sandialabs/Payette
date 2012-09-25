@@ -28,6 +28,7 @@ parameters using Payette.
 import os
 import sys
 import imp
+import re
 import shutil
 import numpy as np
 import scipy
@@ -39,7 +40,7 @@ import config as cfg
 import Source.Payette_utils as pu
 import Source.Payette_container as pcntnr
 import Source.Payette_extract as pe
-import Source.Payette_input_parser as pip
+import Aux.newparse as pip
 import runopts as ro
 import Source.Payette_sim_index as psi
 import Toolset.KayentaParamConv as kpc
@@ -58,15 +59,15 @@ class Optimize(object):
         r""" Initialization """
 
         # get the optimization block
-        job_inp = pip.InputParser(input_lines)
-        job = job_inp.get_simulation_key()
+        ui = pip.InputParser(input_lines)
+        job = ui.name
 
-        if "simdir" in job_inp.input_options() or ro.SIMDIR is not None:
+        regex = re.compile(r"simdir", re.I|re.M)
+        if regex.search("\n".join(ui.options())) or ro.SIMDIR is not None:
             pu.report_and_raise_error(
                 "cannot specify simdir for permutation jobs")
 
-        optimize = job_inp.get_block("optimization")
-
+        optimize = ui.find_block("optimization")
         self.name = job
 
         # save Perturbate information to single "data" dictionary
@@ -78,9 +79,10 @@ class Optimize(object):
         self.data["options"] = []
 
         # fill the data with the optimization information
-        self.parse_optimization_block(optimize)
+        self.oblock = optimize
+        self.parse_optimization_block()
 
-        input_lines = job_inp.get_input_lines(skip="optimization")
+        input_lines = ui.user_input(pop=("optimization",))
         self.data["baseinp"] = input_lines
 
         # set the loglevel to 0 for Payette simulation and save the payette
@@ -88,7 +90,7 @@ class Optimize(object):
         ro.set_global_option("VERBOSITY", 0, default=True)
 
         # check user input for required blocks
-        if not job_inp.has_block("material"):
+        if not ui.find_block("material"):
             pu.report_and_raise_error(
                 "material block not found in input file")
 
@@ -240,7 +242,7 @@ class Optimize(object):
 
         return
 
-    def parse_optimization_block(self, opt_block):
+    def parse_optimization_block(self):
         r"""Get the required optimization information.
 
         Populates the self.data dict with information parsed from the
@@ -249,7 +251,7 @@ class Optimize(object):
 
         Parameters
         ----------
-        opt_block : array_like
+        oblock : array_like
             optimization block from input file
 
         Returns
@@ -266,168 +268,130 @@ class Optimize(object):
 
         # default method
         opt_method = allowed_methods["simplex"]
-        maxiter = 20
-        tolerance = 1.e-4
-        disp = False
         optimize = {}
         min_legacy = {"abscissa": None, "vars": []}
         gold_f = None
 
-        # get options first -> must come first because some options have a
-        # default method different than the global default of simplex
-        for item in opt_block:
-            for pat, repl in ((",", " "), ("=", " "), ):
-                item = item.replace(pat, repl)
-            item = item.split()
-
-            if "option" in item[0].lower():
-                self.data["options"].append(item[1].lower())
-
+        # get options
+        while True:
+            option = self.find_oblock_option("option")
+            if option is None:
+                break
+            self.data["options"].append(option.lower())
             continue
 
-        # get method before other options
-        for item in opt_block:
-            for pat, repl in ((",", " "), ("=", " "), ):
-                item = item.replace(pat, repl)
-            item = item.split()
-            if "method" in item[0].lower():
-                opt_method = allowed_methods.get(item[1].lower())
-                if opt_method is None:
-                    pu.report_error(
-                        "invalid method {0}".format(item[1].lower()))
+        # get method
+        method = self.find_oblock_option("method")
+        if method is not None:
+            method = method.lower()
+            opt_method = allowed_methods.get(method)
+            if opt_method is None:
+                pu.report_and_raise_error("invalid method {0}".format(method))
 
+        # tolerance, maxiter
+        tolerance = float(self.find_oblock_option("tolerance", 1.e-4))
+        maxiter = int(self.find_oblock_option("maxiter", 20))
+        disp = self.find_oblock_option("disp", False)
+        if disp:
+            if re.search(r"(?i)\bfalse\b", disp) or re.search(r"\b0\b", disp):
+                disp = False
+            else:
+                disp = True
+
+        # objective function
+        fnam = os.path.join(cfg.OPTREC, "Opt_legacy.py") # default
+        fnam = self.find_oblock_option("obj_fn", fnam)
+        fnam = re.sub(r"\bin\s", "", fnam).strip()
+        if not os.path.isfile(fnam):
+            ftry = os.path.join(cfg.OPTREC, fnam)
+            if not os.path.isfile(ftry):
+                pu.report_error("obj_fn {0} not found".format(fnam))
+            fnam = ftry
+        if os.path.splitext(fnam)[1] not in (".py",):
+            pu.report_error("obj_fn {0} must be .py file".format(fnam))
+        else:
+            pymod, pypath = pu.get_module_name_and_path(fnam)
+        try:
+            fobj, path, desc = imp.find_module(pymod, pypath)
+            OBJFN = imp.load_module(pymod, fobj, path, desc)
+            fobj.close()
+            if not hasattr(OBJFN, "obj_fn"):
+                pu.report_error("obj_fn must define a 'obj_fn' function")
+        except ImportError:
+            pu.report_error("obj_fn {0} not imported".format(fnam))
         if pu.error_count():
             pu.report_and_raise_error("stopping due to previous errors")
 
-        # now get the rest
-        for item in opt_block:
-            for pat, repl in ((",", " "), ("=", " "), ("(", " "), (")", " "),):
-                item = item.replace(pat, repl)
-            item = item.split()
-
-            # remove "in" from list
-            try:
-                item.remove("in")
-            except ValueError:
-                pass
-
-            if "optimize" in item[0].lower():
-                # set up this parameter to optimize
-                key = item[1]
-                vals = item[2:]
-
-                bounds = (None, None)
-                init_val = None
-
-                # upper bound
-                if "bounds" in vals:
-                    try:
-                        idx = vals.index("bounds") + 1
-                        bounds = [float(x) for x in vals[idx:idx+2]]
-                    except ValueError:
-                        pu.report_error("bounds requires 2 arguments")
-
-                    if bounds[0] > bounds[1]:
-                        pu.report_error(
-                            "lower bound {0} > upper bound {1} for {2}"
-                            .format(bounds[0], bounds[1], key))
-
-                if "initial" in vals:
-                    idx = vals.index("initial")
-                    if vals[idx + 1] == "value":
-                        idx = idx + 1
-                        init_val = float(vals[idx+1])
-
-                if "lbound" in vals:
-                    pu.report_error("depricated keyword 'lbound'")
-
-                if "ubound" in vals:
-                    pu.report_error("depricated keyword 'lbound'")
-
-                optimize[key] = {}
-                optimize[key]["bounds"] = bounds
-                optimize[key]["initial value"] = init_val
-
-            elif "minimize" in item[0].lower():
-                # get variables to minimize during the optimization
-                min_vars = item[1:]
-                for min_var in min_vars:
-                    if min_var == "versus":
-                        val = min_vars[min_vars.index("versus") + 1]
-                        if val[0] != "@":
-                            val = "@" + val
-                        min_legacy["abscissa"] = val
-                        break
-
-                    if min_var[0] != "@":
-                        min_var = "@" + min_var
-
-                    if min_var not in min_legacy["vars"]:
-                        min_legacy["vars"].append(min_var)
-
-                    continue
-
-            elif "obj_fn" in item[0].lower():
-                # user supplied objective function
-                fnam = item[-1]
-                if not os.path.isfile(fnam):
-                    ftry = os.path.join(cfg.OPTREC, fnam)
-                    if not os.path.isfile(ftry):
-                        pu.report_error("obj_fn {0} not found".format(fnam))
-                        continue
-                    fnam = ftry
-
-                if os.path.splitext(fnam)[1] not in (".py",):
-                    pu.report_error("obj_fn {0} must be .py file".format(fnam))
-                    continue
-
-                pymod, pypath = pu.get_module_name_and_path(fnam)
-                try:
-                    fobj, path, desc = imp.find_module(pymod, pypath)
-                    OBJFN = imp.load_module(pymod, fobj, path, desc)
-                    fobj.close()
-                except ImportError:
-                    pu.report_error("obj_fn {0} not imported".format(fnam))
-                    continue
-
-                if not hasattr(OBJFN, "obj_fn"):
-                    pu.report_error("obj_fn must define a 'obj_fn' function")
-
-            if "gold" in item[0].lower() and "file" in item[1].lower():
-                # user supplied objective function "gold" data
-                fnam = item[-1]
-                if not os.path.isfile(fnam):
-                    pu.report_error("gold file {0} not found".format(fnam))
-
-                else:
-                    gold_f = fnam
-
-            # below are options for the scipy optimizing routines
-            elif "maxiter" in item[0].lower():
-                maxiter = int(item[1])
-
-            elif "tolerance" in item[0].lower():
-                tolerance = float(item[1])
-
-            elif "disp" in item[0].lower():
-                disp = item[1].lower()
-                if disp == "true":
-                    disp = True
-
-                elif disp == "false":
-                    disp = False
-
-                else:
-                    try:
-                        disp = bool(float(item[1]))
-
-                    except ValueError:
-                        # the user specified disp in the input file, it is not
-                        # one of false, true, and is not a number. assume that
-                        # since it was set, the user wants disp to be true.
-                        disp = True
-
+        # get variables to optimize
+        optmz = []
+        while True:
+            opt = self.find_oblock_option("optimize")
+            if opt is None:
+                break
+            optmz.append(re.sub(r"[\(\)]", "", opt).lower().split())
             continue
+        for item in optmz:
+            key, vals = item[0], item[1:]
+            optimize[key] = {"bounds": [None, None],
+                             "initial value": None}
+
+            if "bounds" in vals:
+                try:
+                    idx = vals.index("bounds") + 1
+                    bounds = [float(x) for x in vals[idx:idx+2]]
+                except ValueError:
+                    bounds = [None, None]
+                    pu.report_error("Bounds requires 2 arguments")
+
+                if bounds[0] > bounds[1]:
+                    pu.report_error(
+                        "lower bound {0} > upper bound {1} for {2}"
+                        .format(bounds[0], bounds[1], key))
+                optimize[key]["bounds"] = bounds
+
+            if "initial" in vals:
+                idx = vals.index("initial")
+                if vals[idx + 1] == "value":
+                    idx = idx + 1
+                    ival = float(vals[idx+1])
+                else:
+                    ival = None
+                optimize[key]["initial value"] = ival
+            continue
+
+        # get variables to minimize
+        minmz = []
+        while True:
+            tmp = self.find_oblock_option("minimize")
+            if tmp is None:
+                break
+            minmz.append(re.sub(r"[\(\)]", "", tmp).lower().split())
+            continue
+        for min_vars in minmz:
+            # get variables to minimize during the optimization
+            for min_var in min_vars:
+                if min_var == "versus":
+                    val = min_vars[min_vars.index("versus") + 1]
+                    if val[0] != "@":
+                        val = "@" + val
+                    min_legacy["abscissa"] = val
+                    break
+
+                if min_var[0] != "@":
+                    min_var = "@" + min_var
+
+                if min_var not in min_legacy["vars"]:
+                    min_legacy["vars"].append(min_var)
+                continue
+            continue
+
+        # get the gold file
+        fnam = self.find_oblock_option("gold file")
+        if fnam is not None:
+            if not os.path.isfile(fnam):
+                pu.report_error("gold file {0} not found".format(fnam))
+            else:
+                gold_f = fnam
 
         # check that minimum info was given
         if min_legacy["vars"]:
@@ -491,18 +455,31 @@ class Optimize(object):
 
         # Remove from the material block the optimized parameters. Current
         # values will be inserted in to the material block for each run.
-        preprocessing = []
+        preprocessor = ""
         pu.log_message("Calling model with initial parameters")
         for key, val in self.data["optimize"].items():
-            preprocessing.append(
-                "{0} = {1}".format(key, val["initial value"]))
-        job_inp = pip.preprocess_input_deck(self.data["baseinp"],
-                                            preprocessing=preprocessing)
-        the_model = pcntnr.Payette(job_inp)
+            preprocessor += "{0} = {1}\n".format(key, val["initial value"])
+        ui = pip.preprocess(self.data["baseinp"], preprocessor=preprocessor)
+        the_model = pcntnr.Payette(ui)
         if pu.warn_count():
             pu.report_and_raise_error("exiting due to initial warnings")
 
         return
+
+    def find_oblock_option(self, option, default=None):
+        option = ".*".join(option.split())
+        pat = r"(?i)\b{0}\s".format(option)
+        fpat = pat + r".*"
+        option = re.search(fpat, self.oblock)
+        if option:
+            s, e = option.start(), option.end()
+            option = self.oblock[s:e]
+            self.oblock = (self.oblock[:s] + self.oblock[e:]).strip()
+            option = re.sub(pat, "", option)
+            option = re.sub(r"[\,=]", " ", option).strip()
+        else:
+            option = default
+        return option
 
 
 def minimize(fcn, x0, args=(), method="Nelder-Mead",
@@ -653,7 +630,7 @@ def func(xcall, xnams, data, base_dir, index):
 
     # replace the optimize variables with the updated and write params to file
     msg = []
-    preprocessing = []
+    preprocessor = ""
     variables = {}
     with open(os.path.join(job_dir, job + ".opt"), "w") as fobj:
         fobj.write("Parameters for iteration {0:d}\n".format(IOPT + 1))
@@ -670,29 +647,25 @@ def func(xcall, xnams, data, base_dir, index):
             lbnd, ubnd = data["optimize"][nam]["bounds"]
             if lbnd is not None and opt_val < lbnd / FAC[idx]:
                 return 1.e3
-
 #            if ubnd is not None and opt_val > ubnd / FAC[idx]:
 #                return 1.e3
 
             pstr = "{0} = {1:12.6E}".format(nam, opt_val * FAC[idx])
-            preprocessing.append(
-                "{0} = {1}".format(nam, opt_val * FAC[idx]))
+            preprocessor += "{0} = {1}\n".format(nam, opt_val * FAC[idx])
             variables[nam] = opt_val * FAC[idx]
             fobj.write(pstr + "\n")
             msg.append(pstr)
             continue
 
-    job_inp = pip.preprocess_input_deck(data["baseinp"],
-                                        preprocessing=preprocessing)
-    job_inp[0] = "begin simulation {0}".format(job)
-
+    ui = pip.preprocess(data["baseinp"], preprocessor=preprocessor)
+    ui = re.sub(r"(?i)\bname\s.*", "name {0}".format(job), ui)
     if data["verbosity"]:
         pu.log_message("Iteration {0:03d}, trial parameters: {1}"
                        .format(IOPT + 1, ", ".join(msg)),
                        noisy=True)
 
     # instantiate Payette object
-    the_model = pcntnr.Payette(job_inp)
+    the_model = pcntnr.Payette(ui)
 
     # run the job
     solve = the_model.run_job()

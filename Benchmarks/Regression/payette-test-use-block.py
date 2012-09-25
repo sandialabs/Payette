@@ -20,11 +20,11 @@ class Test(PayetteTest):
         self.siminp = self.input_string.split("\n")
         self.material = "elastic"
         self.keywords = ["payette", "input_str", "regression", "fast", "builtin",
-                         "use_block"]
+                         "insert_block"]
 
         self.owner = "Tim Fuller"
         self.date = "May 21, 2012"
-        self.description = """ Test of 'use block' capabilities """
+        self.description = """ Test of 'insert block' capabilities """
 
         if check:
             self.check_setup()
@@ -33,21 +33,22 @@ class Test(PayetteTest):
 
     def get_input_string(self):
 
-        input_string = """begin simulation payette-test-use-block
+        input_string = """\
+begin simulation payette-test-use-block
   nowriteprops
-  use boundary_001
+  insert boundary_001
   begin material
     constitutive model elastic
-    use material_001
+    insert material_001
   end material
 end simulation
 
 begin simulation payette-test-use-block-1
   nowriteprops
-  use boundary_001
+  insert boundary_001
   begin material
     constitutive model elastic
-    use material_001
+    insert material_001
   end material
 end simulation
 

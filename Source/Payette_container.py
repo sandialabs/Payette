@@ -38,7 +38,7 @@ import Source.Payette_driver as pd
 import Source.Payette_utils as pu
 import Source.Payette_extract as pe
 import Source.Payette_boundary as pb
-import Source.Payette_input_parser as pip
+import Aux.newparse as pip
 import runopts as ro
 from Source.Payette_material import Material
 from Source.Payette_data_container import DataContainer
@@ -83,13 +83,13 @@ class Payette(object):
 
         # instantiate the user input object
         self.input_lines = input_lines
-        self.user_input = pip.InputParser(input_lines)
+        self.ui = pip.InputParser(input_lines)
 
         delete = not ro.KEEP
 
         # check if user has specified simulation options directly in the input
         # file
-        for attr, val in self.user_input.input_options().items():
+        for attr, val in self.ui.options().items():
             ro.set_global_option(attr, val)
             continue
 
@@ -110,21 +110,13 @@ class Payette(object):
                     "cannot create simulation directory: {0}"
                     .format(self.simdir))
 
-        self.name = self.user_input.get_simulation_key()
+        self.name = self.ui.name
         self._open_files = {}
 
         # default variables
         self.dtable_fobj = None
         self.outfile_obj = None
         self.vtable_fobj = None
-
-        # check user input for required blocks
-        req_blocks = ("material", )
-        input_blocks = self.user_input.input_blocks()
-        for block in req_blocks:
-            if block not in input_blocks:
-                raise PayetteError(
-                    "{0} block not found in input file".format(block))
 
         tmpnam = os.path.join(self.simdir, self.name + ".out")
         if delete and os.path.isfile(tmpnam):
@@ -166,71 +158,60 @@ class Payette(object):
         pu.write_to_simlog("Platform: {0}".format(cfg.OSTYPE))
         pu.write_to_simlog("Python interpreter: {0}".format(cfg.PYINT))
 
-        # write description
-        pu.write_to_simlog("Description: ")
-        description = (
-            "  None" if self.user_input.get_block("description") is None
-            else textfill(" ".join(self.user_input.get_block("description")),
-                          initial_indent="  ", subsequent_indent="  "))
-        pu.write_to_simlog(description)
+        desc = self.ui.find_block("description", "  None")
+        desc = textfill(desc, initial_indent="  ", subsequent_indent="  ")
+        pu.write_to_simlog(desc)
 
         # write input to log file
-        pu.write_to_simlog("User input:")
+        pu.write_to_simlog("User input:\nbegin input")
         ns = 0
-        for line in self.user_input.get_input_lines():
+        for line in self.ui.inp.split("\n"):
             if "end" in line.split()[0]:
                 ns -= 2
             pu.write_to_simlog(" " * ns + line)
             if "begin" in line:
                 ns += 2
             continue
+        pu.write_to_simlog("end input")
 
         # file name for the Payette restart file
         self.is_restart = False
 
-        # set up the material
-        material = self.user_input.get_block("material")
-        if material is None:
-            raise PayetteError(
-                "material block not found for {0}"
-                .format(self.name))
-        model_name, user_params, user_options = _parse_mtl_block(material)
         # instantiate the material object
-        self.material = Material(model_name, user_params, **user_options)
-
+        material = self.ui.find_block("material")
+        if material is None:
+            raise InputParserError(
+                "Material block not found for {0}".format(self.name))
+        self.material = Material(material)
         self.matdat = self.material.material_data()
 
-        # set up boundary and leg blocks
-        boundary = self.user_input.get_block("boundary")
-        legs = self.user_input.get_block("legs")
-        efield = self.user_input.get_block("efield")
+        # get the boundary and legs blocks
+        boundary, legs = self.ui.find_nested_blocks("boundary", ("legs", ))
         if boundary is None:
-            raise PayetteError(
-                "boundary block not found for {0}"
-                .format(self.name))
-
+            raise InputParserError(
+                "Boundary block not found for {0}".format(self.name))
         if not self.material.eos_model and legs is None:
-            raise PayetteError(
-                "legs block not found for {0}"
-                .format(self.name))
+            raise InputParserError(
+                "Legs block not found for {0}".format(self.name))
+        self.boundary = pip.Boundary(boundary, legs)
 
         # solid and eos materials have different boundary classes
-        if not self.material.eos_model:
-            Boundary = pb.Boundary
-        else:
-            Boundary = pb.EOSBoundary
+#        if not self.material.eos_model:
+#            Boundary = pb.Boundary
+#        else:
+#            Boundary = pb.EOSBoundary
+#
+#        try:
+#            bkwargs = {"boundary": boundary, "legs": legs, "efield": efield}
+#            self.boundary = Boundary(**bkwargs)
+#
+#        except BoundaryError as error:
+#            pu.report_and_raise_error(
+#                "Boundary object failed with the following error:\n{0}"
+#                .format(error.message), caller="anonymous")
 
-        try:
-            bkwargs = {"boundary": boundary, "legs": legs, "efield": efield}
-            self.boundary = Boundary(**bkwargs)
-
-        except BoundaryError as error:
-            pu.report_and_raise_error(
-                "Boundary object failed with the following error:\n{0}"
-                .format(error.message), caller="anonymous")
-
-        self.t0 = self.boundary.initial_time
-        self.tf = self.boundary.termination_time
+        self.t0 = self.boundary.initial_time()
+        self.tf = self.boundary.termination_time()
 
         # set up the simulation data container and register obligatory data
         self.simdat = DataContainer(self.name)
@@ -264,6 +245,7 @@ class Payette(object):
 
         self.write_input = ro.WRITE_INPUT or self.simdir != os.getcwd()
 
+        self.simdat.register_static_data("nprints", self.boundary.nprints())
         if not self.material.eos_model:
             # register data not needed by the eos models
             self.simdat.register_static_data("emit", self.boundary.emit())
@@ -271,21 +253,29 @@ class Payette(object):
             self.simdat.register_static_data("screenout",
                                              self.boundary.screenout())
 
-
+        # --- optional information ------------------------------------------ #
         # list of plot keys for all plotable data
+        output = self.ui.find_block("output")
+        output, oformat = pip.parse_output(output)
         self.plot_keys = [x for x in self.simdat.plot_keys()]
         self.plot_keys.extend(self.matdat.plot_keys())
-        self.user_input.register_plot_keys(self.plot_keys)
+        self.plot_keys = [x.upper() for x in self.plot_keys]
+        if "ALL" in output:
+            self.out_vars = [x for x in self.plot_keys]
+        else:
+            self.out_vars = [x for x in output if x.upper() in self.plot_keys]
 
-        # get mathplot
-        self.mathplot_vars = self.user_input.parse_mathplot_block()
+        mathplot = self.ui.find_block("mathplot", [])
+        if mathplot:
+            mathplot = pip.parse_mathplot(mathplot)
+        self.mathplot_vars = mathplot
 
         # get extraction
-        self.extraction_vars = self.user_input.parse_extraction_block()
-
-        # get output block
-        out_vars = self.user_input.parse_output_block()
-        self.out_vars, self.out_format, self.out_nam = out_vars
+        extraction = self.ui.find_block("extraction", [])
+        if extraction:
+            extraction = pip.parse_extraction(extraction)
+            extraction = [x for x in extraction if x.upper() in self.plot_keys]
+        self.extraction_vars = extraction
 
         self._setup_files()
 
@@ -681,7 +671,7 @@ class Payette(object):
         None
 
         """
-        inp_lines = self.user_input.get_input_lines()
+        inp_lines = self.ui.inp
         inp_f = os.path.join(self.simdir, self.name + ".inp")
         if os.path.isfile(inp_f):
             fnam, fext = os.path.splitext(inp_f)
@@ -690,7 +680,7 @@ class Payette(object):
         # write the file
         ns = 0
         with open(inp_f, "w") as fobj:
-            for line in inp_lines:
+            for line in inp_lines.split("\n"):
                 if "simdir" in line.lower() or "write input" in line.lower():
                     continue
                 if "end" in line.split()[0]:
@@ -700,70 +690,3 @@ class Payette(object):
                     ns += 2
                 continue
         return
-
-
-
-
-def _parse_mtl_block(material_inp):
-    """ Read material block from input file, parse it, and create material
-    object
-
-    Parameters
-    ----------
-    material_inp : dict
-        input material block, split on lines
-
-    Returns
-    -------
-    material : object
-        the instantiated material object
-
-    """
-
-    if material_inp is None:
-        return None
-
-    material = material_inp
-
-    model_name = None
-    user_params = []
-    user_options = {}
-
-    # check for required input
-    for item in material:
-        item = " ".join(item.split())
-        if "constitutive model" in item:
-            # line defines the constitutive model, get the name of the model
-            # to be used
-            model_name = item[len("constitutive model"):].strip()
-            continue
-
-        if "options" in item:
-            options = item[len("options"):].strip().split()
-            if "fortran" in options:
-                user_options["code"] = "fortran"
-            continue
-
-        if "strength model" in item:
-            strength_model = item[len("strength model"):].strip().split()
-            user_options["strength model"] = strength_model
-            continue
-
-        elif "track element" in item:
-            user_options["track element"] = True
-            continue
-
-        user_params.append(item)
-        continue
-
-    if model_name is None:
-        # constitutive model not given, exit
-        raise PayetteError("no constitutive model in material block")
-
-    # constitutive model given, now see if it is available, here we replace
-    # spaces with _ in all model names and convert to lower case
-    model_name = model_name.lower().replace(" ", "_")
-
-    return model_name, user_params, user_options
-
-

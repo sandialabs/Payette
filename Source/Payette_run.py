@@ -37,6 +37,7 @@ import optparse
 import time
 import multiprocessing as mp
 import logging
+import re
 
 import config as cfg
 import Source.Payette_utils as pu
@@ -44,10 +45,10 @@ import Source.Payette_container as pcntnr
 import Source.Payette_optimize as po
 import Source.Payette_permutate as pp
 import Source.Payette_parameterize as pparam
-import Source.Payette_input_parser as pip
+import Aux.newparse as pip
 import runopts as ro
 
-def run_payette(siminp=None, restart=False, timing=False, cchar=None,
+def run_payette(siminp=None, restart=False, timing=False,
                 nproc=ro.NPROC, disp=ro.DISP, verbosity=ro.VERBOSITY):
     """Main function for running a Payette job.
     Read the user inputs from argv, parse options, read user input, and run
@@ -55,16 +56,15 @@ def run_payette(siminp=None, restart=False, timing=False, cchar=None,
 
     """
 
-    if not isinstance(siminp, (list, tuple)):
-        pu.report_and_raise_error("siminp of wrong type")
-
     if restart:
-        with open(siminp[0], "rb") as ftmp:
+        restart = True
+        with open(restart, "rb") as ftmp:
             the_model = pickle.load(ftmp)
             user_input_sets = (the_model, )
     else:
-        # read the user input
-        user_input_sets = pip.parse_user_input(siminp, cchar)
+        # parse the user input
+        user_input_sets = pip.parse_user_input(siminp)
+
     if not user_input_sets:
         pu.report_and_raise_error("No user input found in input files")
 
@@ -131,15 +131,15 @@ def _run_job(args):
         the_model = user_input
         the_model.setup_restart()
 
-    elif any("optimization" in x for x in user_input):
+    elif re.search(r"(?i)\boptimization\b.*", user_input):
         # intantiate the Optimize object
         the_model = po.Optimize(user_input)
 
-    elif any("permutation" in x for x in user_input):
+    elif re.search(r"(?i)\bpermutation\b.*", user_input):
         # intantiate the Optimize object
         the_model = pp.Permutate(user_input)
 
-    elif any("parameterization" in x for x in user_input):
+    elif re.search(r"(?i)\bparameterization\b.*", user_input):
         # intantiate the Optimize object
         the_model = pparam.parameterizer(user_input)
 
