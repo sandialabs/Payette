@@ -211,6 +211,8 @@ def parse_user_input(lines):
     """
 
     # strip the input of comments and extra lines and preprocess
+    if isinstance(lines, (list, tuple)):
+        lines = "\n".join(lines)
     lines = fill_in_inserts(lines)
     lines = preprocess(lines)
     lines = strip_cruft(lines)
@@ -284,22 +286,7 @@ def strip_cruft(lines):
         lines stripped of all comments and blank lines
 
     """
-    if not isinstance(lines, (list, tuple)):
-        lines = lines.split("\n")
-
-    stripped = []
-    cmnt = re.compile(r"[#$]", re.I|re.M)
-    for line in lines:
-        line = line.strip()
-        if not line.split():
-            continue
-        comment = cmnt.search(line)
-        if comment:
-            line = line[:comment.start()]
-        if line.split():
-            stripped.append(line)
-        continue
-    return "\n".join(stripped)
+    return re.sub(r"\n\s*\n*", "\n", re.sub(r"[#$].*","", lines)) + "\n"
 
 
 def preprocess(lines, preprocessor=None):
@@ -518,7 +505,7 @@ def fill_in_inserts(lines):
                     "Cannot find insert: {0}".format(repr(name)))
 
         # substitute the contents of the insert
-        lines = regexp.sub(insert, lines)
+        lines = regexp.sub(insert, lines, 1)
         continue
 
     return lines

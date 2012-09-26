@@ -57,11 +57,13 @@ def run_payette(siminp=None, restart=False, timing=False,
     """
 
     if restart:
-        restart = True
         with open(restart, "rb") as ftmp:
             the_model = pickle.load(ftmp)
             user_input_sets = (the_model, )
+        restart = True
     else:
+        if isinstance(siminp, (list, tuple)):
+            siminp = "\n".join(siminp)
         # parse the user input
         user_input_sets = pip.parse_user_input(siminp)
 
@@ -105,7 +107,7 @@ def run_payette(siminp=None, restart=False, timing=False,
             continue
 
     if timing:
-        print_final_timing_info(tim0)
+        write_final_timing_info(tim0)
 
     retcode = 1 if any(x["retcode"] for x in return_info) else 0
 
@@ -165,9 +167,9 @@ def _run_job(args):
     if timing:
         tim2 = time.time()
 
-    # print timing info
+    # write timing info
     if timing:
-        print_timing_info(tim0, tim1, tim2, the_model.name)
+        write_timing_info(tim0, tim1, tim2, the_model.name)
 
     # finish up
     the_model.finish()
@@ -179,8 +181,8 @@ def _run_job(args):
     return siminfo
 
 
-def print_timing_info(tim0, tim1, tim2, name=None):
-    """ print timing info """
+def write_timing_info(tim0, tim1, tim2, name=None):
+    """ write timing info """
 
     ttot = time.time() - tim0
     texe = tim2 - tim1
@@ -193,8 +195,8 @@ def print_timing_info(tim0, tim1, tim2, name=None):
     return
 
 
-def print_final_timing_info(tim0):
-    """ print timing info from end of run"""
+def write_final_timing_info(tim0):
+    """ writ timing info from end of run"""
 
     ttot = time.time() - tim0
     pu.log_message(

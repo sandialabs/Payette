@@ -53,7 +53,7 @@ class Boundary(object):
         # ---- set defaults ------------------------------------------------- #
         self._kappa = 0.
         self.stepfac, self.efac, self.tfac, self.sfac, self.ffac = [1.] * 5
-        self.effac, self.dfac = [1.] * 2
+        self.effac, self.dfac, self.ratfac = [1.] * 3
 
         # structure of _bcontrol:
         # _bcontrol[key] = [type, default, extra [min, choices,]]
@@ -165,7 +165,6 @@ class Boundary(object):
         # the multiplier on strain rate and stress rate.
         ampl = self.bcontrol("ampl")[1]
         tstar = self.bcontrol("tstar")[1]
-        ratfac = self.bcontrol("ratfac")[1]
         estar = self.bcontrol("estar")[1]
         sstar = self.bcontrol("sstar")[1]
         fstar = self.bcontrol("fstar")[1]
@@ -173,10 +172,11 @@ class Boundary(object):
         dstar = self.bcontrol("dstar")[1]
 
         # factors to be applied to deformation types
+        self.ratfac = self.bcontrol("ratfac")[1]
         self._kappa = self.bcontrol("kappa")[1]
         self.stepfac = self.bcontrol("stepstar")[1]
         self.efac = ampl * estar
-        self.tfac = abs(ampl) * tstar / ratfac
+        self.tfac = abs(ampl) * tstar / self.ratfac
         self.sfac = ampl * sstar
         self.ffac = ampl * fstar
         self.effac = ampl * efstar

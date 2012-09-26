@@ -148,6 +148,12 @@ def main(argv):
         default=False,
         help="Display visualization window upon completion [default: %default]")
     parser.add_option(
+        "-C",
+        dest="VIZCNTRL",
+        action="store_true",
+        default=False,
+        help="Launch the Viz controller [default: %default]")
+    parser.add_option(
         "-A",
         dest="AUXMTL",
         action="store",
@@ -315,13 +321,20 @@ def main(argv):
             .format(material_db))
     ro.set_global_option("MTLDB", material_db, default=True)
 
+    if opts.VIZCNTRL:
+        if not cfg.VIZ_COMPATIBLE:
+            sys.exit("Visualization not supported by your Python distribution")
+        import Source.Viz_Control as vc
+        window = vc.ControlWindow()
+        sys.exit(window.configure_traits())
+
     if not argv:
         if not cfg.VIZ_COMPATIBLE:
             sys.exit("Visualization not supported by your Python distribution")
         # Launch the Gui and exit
         import Source.Viz_ModelSelector as vms
-        pmms = vms.PayetteMaterialModelSelector(model_type="any")
-        sys.exit(pmms.configure_traits())
+        window = vms.PayetteMaterialModelSelector(model_type="any")
+        sys.exit(window.configure_traits())
 
     if opts.verbosity:
         pu.log_message(cfg.INTRO, pre="")
@@ -427,7 +440,7 @@ def main(argv):
     # ----------------------------------------------------- end: get user input
 
     # make sure input file is given and exists
-    if not siminp:
+    if not siminp and not restart:
         parser.print_help()
         parser.error("No input given")
 

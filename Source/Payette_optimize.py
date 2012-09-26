@@ -97,7 +97,7 @@ class Optimize(object):
         self.check_params()
 
         if self.data["verbosity"]:
-            pu.log_message("Optimizing {0}".format(job), noisy=True)
+            pu.log_message("Optimizing {0}".format(self.name), noisy=True)
             pu.log_message("Optimization variables: {0}"
                            .format(", ".join(self.data["optimize"])),
                            noisy=True)

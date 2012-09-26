@@ -89,7 +89,7 @@ class Permutate(object):
 
         # print info
         if self.data["verbosity"]:
-            pu.log_message("Permutating job: {0}".format(self.data["basename"]),
+            pu.log_message("Permutating job: {0}".format(self.name),
                            noisy=True)
             pu.log_message("Permutated variables: {0}"
                            .format(", ".join(self.param_names)), noisy=True)

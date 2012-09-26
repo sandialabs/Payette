@@ -17,7 +17,7 @@ class Test(PayetteTest):
         self.outfile = "{0}.out".format(self.name)
         self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
         self.input_string = self.get_input_string()
-        self.siminp = self.input_string.split("\n")
+        self.siminp = self.input_string
         self.material = "elastic"
         self.keywords = ["payette", "input_str", "regression", "fast", "builtin",
                          "matlabel"]
