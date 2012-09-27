@@ -918,7 +918,10 @@ class PayetteTest(object):
                 nam, val = line.split("=")
                 gold_params[nam] = float(val)
             errors = []
-            for gp, gv in gold_params.items():
+            log.write("{0:12s}\t{1:12s}\t{2:12s}\t{3:12s}"
+                      .format("PARAM", "GOLD", "OPT", "ERROR"))
+            for gp in sorted(gold_params.keys()):
+                gv = gold_params[gp]
                 try:
                     ov = out_params[gp]
                 except KeyError:
@@ -926,15 +929,22 @@ class PayetteTest(object):
                     log.error("{0} not in output".format(param))
                     continue
                 dnom = gv if abs(gv) > np.finfo(np.float).eps else 1.
-                errors.append(abs(ov - gv) / dnom)
-            error = max(errors)
+                error = abs(ov - gv) / dnom
+                errors.append(error)
+                log.write("{0:12s}\t{1:12.6E}\t{2:12.6E}\t{3:12.6E}"
+                          .format(gp, gv, ov, error))
+            merror = max(errors)
 
         diffed, failed = False, False
-        if error >= 10. * self.failtol:
+        if merror >= self.failtol:
+            log.write("\n{0:=^72s}".format(" FAIL "))
             failed = True
-        elif error >= 10. * self.difftol:
+        elif merror >= self.difftol:
+            log.write("\n{0:=^72s}".format(" DIFFED "))
             diffed = True
         else:
+            log.write("\n{0:=^72s}".format(" PASSED "))
+            passed = True
             pass
 
         if diff or diffed:
