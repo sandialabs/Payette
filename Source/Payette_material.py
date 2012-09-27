@@ -246,7 +246,7 @@ def _parse_material(mblock):
     """
 
     # get the constitutive model name
-    pat = r"(?i)constitutive.*model"
+    pat = r"(?i)\bconstitutive\s.*\bmodel"
     fpat = pat + r".*"
     cmod = re.search(fpat, mblock)
     if cmod:
@@ -290,6 +290,3 @@ def _parse_material(mblock):
     # Only parameters are now left over in mblock
 
     return name, mblock, options
-
-
-

@@ -62,6 +62,7 @@ class MaterialBuilder(object):
         """
 
         self.name = name
+        self.needs_mig_utils = True
         self.source_directory = srcd
         self.source_files = []
         self.libname = libname
@@ -151,7 +152,9 @@ class MaterialBuilder(object):
 
         # f2py pulls its arguments from sys.argv. Here, we build sys.argv to what
         # f2py expects. Later sys.argv will be restored.
-        ffiles = self.source_files + [cfg.MIG_UTILS]
+        ffiles = [x for x in self.source_files]
+        if self.needs_mig_utils:
+            ffiles.append(cfg.MIG_UTILS)
         incsearch = ["-I{0}".format(x) for x in self.incdirs]
         libsearch = ["-L{0}".format(x) for x in self.libdirs]
         libs = ["-l{0}".format(x) for x in self.libs]
@@ -273,6 +276,3 @@ class MaterialBuilder(object):
                 continue
 
         return
-
-
-
