@@ -8,6 +8,8 @@ class Test(PayetteTest):
     def __init__(self, check=True):
         super(Test, self).__init__(check)
         self.enabled = True
+        self.failtol *= 10.
+        self.difftol *= 10.
 
         self.name = os.path.splitext(os.path.basename(__file__))[0]
         self.tdir = os.path.dirname(os.path.realpath(__file__))
