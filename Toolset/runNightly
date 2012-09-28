@@ -257,11 +257,15 @@ def main(argv):
             if retval < 0:
                 diffed()
                 failed()
+            elif retval == 0:
+                pass
             elif retval == 1:
                 diffed()
             elif retval == 2:
                 failed()
             elif retval == 3:
+                failed()
+            else:
                 failed()
 
             retcode = retcodes.get(retval, "FAIL")
