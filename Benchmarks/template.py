@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os, sys
 
 from Payette_config import *
 from Source.Payette_test import PayetteTest

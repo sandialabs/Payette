@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
+import os, sys
 import subprocess
 
-from config import *
+import Source.__config__ as cfg
 from Source.Payette_test import PayetteTest
 
 class Test(PayetteTest):

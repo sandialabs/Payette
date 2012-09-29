@@ -1,26 +1,3 @@
-# The MIT License
-
-# Copyright (c) 2011 Tim Fuller
-
-# License for the specific language governing rights and limitations under
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included
-# in all copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-
 """Main Payette testing file.
 None of the functions in this file should be called directly, but only through
 the executable script in $PC_ROOT/Toolset/testPayette
@@ -44,7 +21,7 @@ import datetime
 import getpass
 import re
 
-import config as cfg
+import Source.__config__ as cfg
 import Source.Payette_utils as pu
 import Source.Payette_notify as pn
 from Source.Payette_test import find_tests
@@ -59,15 +36,8 @@ TEST_INFO = ".test.info"
 RESDIR = os.path.join(CWD, "TestResults.{0}".format(cfg.OSTYPE))
 
 
-def test_payette(argv):
-
-    """Run the Payette benchmarks.
-
-    Walk through and run the Payette test simulations, compare results
-    against the accepted results.
-
-    """
-
+def main(argv, print_help=False):
+    """Parse user command line arguments and send them to test_payette """
     # *************************************************************************
     # -- command line option parsing
     usage = "usage: testPayette [options]"
@@ -172,18 +142,77 @@ def test_payette(argv):
         action="store_true",
         default=False,
         help="Print benchmark names, -i is implied [default: %default].")
-
+    if print_help:
+        parser.print_help()
+        return
     (opts, args) = parser.parse_args(argv)
+    sys.exit(test_payette(
+            opts.TESTRESDIR, args, builtin=opts.BUILTIN, keywords=opts.KEYWORDS,
+            nokeywords=opts.NOKEYWORDS, spectests=opts.SPECTESTS,
+            benchdirs=opts.BENCHDIRS, forcererun=opts.FORCERERUN,
+            nproc=opts.NPROC, postprocess=opts.POSTPROCESS,
+            notify=opts.NOTIFY, ignoreerror=opts.IGNOREERROR,
+            testfile=opts.TESTFILE, switch=opts.SWITCH,
+            rebaseline=opts.REBASELINE, index=opts.INDEX,
+            index_name=opts.INDEX_NAME))
 
-    if opts.SWITCH is not None:
+
+def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
+                 spectests=[], benchdirs=[], forcererun=False, nproc=1,
+                 postprocess=False, notify=False, ignoreerror=False,
+                 testfile=False, switch=None, rebaseline=False, index=False,
+                 index_name=False):
+    """Run the Payette benchmarks.
+
+    Walk through and run the Payette test simulations, compare results
+    against the accepted results.
+
+    Parameters
+    ----------
+    testresdir : str
+        path to directory where tests are to be run
+    args : list
+        list of args
+    builtin : bool {False}
+        run only the builtin tests
+    keywords : list {[]}
+        run tests with these keywords
+    nokeywords : list {[]}
+        do not run tests with these keywords
+    spectests : list {[]}
+        run these specific tests by name
+    benchdirs : list {[]}
+        additional directories to search for tests
+    forcererun : bool {False}
+        force tests to be run that were already run
+    nproc : int {1}
+        number of simultaneous jobs to run
+    postprocess : bool {False}
+        post process results
+    notify : bool {False}
+        send notification email of results
+    ignoreerror : bool {False}
+        ignore errors and continue running tests
+    testfile : bool {False}
+        do not look for tests but use test previously logged
+    switch : str {None}
+        switch materials
+    rebaseline : bool {False}
+        rebaseline test
+    index : bool {False}
+    index_name : bool {False}
+        write index [_name] and exit
+
+    """
+    if switch is not None:
         pu.log_warning("switching materials is an untested feature")
 
     # number of processors
-    nproc = min(mp.cpu_count(), opts.NPROC)
+    nproc = min(mp.cpu_count(), nproc)
 
     pu.log_message(cfg.INTRO, pre="", noisy=True)
 
-    if opts.REBASELINE:
+    if rebaseline:
         sys.exit(rebaseline_tests(args))
 
     # find tests
@@ -200,7 +229,7 @@ def test_payette(argv):
                 break
         else:
             pu.report_error("FILE not found in {0}".format(test_info))
-        _run_the_test(pyfile, postprocess=opts.POSTPROCESS)
+        _run_the_test(pyfile, postprocess=postprocess)
         return
 
     # if the user passed in python test files, just run those tests
@@ -209,12 +238,12 @@ def test_payette(argv):
         for pyarg in pyargs:
             if not os.path.isfile(pyarg):
                 pu.report_error("{0} not found".format(pyarg))
-            _run_the_test(pyarg, postprocess=opts.POSTPROCESS)
+            _run_the_test(pyarg, postprocess=postprocess)
             continue
         return
 
     test_dirs = cfg.TESTS
-    for dirnam in opts.BENCHDIRS:
+    for dirnam in benchdirs:
         dirnam = os.path.expanduser(dirnam)
         if not os.path.isdir(dirnam):
             pu.report_error("benchmark directory {0} not found".format(dirnam))
@@ -226,12 +255,12 @@ def test_payette(argv):
     if pu.error_count():
         pu.report_and_raise_error("stopping due to previous errors")
 
-    if opts.BUILTIN:
-        opts.KEYWORDS = ["builtin"]
+    if builtin:
+        keywords = ["builtin"]
 
     t_start = time.time()
     conforming = None
-    if opts.TESTFILE:
+    if testfile:
         try:
             pu.log_message("Using Payette tests from\n{0}"
                            .format(" " * 6 + cfg.PREV_TESTS), noisy=True)
@@ -245,8 +274,8 @@ def test_payette(argv):
         pu.log_message("Gathering Payette tests from\n{0}"
                        .format("\n".join([" " * 6 + x for x in test_dirs])),
                        noisy=True)
-        errors, found_tests = find_tests(opts.KEYWORDS, opts.NOKEYWORDS,
-                                         opts.SPECTESTS, test_dirs)
+        errors, found_tests = find_tests(keywords, nokeywords,
+                                         spectests, test_dirs)
 
         # sort conforming tests from long to fast
         fast_tests = [val for key, val in found_tests["fast"].items()]
@@ -278,7 +307,7 @@ def test_payette(argv):
         continue
     t_find = time.time() - t_start
 
-    if errors and not opts.IGNOREERROR:
+    if errors and not ignoreerror:
         pu.report_and_raise_error(
             "fix nonconforming benchmarks before continuing")
 
@@ -286,9 +315,9 @@ def test_payette(argv):
                    .format(len(conforming), t_find),
                    noisy=True)
 
-    if opts.INDEX_NAME:
-        opts.INDEX = True
-    if opts.INDEX:
+    if index_name:
+        index = True
+    if index:
         out = sys.stderr
         out.write("\nBENCHMARK INDEX\n\n")
         for key in found_tests:
@@ -302,10 +331,10 @@ def test_payette(argv):
                 test = py_module.Test()
 
                 # write out the information
-                pre = WIDTH_TERM * "=" + "\n" if not opts.INDEX_NAME else ""
+                pre = WIDTH_TERM * "=" + "\n" if not index_name else ""
                 out.write("{0}Name:  {1}\n".format(pre, test.name))
 
-                if opts.INDEX_NAME:
+                if index_name:
                     # Only write out name
                     continue
                 out.write("Owner: {0}\n\n".format(test.owner))
@@ -325,11 +354,11 @@ def test_payette(argv):
     t_start = time.time()
 
     # Make a TestResults directory named "TestResults.{platform}"
-    if not os.path.isdir(opts.TESTRESDIR):
-        os.mkdir(opts.TESTRESDIR)
+    if not os.path.isdir(testresdir):
+        os.mkdir(testresdir)
 
-    summhtml = os.path.join(opts.TESTRESDIR, "summary.html")
-    respkl = os.path.join(opts.TESTRESDIR, "Previous_Results.pkl")
+    summhtml = os.path.join(testresdir, "summary.html")
+    respkl = os.path.join(testresdir, "Previous_Results.pkl")
     try:
         old_results = load(open(respkl, "r"))
     except IOError:
@@ -351,7 +380,8 @@ def test_payette(argv):
     # run the tests on multiple processors using the multiprocessor map ONLY f
     # nprocs > 1. For debug purposes, when nprocs=1, run without using the
     # multiprocessor map because it makes debugging worse than it should be.
-    test_inp = ((test, opts, old_results) for test in conforming)
+    topts = (switch, testresdir, forcererun, testfile, postprocess,)
+    test_inp = ((test, topts, old_results) for test in conforming)
     if nproc == 1:
         all_results = [_run_test(job) for job in test_inp]
 
@@ -365,7 +395,7 @@ def test_payette(argv):
     pu.log_message("=" * WIDTH_TERM, pre="", noisy=True)
 
     # copy the mathematica notebooks to the output directory
-    _copy_mathematica_nbs(mathnbs, opts.TESTRESDIR)
+    _copy_mathematica_nbs(mathnbs, testresdir)
 
     # all_results is a large list of the summary of every test.
     # Go through it and use the information to construct the test_res
@@ -456,7 +486,7 @@ def test_payette(argv):
     # longtxtsummary is finished at this point
 
     # This sends an email to everyone on the mailing list.
-    if opts.NOTIFY:
+    if notify:
         pu.log_message("Sending results to mailing list.", pre="", noisy=True)
         pn.notify("Payette Benchmarks", longtxtsummary)
 
@@ -478,7 +508,7 @@ def test_payette(argv):
             continue
         continue
 
-    for dirnam, dirs, files in os.walk(opts.TESTRESDIR):
+    for dirnam, dirs, files in os.walk(testresdir):
         for name in files:
             fbase, fext = os.path.splitext(name)
             delext = [".so", ".pyo", ".pyc"]
@@ -513,9 +543,9 @@ def _run_test(args):
     # pass args to local variables
     py_file, opts, old_results = args
     py_dir = os.path.dirname(py_file)
+    switch, testresdir, forcererun, testfile, postprocess = opts
 
     # check for switched materials
-    switch = opts.SWITCH
     if switch is not None:
         switch = [x.lower() for x in switch.split(":")]
 
@@ -539,12 +569,12 @@ def _run_test(args):
     except AttributeError:
         testbase = os.path.split(os.path.dirname(py_file))[1]
 
-    benchdir = os.path.join(opts.TESTRESDIR, testbase, test.name)
+    benchdir = os.path.join(testresdir, testbase, test.name)
 
     # check if benchmark has been run
     ran = [(y, x) for y in old_results for x in old_results[y] if x == test.name]
 
-    if not (opts.FORCERERUN or opts.TESTFILE) and ran and os.path.isdir(benchdir):
+    if not (forcererun or testfile) and ran and os.path.isdir(benchdir):
         pu.log_message(
             "{0}".format(test.name) +
             " " * (50 - len(test.name)) +
@@ -625,7 +655,7 @@ def _run_test(args):
     # just copied. Move to the new directory and run the test
     del py_module, test
     os.chdir(benchdir)
-    result = _run_the_test(test_py_file, postprocess=opts.POSTPROCESS)
+    result = _run_the_test(test_py_file, postprocess=postprocess)
     os.chdir(CWD)
 
     return result
@@ -684,7 +714,7 @@ def write_html_summary(fname, results):
                     status = stat
 
                 for myfile in files:
-                    if myfile.endswith(".out.html") and opts.POSTPROCESS:
+                    if myfile.endswith(".out.html") and postprocess:
                         fobj.write("<li><a href='{0}'>PostProcessing</a>\n"
                                    .format(os.path.join(tresd, myfile)))
                 fobj.write("<li>Keywords: {0}\n".format(keywords))
@@ -852,12 +882,11 @@ if __name__ == "__main__":
         PROFILE = False
 
     if PROFILE:
-        CMD = "test_payette(ARGV)"
+        CMD = "main(ARGV)"
         PROF = "payette.prof"
         cProfile.runctx(CMD, globals(), locals(), PROF)
         TEST = 0
     else:
-        TEST = test_payette(ARGV)
+        TEST = main(ARGV)
 
     sys.exit(TEST)
-

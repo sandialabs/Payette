@@ -1,26 +1,3 @@
-# The MIT License
-#
-# Copyright (c) 2011 Tim Fuller
-#
-# License for the specific language governing rights and limitations under
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included
-# in all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-
 """Main Payette simulation file.
 None of the functions in this file should be called directly, but only through
 the executable script in $PC_ROOT/Toolset/payette
@@ -39,14 +16,14 @@ import multiprocessing as mp
 import logging
 import re
 
-import config as cfg
+import Source.__config__ as cfg
 import Source.Payette_utils as pu
 import Source.Payette_container as pcntnr
 import Source.Payette_optimize as po
 import Source.Payette_permutate as pp
 import Source.Payette_parameterize as pparam
 import Source.Payette_input_parser as pip
-import runopts as ro
+import Source.__runopts__ as ro
 
 def run_payette(siminp=None, restart=False, timing=False,
                 nproc=ro.NPROC, disp=ro.DISP, verbosity=ro.VERBOSITY):
@@ -203,4 +180,3 @@ def write_final_timing_info(tim0):
         "\n-------------- simulation timing info --------------", pre="")
     pu.log_message("total simulation time:\t\t{0:f}".format(ttot), pre="")
     return
-

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+import os, sys
 
-from config import *
+import Source.__config__ as cfg
 from Source.Payette_test import PayetteTest
 from Source.Payette_run import run_payette
 
@@ -85,5 +86,3 @@ if __name__ == "__main__":
     elif run_test == test.failcode:
         print("FAIL")
         pass
-
-

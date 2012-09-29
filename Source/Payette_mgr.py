@@ -1,9 +1,4 @@
-#!/usr/bin/env python
-
-"""
-Top level interface to the Payette material model driver.
-
-"""
+""" Top level interface to the Payette material model driver. """
 import sys, os
 import optparse
 from optparse import OptionParser, BadOptionError, AmbiguousOptionError
@@ -16,10 +11,10 @@ EXENAM = "payette"
 
 # import Payette specific files
 try:
-    import config as cfg
+    import Source.__config__ as cfg
 except ImportError:
     sys.exit("Payette must first be configured before execution")
-import runopts as ro
+import Source.__runopts__ as ro
 import Source.Payette_utils as pu
 from Source.Payette_run import run_payette
 
@@ -639,4 +634,3 @@ if __name__ == "__main__":
 #         PAYETTE = run_payette(ARGV)
 
 #     sys.exit(PAYETTE)
-

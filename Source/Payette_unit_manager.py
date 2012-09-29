@@ -1,27 +1,3 @@
-# The MIT License
-
-# Copyright (c) 2011 Tim Fuller
-
-# License for the specific language governing rights and limitations under
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included
-# in all copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-
-from __future__ import print_function
 import sys
 
 
@@ -228,14 +204,14 @@ class UnitManager:
             try:
                 tmp *= (curr_sys_fac / new_sys_fac) ** dim_exp
             except:
-                print("{0:^79}".format(" DEBUG INFORMATION "))
-                print("original val = {0:.14e}".format(self.val))
-                print("tmp *= (curr_sys_fac / new_sys_fac) ** dim_exp")
-                print("dimensions   = {0}".format(self.dimensions))
-                print("tmp          = {0:.14e}".format(tmp))
-                print("curr_sys_fac = {0:.14e}".format(curr_sys_fac))
-                print("new_sys_fac  = {0:.14e}".format(new_sys_fac))
-                print("dim_exp      = {0:.14e}".format(dim_exp))
+                sys.stderr.write("{0:^79}".format(" DEBUG INFORMATION "))
+                sys.stderr.write("original val = {0:.14e}".format(self.val))
+                sys.stderr.write("tmp *= (curr_sys_fac / new_sys_fac) ** dim_exp")
+                sys.stderr.write("dimensions   = {0}".format(self.dimensions))
+                sys.stderr.write("tmp          = {0:.14e}".format(tmp))
+                sys.stderr.write("curr_sys_fac = {0:.14e}".format(curr_sys_fac))
+                sys.stderr.write("new_sys_fac  = {0:.14e}".format(new_sys_fac))
+                sys.stderr.write("dim_exp      = {0:.14e}".format(dim_exp))
                 sys.exit()
 
         return float(tmp)
@@ -507,8 +483,9 @@ if __name__ == "__main__":
     try:
         val = float(sys.argv[1])
     except ValueError:
-        print("ERROR: Must give a valid float value")
+        sys.stderr.write("ERROR: Must give a valid float value")
         usage()
 
     #def convert(cls, value, units, input_unit_system, output_unit_system):
-    print("Converted: {0}".format(UnitManager.transform(val, sys.argv[4], sys.argv[2], sys.argv[3])))
+    sys.stderr.write("Converted: {0}".format(
+            UnitManager.transform(val, sys.argv[4], sys.argv[2], sys.argv[3])))

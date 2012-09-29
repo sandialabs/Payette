@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import os, sys
 from distutils import sysconfig
 import subprocess
@@ -8,6 +9,10 @@ import shutil
 __version__ = "1.0.1"
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
 __intro__ = """
+Copyright (2011) Sandia Corporation. Under the terms of Contract
+DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain
+rights in this software.
+
         PPPPPPPPP      A  Y     Y  EEEEE  TTTTTTTTTTT  TTTTTTTTTTT  EEEEEE
        P        P    A A   Y   Y  E            T            T      E
       P        P   A   A    Y Y  E            T            T      E
@@ -195,7 +200,7 @@ class PayetteConfig:
 
     # --- Payette configuration files
     hdir = os.path.join(root, ".payette")
-    config_file = os.path.join(hdir, "config.py")
+    config_file = os.path.join(source, "__config__.py")
 
     # fortran files
     mig_utils = os.path.join(fortran, "migutils.F")
@@ -278,7 +283,8 @@ class PayetteConfig:
         self.auxdb = "auxiliary_materials.db"
 
         # files that go in the dotpayette directory
-        self.user_config_file = os.path.join(self.dotpayette, "user_config.py")
+        self.user_config_file = os.path.join(
+            self.dotpayette, "__user_config__.py")
         self.prev_tests = os.path.join(self.dotpayette, "__prev_tests__.py")
 
         # --- setup user environment defined defaults
@@ -476,8 +482,6 @@ class PayetteConfig:
                 continue
         if self.root not in pypath:
             pypath.append(self.root)
-        if self.hdir not in pypath:
-            pypath.append(self.hdir)
         self.env["PYTHONPATH"] = os.pathsep.join(pypath)
         return
 
@@ -524,7 +528,7 @@ class PayetteConfig:
 import sys
 import os
 """)
-            fobj.write("from user_config import *\n")
+            fobj.write("from __user_config__ import *\n")
             for attrnam in attributes:
                 attr = getattr(self, attrnam)
                 if "instancemethod" in str(type(attr)):
@@ -724,9 +728,9 @@ if [ ! -d "$DOTPAYETTE" ]; then
     echo "INFO: Creating $DOTPAYETTE"
     mkdir -p $DOTPAYETTE
 fi
-if [ ! -f "$DOTPAYETTE/user_config.py" ]; then
-    echo "INFO: Copying user_config.py to $DOTPAYETTE"
-    cp $DIR/../.payette/user_config.py.copy "$DOTPAYETTE/user_config.py"
+if [ ! -f "$DOTPAYETTE/__user_config__.py" ]; then
+    echo "INFO: Copying __user_config__.py to $DOTPAYETTE"
+    cp $DIR/../.payette/__user_config__.py.copy "$DOTPAYETTE/__user_config__.py"
 fi
 """
 
@@ -784,4 +788,3 @@ def get_exe_path(exenam, syspath=[], path=None):
 
 if __name__ == "__main__":
     sys.exit(configure(sys.argv[1:]))
-

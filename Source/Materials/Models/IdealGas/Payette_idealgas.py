@@ -1,8 +1,3 @@
-#
-#    Copyright (2011) Sandia Corporation.
-#    Use and export of this program may require a license from
-#    the United States Government.
-#
 import sys
 import numpy as np
 

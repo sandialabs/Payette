@@ -1,31 +1,8 @@
 #!/usr/bin/env python
-# The MIT License
-
-# Copyright (c) 2011 Tim Fuller
-
-# License for the specific language governing rights and limitations under
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included
-# in all copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-
-from math import log,exp,sqrt
 import sys
+from math import log, exp, sqrt
 
-eps = 2.2e-16
+EPS = 2.2e-16
 
 def old_2_new(a1,a2,a3,a4):
     '''
@@ -76,7 +53,7 @@ def old_2_new(a1,a2,a3,a4):
                 ffval = a1 - a3*exp(a2*peaki1) - a4*peaki1
                 peaki1 = peaki1 - ffval/(-a2*a3*exp(a2*peaki1) - a4)
                 knt += 1
-                if eps*ffval/(a1 - a3) + 1. != 1.: continue
+                if EPS * ffval/(a1 - a3) + 1. != 1.: continue
                 break
             if knt == 50: sys.exit('o2n.py iterate failure')
             pass
@@ -112,7 +89,7 @@ def new_2_old(stren,peaki1,fslope,yslope):
         Tim Fuller, python implementation
     '''
 
-    tiny = sqrt(eps)/10.
+    tiny = sqrt(EPS)/10.
 
     if stren == 0.:
         a1,a2,a3,a4 = [0.]*4
@@ -233,4 +210,3 @@ EXAMPLE
         pass
 
     sys.exit(0)
-

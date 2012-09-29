@@ -1,4 +1,3 @@
-
 from numpy import arange
 from scipy.special import jn
 

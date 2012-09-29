@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 import re, sys, os
 from textwrap import fill as textfill
 import math
 import numpy as np
 
-import runopts as ro
+import Source.__runopts__ as ro
 import Payette_utils as pu
 
 # --- module leve constants

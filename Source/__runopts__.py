@@ -6,7 +6,7 @@
 # *************************************************************************** #
 
 import sys
-import config as cfg
+import Source.__config__ as cfg
 
 # --- runtime configurable options
 DISP = 1
