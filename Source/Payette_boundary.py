@@ -121,7 +121,7 @@ class Boundary(object):
                 continue
 
             if len(line) != 2:
-                raise InputParserError(
+                raise BoundaryError(
                     "Boundary control items must be key = val pairs, got (0}"
                     .format(line))
 
@@ -137,7 +137,7 @@ class Boundary(object):
             if bc[0] == "choice":
                 choices = bc[2]
                 if val not in choices:
-                    raise InputParserError(
+                    raise BoundaryError(
                         "{0} must be one of {1}, got {2}"
                         .format(kwd, ", ".join(choices), val))
             else:
@@ -209,7 +209,7 @@ class Boundary(object):
 
         btype = btype.lower()
         if btype not in self._bcontrol:
-            raise InputParserError(
+            raise BoundaryError(
                 "{0} not a valid bcontrol parameter".format(btype))
 
         if value is None:
@@ -272,7 +272,7 @@ class Boundary(object):
                 try:
                     cij = [float(eval(line[i])) for i in cidxs[1:]]
                 except (IndexError, ValueError):
-                    raise InputParserError(
+                    raise BoundaryError(
                         "Syntax error in leg {0}".format(num))
             else:
                 # user specified leg in form:
@@ -280,7 +280,7 @@ class Boundary(object):
 
                 # leg must have at least 5 values
                 if len(line) < 5:
-                    raise InputParserError(
+                    raise BoundaryError(
                         "leg {0} input must be of form:".format(num) +
                         "\n\tnum, time, steps, type, c[ij]")
 
@@ -288,7 +288,7 @@ class Boundary(object):
                 ltime = float(self.tfac * float(line[1]))
                 steps = int(self.stepfac * float(line[2]))
                 if num != 0 and steps == 0:
-                    raise InputParserError(
+                    raise BoundaryError(
                         "Leg number {0} has no steps".format(num))
 
                 # get the control type
@@ -312,7 +312,7 @@ class Boundary(object):
             #  6: electric field
             #  8: displacement
             if any(x not in "1234568" for x in control):
-                raise InputParserError(
+                raise BoundaryError(
                     "Leg control parameters can only be one of [1234568]"
                     "got {0} for leg number {1:d}".format(control, num))
 
@@ -323,7 +323,7 @@ class Boundary(object):
             # we need to know what to do with each deformation value, so the
             # length of the deformation values must be same as the control values
             if len(control) != len(cij):
-                raise InputParserError(
+                raise BoundaryError(
                     "Length of leg control != number of control "
                     "items in leg {0:d}".format(num))
 
@@ -344,7 +344,7 @@ class Boundary(object):
                 [i for j, i in enumerate(control) if j not in hold])
 
             if len(control) != len(cij):
-                raise InputParserError(
+                raise BoundaryError(
                     "Intermediate length of leg control != number of "
                     "control items in leg {0}".format(num))
 
@@ -353,7 +353,7 @@ class Boundary(object):
             if re.search(r"5", control):
                 # deformation gradient control check
                 if re.search(r"[^5]", control):
-                    raise InputParserError(
+                    raise BoundaryError(
                         "Only components of deformation gradient "
                         "are allowed with deformation gradient "
                         "control in leg {0}, got '{1}'".format(num, control))
@@ -364,7 +364,7 @@ class Boundary(object):
                                     [cij[6], cij[7], cij[8]]])
                 jac = np.linalg.det(defgrad)
                 if jac <= 0:
-                    raise InputParserError(
+                    raise BoundaryError(
                         "Inadmissible deformation gradient in leg "
                         "{0} gave a Jacobian of {1:f}".format(num, jac))
 
@@ -372,7 +372,7 @@ class Boundary(object):
                 # axis of rotation x and angle of rotation theta
                 rot, lstretch = np.linalg.qr(defgrad)
                 if np.max(np.abs(rot - np.eye(3))) > np.finfo(np.float).eps:
-                    raise InputParserError(
+                    raise BoundaryError(
                         "Rotation encountered in leg {0}. ".format(num) +
                         "rotations are not yet supported")
 
@@ -382,14 +382,14 @@ class Boundary(object):
                 # like deformation gradient control, if displacement is specified
                 # for one, it must be for all
                 if re.search(r"[^8]", control):
-                    raise InputParserError(
+                    raise BoundaryError(
                         "Only components of displacment are allowed with "
                         "displacment control in leg {0}, got '{1}'"
                         .format(num, control))
 
                 # must specify all components
                 elif len(cij) != 3:
-                    raise InputParserError(
+                    raise BoundaryError(
                         "all 3 components of displacement must "
                         "be specified for leg {0}".format(num))
 
@@ -417,7 +417,7 @@ class Boundary(object):
                 # only one strain value given -> volumetric strain
                 evol = cij[0] * self.efac
                 if self._kappa * evol + 1. < 0.:
-                    raise InputParserError("1 + kappa * ev must be positive")
+                    raise BoundaryError("1 + kappa * ev must be positive")
 
                 if self._kappa == 0.:
                     eij = evol / 3.
@@ -441,7 +441,7 @@ class Boundary(object):
             # fill in cij and control so that their lengths are always 9
             # the electric field control is added to the end of control
             if len(control) != len(cij):
-                raise InputParserError(
+                raise BoundaryError(
                     "Final length of leg control != number of "
                     "control items in leg {0}".format(num))
 
@@ -462,7 +462,7 @@ class Boundary(object):
                     cij[idx] = self.efac * cij[idx]
 
                     if self._kappa * cij[idx] + 1. < 0.:
-                        raise InputParserError(
+                        raise BoundaryError(
                             "1 + kappa*c[{0}] must be positive".format(idx))
 
                 elif ctype == 4:
@@ -512,14 +512,14 @@ class Boundary(object):
 
             time_f = leg[1]
             if time_f <= time_0:
-                raise InputParserError(
+                raise BoundaryError(
                     "time must be monotonic from {0:d} to {1:d}"
                     .format(leg[0] - 1, leg[0]))
 
             time_0 = time_f
 
         if not ileg:
-            raise InputParserError("Only one time step found.")
+            raise BoundaryError("Only one time step found.")
 
         return
 
@@ -585,7 +585,7 @@ class Boundary(object):
                 break
             continue
         if ttype is None:
-            raise InputParserError(
+            raise BoundaryError(
                 "time specifier '{0}' not found.  Choose from {1}"
                 .format(ttype, ", ".join(ttypes)))
         header = re.sub(r"(?i)\b{0}\b".format(ttype), "", header).strip()
@@ -596,7 +596,7 @@ class Boundary(object):
             dtype = " ".join(header.split()).lower()
             dtype = re.sub(r"[\,]", "", dtype).strip().lower()
             if dtype not in dtypes():
-                raise InputParserError(
+                raise BoundaryError(
                     "Requested bad control type {0}".format(dtype))
             C, N = dtypes(dtype)
 
@@ -608,7 +608,7 @@ class Boundary(object):
             dtype = " ".join(header[:s].split())
             dtype = re.sub(r"[\,]", "", dtype).strip().lower()
             if dtype not in dtypes():
-                raise InputParserError(
+                raise BoundaryError(
                     "Requested bad control type {0}".format(dtype))
             C, N = dtypes(dtype)
 
@@ -627,9 +627,9 @@ class Boundary(object):
                 continue
 
         if len(cidxs) > N + 1:
-            raise InputParserError("Too many columns specified")
+            raise BoundaryError("Too many columns specified")
         if len(cidxs) < N + 1:
-            raise InputParserError("Too few columns specified")
+            raise BoundaryError("Too few columns specified")
 
         control = "{0}".format(C) * N
 
