@@ -42,8 +42,8 @@ class Test(PayetteTest):
         self.tdir = os.path.dirname(os.path.realpath(__file__))
 
         self.infile = "{0}.inp".format(os.path.join(self.tdir, self.name))
-        self.keywords = ["builtin", "medium", "regression", "elastic", "using",
-                         "insert", "permutation", "zip"]
+        self.keywords = ["builtin", "medium", "regression", "elastic",
+                         "permutation", "zip"]
         self.runcommand = ["payette", "--no-writeprops",
                            self.infile]
         self.material = "elastic"
@@ -51,7 +51,7 @@ class Test(PayetteTest):
 
         self.owner = 'Tim Fuller'
         self.date = 'March 30, 2012'
-        self.description = """Test of the "using dt strain" input method """
+        self.description = "Test of zipping permutated variables"
 
         if check:
             self.check_setup()

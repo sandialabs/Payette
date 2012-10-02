@@ -44,6 +44,7 @@ import Source.Payette_input_parser as pip
 import Source.Payette_sim_index as psi
 import Source.__runopts__ as ro
 
+DN, MN, DP = 10, 100, 10.
 
 class Permutate(object):
     r"""docstring -> needs to be completed """
@@ -213,6 +214,7 @@ class Permutate(object):
         allowed_methods = {
             "combine": {"method": "Combination"},
             "combination": {"method": "Combination"},
+            "shotgun": {"method": "Shotgun"},
             "zip": {"method": "Zip"},}
         perm_method = allowed_methods["zip"]
         param_ranges = []
@@ -228,10 +230,15 @@ class Permutate(object):
         # get method
         method = self.find_pblock_option("method")
         if method is not None:
-            method = method.lower()
-            perm_method = allowed_methods.get(method)
+            perm_method = allowed_methods.get(method.lower())
             if perm_method is None:
                 pu.report_and_raise_error("invalid method {0}".format(method))
+        shotgun = perm_method["method"] == "Shotgun"
+
+        # get seed
+        seed = self.find_pblock_option("seed")
+        if seed is not None:
+            seed = int(float(seed))
 
         # get variables to permutate
         permutate = []
@@ -239,50 +246,136 @@ class Permutate(object):
             perm = self.find_pblock_option("permutate")
             if perm is None:
                 break
-            permutate.append(re.sub(r"[\(\)]", "", perm))
+            permutate.append(perm)
             continue
-        for item in permutate:
-            key = item.split()[0]
 
-            # specified range
-            prange = None
-            srange = re.search(r"(?i)\brange\s", item)
-            sseq = re.search(r"(?i)\bsequence\s", item)
+        # all variables to be permutated are now in permutate and of the form
+        # key [kw] <vals>
+        # where key is the name of the variable being permutated, kw is one of
+        # ["sequence", "range", "normal", "weibull", "uniform",]
+        # and vals are the values
+        ptypes = [r"+/-", "sequence", "range", "normal", "weibull", "uniform",]
+        regexs = [re.compile(r"(?i){0}".format(re.escape(x))) for x in ptypes]
 
-            if srange is not None and sseq is not None:
-                pu.report_error(
-                    "Cannot specify both range and sequence for {0}"
-                    .format(key))
+        for line in permutate:
+
+            # default permutation type
+            ptype, method = "sequence", "sequence"
+
+            # can only specify one type of kw per line
+            kw = [ptypes[i] for i, x in enumerate(regexs) if x.search(line)]
+            if len(kw) > 1:
+                pu.report_error("Can only specify one of [{0}], got '{1}'"
+                                .format(", ".join(ptypes), line))
                 continue
 
-            if srange is not None:
-                # user specified a range
-                prange = item[srange.end():].split()
-                if len(prange) < 2:
-                    pu.report_error("range requires at least 2 arguments")
+            key = line.split()[0]
+
+            # remove the key, paranthesis, and ptype from line and split it
+            if kw:
+                ptype = kw[0]
+                method = ptype
+            pat = r"[\(\)]|{0}|{1}".format(re.escape(key), re.escape(ptype))
+            try:
+                info = [float(x) for x in re.sub(pat, " ", line).split()]
+            except ValueError:
+                pu.report_error(
+                    "Bad permutation specification at:\n\t{0}".format(line))
+                continue
+
+            if not info:
+                pu.report_error(
+                    "Insufficient information given to permutate "
+                    "[{0}] at:\n\t{1}".format(key, line))
+                continue
+
+            if shotgun:
+                # Shotgun method - use uniform distribution
+                # specified as uniform(low, high)
+                method = "uniform"
+                if kw and kw[0].lower() != "range":
+                    pu.report_error("Shotgun method takes only range "
+                                    "permutation type at:\n\t{0}".format(line))
                     continue
+                if 2 > len(info) > 3:
+                    pu.report_error("Specify low, high[,N] for shotgun at:"
+                                    "\n\t{0}".format(line))
+                    continue
+                a, b = info[:2]
+                N = DN if len(info) < 3 else int(info[2])
 
-                elif len(prange) == 2:
-                    # default to 10 steps
-                    prange.append("10")
+            # construct the range of values of this parameter
+            elif ptype == "+/-":
+                method = "sequence"
+                # Percentage of scale
+                # specified as +/-(scale, perc)
+                if 1 > len(info) > 2:
+                    pu.report_error("Specify scale[,%] for +/- at:"
+                                    "\n\t{0}".format(line))
+                    continue
+                P = DP if len(info) < 2 else float(info[1])
+                fac = P / 100.
+                a = [info[0] * (1. - fac), info[0], info[0] * (1. + fac)]
+                b, N = None, None
 
-                prange = ", ".join(prange)
-                prange = eval("{0}({1})".format("np.linspace", prange))
-
-            elif sseq is not None:
+            elif ptype == "sequence":
                 # specified sequence
-                prange = ", ".join(item[sseq.end():].split())
-                prange = eval("{0}([{1}])".format("np.array", prange))
+                a, b, N = info[:], None, None
+
+            elif ptype == "range":
+                # user specified a range
+                if 2 > len(info) > 3:
+                    pu.report_error("Specify low, high[,N] for range at:"
+                                    "\n\t{0}".format(line))
+                    continue
+                a, b = info[:2]
+                N = DN if len(info) < 3 else int(info[2])
+
+            elif ptype == "normal":
+                # Normal "Gaussian" distribution
+                # specified as normal(loc, scale, size)
+                if 1 > len(info) > 3:
+                    pu.report_error("Specify mean, scale[,N] for normal at:"
+                                    "\n\t{0}".format(line))
+                    continue
+                a, b = info[:2]
+                N = DN if len(info) < 3 else int(info[2])
+
+            elif ptype == "uniform":
+                # Uniform distribution
+                # specified as uniform(low, high, size)
+                if 2 > len(info) > 3:
+                    pu.report_error("Specify low[,high[,N]] for uniform at:"
+                                    "\n]t{0}".format(line))
+                    continue
+                a, b = info[:2]
+                N = DN if len(info) < 3 else int(info[2])
+
+            elif ptype == "weibull":
+                # Weibull distribution
+                # specified as uniform(scale, shape, size)
+                if 2 > len(info) > 3:
+                    pu.report_error("Specify scale, shape[,N] for weibull at:"
+                                    "\n\t{0}".format(line))
+                    continue
+                a, b = info[:2]
+                N = DN if len(info) < 3 else int(info[2])
 
             else:
-                # default: same as sequence above, but without "sequence"
-                prange = ", ".join(item.split()[1:])
-                prange = eval("{0}([{1}])".format("np.array", prange))
+                pu.report_error("Unrecognized permutate specification "
+                                "at:\n\t{0}".format(line))
+                continue
+
+            if N > MN:
+                pu.report_error("Size N[{0}] exceeds maximum[{1}]".format(N, MN))
+            prange = _get_psequence(a, b, N, method, seed)
 
             # check that a range was given
             if prange is None or not len(prange):
-                pu.report_error("No range/sequence given for {0}".format(key))
-                prange = np.zeros(1)
+                pu.report_error(
+                    "Insufficient information given to permutate "
+                    "[{0}] at:\n\t{1}".format(key, line))
+                continue
 
             param_ranges.append(prange.tolist())
             self.param_names.append(key)
@@ -302,7 +395,8 @@ class Permutate(object):
             if len(set([len(x) for x in param_ranges])) - 1:
                 pu.report_and_raise_error(
                     "Number of permutations must be the same for "
-                    "all permutated parameters when using method: [zip]")
+                    "all permutated parameters when using method: {0}"
+                    .format(self.method))
             param_ranges = zip(*param_ranges)
 
         nruns = len(param_ranges)
@@ -350,6 +444,25 @@ class Permutate(object):
         else:
             option = default
         return option
+
+
+def _get_psequence(a, b=None, N=None, method=None, seed=None):
+    if method == "range":
+        return np.linspace(a, b, N)
+    if method == "sequence":
+        return np.array(a)
+
+    # method is one of random
+    rstate = np.random.RandomState(seed)
+    if method == "uniform":
+        return rstate.uniform(a, b, N)
+    if method == "normal":
+        return rstate.normal(a, b, N)
+    if method == "weibull":
+        return a * rstate.weibull(b, N)
+
+    pu.report_error("Unrecognized method: {0}".format(method))
+    return
 
 
 def func(args):

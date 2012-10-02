@@ -1,15 +1,17 @@
 # Example viz
-# Title: exmpl_16
+# Title: exmpl_22
 # Author: Tim Fuller, tjfulle@sandia.gov
 # Keywords: permutation
 # Comments: This input file demonstrates the parameter permutation
 #           functionality of Payette.
 
-begin simulation exmpl_16
+begin preprocessing
+  kappa = 0
+end preprocessing
+begin simulation exmpl_22
   nowriteprops
-
   begin boundary
-    kappa = 0
+    kappa = {kappa}
     tstar = 1.
     ampl = 1
     begin legs
@@ -20,21 +22,14 @@ begin simulation exmpl_16
 
   begin material
     constitutive model hooke
-    G = {G} #53.e9
-    K = {K} #135.e9
+    G = 53.e9
+    K = 135.e9
   end material
 
   begin permutation
-
-    # This is the main permutation block. We specify every available option
-    # showing its default value in brackets, along with other available
-    # options in braces, if applicable.
-
-    # below we specify which parameters to permutation
-    method combination # [zip] {zip, combination}
+    method shotgun
     permutate K, range(125.e9, 150.e9, 10) # [] {range, sequence}
     permutate G, range(45.e9, 57.e9, 10)
-
   end permutation
 
 end simulation

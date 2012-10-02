@@ -63,8 +63,6 @@ class ModelRunner(HasStrictTraits):
 
         inputString = self.CreateModelInputString(material, optimizer)
 
-        print inputString
-
         self.RunInputString(inputString, material, 'Optimization')
 
     def RunInputString(self, inputString, material, run_type='Simulation'):
@@ -142,7 +140,6 @@ class ModelRunner(HasStrictTraits):
             # so that the input parser can preprocess key with the current
             # value.  Here we determine how to set key
 
-            print dir(p)
             if p.distribution != "Specified":
                 val = "{{{0}}}".format(p.name)
             else:
@@ -184,33 +181,25 @@ class ModelRunner(HasStrictTraits):
                  % material.permutation_method.lower())
         for p in material.parameters:
             if p.distribution == '+/-':
-                val = float(p.specified)
-                mult = p.percent / 100.0
-                result += "    permutate %s, sequence = (%s, %s, %s)\n" % (
-                    p.name, val - val * mult, val, val + val * mult)
+                result += "    permutate %s, +/-(%s, %s)\n" % (
+                    p.name, p.specified, p.percent)
             elif p.distribution == 'Range':
-                result += "    permutate %s, range = (%s, %s, %s)\n" % (
+                result += "    permutate %s, range(%s, %s, %s)\n" % (
                     p.name, p.minimum, p.maximum, p.samples)
             elif p.distribution == 'Uniform':
-                vals = []
-                for i in range(p.samples):
-                    vals.append(random.uniform(p.minimum, p.maximum))
-                result += "    permutate %s, sequence = %s\n" % (p.name, str(tuple(vals)))
-            elif p.distribution == 'Gaussian':
-                vals = []
-                for i in range(p.samples):
-                    vals.append(random.normalvariate(p.mean, p.std_dev))
-                result += "    permutate %s, sequence = %s\n" % (p.name, str(tuple(vals)))
+                result += "    permutate %s, uniform(%s, %s, %s)\n" % (
+                    p.name, p.minimum, p.maximum, p.samples)
+            elif p.distribution == 'Normal':
+                result += "    permutate %s, normal(%s, %s, %s)\n" % (
+                    p.name, p.mean, p.std_dev, p.samples)
             elif p.distribution == 'AbsGaussian':
                 vals = []
                 for i in range(p.samples):
                     vals.append(abs(random.normalvariate(p.mean, p.std_dev)))
                 result += "    permutate %s, sequence = %s\n" % (p.name, str(tuple(vals)))
             elif p.distribution == 'Weibull':
-                vals = []
-                for i in range(p.samples):
-                    vals.append(random.weibullvariate(p.scale, p.shape))
-                result += "    permutate %s, sequence = %s\n" % (p.name, str(tuple(vals)))
+                result += "    permutate %s, weibull(%s, %s, %s)\n" % (
+                    p.name, p.scale, p.shape, p.samples)
 
         result += "  end permutation\n"
 
@@ -327,7 +316,3 @@ class ModelRunner(HasStrictTraits):
             "  end boundary\n"
         )
         return result
-
-
-
-

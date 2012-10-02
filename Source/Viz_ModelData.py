@@ -49,7 +49,7 @@ class TraitPositiveInteger(BaseInt):
 class PayetteModelParameter(HasStrictTraits):
     name = String
     description = String
-    distribution = Enum('Specified', '+/-', 'Range', 'Uniform', 'Gaussian', 'AbsGaussian', 'Weibull')
+    distribution = Enum('Specified', '+/-', 'Range', 'Uniform', 'Normal', 'AbsGaussian', 'Weibull')
     value = Property
     default = Property
     specified = String("0")
@@ -71,8 +71,8 @@ class PayetteModelParameter(HasStrictTraits):
             return "Range(start = %s, end = %s, steps = %d)" % (self.minimum, self.maximum, self.samples)
         elif self.distribution == 'Uniform':
             return "Uniform(min = %s, max = %s, N = %d)" % (self.minimum, self.maximum, self.samples)
-        elif self.distribution == 'Gaussian':
-            return "Gaussian(mean = %s, std. dev = %s, N = %d)" % (self.mean, self.std_dev, self.samples)
+        elif self.distribution == 'Normal':
+            return "Normal(mean = %s, std. dev = %s, N = %d)" % (self.mean, self.std_dev, self.samples)
         elif self.distribution == 'AbsGaussian':
             return "Abs. Gaussian(mean = %s, std. dev = %s, N = %d)" % (self.mean, self.std_dev, self.samples)
         elif self.distribution == 'Weibull':
@@ -88,7 +88,7 @@ class PayetteModelParameter(HasStrictTraits):
             return self.minimum
         elif self.distribution == 'Uniform':
             return self.minimum
-        elif self.distribution == 'Gaussian':
+        elif self.distribution == 'Normal':
             return self.mean
         elif self.distribution == 'AbsGaussian':
             return self.mean
@@ -132,7 +132,7 @@ class PayetteModelParameter(HasStrictTraits):
                 Item('mean'),
                 Item('std_dev'),
                 Item('samples'),
-                visible_when="distribution == 'Gaussian' or distribution == 'AbsGaussian'"
+                visible_when="distribution == 'Normal' or distribution == 'AbsGaussian'"
             ),
             VGroup(
                 Item('scale'),
@@ -207,7 +207,7 @@ class PayetteModel(HasStrictTraits):
     AMPL = Float(1.0)
     RATFAC = Float(1.0)
     leg_defaults = String
-    leg_default_types = List(String, 
+    leg_default_types = List(String,
                              ['Custom', 'Uniaxial Strain', 'Biaxial Strain',
                               'Spherical Strain', 'Uniaxial Stress',
                               'Biaxial Stress', 'Spherical Stress'])
@@ -383,7 +383,7 @@ class PayetteModel(HasStrictTraits):
 
     boundary_legs_view = View(
         HGroup(
-            Item('leg_defaults', 
+            Item('leg_defaults',
                  editor=EnumEditor(name='leg_default_types'),
                  style='simple'),
             VGroup(
@@ -437,4 +437,3 @@ class PayetteModel(HasStrictTraits):
         ),
         style='custom',
     )
-

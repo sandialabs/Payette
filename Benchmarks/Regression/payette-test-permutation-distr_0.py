@@ -43,15 +43,14 @@ class Test(PayetteTest):
 
         self.infile = "{0}.inp".format(os.path.join(self.tdir, self.name))
         self.keywords = ["builtin", "medium", "regression", "elastic",
-                         "permutation", "combination"]
-        self.runcommand = ["payette", "--no-writeprops",
-                           self.infile]
+                         "permutation", "random", "normal", "uniform"]
+        self.runcommand = ["payette", "--no-writeprops", self.infile]
         self.material = "elastic"
         self.aux_files = [os.path.join(self.tdir, "regression_tests.tbl"), ]
 
         self.owner = 'Tim Fuller'
         self.date = 'March 30, 2012'
-        self.description = "Test combining all permutated variables"
+        self.description = "Test the normal and uniform distribution methods"
 
         if check:
             self.check_setup()

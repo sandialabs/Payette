@@ -43,7 +43,7 @@ class Test(PayetteTest):
 
         self.infile = "{0}.inp".format(os.path.join(self.tdir, self.name))
         self.keywords = ["builtin", "medium", "regression", "elastic",
-                         "permutation", "combination"]
+                         "permutation", "shotgun"]
         self.runcommand = ["payette", "--no-writeprops",
                            self.infile]
         self.material = "elastic"
@@ -51,8 +51,7 @@ class Test(PayetteTest):
 
         self.owner = 'Tim Fuller'
         self.date = 'March 30, 2012'
-        self.description = "Test combining all permutated variables"
-
+        self.description = "Test of the shotgun method of permutating variables"
         if check:
             self.check_setup()
 

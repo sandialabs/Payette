@@ -5,6 +5,9 @@
 # Comments: This input file demonstrates the parameter permutation
 #           functionality of Payette.
 
+begin preprocessing
+  kappa = 0
+end preprocessing
 begin simulation exmpl_22
   nowriteprops
   begin boundary
@@ -24,8 +27,9 @@ begin simulation exmpl_22
   end material
 
   begin permutation
-    method zip # [zip] {zip, combination, shotgun}
-    permutate kappa, sequence(-2, -1, 0, 1, 2)
+    method zip
+    permutate K, uniform(125.e9, 150.e9, 10) # [] {range, sequence}
+    permutate G, uniform(45.e9, 57.e9, 10)
   end permutation
 
 end simulation
