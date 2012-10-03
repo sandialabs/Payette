@@ -585,24 +585,30 @@ class Payette(object):
             retcode = driver(self, restart=self.is_restart, extra_files=extra_files)
 
         except PayetteError as error:
+
             if ro.DEBUG:
                 self.finish()
                 raise
 
-            retcode = 66
-            l = 79 # should be odd number
-            stars = "*" * (l + 2) + '\n'
-            stars_spaces = "*" + " " * (l) + '*\n'
-            psf = ("Payette simulation {0} failed"
-                   .format(self.name).center(l - 2))
-            ll = (l - len(psf)) / 2
-            psa = "*" + " " * ll + psf + " " * ll + "*\n"
-            head = stars + stars_spaces + psa + stars_spaces + stars
-            message = (
-                head +
-                "Payette simulation {0} failed with the following message: "
-                .format(self.name) + "\n" + error.message + "\n")
-            sys.stderr.write(message)
+            if ro.ERROR.lower() == "ignore":
+                retcode = 0
+                pu.log_message(
+                    "Payette simulation {0} with the following message:\n{1}"
+                    .format(self.name, error.message), pre="ERROR")
+
+            else:
+                retcode = 66
+                l = 79 # should be odd number
+                stars = "*" * (l + 2) + '\n'
+                stars_spaces = "*" + " " * (l) + '*\n'
+                psf = ("Payette simulation {0} failed"
+                       .format(self.name).center(l - 2))
+                ll = (l - len(psf)) / 2
+                psa = "*" + " " * ll + psf + " " * ll + "*\n"
+                head = stars + stars_spaces + psa + stars_spaces + stars
+                sys.stderr.write(
+                    "{0} Payette simulation {1} failed with the following "
+                    "message:\n{2}\n".format(head, self.name, error.message))
 
         if retcode == 0:
             pu.log_message("Payette simulation {0} ran to completion"

@@ -297,6 +297,14 @@ def main(argv):
         choices=["ignore", "warn", "error", "all"],
         default=ro.WARNING,
         help="warning level [default: %default]")
+    parser.add_option(
+        "-E",
+        dest="ERROR",
+        type="choice",
+        action="store",
+        choices=["stop", "ignore"],
+        default=ro.ERROR,
+        help="Error level [default: %default]")
 
     # parse the command line arguments
     (opts, args) = parser.parse_args(argv)

@@ -106,6 +106,10 @@ class InputParser(object):
     def get_option(self, option, default=None):
         return self._options.get(option, default)
 
+    def get_options_as_string(self):
+        return "\n".join(
+            ["{0} = {1}".format(k, v) for k, v in self._options.items()])
+
     def user_input(self, pop=None):
         lines = "begin input\n{0}\nend input".format(self.inp.strip())
         if pop is None:
@@ -346,7 +350,7 @@ def preprocess(lines, preprocessor=None):
                     for x in re.sub(I_EQ, " ", preprocessor).split("\n") if x]
 
     for pat, repl in preprocessor:
-        full = re.compile(r"{{.*{0:s}.*}}".format(pat), re.I|re.M)
+        full = re.compile(r"{{.*?{0:s}.*?}}".format(pat), re.I|re.M)
         while True:
             found = full.search(lines)
             if not found:

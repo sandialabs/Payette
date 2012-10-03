@@ -25,6 +25,7 @@ NPROC = 1
 CHECK_SETUP = False
 WRITE_INPUT = False
 WARNING = "warn"
+ERROR = "stop"
 SIMDIR = None
 MTLDB = cfg.MTLDB
 
