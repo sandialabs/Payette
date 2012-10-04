@@ -27,7 +27,7 @@
 
 """Main Payette class definition"""
 
-import os, sys, math
+import os, sys, math, re
 import numpy as np
 import datetime
 import shutil
@@ -592,9 +592,10 @@ class Payette(object):
 
             if ro.ERROR.lower() == "ignore":
                 retcode = 0
-                pu.log_message(
-                    "Payette simulation {0} with the following message:\n{1}"
-                    .format(self.name, error.message), pre="ERROR")
+                sys.stderr.write("WARNING: Payette simulation "
+                                 "{0} failed with the following message:\n{1}\n"
+                                 .format(self.name,
+                                         re.sub("ERROR:\s*", "", error.message)))
 
             else:
                 retcode = 66
