@@ -631,18 +631,25 @@ def parse_extraction(eblock):
     eblock : str
         The extraction block
 
+    Notes
+    -----
+    The extraction block will look something like
+
+        sig11, sig22, sig33, %1, %rootj2
+
+    and we return
+        ['@SIG11', '@SIG22', '@SIG33', '%1', '%ROOTJ2']
     """
+    prefix = {True: "%", False: "@"}
     extraction_vars = []
-    for items in eblock.split("\n"):
-        items = re.sub(I_SEP, " ", items).split()
-        for item in items:
-            if not re.search(r"^[%@]", item) and not item[0].isdigit():
-                pu.log_warning(
-                    "unrecognized extraction request {0}".format(item))
-                continue
-            extraction_vars.append(item)
+    eblock = re.sub(r"[\.\,\n]", " ", eblock).split()
+    for item in eblock:
+        if not re.search(r"^[%@]", item):
+            # user did not specify a prefix to the extraction var, add it here
+            item = prefix[item.isdigit()] + item
+        extraction_vars.append(item.upper())
         continue
-    return [x.upper() for x in extraction_vars]
+    return extraction_vars
 
 
 def flatten(x):

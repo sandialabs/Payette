@@ -372,6 +372,8 @@ class ConstitutiveModelPrototype(object):
         errors = 0
         for line in user_params.split("\n"):
             line = re.sub(I_EQ, " ", line)
+            if not line.split():
+                continue
 
             # look for user specified materials from the material and matlabel
             # shortcuts

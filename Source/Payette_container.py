@@ -265,7 +265,8 @@ class Payette(object):
         extraction = self.ui.find_block("extraction", [])
         if extraction:
             extraction = pip.parse_extraction(extraction)
-            extraction = [x for x in extraction if x.upper() in self.plot_keys]
+            extraction = [x for x in extraction
+                          if x[1:] in self.plot_keys or x[1] == "%"]
         self.extraction_vars = extraction
 
         self._setup_files()
