@@ -227,17 +227,15 @@ def textformat(var):
 
     Created: 17 June 2011 by mswan
     """
-    if isinstance(var,(int,float,np.float32,np.float64)):
-        return "{0:20.10E}".format(float(var))
+    if isinstance(var, (int, float, np.float32, np.float64)):
+        return "{0:<20.10E}".format(float(var))
     elif isinstance(var,str):
-        return "{0:>20s}".format(str(var))
-    elif isinstance(var,(np.int,   np.int8,    np.int16,
-                         np.int32, np.int64,   np.uint8,
-                         np.uint16,np.uint32,  np.uint64,
-                         np.float)):
-        return "{0:20.10E}".format(float(var))
+        return "{0:<20s}".format(str(var))
+    elif isinstance(var, (np.int, np.int8, np.int16, np.int32, np.int64,
+                          np.uint8, np.uint16, np.uint32, np.uint64, np.float)):
+        return "{0:<20.10E}".format(float(var))
     else:
-        return "{0:>20}".format(str(var))
+        return "{0:<20}".format(str(var))
 
 
 def close_aux_files():

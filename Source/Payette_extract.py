@@ -236,12 +236,13 @@ def extract(passed_args, sep="space", cols=False, silent=True,
 
         xout = fnam + ".xout" if write_xout else None
         logger = Logger(xout, "w")
-        logger.write(header)
+        header = sep.join([sfrmt(x) for x in header.split()])
+        logger.write(header + "\n")
         for i in range(0, len(data), int(step)):
             datline = data[i]
 
             # write out data to file
-            logger.write(sep.join([ffrmt(x) for x in datline]))
+            logger.write(sep.join([ffrmt(x) for x in datline]) + "\n")
             continue
         del logger
         sys.stdout = sys.__stdout__
@@ -254,7 +255,10 @@ def extract(passed_args, sep="space", cols=False, silent=True,
     return data
 
 def ffrmt(x):
-    return "{0:12.5E}".format(x)
+    return "{0:<12.5E}".format(x)
+
+def sfrmt(x):
+    return "{0:<12s}".format(x)
 
 def message(msg):
     if SILENT:
@@ -529,9 +533,9 @@ class Logger(object):
 
     def write(self, data):
         if self.file:
-            self.file.write(data + "\n")
+            self.file.write(data)
         if not SILENT:
-            self.stdout.write(data + "\n")
+            self.stdout.write(data)
 
 if __name__ == "__main__":
 

@@ -31,8 +31,8 @@ begin simulation exmpl_9
     disp 0 # set to not zero to get detailed output from optimizer [0]
     obj_fn = Opt_sig_v_time.py
     gold file exmpls.gold
-    optimize opt_k, bounds = (125.e9, 150.e9), initial value = 129.e9
-    optimize opt_g, bounds = (45.e9, 57.e9), initial value = 54.e9
+    optimize opt_k, bounds(125.e9, 150.e9), initial value = 129.e9
+    optimize opt_g, bounds(45.e9, 57.e9), initial value = 54.e9
   end optimization
 
 end simulation

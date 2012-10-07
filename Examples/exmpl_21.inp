@@ -7,7 +7,7 @@
 #           where specified.
 
 begin preprocessing
-  kappa_val = 0
+  _kappa = 0
   two_shear_modulus = 106.e9
   half_bulk_modulus = 67.5e9
 end preprocessing
@@ -15,7 +15,7 @@ end preprocessing
 begin simulation exmpl_21
   nowriteprops
   begin boundary
-    kappa = {kappa_val}
+    kappa = {_kappa}
     tstar = 1.
     ampl = 1
     begin legs

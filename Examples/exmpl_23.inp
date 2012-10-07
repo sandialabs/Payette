@@ -6,12 +6,12 @@
 #           functionality of Payette.
 
 begin preprocessing
-  kappa = 0
+  _kappa = 0
 end preprocessing
 begin simulation exmpl_22
   nowriteprops
   begin boundary
-    kappa = {kappa}
+    kappa = {_kappa}
     tstar = 1.
     ampl = 1
     begin legs

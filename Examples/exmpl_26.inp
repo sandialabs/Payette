@@ -5,12 +5,12 @@
 # Comments: This input file demonstrates the parameter permutation
 #           functionality of Payette.
 begin preprocessing
-  kappa = 0
+  _kappa = 0
 end preprocessing
 begin simulation exmpl_22
   nowriteprops
   begin boundary
-    kappa = {kappa}
+    kappa = {_kappa}
     tstar = 1.
     ampl = 1
     begin legs
@@ -29,7 +29,7 @@ begin simulation exmpl_22
     method zip
     seed = 12
     permutate K, weibull(125.e9, 14, 3) # [] {range, sequence}
-    permutate G, +/-(45.e9, 10)
+    permutate G, percentage(45.e9, 10)
   end permutation
 
 end simulation

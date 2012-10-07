@@ -254,7 +254,8 @@ class Permutate(object):
         # where key is the name of the variable being permutated, kw is one of
         # ["sequence", "range", "normal", "weibull", "uniform",]
         # and vals are the values
-        ptypes = [r"+/-", "sequence", "range", "normal", "weibull", "uniform",]
+        ptypes = [r"+/-", "sequence", "range", "normal", "weibull", "uniform",
+                  "percentage"]
         regexs = [re.compile(r"(?i){0}".format(re.escape(x))) for x in ptypes]
 
         for line in permutate:
@@ -305,7 +306,7 @@ class Permutate(object):
                 N = DN if len(info) < 3 else int(info[2])
 
             # construct the range of values of this parameter
-            elif ptype == "+/-":
+            elif ptype == "+/-" or ptype == "percentage":
                 method = "sequence"
                 # Percentage of scale
                 # specified as +/-(scale, perc)

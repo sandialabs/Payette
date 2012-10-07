@@ -332,7 +332,7 @@ class Optimize(object):
             opt = self.find_oblock_option("optimize")
             if opt is None:
                 break
-            optmz.append(re.sub(r"[\(\)]", "", opt).lower().split())
+            optmz.append(re.sub(r"[\(\)]", " ", opt).lower().split())
             continue
         for item in optmz:
             key, vals = item[0], item[1:]

@@ -262,12 +262,13 @@ class Payette(object):
         self.mathplot_vars = mathplot
 
         # get extraction
-        extraction = self.ui.find_block("extraction", [])
+        extraction, eopts = self.ui.find_block("extraction", []), {}
         if extraction:
-            extraction = pip.parse_extraction(extraction)
+            extraction, eopts = pip.parse_extraction(extraction)
             extraction = [x for x in extraction
                           if x[1:] in self.plot_keys or x[1] == "%"]
         self.extraction_vars = extraction
+        self.eopts = eopts
 
         self._setup_files()
 
@@ -277,7 +278,8 @@ class Payette(object):
     def _write_extraction(self):
         """ write out the requested extraction """
         exargs = [self.outfile] + self.extraction_vars
-        pe.extract(exargs, silent=True, write_xout=True)
+        step = int(self.eopts.get("step", 1))
+        pe.extract(exargs, silent=True, write_xout=True, step=step)
         return
 
     def _write_mathplot(self):
@@ -650,7 +652,7 @@ class Payette(object):
 
         if wipe or wipeall:
             # remove cruft
-            for ext in (".log", ".props", ".math1", ".math2", ".prf"):
+            for ext in (".log", ".props", ".math1", ".math2", ".prf", ".xout"):
                 try: os.remove(self.name + ext)
                 except OSError: pass
                 continue

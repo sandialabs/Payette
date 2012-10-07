@@ -693,10 +693,6 @@ class EOSBoundary(object):
         # parse the legs block
         self.parse_legs_block()
 
-        # no initial or termination time explicitly set for EOS simulations
-        self.initial_time = None
-        self.termination_time = None
-
     def parse_boundary_block(self):
         """parse the eos boundary block"""
 
@@ -704,6 +700,9 @@ class EOSBoundary(object):
         for item in self.boundary:
             for char in "=,;":
                 item = item.replace(char, " ")
+            if not item.split():
+                continue
+
             item = " ".join(item.split()).split()
             kwd = " ".join(item[0:2]).lower()
 
@@ -822,6 +821,8 @@ class EOSBoundary(object):
         #       rho tmpr
         for item in self.legs:
             item = item.strip().split()
+            if not item:
+                continue
             vals = [float(x) for x in item]
             if len(vals) != 2:
                 raise BoundaryError(
@@ -965,3 +966,11 @@ class EOSBoundary(object):
     def get_boundary_control_params(self):
         """Unfinished docstring"""
         return self.bcontrol
+
+    def initial_time(self):
+        """no initial or termination time explicitly set for EOS simulations"""
+        return None
+
+    def termination_time(self):
+        """no initial or termination time explicitly set for EOS simulations"""
+        return None

@@ -350,7 +350,7 @@ def preprocess(lines, preprocessor=None):
                     for x in re.sub(I_EQ, " ", preprocessor).split("\n") if x]
 
     for pat, repl in preprocessor:
-        full = re.compile(r"{{.*?{0:s}.*?}}".format(pat), re.I|re.M)
+        full = re.compile(r"{{.*?\b{0:s}\b.*?}}".format(pat), re.I|re.M)
         while True:
             found = full.search(lines)
             if not found:
@@ -642,6 +642,17 @@ def parse_extraction(eblock):
     """
     prefix = {True: "%", False: "@"}
     extraction_vars = []
+    opts = {"step": "1"}
+    for opt in opts:
+        pat = r"\b{0}\s".format(opt)
+        found = re.search(pat, eblock)
+        if found is not None:
+            s = found.end()
+            e = re.search(pat + r".*\n", eblock).end()
+            opts[opt] = re.sub(I_EQ, " ", eblock[s:e]).strip()
+            eblock = eblock[:found.start()] + eblock[e:]
+        continue
+
     eblock = re.sub(r"[\.\,\n]", " ", eblock).split()
     for item in eblock:
         if not re.search(r"^[%@]", item):
@@ -649,7 +660,7 @@ def parse_extraction(eblock):
             item = prefix[item.isdigit()] + item
         extraction_vars.append(item.upper())
         continue
-    return extraction_vars
+    return extraction_vars, opts
 
 
 def flatten(x):
