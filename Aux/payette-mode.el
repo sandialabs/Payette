@@ -1,3 +1,5 @@
+;;; A major mode for editing Payette input files
+;;;
 ;;; Code:
 (defvar payette-mode-hook nil)
 (defvar payette-mode-map
