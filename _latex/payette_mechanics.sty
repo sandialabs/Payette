@@ -1,0 +1,89 @@
+\ProvidesPackage{/scratch/tjfulle/Payette/_latex/payette_mechanics}[2011/08/22 v1.0 mechanics shortcuts]
+\RequirePackage{amsmath,amsfonts,amssymb,amsthm}
+\RequirePackage{bbm,bm}
+\RequirePackage{upgreek}
+\RequirePackage{stmaryrd}
+\RequirePackage{color}
+\RequirePackage{mathrsfs}
+\RequirePackage{/scratch/tjfulle/Payette/_latex/payette_tensors}
+
+
+% * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * %
+% * * * * * * * * * *  M E C H A N I C S  M A C R O S   * * * * * * * * * * * * %
+% * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * %
+% -------------------------------------------------------------- mechanics macros
+
+% --
+\newcommand{\txte}{\scriptscriptstyle{e}}
+\newcommand{\txtp}{\scriptscriptstyle{p}}
+
+% -- invariants
+\newcommand{\JTwo}[1][\@empty]{\ifx\@empty#1 {J_2} \else {J_2^{#1}} \fi}
+\newcommand{\IOne}[1][\@empty]{\ifx\@empty#1 {I_1} \else {I_1^{#1}} \fi}
+
+% -- stress
+\newcommand{\StressSym}{\sigma}
+\newcommand{\BackStressSym}{\alpha}
+\newcommand{\ShiftedStressSym}{\xi}
+\newcommand{\Stress}{\Tensor{\StressSym}{}{}}
+\newcommand{\dStress}{\Tensor[\dot]{\StressSym}{}{}}
+\newcommand{\ShiftedStress}{\Tensor{\ShiftedStressSym}{}{}}
+\newcommand{\DevShiftedStress}{\Tensor{\ShiftedStressSym}{}{\prime}}
+\newcommand{\dShiftedStress}{\Tensor[\dot]{\ShiftedStressSym}{}{}}
+\newcommand{\BackStress}{\Tensor{\BackStressSym}{}{}}
+\newcommand{\dBackStress}{\Tensor[\dot]{\BackStressSym}{}{}}
+
+% -- strain
+\newcommand{\StrainSym}{\varepsilon}
+\newcommand{\Strain}{\Tensor{\StrainSym}{}{}}
+\newcommand{\dStrain}{\Tensor[\dot]{\StrainSym}{}{}}
+\newcommand{\DevStrain}{\Tensor{\StrainSym}{}{\prime}}
+\newcommand{\dDevStrain}{\Tensor[\dot]{\StrainSym}{}{\prime}}
+
+% -- stretch
+\newcommand{\RightStretchSym}{U}
+\newcommand{\RightStretch}{\Tensor{\RightStretchSym}{}{}}
+
+% -- plasticity
+\newcommand{\FlowDir}{\Tensor{m}{}{}}
+\newcommand{\DevFlowDir}{\Tensor{m}{}{\prime}}
+\newcommand{\ReturnDir}{\Tensor{p}{}{}}
+\newcommand{\YldNormal}{\Tensor{n}{}{}}
+\newcommand{\DevYldNormal}{\Tensor{n}{}{\prime}}
+\newcommand{\YldStress}{\StressSym_{y}}
+\newcommand{\InitYldStress}{\StressSym_{0}}
+\newcommand{\dYldStress}{\dot{\StressSym}_{y}}
+\newcommand{\ElastStrain}{\Tensor{\StrainSym}{}{\txte}}
+\newcommand{\dElastStrain}{\Tensor[\dot]{\StrainSym}{}{\txte}}
+\newcommand{\PlastStrain}{\Tensor{\StrainSym}{}{\txtp}}
+\newcommand{\dPlastStrain}{\Tensor[\dot]{\StrainSym}{}{\txtp}}
+\newcommand{\dDevPlastStrain}{\Tensor[\dot]{\StrainSym}{}{\txtp\prime}}
+\newcommand{\Mpsr}{\dot{\lambda}}
+\newcommand{\Eqps}{\gamma_{\text{eq}}}
+\newcommand{\dIsv}[1]{\dot{q}_{#1}}
+\newcommand{\Isv}[1]{q_{#1}}
+\newcommand{\IsvModulus}[1]{h_{#1}}
+\newcommand{\TensIsv}[1]{\Tensor{q}{#1}{}}
+\newcommand{\dTensIsv}[1]{\Tensor[\dot]{q}{#1}{}}
+\newcommand{\TensIsvModulus}[1]{\Tensor{h}{#1}{}}
+\newcommand{\YldFcn}[1][\@empty]{\ifx\@empty#1 {f} \else {f\left(#1\right)} \fi}
+\newcommand{\dYldFcn}[1][\@empty]{\ifx\@empty#1 {\dot{f}} \else {\dot{f}\left(#1\right)} \fi}
+\newcommand{\TrialDevShiftedStress}{\Tensor{\ShiftedStressSym}{}{\prime\text{trial}}}
+\newcommand{\TrialShiftedStress}{\Tensor{\ShiftedStressSym}{}{\text{trial}}}
+\newcommand{\TrialStress}{\Tensor{\StressSym}{}{\text{trial}}}
+\newcommand{\dTrialStress}{\Tensor[\dot]{\StressSym}{}{\text{trial}}}
+\newcommand{\DPS}{\gamma^{\txtp}}
+\newcommand{\dDPS}{\dot{\gamma}^{\txtp}}
+
+
+% -- elasticities
+\newcommand{\BMod}{\kappa}
+\newcommand{\SMod}{\mu}
+\newcommand{\StiffnessSym}{\mathbb{C}}
+\newcommand{\Stiffness}{{\Tensor{\StiffnessSym}{}{}}}
+
+
+
+\endinput
+%%
+%% End of file `orig_mechanics.sty'.

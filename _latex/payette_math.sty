@@ -1,0 +1,157 @@
+\ProvidesPackage{/scratch/tjfulle/Payette/_latex/payette_math}[2011/08/22 v1.0 math shortcuts]
+\RequirePackage{amsmath,amsfonts,amssymb,amsthm}
+\RequirePackage{bbm,bm}
+\RequirePackage{/scratch/tjfulle/Payette/_latex/payette_tensors}
+
+% * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * %
+% * * * * * * * * * * * * *  M A T H  M A C R O S   * * * * * * * * * * * * * * %
+% * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * %
+% -------------------------------------------------- functional and number spaces
+\newcommand{\CC}[1]{{\mathcal{C}^{#1}}}
+\newcommand{\CCs}[2]{{\mathcal{C}^{#1}_{#2}}}
+\newcommand{\Lsp}[1]{{\mathrm{L}^{\scriptstyle#1}}}
+\newcommand{\Lo}{\Lsp{1}}
+\newcommand{\Lt}{\Lsp{2}}
+\newcommand{\Li}{\Lsp{\infty}}
+\newcommand{\R}[1]{\mathbb{R}^{#1}}
+\newcommand{\Rnine}{\R{9}}
+\newcommand{\Rsix}{\R{6}}
+\newcommand{\Rthree}{\R{3}}
+
+% ----------------------------------------------- differential calculus *sand/tim
+\newcommand{\mathpp}{\partial}
+\newcommand{\pp}{\partial}
+\newcommand{\mathdd}{d}
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\mathoprod}{} %{\otimes}
+
+\newcommand{\Curl}{\operatorname{curl}}
+\newcommand{\DBar}{\mathchar'26\mkern-12mu {\rm d}}
+\newcommand{\Der}[2]{\frac{\mathdd{#1}}{\mathdd{#2}}}
+\newcommand{\DerN}[3]{\frac{\mathdd^{#1}{#2}}{\mathdd{#3}^{#1}}}
+\newcommand{\Div}{\operatorname{div}}
+\newcommand{\DPolar}[1]{\mathring{#1}}
+\newcommand{\FourDer}[2]{\frac{\mathdd^4 #1}{\mathdd{#2}^4}}
+\newcommand{\FiveDer}[2]{\frac{\mathdd^5 #1}{\mathdd{#2}^5}}
+\newcommand{\Grad}{\operatorname{grad}}
+\newcommand{\InexDer}[2]{\frac{\dbar #1}{\mathdd{#2}}} % inexact deriv
+\newcommand{\LeftDel}{{\raise 1.45ex\hbox{$\scriptstyle\bm\leftharpoonup$}}%
+{\kern -.85em\hbox{$\nabla$}}}
+\newcommand{\LeftDer}[2]{\dfrac{\mathdd{}}{\mathdd{#2}}{#1}}
+\newcommand{\LeftDerN}[3]{\frac{\mathdd^{#1}}{\mathdd{#3}^{#1}}{#2}}
+\newcommand{\LPDer}[2]{{\frac{\mathpp}{\mathpp #2}#1}}
+\newcommand{\LPDerN}[3]{\frac{\mathpp^{#1}}{\mathpp{#3}^{#1}}{#2}}
+\newcommand{\LPXDer}[3]{\frac{\mathpp^2}{\mathpp{#2}\mathpp{#3}}{#1}}
+\newcommand{\MatDer}[1]{\frac{\mathrm{D} #1}{\mathrm{D}t}}
+\newcommand{\Del}{\FirstOrderTensor{\nabla}}
+\newcommand{\Nc}[1]{\nabla\times{#1}}
+\newcommand{\Nd}[1]{\nabla\cdot{#1}}
+\newcommand{\Ng}[1]{\nabla\,{#1}}
+\newcommand{\PDer}[2]{\ensuremath{\frac{\mathpp #1}{\mathpp #2}}}
+\newcommand{\PDerC}[3]{\left(\frac{\mathpp #1}{\mathpp #2}\right)_{\!\negthickspace#3}}
+\newcommand{\PDerN}[3]{\frac{\mathpp^{#1}{#2}}{\mathpp{#3}^{#1}}}
+\newcommand{\PXDer}[3]{\frac{\mathpp^2{#1}}{\mathpp{#2}\mathpp{#3}}}
+\newcommand{\RightDel}{{\raise 1.45ex\hbox{$\scriptstyle\bm\rightharpoonup$}}%
+{\kern -.85em\hbox{$\nabla$}}}
+\newcommand{\SDer}[2]{\ensuremath{ \frac{\mathdd{}^2#1}{\mathdd{#2}^2}}}
+\newcommand{\SPDer}[3]{% second order partial
+  \ifthenelse{\equal{#2}{#3}}{%
+    \frac{\mathpp^2 #1}{\mathpp{#2}^2}}{%
+    \frac{\mathpp^2 #1}{\mathpp{#2}\mathpp{#3}}}}
+\newcommand{\SPDerMixed}[3]{\frac{\mathpp #1}{{\mathpp #2}{\mathpp #3}}}
+\newcommand{\SPDerC}[4]{%mixed second order partial with constant
+  \ifthenelse{\equal{#2}{#3}}{%
+    \left(\frac{\mathpp^2 #1}{\mathpp{#2}^2}\right)_{#4}}{%
+    \left(\frac{\mathpp^2 #1}{\mathpp{#2}\mathpp{#3}}\right)_{#4}}}
+\newcommand{\SPDerTens}[3]{\frac{\mathpp^2 #1}{{\mathpp #2}{\mathoprod}{\mathpp #3}}}
+\newcommand{\TPDerTens}[4]{\frac{\mathpp^3 #1}{{\mathpp #2}{\mathoprod}{\mathpp #3}{\mathoprod}{\mathpp #4}}}
+\newcommand{\TDer}[2]{\frac{\mathdd^3 #1}{\mathdd{#2}^3}}
+\newcommand{\TPDer}[4]{\ensuremath{\frac{\mathpp^3 #1}{\mathpp #2 \mathpp #3 \mathpp #4}}}
+\newcommand{\DefInt}[4]{\int_{#1}^{#2}{#3}\,d#4}
+% ------------------------------ differential volumes, lengths, areas, time, etc.
+\newcommand{\da}{\,\mathdd{a}}
+\newcommand{\dA}{\,\mathdd{A}}
+\newcommand{\dAv}{\mathdd{\FirstOrderTensor{A}}}
+\newcommand{\dl}{\,\mathdd{l}}
+\newcommand{\dlv}{\mathdd{\FirstOrderTensor{l}}}
+\newcommand{\dt}{\,\mathdd{t}}
+\newcommand{\Dt}{\Delta{t}}
+\newcommand{\dV}{\,\mathdd{V}}
+\newcommand{\dS}{\,\mathdd{S}}
+\newcommand{\dm}{\,\mathdd{m}}
+\newcommand{\dx}{\,\mathdd{x}}
+
+% --------------------------------------------------------------- vector calculus
+\newcommand{\Norm}[1]{\left\lVert{#1}\right\rVert}
+\newcommand{\Magnitude}[1]{\left\lVert{#1}\right\rVert}
+\newcommand{\NormOne}[1]{\norm{#1}_1}
+\newcommand{\NormTwo}[1]{\norm{#1}_2}
+\newcommand{\NormSup}[1]{\norm{#1}_\infty}
+\newcommand{\NormGen}[2]{\norm{#2}_{#1}}
+\newcommand{\NormLo}[1]{\norm{#1}_\Lo}
+\newcommand{\NormLt}[1]{\norm{#1}_\Lt}
+\newcommand{\NormLi}[1]{\norm{#1}_\Li}
+\newcommand{\NormL}[2]{\norm{#2}_\Lsp{#1}}
+\newcommand{\SemiNorm}[2]{\left\lvert{#2}\right\rvert_{#1}}
+\newcommand{\IndNorm}[1]{\left\lVert\!\left\lvert{#1}\right\rVert\!\right\lvert}
+\newcommand{\InnProd}[2]{\left({#1}|{#2}\right)}
+\newcommand{\DualPair}[2]{\left\langle{#1},{#2}\right\rangle}
+\newcommand{\MixProd}[3]{\left[{#1},{#2},{#3}\right]}
+
+% ---------------------------------------------------- asymptotic notations *sand
+\newcommand{\SmallO}[1]{\operatorname{o}\left({#1}\right)}
+\newcommand{\BigO}[1]{\operatorname{O}\left({#1}\right)}
+\newcommand{\ASeq}[2]{\operatornamewithlimits{\sim}_{{#1}\rightarrow{#2}}}
+
+% ---------------------------------------------- Misc. math operators and symbols
+\newcommand{\Abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\AbsOp}{\operatorname{abs}}
+\newcommand{\Boundary}{\partial\Domain}
+\newcommand{\Domain}{\Omega}
+\newcommand{\E}[1]{\mathrm{e}^{\scriptscriptstyle{#1}}}
+\newcommand{\OrderOf}[1]{\mathcal{O}\left(#1\right)}
+
+% --------------- theorems
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+
+%\newenvironment{proof}[1][Proof]{\begin{trivlist}
+%\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+\newenvironment{definition}[1][Definition]{\begin{trivlist}
+\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+\newenvironment{example}[1][Example]{\begin{trivlist}
+\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+\newenvironment{remark}[1][Remark]{\begin{trivlist}
+\item[\hskip \labelsep {\bfseries #1}]}{\end{trivlist}}
+
+\newcommand{\definedas}[1]{\parbox[h!]{.9\textwidth}{ \bigskip #1 \bigskip}}
+
+% --------------------------------------------------------------------- fractions
+\newcommand{\OneSixth}{\frac{1}{6}}
+\newcommand{\OneFifth}{\frac{1}{5}}
+\newcommand{\OneFourth}{\frac{1}{4}}
+\newcommand{\OneThird}{\frac{1}{3}}
+\newcommand{\OneHalf}{\frac{1}{2}}
+\newcommand{\TwoThird}{\frac{2}{3}}
+\newcommand{\ThreeFourth}{\frac{3}{4}}
+\newcommand{\FourThird}{\frac{4}{3}}
+\newcommand{\ThreeHalf}{\frac{3}{2}}
+\newcommand{\Toor}[1]{\frac{1}{\sqrt{#1}}}
+\newcommand{\OneOver}[1]{\frac{1}{#1}}
+
+% --------------------------------------------- shortcuts for 1st, 2nd, 3rd, etc.
+\newcommand{\nst}{^{\text{st}}}
+\newcommand{\nnd}{^{\text{nd}}}
+\newcommand{\nrd}{^{\text{rd}}}
+\newcommand{\second}{2$^{\text{nd}}$}
+\newcommand{\nth}{^{\text{th}}}
+
+%\newcommand{\qed}{\nobreak \ifvmode \relax \else
+%      \ifdim\lastskip<1.5em \hskip-\lastskip
+%      \hskip1.5em plus0em minus0.5em \fi \nobreak
+%      \vrule height0.75em width0.5em depth0.25em\fi}
+\endinput
+%%
+%% End of file `orig_math.sty'.

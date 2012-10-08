@@ -1,0 +1,205 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Running Tests &mdash; Payette 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Payette 1.0 documentation" href="../index.html" />
+    <link rel="next" title="Installing New Materials" href="installing_materials.html" />
+    <link rel="prev" title="Payette Input File Formatting" href="input_file_formatting.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="installing_materials.html" title="Installing New Materials"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="input_file_formatting.html" title="Payette Input File Formatting"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">Payette 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="running-tests">
+<h1>Running Tests<a class="headerlink" href="#running-tests" title="Permalink to this headline">¶</a></h1>
+<p><em>Payette</em> provides a mechanism for running material model regression tests with
+the <tt class="file docutils literal"><span class="pre">testPayette</span></tt> script. <tt class="file docutils literal"><span class="pre">testPayette</span></tt> is what makes <em>Payette</em> an
+invaluable tool to material model development. Simplistically,
+<tt class="file docutils literal"><span class="pre">testPayette</span></tt> is a tool that exercises <tt class="file docutils literal"><span class="pre">runPayette</span></tt> on previously
+setup simulations and compares the output against a &#8220;gold&#8221; result, allowing model
+developers to instantly see if and how changes to a material model effect its
+output.</p>
+<div class="section" id="basic-usage-of-testpayette">
+<h2>Basic Usage of <tt class="file docutils literal"><span class="pre">testPayette</span></tt><a class="headerlink" href="#basic-usage-of-testpayette" title="Permalink to this headline">¶</a></h2>
+<p>From a command prompt execute:</p>
+<div class="highlight-python"><pre>% testPayette</pre>
+</div>
+<p><tt class="file docutils literal"><span class="pre">testPayette</span></tt> will scan <tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Tests</span></tt> for tests. After
+creating a lists of tests to run, <tt class="file docutils literal"><span class="pre">testPayette</span></tt> will create a
+<tt class="file docutils literal"><span class="pre">PWD/TestResults.OSTYPE</span></tt> directory and subdirectories in which the tests
+will be run. The subdirectories created in <tt class="file docutils literal"><span class="pre">PWD/TestResults.OSTYPE/</span></tt> mirror
+the subdirectories of <tt class="file docutils literal"><span class="pre">PAYETTE_ROOT/Tests</span></tt>. After creating the
+<tt class="file docutils literal"><span class="pre">PWD/TestResults.OSTYPE/</span></tt> directory tree, it will then move in to the
+appropriate subdirectory to run and analyze each individual test. For example, if
+the <tt class="file docutils literal"><span class="pre">Tests/Materials/Elastic/elastic-unistrain.py</span></tt> test is run,
+<tt class="file docutils literal"><span class="pre">testPayette</span></tt> will create a
+<tt class="file docutils literal"><span class="pre">PWD/TestResults.OSTYPE/Materials/Elastic/elastic-unistrain/</span></tt> directory,
+move to it, and run the <tt class="file docutils literal"><span class="pre">elastic-unistrain.py</span></tt> test in it.</p>
+<div class="section" id="filtering-tests-to-run">
+<h3>Filtering Tests to Run<a class="headerlink" href="#filtering-tests-to-run" title="Permalink to this headline">¶</a></h3>
+<p>The tests run can be filtered by keyword with the <tt class="docutils literal"><span class="pre">-k</span></tt> option. For example, to
+run only the <tt class="docutils literal"><span class="pre">fast</span></tt> <tt class="docutils literal"><span class="pre">kayenta</span></tt> material tests, execute:</p>
+<div class="highlight-python"><pre>% testPayette -k kayenta -k fast</pre>
+</div>
+<p>Or, you can run specific tests with the <tt class="docutils literal"><span class="pre">-t</span></tt> option. For example, to run only
+the <tt class="file docutils literal"><span class="pre">elastic-unistrain.py</span></tt> test, execute:</p>
+<div class="highlight-python"><pre>% testPayette -t elastic-unistrain</pre>
+</div>
+</div>
+</div>
+<div class="section" id="multiprocessor-support">
+<h2>Multiprocessor Support<a class="headerlink" href="#multiprocessor-support" title="Permalink to this headline">¶</a></h2>
+<p>By default, <tt class="file docutils literal"><span class="pre">testPayette</span></tt> will run all collected tests serially on a single
+processor, but supports running tests on multiple processors with the <tt class="docutils literal"><span class="pre">-j</span>
+<span class="pre">nproc</span></tt> option, where <tt class="docutils literal"><span class="pre">nproc</span></tt> is the number of processors. For example, to run
+all of the kayenta tests on 8 processors, execute:</p>
+<div class="highlight-python"><pre>% testPayette -k kayenta -j8</pre>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">When run on multiple processors, you cannot kill <tt class="file docutils literal"><span class="pre">testPayette</span></tt> by
+<tt class="docutils literal"><span class="pre">ctrl-c</span></tt>, but must put the job in the background and then kill it. Any help
+from a python multiprocessor expert on getting around this limitation would be
+greatly appreciated!</p>
+</div>
+</div>
+<div class="section" id="other-testpayette-options">
+<h2>Other <tt class="file docutils literal"><span class="pre">testPayette</span></tt> Options<a class="headerlink" href="#other-testpayette-options" title="Permalink to this headline">¶</a></h2>
+<p>Execute:</p>
+<div class="highlight-python"><pre>% testPayette -h</pre>
+</div>
+<p>for a complete list of options.</p>
+</div>
+<div class="section" id="html-test-summary">
+<h2>html Test Summary<a class="headerlink" href="#html-test-summary" title="Permalink to this headline">¶</a></h2>
+<p><tt class="file docutils literal"><span class="pre">testPayette</span></tt> gives a complete summary of test results in
+<tt class="file docutils literal"><span class="pre">TestResults.OSTYPE/summary.html</span></tt> viewable in any web browser.</p>
+</div>
+<div class="section" id="mathematca-post-processing">
+<h2>Mathematca Post Processing<a class="headerlink" href="#mathematca-post-processing" title="Permalink to this headline">¶</a></h2>
+<p>For the Kayenta material model, <tt class="file docutils literal"><span class="pre">testPayette</span></tt> creates Rebecca Brannon&#8217;s
+Mathematica post processing file <tt class="file docutils literal"><span class="pre">kayenta.nb</span></tt> (formerly <tt class="file docutils literal"><span class="pre">030626.nb</span></tt>)
+in <tt class="file docutils literal"><span class="pre">PWD/TestResults.OSTYPE/Materials/Kayenta/</span></tt>, that aids greatly in
+analyzing test results for the Kayenta material model.</p>
+</div>
+<div class="section" id="creating-new-tests">
+<h2>Creating New Tests<a class="headerlink" href="#creating-new-tests" title="Permalink to this headline">¶</a></h2>
+<div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<p class="last">need to add this section</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Running Tests</a><ul>
+<li><a class="reference internal" href="#basic-usage-of-testpayette">Basic Usage of <tt class="file docutils literal"><span class="pre">testPayette</span></tt></a><ul>
+<li><a class="reference internal" href="#filtering-tests-to-run">Filtering Tests to Run</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#multiprocessor-support">Multiprocessor Support</a></li>
+<li><a class="reference internal" href="#other-testpayette-options">Other <tt class="file docutils literal"><span class="pre">testPayette</span></tt> Options</a></li>
+<li><a class="reference internal" href="#html-test-summary">html Test Summary</a></li>
+<li><a class="reference internal" href="#mathematca-post-processing">Mathematca Post Processing</a></li>
+<li><a class="reference internal" href="#creating-new-tests">Creating New Tests</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="input_file_formatting.html"
+                        title="previous chapter"><em>Payette</em> Input File Formatting</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="installing_materials.html"
+                        title="next chapter">Installing New Materials</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/Files/test_payette.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="installing_materials.html" title="Installing New Materials"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="input_file_formatting.html" title="Payette Input File Formatting"
+             >previous</a> |</li>
+        <li><a href="../index.html">Payette 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Tim Fuller, Scot Swan.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
