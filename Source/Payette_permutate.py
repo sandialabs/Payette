@@ -230,6 +230,8 @@ class Permutate(object):
         # get method
         method = self.find_pblock_option("method")
         if method is not None:
+            if re.search(r"(?i)\bgrid\b", method):
+                method = "zip"
             perm_method = allowed_methods.get(method.lower())
             if perm_method is None:
                 pu.report_and_raise_error("invalid method {0}".format(method))

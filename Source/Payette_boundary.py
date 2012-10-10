@@ -662,7 +662,7 @@ class EOSBoundary(object):
     def __init__(self, bblock, lblock):
 
         boundary = bblock.split("\n")
-        legs = lblock.split("\n")
+        legs = None if lblock is None else lblock.split("\n")
 
         if not boundary:
             raise BoundaryError("boundary block not found")
