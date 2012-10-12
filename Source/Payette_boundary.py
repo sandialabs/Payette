@@ -31,7 +31,7 @@ import math, sys, re
 import numpy as np
 
 import Source.__runopts__ as ro
-from Source.Payette_input_parser import I_EQ, I_SEP
+import Source.Payette_input_parser as pip
 
 
 DTYPES = {"strain rate": (1, 6), "strain": (2, 6), "stress rate": (3, 6),
@@ -116,7 +116,7 @@ class Boundary(object):
         boundary_options = {}
 
         for line in bblock.split("\n"):
-            line = re.sub(I_EQ, " ", line).split()
+            line = re.sub(pip.I_EQ, " ", line).split()
             if not line:
                 continue
 
@@ -251,7 +251,7 @@ class Boundary(object):
         # --- first leg parsed, now go through rest
         time = 0.
         for iline, line in enumerate(lblock.split("\n")):
-            line = re.sub(I_SEP, " ", line)
+            line = re.sub(pip.I_SEP, " ", line)
             line = line.split()
             if not line:
                 continue
@@ -661,14 +661,11 @@ class EOSBoundary(object):
 
     def __init__(self, bblock, lblock):
 
-        boundary = bblock.split("\n")
-        legs = None if lblock is None else lblock.split("\n")
-
-        if not boundary:
+        if not bblock.split("\n"):
             raise BoundaryError("boundary block not found")
 
-        self.boundary = boundary
-        self.legs = legs
+        self.boundary = bblock
+        self.legs = lblock
 
         # parse the boundary block
         self.allowed_unit_systems = ("MKSK", "CGSEV",)
@@ -685,125 +682,102 @@ class EOSBoundary(object):
             "path isotherm": {"value": None, "type": list},
             "path hugoniot": {"value": None, "type": list},
             }
-        self.user_control_options = {}
         self.parse_boundary_block()
 
         self.lcontrol = []
 
         # parse the legs block
-        self.parse_legs_block()
+        if self.legs:
+            self.parse_legs_block()
 
     def parse_boundary_block(self):
         """parse the eos boundary block"""
 
-        # --- BOUNDARY
-        for item in self.boundary:
-            for char in "=,;":
-                item = item.replace(char, " ")
-            if not item.split():
-                continue
+        # get the input units
+        iu = pip.get("input units", self.boundary)
+        if iu is None:
+            raise BoundaryError(
+                "Input units not found in boundary block, choose from: {0}"
+                .format("input units " + ", ".join(self.allowed_unit_systems)))
+        iu = iu.upper()
+        if iu not in self.bcontrol["input units"]["choices"]:
+            raise BoundaryError("Unrecognized input unit system: '{0}'"
+                                .format(iu))
+        self.bcontrol["input units"]["value"] = iu
 
-            item = " ".join(item.split()).split()
-            kwd = " ".join(item[0:2]).lower()
+        # get the output units
+        ou = pip.get("output units", self.boundary)
+        if ou is None:
+            raise BoundaryError(
+                "Output units not found in boundary block, choose from: {0}"
+                .format("input units " + ", ".join(self.allowed_unit_systems)))
+        ou = ou.upper()
+        if ou not in self.bcontrol["output units"]["choices"]:
+            raise BoundaryError("Unrecognized out unit system: '{0}'"
+                                .format(ou))
+        self.bcontrol["output units"]["value"] = ou
 
-            if "nprints" in kwd:
-                val = item[1]
-                self.bcontrol["nprints"]["value"] = int(val)
+        # nprints
+        self.bcontrol["nprints"]["value"] = int(
+            pip.get("nprints", self.boundary, 4))
 
-            elif kwd == "input units":
-                val = item[2]
-                choices = self.bcontrol[kwd]["choices"]
-                if val.upper() not in choices:
-                    raise BoundaryError("Unrecognized input unit system.")
-                self.bcontrol[kwd]["value"] = val
+        # density range
+        val = sorted(
+            [float(x) for x in
+             pip.get("density range", self.boundary, "0. 0.").split()])
+        if len(val) != 2 or val[0] == val[1]:
+            raise BoundaryError(
+                "Unacceptable density range in boundary block.")
+        self.bcontrol["density range"]["value"] = val
 
-            elif kwd == "output units":
-                val = item[2]
-                choices = self.bcontrol[kwd]["choices"]
-                if val.upper() not in choices:
-                    raise BoundaryError("Unrecognized output unit system.")
-                self.bcontrol[kwd]["value"] = val
+        # temperature range
+        val = sorted(
+            [float(x) for x in
+             pip.get("temperature range", self.boundary, "0. 0.").split()])
+        if len(val) != 2 or val[0] == val[1]:
+            raise BoundaryError(
+                "Unacceptable temperature range in boundary block.")
+        self.bcontrol["temperature range"]["value"] = val
 
-            elif kwd == "density range":
-                val = [float(x) for x in item[2:4]]
-                if len(val) != 2 or val[0] == val[1]:
-                    raise BoundaryError(
-                        "Unacceptable density range in boundary block.")
-                self.bcontrol[kwd]["value"] = sorted(val)
+        # surface increments
+        val = int(pip.get("surface increments", self.boundary, 10))
+        if val <= 0:
+            raise BoundaryError("Number of surface increments must be "
+                                "positive non-zero.")
+        self.bcontrol["surface increments"]["value"] = val
 
-            elif kwd == "temperature range":
-                val = [float(x) for x in item[2:4]]
-                if len(val) != 2 or val[0] == val[1]:
-                    raise BoundaryError(
-                        "Unacceptable temperature range in boundary block.")
-                self.bcontrol[kwd]["value"] = sorted(val)
-
-            elif kwd == "surface increments":
-                val = int("".join(item[2:3]))
-                if val <= 0:
-                    raise BoundaryError(
-                        "Number of surface increments must be "
-                        "positive non-zero.")
-                self.bcontrol[kwd]["value"] = val
-
-            elif kwd == "path increments":
-                val = int(item[2])
-                self.bcontrol[kwd]["value"] = val
-
-            elif kwd not in self.bcontrol:
-                kwd, val = kwd
-                try:
-                    self.user_control_options[kwd] = eval(val)
-                except (TypeError, ValueError):
-                    self.user_control_options[kwd] = val
-
-            continue
-
-        # check that user has specified the minimum input
-        if self.bcontrol["input units"] is None:
-            msg = ("Missing 'input units XYZ' keyword in boundary block.\n"
-                   "Please include that line with one of the following\n"
-                   "unit systems:\n" + "\n".join(self.allowed_unit_systems))
-            raise BoundaryError(msg)
-
-        if self.bcontrol["output units"] is None:
-            msg = ("Missing 'output units XYZ' keyword in boundary block.\n"
-                   "Please include that line with one of the following\n"
-                   "unit systems:\n" + "\n".join(self.allowed_unit_systems))
-            raise BoundaryError(msg)
+        # path increments
+        val = int(pip.get("path increments", self.boundary, 100))
+        if val <= 0:
+            raise BoundaryError("Number of path increments must be "
+                                "positive non-zero.")
+        self.bcontrol["path increments"]["value"] = val
 
         # the following depend on the density and temperature ranges that were
         # previously read and parsed.
         rho_0, rho_f = self.bcontrol["density range"]["value"]
         tmpr_0, tmpr_f = self.bcontrol["temperature range"]["value"]
-        for item in self.boundary:
-            for char in "=,;":
-                item = item.replace(char, " ")
-            item = item.split()
-            kwd = " ".join(item[0:2]).lower()
-            if kwd not in ("path isotherm", "path hugoniot",):
-                continue
 
-            if kwd == "path isotherm":
-                # isotherm expects [density, temperature]
-                isotherm = [float(x) for x in item[2:4]]
-                bad_rho = not rho_0 <= isotherm[0] <= rho_f
-                bad_temp = not tmpr_0 <= isotherm[1] <= tmpr_f
-                if len(isotherm) != 2 or bad_rho or bad_temp:
-                    raise BoundaryError("Bad initial state for isotherm.")
-                self.bcontrol[kwd]["value"] = isotherm
+        # isotherm expects [density, temperature]
+        val = pip.get("path isotherm", self.boundary)
+        if val is not None:
+            isotherm = [float(x) for x in val.split()]
+            bad_rho = not rho_0 <= isotherm[0] <= rho_f
+            bad_temp = not tmpr_0 <= isotherm[1] <= tmpr_f
+            if len(isotherm) != 2 or bad_rho or bad_temp:
+                raise BoundaryError("Bad initial state for isotherm.")
+            self.bcontrol["path isotherm"]["value"] = isotherm
 
 
-            elif kwd == "path hugoniot":
-                # isotherm expects [density, temperature]
-                hugoniot = [float(x) for x in item[2:4]]
-                bad_rho = not rho_0 <= hugoniot[0] <= rho_f
-                bad_temp = not tmpr_0 <= hugoniot[1] <= tmpr_f
-                if len(hugoniot) != 2 or bad_rho or bad_temp:
-                    raise BoundaryError("Bad initial state for hugoniot.")
-                self.bcontrol[kwd]["value"] = hugoniot
-
-            continue
+        val = pip.get("path hugoniot", self.boundary)
+        if val is not None:
+            # isotherm expects [density, temperature]
+            hugoniot = [float(x) for x in val.split()]
+            bad_rho = not rho_0 <= hugoniot[0] <= rho_f
+            bad_temp = not tmpr_0 <= hugoniot[1] <= tmpr_f
+            if len(hugoniot) != 2 or bad_rho or bad_temp:
+                raise BoundaryError("Bad initial state for hugoniot.")
+            self.bcontrol["path hugoniot"]["value"] = hugoniot
 
         return
 
@@ -812,25 +786,36 @@ class EOSBoundary(object):
         # parse parameters. If multiple declarations, use the last.
         # --- LEGS
 
-        if self.legs is None:
-            return
-
         # the legs block of an eos simulation contains density/temperature
         # pairs of the form:
         #
         #       rho tmpr
-        for item in self.legs:
-            item = item.strip().split()
-            if not item:
+        ir, it = 0, 1
+        using = re.search(r"(?i)\busing\b.*", self.legs)
+        if using:
+            s, e = using.start(), using.end()
+            line = [x.lower() for x in
+                    re.sub(r"(?i)\busing\b|\,", " ", self.legs[s:e]).split()]
+            self.legs = (self.legs[:s] + self.legs[e:]).strip()
+            for idx, item in enumerate(line):
+                if item == "density":
+                    ir = idx
+                elif item == "temperature":
+                    it = idx
+                else:
+                    raise BoundaryError("unrecognized: {0}".format(item))
                 continue
-            vals = [float(x) for x in item]
-            if len(vals) != 2:
+
+        for item in self.legs.split("\n"):
+            if not item.split():
+                continue
+            item = [float(x) for x in item.split()]
+            if len(item) != 2:
                 raise BoundaryError(
                     "legs must be of form rho tmpr, got: {0}"
                     .format(" ".join(item)))
-            self.lcontrol.append(vals)
+            self.lcontrol.append([item[ir], item[it]])
             continue
-
         return
 
     def nprints(self):

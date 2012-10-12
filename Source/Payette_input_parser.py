@@ -669,3 +669,21 @@ def flatten(x):
         if isinstance(el, list): result.extend(flatten(el))
         else: result.append(el)
     return result
+
+
+def get(option, lines, default=None):
+    """ Find the option in lines
+    """
+    option = ".*".join(option.split())
+    pat = r"(?i)\b{0}\s".format(option)
+    fpat = pat + r".*"
+    option = re.search(fpat, lines)
+    if option:
+        s, e = option.start(), option.end()
+        option = lines[s:e]
+        lines = (lines[:s] + lines[e:]).strip()
+        option = re.sub(pat, "", option)
+        option = re.sub(r"[\,=]", " ", option).strip()
+    else:
+        option = default
+    return option
