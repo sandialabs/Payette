@@ -241,15 +241,14 @@ class Boundary(object):
         using = re.search(r"(?i)\busing\b.*", lblock)
         table = bool(using)
 
+        num, time = 0, 0.
         if table:
-            num = -1
             s, e = using.start(), using.end()
             line = re.sub(r"(?i)\busing\b", " ", lblock[s:e])
             lblock = (lblock[:s] + lblock[e:]).strip()
             ttype, cidxs, gcontrol = self._parse_leg_table_header(line)
 
         # --- first leg parsed, now go through rest
-        time = 0.
         for iline, line in enumerate(lblock.split("\n")):
             line = re.sub(pip.I_SEP, " ", line)
             line = line.split()
@@ -257,7 +256,6 @@ class Boundary(object):
                 continue
 
             if table:
-                num += 1
                 control = gcontrol
                 if re.search(r"(?i)\btime\b", " ".join(line)):
                     # skip header row
@@ -276,7 +274,7 @@ class Boundary(object):
                         "Syntax error in leg {0}".format(num))
             else:
                 # user specified leg in form:
-                # time, steps, control, values
+                # step number, time, steps, control, values
 
                 # leg must have at least 5 values
                 if len(line) < 5:
@@ -487,8 +485,9 @@ class Boundary(object):
             # append to legs
             self._legs.append([num, ltime, steps, control, np.array(cij)])
 
-            # increment
-            num += 1
+            if table:
+                # increment
+                num += 1
             continue
 
         if stress_control:

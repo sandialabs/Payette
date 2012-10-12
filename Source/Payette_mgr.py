@@ -374,7 +374,7 @@ def main(argv):
     # determine file type given, whether output files for viewing, input files
     # for running, or barf files for barf processing
     oexts = (".out", ".dat", ".pkl", ".gold")
-    iexts = (".barf", ".inp", ".i",)
+    iexts = (".inp", ".i",)
     rexts = (".prf", )
     oargs, iargs, uargs, bargs, rargs = [], [], [], [], []
     for arg in list(set(args)):
@@ -440,8 +440,7 @@ def main(argv):
                 "{0:d} barf files given, but only 1 barf file "
                 "can be processed at a time".format(len(bargs)))
         from Source.Payette_barf import PayetteBarf
-        PayetteBarf(bargs[0])
-        sys.exit(0)
+        sys.exit(PayetteBarf(bargs[0]))
 
     # We are now to the point where we will call run_payette, this could be
     # with either a restart file, or with the contents of input files.

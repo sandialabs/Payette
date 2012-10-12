@@ -1,4 +1,4 @@
-begin simulation test write kayenta
+begin simulation test_barf
 begin boundary
   kappa = 0.
   tstar = 1.
@@ -6,7 +6,7 @@ begin boundary
   stepstar = 100
   begin legs
     using dt, strain
-    .1, 0., 0., 0., 0., 0., 0.
+    0., 0., 0., 0., 0., 0., 0.
     .1, 0.1, 0., 0., 0., 0., 0.
     .2, -0.1, 0., 0., 0., 0., 0.
   end legs

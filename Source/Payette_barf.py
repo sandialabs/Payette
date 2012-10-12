@@ -55,12 +55,13 @@ Barf files are dumps from a material model of the form:
 """
 import sys
 import numpy as np
-import pickle
+import pickle, re
 
 import Source.Payette_utils as pu
 import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr
 import Source.Payette_model_index as pmi
+import Source.Payette_input_parser as pip
 from Source.Payette_container import PayetteError as PayetteError
 
 
@@ -72,11 +73,14 @@ class PayetteBarf(object):
 
     def __init__(self, barf_file):
 
+        ipfailstat = 59
+
         pu.log_message("running barf file: {0}".format(barf_file))
 
         self.barf = {}
         self.barf["lines"] = []
-        for line in open(barf_file, "r").readlines():
+        lines = re.sub(r"[0-9]\+100", "E+100", open(barf_file, "r").read())
+        for line in lines.split("\n"):
             line = " ".join(line.strip().split())
             if not line.split():
                 continue
@@ -101,7 +105,6 @@ class PayetteBarf(object):
 
         # convert the barf file to a payette input
         self.payette_input = self._convert_to_payette()
-
         the_model = pcntnr.Payette(self.payette_input)
         the_model.write_input_file()
 
@@ -109,6 +112,8 @@ class PayetteBarf(object):
         # to where they need to be based on barf file
         simdat = the_model.simulation_data()
         material = the_model.material
+        if self.test_barf:
+            material.constitutive_model.ui[ipfailstat] = 25.
         matdat = material.material_data()
         material.constitutive_model.dc = self.barf["derived constants"]
         matdat.advance_data("stress", self.barf["stress"])
@@ -117,11 +122,17 @@ class PayetteBarf(object):
 
         try:
             pdrvr.solid_driver(the_model)
-            message = "Code did not bomb"
+            message = "WARNING: Kayenta did not bomb"
         except PayetteError as e:
-            message = ("Payette bombed with the following message:\n{0}"
-                       .format(e.message))
-        sys.exit(message)
+            # the code bombed, let's see if we reproduced the original
+            msg = re.sub(r"ERROR|BOMBED|:", "", e.message).split("[")[0].strip()
+            if msg == self.barf["barf message"]:
+                message = ("INFO: Kayenta bombed and barf message '{0}' "
+                           "was successfully reproduced".format(msg))
+            else:
+                message = ("WARNING: Kayenta bombed with '{0}' which differs "
+                           "from '{1}'".format(msg, self.barf["barf message"]))
+        sys.exit("\n\n" + message + "\n\n")
         pass
 
     def get_barf_info(self):
@@ -196,6 +207,11 @@ class PayetteBarf(object):
         self.barf["extra variables"] = np.array(extra_variables)
         self.barf["derived constants"] = np.array(derived_consts)
 
+        # see if this was a barf file produced by the test barf functionality
+        failstat = re.search("(?i)failstat.*", self.barf["parameters"])
+        s, e = failstat.start(), failstat.end()
+        self.test_barf = bool(re.search("\.25", self.barf["parameters"][s:e]))
+
         return
 
     def _convert_to_payette(self):
@@ -206,7 +222,7 @@ class PayetteBarf(object):
         rod = self.barf["strain rate"]
         cmod = self.barf["constitutive model"]
         params = self.barf["parameters"]
-        input_file = """
+        return pip.parse_user_input("""\
 begin simulation {0}
 begin boundary
 begin legs
@@ -221,9 +237,8 @@ end material
 end simulation
 """.format(name, dtime,
            rod[0], rod[1], rod[2], rod[3], rod[4], rod[5],
-           cmod, params)
+           cmod, params))[0]
 
-        return input_file.split("\n")
 
     def get_block(self, name, block_delim="#####", place=None):
         """ Find the strain rate in the barf file """
@@ -258,6 +273,7 @@ end simulation
                         block.append(line)
 
                     else:
+                        val = line[place]
                         if line[place] == "NaN":
                             block.append(np.nan)
                         else:
@@ -281,7 +297,7 @@ end simulation
 
             if idx == 60:
                 self.barf["using eos"] = val > 0
-                val = 0
+                val = "0."
 
             props.append("{0} = {1}".format(nam, val))
             continue

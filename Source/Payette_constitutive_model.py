@@ -401,7 +401,7 @@ class ConstitutiveModelPrototype(object):
             try:
                 # Horrible band-aid for poorly formatted fortran output.
                 # when it meant 1.0E+100, it spit out 1.0+100
-                if val.endswith("+100"):
+                if val.endswith("+100") and "E" not in val:
                     val = float(val.replace("+100", "E+100"))
                 else:
                     val = float(val)
