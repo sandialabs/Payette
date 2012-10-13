@@ -73,13 +73,14 @@ class PayetteBarf(object):
 
     def __init__(self, barf_file):
 
-        ipfailstat = 59
+        self.ipfailstat = 59
 
         pu.log_message("running barf file: {0}".format(barf_file))
 
         self.barf = {}
         self.barf["lines"] = []
-        lines = re.sub(r"[0-9]\+100", "E+100", open(barf_file, "r").read())
+        lines = open(barf_file, "r").read()
+        lines = re.sub(r"[0-9]\+100", "E+100", lines)
         for line in lines.split("\n"):
             line = " ".join(line.strip().split())
             if not line.split():
@@ -105,15 +106,21 @@ class PayetteBarf(object):
 
         # convert the barf file to a payette input
         self.payette_input = self._convert_to_payette()
-        the_model = pcntnr.Payette(self.payette_input)
-        the_model.write_input_file()
+
+        pass
+
+    def run_job(self, *args, **kwargs):
+        """Run the barf file"""
+
+        self.model = pcntnr.Payette(self.payette_input)
+        self.model.write_input = True
 
         # the model has been set up, now advance the stress and state variables
         # to where they need to be based on barf file
-        simdat = the_model.simulation_data()
-        material = the_model.material
+        simdat = self.model.simulation_data()
+        material = self.model.material
         if self.test_barf:
-            material.constitutive_model.ui[ipfailstat] = 25.
+            material.constitutive_model.ui[self.ipfailstat] = 25.
         matdat = material.material_data()
         material.constitutive_model.dc = self.barf["derived constants"]
         matdat.advance_data("stress", self.barf["stress"])
@@ -121,19 +128,30 @@ class PayetteBarf(object):
         matdat.advance_data("extra variables", self.barf["extra variables"])
 
         try:
-            pdrvr.solid_driver(the_model)
-            message = "WARNING: Kayenta did not bomb"
+            pdrvr.solid_driver(self.model)
+            self.message = "WARNING: Kayenta did not bomb"
+            retcode = -1
+
         except PayetteError as e:
             # the code bombed, let's see if we reproduced the original
             msg = re.sub(r"ERROR|BOMBED|:", "", e.message).split("[")[0].strip()
             if msg == self.barf["barf message"]:
-                message = ("INFO: Kayenta bombed and barf message '{0}' "
-                           "was successfully reproduced".format(msg))
+                self.message = (
+                    "INFO: Kayenta bombed and barf message '{0}' "
+                    "was successfully reproduced".format(msg))
+                retcode = 0
+
             else:
-                message = ("WARNING: Kayenta bombed with '{0}' which differs "
-                           "from '{1}'".format(msg, self.barf["barf message"]))
-        sys.exit("\n\n" + message + "\n\n")
-        pass
+                self.message = (
+                    "WARNING: Kayenta bombed with '{0}' which differs "
+                    "from '{1}'".format(msg, self.barf["barf message"]))
+                retcode = 1
+        sys.stdout.write(self.message + "\n")
+        return retcode
+
+    def finish(self):
+        self.model.finish()
+        return 0
 
     def get_barf_info(self):
         """Read the first line of the barf file and get info. """

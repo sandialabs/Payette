@@ -433,15 +433,6 @@ def main(argv):
         # output files given, launch visualizer
         sys.exit(_visualize_results(outfiles=oargs))
 
-    if bargs:
-        # user passed in a barf file
-        if len(bargs) > 1:
-            pu.report_and_raise_error(
-                "{0:d} barf files given, but only 1 barf file "
-                "can be processed at a time".format(len(bargs)))
-        from Source.Payette_barf import PayetteBarf
-        sys.exit(PayetteBarf(bargs[0]))
-
     # We are now to the point where we will call run_payette, this could be
     # with either a restart file, or with the contents of input files.
     siminp = None
@@ -449,7 +440,7 @@ def main(argv):
         # user gave input directly
         siminp = opts.inputstr
 
-    restart = False
+    restart, barf = False, False
     if rargs:
         if len(rargs) > 1:
             pu.report_and_raise_error(
@@ -460,6 +451,14 @@ def main(argv):
                 "Restart files cannot be run with additional input")
         restart = rargs[0]
 
+    elif bargs:
+        # user passed in a barf file
+        if len(bargs) > 1:
+            pu.report_and_raise_error(
+                "{0:d} barf files given, but only 1 barf file "
+                "can be processed at a time".format(len(bargs)))
+        barf = bargs[0]
+
     elif iargs:
         # go through input files and load contents
         siminp = "" if siminp is None else siminp
@@ -469,13 +468,13 @@ def main(argv):
     # ----------------------------------------------------- end: get user input
 
     # make sure input file is given and exists
-    if not siminp and not restart:
+    if not siminp and not restart and not barf:
         parser.print_help()
         parser.error("No input given")
 
     # call the run_payette function
-    siminfo = run_payette(siminp=siminp, restart=restart, timing=opts.timing,
-                          nproc=opts.nproc, disp=opts.disp,
+    siminfo = run_payette(siminp=siminp, restart=restart, barf=barf,
+                          timing=opts.timing, nproc=opts.nproc, disp=opts.disp,
                           verbosity=opts.verbosity)
 
     # visualize the results if requested

@@ -648,7 +648,8 @@ class Payette(object):
             self._write_extraction()
 
         if self.write_input:
-            self.write_input_file()
+            fpath = os.path.join(self.simdir, self.name + ".inp")
+            self.ui.write_input_file(fpath)
 
         if wipe or wipeall:
             # remove cruft
@@ -664,39 +665,3 @@ class Payette(object):
     def simulation_data(self):
         """return the simulation simdat object"""
         return self.simdat
-
-    def write_input_file(self):
-        """ from an input dictionary, write the input file
-
-        Parameters
-        ----------
-        user_input_obj : class instance
-          instance of InputParser object
-
-        inp_f : str
-            Path to input file to be written
-
-        Returns
-        -------
-        None
-
-        """
-        inp_lines = self.ui.inp
-        inp_f = os.path.join(self.simdir, self.name + ".inp")
-        if os.path.isfile(inp_f):
-            fnam, fext = os.path.splitext(inp_f)
-            shutil.copyfile(inp_f, fnam + ".orig" + fext)
-
-        # write the file
-        ns = 0
-        with open(inp_f, "w") as fobj:
-            for line in inp_lines.split("\n"):
-                if "simdir" in line.lower() or "write input" in line.lower():
-                    continue
-                if "end" in line.split()[0]:
-                    ns -= 2
-                fobj.write(" " * ns + line + "\n")
-                if "begin" in line:
-                    ns += 2
-                continue
-        return

@@ -48,11 +48,12 @@ import Source.Payette_utils as pu
 import Source.Payette_container as pcntnr
 import Source.Payette_optimize as po
 import Source.Payette_permutate as pp
+import Source.Payette_barf as pb
 import Source.Payette_parameterize as pparam
 import Source.Payette_input_parser as pip
 import Source.__runopts__ as ro
 
-def run_payette(siminp=None, restart=False, timing=False,
+def run_payette(siminp=None, restart=False, timing=False, barf=False,
                 nproc=ro.NPROC, disp=ro.DISP, verbosity=ro.VERBOSITY):
     """Main function for running a Payette job.
     Read the user inputs from argv, parse options, read user input, and run
@@ -65,6 +66,11 @@ def run_payette(siminp=None, restart=False, timing=False,
             the_model = pickle.load(ftmp)
             user_input_sets = (the_model, )
         restart = True
+
+    elif barf:
+        user_input_sets = (barf, )
+        barf = True
+
     else:
         if isinstance(siminp, (list, tuple)):
             siminp = "\n".join(siminp)
@@ -76,7 +82,7 @@ def run_payette(siminp=None, restart=False, timing=False,
 
     # we have a list of user input.  now create a generator to send to _run_job
     nsyms = len(user_input_sets) - 1
-    job_inp = ((item, disp, restart, timing, idx==nsyms)
+    job_inp = ((item, disp, restart, barf, timing, idx==nsyms)
                for idx, item in enumerate(user_input_sets))
 
     # number of processors
@@ -127,7 +133,7 @@ def _run_job(args):
     """ run each individual job """
 
     # pass passed args to local arguments
-    user_input, disp, restart, timing, last = args
+    user_input, disp, restart, barf, timing, last = args
 
     if timing:
         tim0 = time.time()
@@ -136,6 +142,10 @@ def _run_job(args):
     if restart:
         the_model = user_input
         the_model.setup_restart()
+
+    elif barf:
+        the_model = pb.PayetteBarf(user_input)
+        disp = 0
 
     elif re.search(r"(?i)\boptimization\b.*", user_input):
         # intantiate the Optimize object
@@ -177,6 +187,7 @@ def _run_job(args):
 
     # finish up
     the_model.finish()
+
     del the_model
 
     if not disp:

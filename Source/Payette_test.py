@@ -215,18 +215,16 @@ class PayetteTest(object):
 
         return pu.error_count()
 
-    def runTest(self):
-
+    def run_test(self):
         """ run the test """
-
         perform_calcs = self.run_command(self.runcommand)
-
         if perform_calcs != 0:
             return self.failtoruncode
-
         compare = self.compare_method()
-
         return compare
+
+    def runTest(self):
+        return self.run_test()
 
     def run_command(self,*cmd,**kwargs):
 
@@ -752,7 +750,7 @@ class PayetteTest(object):
 
         if "--full" in argv:
             print("{0:s} RUNNING FULL TEST".format(self.name))
-            result = self.runTest()
+            result = self.run_test()
             dta = time.time() - t0
             dtp = dta
 

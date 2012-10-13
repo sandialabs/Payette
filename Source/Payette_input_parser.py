@@ -25,7 +25,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import re, sys, os
+import re, sys, os, shutil
 from textwrap import fill as textfill
 import math
 import numpy as np
@@ -120,6 +120,23 @@ class InputParser(object):
             lines = pop_block(item, lines)
             continue
         return lines
+
+    def write_input_file(self, fpath):
+        """write the input to a formatted file"""
+        if os.path.isfile(fpath):
+            fnam, fext = os.path.splitext(fpath)
+            shutil.copyfile(fpath, fnam + ".orig" + fext)
+
+        # write the file
+        ns = 2
+        lines = "begin simulation {0}\n{1}\nend simulation".format(
+            self.name,
+            re.sub(r"(?i)simdir.*\n|write\s*input.*\n"
+                   "|name\s.*\n|[begin,end] input.*\n"
+                   "|\stype\s.*\n", "", self.inp))
+        with open(fpath, "w") as fobj:
+            fobj.write(lines)
+        return
 
 
 def parse_options(lines):
