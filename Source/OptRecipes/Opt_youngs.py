@@ -35,94 +35,76 @@ import Source.Payette_utils as pu
 import Source.Payette_extract as pe
 
 
-def exargs(fnam):
-    return fnam, "@strain11", "@sig11"
+class ObjectiveFunction(object):
 
-def init(*args):
-    """Initialize data needed to compute the error
+    def __init__(self, *args):
+        """With this objective function, the maximum root mean squared error
+        between the Young's modulus computed from the gold file and the output
+        file is returned as the error.
 
-    """
+        Parameters
+        ----------
+        args[0] : str
+            The gold file. Must contain columns labeled STRAIN11 and SIG11
+            from which the elastic Young's modulus will be computed.
 
-    # Do operations on the gold file here so that they are only done once
-    gold_f = args[0]
-    if gold_f is None:
-        pu.report_and_raise_error("no obj_dat given for Opt_youngs")
+        """
+        self.minvars = ["@strain11", "@sig11"]
 
-    elif not os.path.isfile(gold_f):
-        pu.report_and_raise_error("{0} not found".format(gold_f))
+        gold_f = args[0]
+        if gold_f is None:
+            pu.report_and_raise_error("No gold file given for Opt_youngs")
 
-    # extract only what we want from the gold and output files
-    xg = np.array(pe.extract(exargs(gold_f), silent=True))
+        elif not os.path.isfile(gold_f):
+            pu.report_and_raise_error("{0} not found".format(gold_f))
 
-    # find the Young's modulus
-    Eg = []
-    eps, sig = xg[:, 0], xg[:, 1]
-    for idx in range(len(sig) - 1):
-        deps = eps[idx + 1] - eps[idx]
-        dsig = sig[idx + 1] - sig[idx]
-        if abs(deps) > 1.e-16:
-            Eg.append(dsig / deps)
-        continue
-    Eg = np.mean(np.array(Eg))
-    _Eg(initial=Eg)
-    return
+        # extract from the gold file what we need to compute the incremental
+        # elastic Young's modulus
+        exargs = [gold_f] + self.minvars
+        xg = np.array(pe.extract(exargs, silent=True))
 
+        # find the Young's modulus
+        Eg = []
+        eps, sig = xg[:, 0], xg[:, 1]
+        for idx in range(len(sig) - 1):
+            deps = eps[idx + 1] - eps[idx]
+            dsig = sig[idx + 1] - sig[idx]
+            if abs(deps) > 1.e-16:
+                Eg.append(dsig / deps)
+            continue
+        self.Eg = np.mean(np.array(Eg))
+        pass
 
-def _Eg(Eg=[None], initial=None):
-    """Manage the Young's modulus from the gold file
+    def evaluate(self, *args):
+        """Evaluates the error between the simulation output and the "gold"
+        answer
 
-    Parameters
-    ----------
-    Eg : list
-        Eg[0] is the Young's modulus
-    initial : None or float, optional
-        if float, set the intial value of Eg
+        Parameters
+        ----------
+        args : tuple
+            args[0] : output file from simulation
 
-    Returns
-    -------
-    Eg[0] : float
-        the Young's modulus
+        Returns
+        -------
+        error : float
+            The error between the output and the "gold" answer
 
-    """
-    if initial is not None:
-        Eg[0] = float(initial)
-    return Eg[0]
+        """
 
+        out_f = args[0]
 
-def obj_fn(*args):
-    """Evaluates the error between the simulation output and the "gold" answer
+        # extract only what we want from the gold and output files
+        exargs = [out_f] + self.minvars
+        xo = np.array(pe.extract(exargs, silent=True))
 
-    Parameters
-    ----------
-    args : tuple
-        args[0] : output file from simulation
-
-    Returns
-    -------
-    error : float
-        The error between the output and the "gold" answer
-
-    Notes
-    -----
-    With this objective function, the maximum root mean squared error between
-    the Young's modulus computed from the gold file and the output file is
-    returned as the error.
-
-    """
-
-    out_f = args[0]
-
-    # extract only what we want from the gold and output files
-    xo = np.array(pe.extract(exargs(out_f), silent=True))
-
-    # do the comparison
-    Eo = []
-    for idx in range(len(xo[:, 0]) - 1):
-        deps = xo[:, 0][idx + 1] - xo[:, 0][idx]
-        dsig = xo[:, 1][idx + 1] - xo[:, 1][idx]
-        if abs(deps) > 1.e-16:
-            Eo.append(dsig / deps)
-        continue
-    Em = np.mean(np.array(Eo))
-    error = np.abs((_Eg() - Em) / _Eg())
-    return error
+        # do the comparison
+        Eo = []
+        for idx in range(len(xo[:, 0]) - 1):
+            deps = xo[:, 0][idx + 1] - xo[:, 0][idx]
+            dsig = xo[:, 1][idx + 1] - xo[:, 1][idx]
+            if abs(deps) > 1.e-16:
+                Eo.append(dsig / deps)
+            continue
+        Em = np.mean(np.array(Eo))
+        error = np.abs((self.Eg - Em) / self.Eg)
+        return error

@@ -374,7 +374,7 @@ def preprocess(lines, preprocessor=None):
                 break
             bn, en = found.start(), found.end()
             npat = re.compile(re.escape(r"{0}".format(lines[bn:en])), re.I|re.M)
-            repl = re.sub(pat, repl, lines[bn+1:en-1])
+            repl = re.sub(r"(?i){0}".format(pat), repl, lines[bn+1:en-1])
             if re.search("[\*+/\-]", repl):
                 repl = "{0:12.6E}".format(eval(repl))
             lines = npat.sub(repl, lines)

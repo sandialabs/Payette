@@ -54,7 +54,6 @@ import Toolset.KayentaParamConv as kpc
 IOPT = -1
 FAC = []
 FNEWEXT = ".0x312.gold"
-OBJFN = None
 
 
 class Optimize(object):
@@ -106,8 +105,8 @@ class Optimize(object):
             pu.log_message("Optimization variables: {0}"
                            .format(", ".join(self.data["optimize"])),
                            noisy=True)
-            pu.log_message("Objective function file: {0}".format(OBJFN.__file__),
-                           noisy=True)
+            pu.log_message("Objective function file: {0}"
+                           .format(self.data["obj file"]), noisy=True)
             if self.data["options"]:
                 pu.log_message("Optimization options: {0}"
                                .format(", ".join(self.data["options"])),
@@ -263,7 +262,7 @@ class Optimize(object):
         None
 
         """
-        global OBJFN
+        objmod = None
         allowed_methods = {
             "simplex": {"method": "Nelder-Mead", "name": "fmin"},
             "powell": {"method": "Powell", "name": "fmin_powell"},
@@ -309,20 +308,19 @@ class Optimize(object):
         if not os.path.isfile(fnam):
             ftry = os.path.join(cfg.OPTREC, fnam)
             if not os.path.isfile(ftry):
-                pu.report_error("obj_fn {0} not found".format(fnam))
+                pu.report_error("{0} not found".format(fnam))
             fnam = ftry
-        if os.path.splitext(fnam)[1] not in (".py",):
-            pu.report_error("obj_fn {0} must be .py file".format(fnam))
+        if not fnam.endswith(".py",):
+            pu.report_error("{0} must be .py file".format(fnam))
         else:
             pymod, pypath = pu.get_module_name_and_path(fnam)
+
         try:
             fobj, path, desc = imp.find_module(pymod, pypath)
-            OBJFN = imp.load_module(pymod, fobj, path, desc)
+            objmod = imp.load_module(pymod, fobj, path, desc)
             fobj.close()
-            if not hasattr(OBJFN, "obj_fn"):
-                pu.report_error("obj_fn must define a 'obj_fn' function")
         except ImportError:
-            pu.report_error("obj_fn {0} not imported".format(fnam))
+            pu.report_error("{0} not imported".format(fnam))
         if pu.error_count():
             pu.report_and_raise_error("stopping due to previous errors")
 
@@ -399,23 +397,23 @@ class Optimize(object):
 
         # check that minimum info was given
         if min_legacy["vars"]:
-            if OBJFN is not None:
-                if "Opt_legacy" not in os.path.basename(OBJFN.__file__):
+            if objmod is not None:
+                if "Opt_legacy" not in os.path.basename(objmod.__file__):
                     pu.report_error(
                         "Specification of 'minimize' in optimization block "
                         "requires obj_fn to be Opt_legacy.py, instead "
-                        "{0} was given".format(os.path.basename(OBJFN.__file__)))
+                        "{0} was given".format(os.path.basename(objmod.__file__)))
             else:
                 fnam = os.path.join(cfg.OPTREC, "Opt_legacy.py")
                 pymod, pypath = pu.get_module_name_and_path(fnam)
                 fobj, path, desc = imp.find_module(pymod, pypath)
-                OBJFN = imp.load_module(pymod, fobj, path, desc)
+                objmod = imp.load_module(pymod, fobj, path, desc)
                 fobj.close()
 
             if gold_f is None:
                 pu.report_error("No gold file given for optimization problem")
 
-        if OBJFN is None:
+        if objmod is None:
             pu.report_error("no objective function given")
 
         if not optimize:
@@ -431,11 +429,14 @@ class Optimize(object):
 
         # initialize the module, if the user desires
         try:
-            OBJFN.init(gold_f, min_legacy["abscissa"], min_legacy["vars"])
+            self.data["ObjectiveFunction"] = objmod.ObjectiveFunction(
+                gold_f, min_legacy["abscissa"], min_legacy["vars"])
         except AttributeError:
-            pass
+            pu.report_and_raise_error(
+                "ObjectiveFunction class not found in {0}".format(fnam))
 
         self.data["optimize"] = optimize
+        self.data["obj file"] = objmod.__file__
         self.data["maximum iterations"] = maxiter
         self.data["tolerance"] = tolerance
         self.data["optimization method"] = opt_method
@@ -625,6 +626,7 @@ def func(xcall, xnams, data, base_dir, index):
     IOPT += 1
 
     job = data["basename"] + ".{0:03d}".format(IOPT)
+    obj_fcn = data["ObjectiveFunction"]
 
     job_dir = os.path.join(base_dir, job)
     os.mkdir(job_dir)
@@ -691,7 +693,7 @@ def func(xcall, xnams, data, base_dir, index):
     if not os.path.isfile(out_f):
         pu.report_and_raise_error("out file {0} not created".format(out_f))
 
-    error = OBJFN.obj_fn(out_f)
+    error = obj_fcn.evaluate(out_f)
 
     with open(os.path.join(job_dir, job + ".opt"), "a") as fobj:
         fobj.write("error = {0:12.6E}\n".format(error))

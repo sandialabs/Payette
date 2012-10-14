@@ -32,7 +32,7 @@
 ; to generate the payette-directives execute:
 ; (regexp-opt '("optimize" "permutate" "fix" "insert" "from" "from columns") 'words)
 (defvar payette-directives
-  "\\<\\(f\\(?:ix\\|rom\\(?: *columns\\)?\\)\\|insert\\|optimize\\|permutate\\|using\\)\\>")
+  "\\<\\(f\\(?:ix\\|rom\\(?: *columns\\)?\\)\\|insert\\|optimize\\|minimize\\|versus\\|permutate\\|using\\)\\>")
 
 ; to generate the payette-opts execute:
 ; (regexp-opt '("initial value" "bounds" "range" "sequence" "normal" "weibull" "+/-" "percentage" "uniform") 'words)

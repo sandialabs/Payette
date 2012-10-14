@@ -34,99 +34,65 @@ import numpy as np
 import Source.Payette_utils as pu
 import Source.Payette_extract as pe
 
-#
-NC = 3
 
-def exargs(fnam):
-    """Argument to send to pe.extract
+class ObjectiveFunction(object):
 
-    Note
-    ----
-    These are the variables that will be extracted and minimized during the
-    optimization routine
+    def __init__(self, *args):
+        """With this objective function, the maximum root mean squared error
+        between SIG11, SIG22, and SIG33 from the simulation output and the gold
+        result is returned as the error.
 
-    """
-    return fnam, "@sig11", "@sig22", "@sig33"
+        Parameters
+        ----------
+        args[0] : str
+            The gold file. Must contain columns labeled SIG11, SIG22, SIG33.
 
+        """
 
-def init(*args):
-    """Initialize data needed to compute the error
+        self.minvars = ["@sig11", "@sig22", "@sig33"]
+        gold_f = args[0]
+        if gold_f is None:
+            pu.report_and_raise_error("No gold file given for Opt_sig.py")
 
-    """
+        elif not os.path.isfile(gold_f):
+            pu.report_and_raise_error("{0} not found".format(gold_f))
 
-    # Do operations on the gold file here so that they are only done once
-    gold_f = args[0]
-    if gold_f is None:
-        pu.report_and_raise_error("no obj_dat given for Opt_youngs")
+        # extract only what we want from the gold and output files
+        exargs = [gold_f] + self.minvars
+        self.gold_data = np.array(pe.extract(exargs, silent=True))
+        pass
 
-    elif not os.path.isfile(gold_f):
-        pu.report_and_raise_error("{0} not found".format(gold_f))
+    def evaluate(self, *args):
+        """Evaluates the error between the simulation output and the "gold" answer
 
-    # extract only what we want from the gold and output files
-    xg = np.array(pe.extract(exargs(gold_f), silent=True))
+        Parameters
+        ----------
+        args : tuple
+            args[0] : output file from simulation
 
-    _xg(initial=xg)
-    return
+        Returns
+        -------
+        error : float
+            The error between the output and the "gold" answer
 
+        """
+        out_f = args[0]
+        if not os.path.isfile(out_f):
+            pu.report_and_raise_error("{0} not found".format(out_f))
 
-def _xg(xg=[None], initial=None):
-    """Manage the gold file data
+        # extract only what we want from the gold and output files
+        exargs = [out_f] + self.minvars
+        out_data = np.array(pe.extract(exargs, silent=True))
 
-    Parameters
-    ----------
-    xg : list
-        xg[0] is the gold file data
-    initial : None or array, optional
-        if not None, set the intial value of xg
+        # do the comparison
+        anrmsd = []
+        for idx in range(3):
+            rmsd = np.sqrt(
+                np.mean((self.gold_data[:, idx] - out_data[:, idx]) ** 2))
+            dnom = abs(np.amax(out_data[:, idx]) - np.amin(out_data[:, idx]))
+            nrmsd = rmsd / dnom if dnom >= 2.e-16 else rmsd
+            anrmsd.append(nrmsd)
+            continue
 
-    Returns
-    -------
-    xg[0] : array
-        the gold file data
-
-    """
-    if initial is not None:
-        xg[0] = initial
-    return np.array(xg[0])
-
-
-
-
-def obj_fn(*args):
-    """Evaluates the error between the simulation output and the "gold" answer
-
-    Parameters
-    ----------
-    args : tuple
-        args[0] : output file from simulation
-
-    Returns
-    -------
-    error : float
-        The error between the output and the "gold" answer
-
-    Notes
-    -----
-    With this objective function, the maximum root mean squared error between
-    SIG11, SIG22, and SIG33 from the simulation output and the gold result is
-    returned as the error.
-
-    """
-
-    out_f = args[0]
-
-    # extract only what we want from the gold and output files
-    xo = np.array(pe.extract(exargs(out_f), silent=True))
-
-    # do the comparison
-    anrmsd = []
-    xg = _xg()
-    for idx in range(NC):
-        rmsd = np.sqrt(np.mean((xg[:, idx] - xo[:, idx]) ** 2))
-        dnom = abs(np.amax(xo[:, idx]) - np.amin(xo[:, idx]))
-        nrmsd = rmsd / dnom if dnom >= 2.e-16 else rmsd
-        anrmsd.append(nrmsd)
-        continue
-
-    error = np.amax(np.abs(np.array(anrmsd)))
-    return error
+        error = np.amax(np.abs(np.array(anrmsd)))
+        return error
