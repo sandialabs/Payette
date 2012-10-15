@@ -29,7 +29,7 @@
 import sys, os
 import optparse
 from optparse import OptionParser, BadOptionError, AmbiguousOptionError
-
+from textwrap import fill as textfill
 
 FILE = os.path.realpath(__file__)
 ROOTDIR = os.path.realpath(os.path.join(os.path.dirname(FILE), "../"))
@@ -43,11 +43,21 @@ except ImportError:
     sys.exit("Payette must first be configured before execution")
 import Source.__runopts__ as ro
 import Source.Payette_utils as pu
+import Source.Payette_model_index as pmi
 from Source.Payette_run import run_payette
 
 USAGE = "" if "-H" in sys.argv or "--man" in sys.argv else """\
 {0}: top level interface to the Payette material model driver
 usage: {0} [file_0.ext [file_1.ext [... file_n.ext]]]""".format(EXENAM)
+
+INSTALLED_MODELS = pmi.ModelIndex().constitutive_models()
+if INSTALLED_MODELS:
+    INSTALLED_MODELS = "{0}".format(
+        textfill(", ".join(INSTALLED_MODELS), initial_indent=" " * 6,
+                 subsequent_indent=" " * 6))
+else:
+    INSTALLED_MODELS = (
+        "      buildPayette must be executed to build and install models")
 
 MAN_PAGE = """\
 NAME
@@ -66,6 +76,9 @@ DESCRIPTION
       viz model selector GUI is launched and simulations can be set up and
       run in it.  Otherwise, Payette is driven from the command line.
 
+INSTALLED MODELS
+{1}
+
 CONFIGURATION INFO
       Python interpreter: {0}
 
@@ -73,7 +86,7 @@ OPTIONS
       There are a set of options recognized by the payette script, which are
       listed here.  If an option is given which is not listed here, it is
       passed through to the different Payette modules.
-""".format(cfg.PYINT)
+""".format(cfg.PYINT, INSTALLED_MODELS)
 
 
 class PassThroughOptionParser(OptionParser):

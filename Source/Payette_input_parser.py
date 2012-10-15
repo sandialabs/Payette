@@ -26,7 +26,6 @@
 # DEALINGS IN THE SOFTWARE.
 
 import re, sys, os, shutil
-from textwrap import fill as textfill
 import math
 import numpy as np
 
