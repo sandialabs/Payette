@@ -664,12 +664,14 @@ def solid_driver(the_model, **kwargs):
 
             # -------------------------------------------- end{end of step SQA}
 
+            ro.ISTEP += 1
+
             continue # continue to next step
         # ------------------------------------------------ end{processing step}
 
         # --- pass quantities from end of leg to beginning of new leg
-        simdat.advance_data("leg number", ileg + 1)
         ileg += 1
+        simdat.advance_data("leg number", ileg)
 
         if ro.WRITE_VANDD_TABLE:
             the_model.write_vel_and_disp(t_beg, t_end, eps_beg, eps_end)

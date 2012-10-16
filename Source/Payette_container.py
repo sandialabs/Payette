@@ -203,6 +203,7 @@ class Payette(object):
 
         self.t0 = self.boundary.initial_time()
         self.tf = self.boundary.termination_time()
+        ro.set_number_of_steps(self.boundary.nsteps())
 
         # set up the simulation data container and register obligatory data
         self.simdat = DataContainer(self.name)

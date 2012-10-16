@@ -32,6 +32,10 @@ MTLDB = cfg.MTLDB
 # not set through command line
 EFIELD_SIM = False
 
+# number of simulation steps
+ISTEP = 0
+NSTEPS = 0
+
 
 def set_command_line_options(opts):
     """Set global Payette options based on options passed to payette
@@ -132,3 +136,11 @@ def _register_default_option(opt, val, inquire=False, options={}):
 
 def get_default_options():
     return _register_default_option(None, None, inquire=True)
+
+
+def set_number_of_steps(N, done=[0]):
+    if done[0]:
+        raise SystemExit("Number of steps already set")
+    sys.modules[__name__].NSTEPS = N
+    done[0] = 1
+    return

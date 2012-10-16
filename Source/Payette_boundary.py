@@ -57,6 +57,7 @@ class Boundary(object):
         self._kappa = 0.
         self.stepfac, self.efac, self.tfac, self.sfac, self.ffac = [1.] * 5
         self.effac, self.dfac, self.ratfac = [1.] * 3
+        self._nsteps = 0
 
         # structure of _bcontrol:
         # _bcontrol[key] = [type, default, extra [min, choices,]]
@@ -100,6 +101,9 @@ class Boundary(object):
 
     def screenout(self):
         return self.bcontrol("screenout")[1]
+
+    def nsteps(self):
+        return self._nsteps
 
     def _parse_boundary(self, bblock):
         """Parse the boundary block
@@ -501,9 +505,11 @@ class Boundary(object):
                     "reset to 0. from {0:f}\n".format(kappa))
                 self.bcontrol("kappa", 0.)
 
-        # check that time is monotonic in lcontrol
+        # check that time is monotonic in lcontrol and find total number of
+        # steps to be completed
         time_0, time_f = 0., 0.
         for ileg, leg in enumerate(self._legs):
+            self._nsteps += leg[2]
             if ileg == 0:
                 # set the initial time
                 time_0 = leg[1]
@@ -665,6 +671,7 @@ class EOSBoundary(object):
 
         self.boundary = bblock
         self.legs = lblock
+        self._nsteps = 0
 
         # parse the boundary block
         self.allowed_unit_systems = ("MKSK", "CGSEV",)
@@ -958,3 +965,6 @@ class EOSBoundary(object):
     def termination_time(self):
         """no initial or termination time explicitly set for EOS simulations"""
         return None
+
+    def nsteps(self):
+        return self._nsteps
