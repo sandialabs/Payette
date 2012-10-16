@@ -1,0 +1,47 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module payette__user__routines
+    interface payette_user_interface
+        subroutine log_message(message)
+            intent(callback) log_message
+            character*(*) :: message
+            real intent(callback) :: report_and_raise_error
+        end subroutine log_message
+        subroutine report_and_raise_error(message)
+            intent(callback) report_and_raise_error
+            character*(*) :: message
+            real intent(callback) :: log_message
+        end subroutine report_and_raise_error
+    end interface payette_user_interface
+end python module payette__user__routines
+
+python module finite_elastic ! in
+    interface  ! in :finite_elastic
+        subroutine finite_elast_calc(nblk,ui,f,e,pk2,sig)
+            use payette__user__routines
+            integer, parameter :: nprop=3
+            double precision dimension(nprop),intent(in) :: ui
+            double precision dimension(9),intent(in) :: f
+            double precision dimension(6),intent(out) :: e
+            double precision dimension(6),intent(out) :: pk2
+            double precision dimension(6),intent(out) :: sig
+            intent(callback) report_and_raise_error
+            external report_and_raise_error
+            intent(callback) log_message
+            external log_message
+        end subroutine finite_elast_calc
+        subroutine finite_elast_chk(ui) ! in :diamm:.//diamm_mig.F
+            use payette__user__routines
+            integer, parameter :: nprop=3
+            double precision dimension(nprop),intent(in,out) :: ui
+            intent(callback) report_and_raise_error
+            external report_and_raise_error
+            intent(callback) log_message
+            external log_message
+        end subroutine finite_elast_chk
+    end interface
+end python module finite_elastic
+
+! This file was auto-generated with f2py (version:1).
+! See http://cens.ioc.ee/projects/f2py2e/

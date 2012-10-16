@@ -1,0 +1,239 @@
+<!-- Material properties file for the piezo electric material -->
+
+<MaterialModel>
+  <Name>Piezo Electric</Name>
+
+  <Type> Electromechanical </Type>
+
+  <Description>
+    Piezo-electric material model
+  </Description>
+
+  <Owner>Tim Fuller (tjfulle@sandia.gov)</Owner>
+
+  <Files>
+    <Core>
+      piezo_electric.f90
+      Payette_piezo_electric.py
+    </Core>
+    <Interface type="payette">
+      Build_piezo_electric.py
+      Payette_piezo_electric.py
+      Payette_piezo_electric.pyf
+    </Interface>
+  </Files>
+
+  <Distribution>
+    unlimited
+  </Distribution>
+
+
+  <ModelParameters>
+    <Key>piezo_electric</Key>
+    <Aliases>PZT</Aliases>
+
+    <Units>SI</Units>
+
+    <!-- Elastic stiffnesses -->
+    <Parameter name="C11" order="0" type="double" default="0" units="PRESSURE_UNITS">
+      11 component of elastic stiffness
+    </Parameter>
+    <Parameter name="C33" order="1" type="double" default="0" units="PRESSURE_UNITS">
+      33 component of elastic stiffness
+    </Parameter>
+    <Parameter name="C12" order="2" type="double" default="0" units="PRESSURE_UNITS">
+      12 component of elastic stiffness
+    </Parameter>
+    <Parameter name="C13" order="3" type="double" default="0" units="PRESSURE_UNITS">
+      13 component of elastic stiffness
+    </Parameter>
+    <Parameter name="C44" order="4" type="double" default="0" units="PRESSURE_UNITS">
+      44 component of elastic stiffness
+    </Parameter>
+    <Parameter name="C66" order="5" type="double" default="0" units="PRESSURE_UNITS">
+      66 component of elastic stiffness
+    </Parameter>
+    <Parameter name="E311" order="6" type="double" default="0" units="PRESSURE_UNITS">
+      311 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="E113" order="7" type="double" default="0" units="PRESSURE_UNITS">
+      113 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="E333" order="8" type="double" default="0" units="PRESSURE_UNITS">
+      212 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="E333" order="9" type="double" default="0" units="PRESSURE_UNITS">
+      312 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="EP11" order="10" type="double" default="0" units="PRESSURE_UNITS">
+      11 component of the symmetric dielectric tensor
+    </Parameter>
+    <Parameter name="EP33" order="11" type="double" default="0" units="PRESSURE_UNITS">
+      33 component of the symmetric dielectric tensor
+    </Parameter>
+
+    <!-- Material axes -->
+    <Parameter name="M11" order="12" type="double" default="0" units="NO_UNITS">
+      11 component of of x axis wrt to global problem axes
+    </Parameter>
+    <Parameter name="M12" order="13" type="double" default="0" units="NO_UNITS">
+      12 component of of x axis wrt to global problem axes
+    </Parameter>
+    <Parameter name="M13" order="14" type="double" default="0" units="NO_UNITS">
+      13 component of of x axis wrt to global problem axes
+    </Parameter>
+    <Parameter name="M21" order="15" type="double" default="0" units="NO_UNITS">
+      21 component of of x axis wrt to global problem axes
+    </Parameter>
+    <Parameter name="M22" order="16" type="double" default="0" units="NO_UNITS">
+      22 component of of x axis wrt to global problem axes
+    </Parameter>
+    <Parameter name="M23" order="17" type="double" default="0" units="NO_UNITS">
+      23 component of of x axis wrt to global problem axes
+    </Parameter>
+
+    <!-- Density -->
+    <Parameter name="DENSITY" order="18" type="double" default="0" units="DENSITY_UNITS">
+      Density
+    </Parameter>
+
+    <!-- Below are parameters that are derived from the parameters above -->
+    <Parameter name="_CM11" order="19" type="double" default="0" units="PRESSURE_UNITS">
+      11 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM12" order="20" type="double" default="0" units="PRESSURE_UNITS">
+      12 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM13" order="21" type="double" default="0" units="PRESSURE_UNITS">
+      13 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM14" order="22" type="double" default="0" units="PRESSURE_UNITS">
+      14 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM15" order="23" type="double" default="0" units="PRESSURE_UNITS">
+      15 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM16" order="24" type="double" default="0" units="PRESSURE_UNITS">
+      16 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM22" order="25" type="double" default="0" units="PRESSURE_UNITS">
+      22 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM23" order="26" type="double" default="0" units="PRESSURE_UNITS">
+      23 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM24" order="27" type="double" default="0" units="PRESSURE_UNITS">
+      24 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM25" order="28" type="double" default="0" units="PRESSURE_UNITS">
+      25 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM26" order="29" type="double" default="0" units="PRESSURE_UNITS">
+      26 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM33" order="30" type="double" default="0" units="PRESSURE_UNITS">
+      33 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM34" order="31" type="double" default="0" units="PRESSURE_UNITS">
+      34 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM35" order="32" type="double" default="0" units="PRESSURE_UNITS">
+      35 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM36" order="33" type="double" default="0" units="PRESSURE_UNITS">
+      36 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM44" order="34" type="double" default="0" units="PRESSURE_UNITS">
+      44 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM45" order="35" type="double" default="0" units="PRESSURE_UNITS">
+      45 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM46" order="36" type="double" default="0" units="PRESSURE_UNITS">
+      46 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM55" order="37" type="double" default="0" units="PRESSURE_UNITS">
+      55 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM56" order="38" type="double" default="0" units="PRESSURE_UNITS">
+      56 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_CM66" order="39" type="double" default="0" units="PRESSURE_UNITS">
+      66 component of elastic stiffness
+    </Parameter>
+    <Parameter name="_EM111" order="40" type="double" default="0" units="PRESSURE_UNITS">
+      111 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM211" order="41" type="double" default="0" units="PRESSURE_UNITS">
+      211 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM311" order="42" type="double" default="0" units="PRESSURE_UNITS">
+      311 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM122" order="43" type="double" default="0" units="PRESSURE_UNITS">
+      122 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM222" order="44" type="double" default="0" units="PRESSURE_UNITS">
+      222 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM322" order="45" type="double" default="0" units="PRESSURE_UNITS">
+      322 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM133" order="46" type="double" default="0" units="PRESSURE_UNITS">
+      133 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM233" order="47" type="double" default="0" units="PRESSURE_UNITS">
+      233 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM333" order="48" type="double" default="0" units="PRESSURE_UNITS">
+      333 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM123" order="49" type="double" default="0" units="PRESSURE_UNITS">
+      123 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM223" order="50" type="double" default="0" units="PRESSURE_UNITS">
+      223 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM323" order="51" type="double" default="0" units="PRESSURE_UNITS">
+      323 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM113" order="52" type="double" default="0" units="PRESSURE_UNITS">
+      113 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM213" order="53" type="double" default="0" units="PRESSURE_UNITS">
+      213 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM313" order="54" type="double" default="0" units="PRESSURE_UNITS">
+      313 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM112" order="55" type="double" default="0" units="PRESSURE_UNITS">
+      112 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM212" order="56" type="double" default="0" units="PRESSURE_UNITS">
+      212 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EM312" order="57" type="double" default="0" units="PRESSURE_UNITS">
+      312 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EPM11" order="58" type="double" default="0" units="PRESSURE_UNITS">
+      11 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EPM12" order="59" type="double" default="0" units="PRESSURE_UNITS">
+      12 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EPM13" order="60" type="double" default="0" units="PRESSURE_UNITS">
+      13 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EPM22" order="61" type="double" default="0" units="PRESSURE_UNITS">
+      22 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EPM23" order="62" type="double" default="0" units="PRESSURE_UNITS">
+      23 component of the piezoelectric coupling tensor
+    </Parameter>
+    <Parameter name="_EPM33" order="63" type="double" default="0" units="PRESSURE_UNITS">
+      33 component of the piezoelectric coupling tensor
+    </Parameter>
+
+  </ModelParameters>
+
+</MaterialModel>
