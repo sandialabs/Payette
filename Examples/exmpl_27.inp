@@ -1,0 +1,40 @@
+# Example opt
+# Title: exmpl_27
+# Author: Tim Fuller, tjfulle@sandia.gov
+# Keywords: optimization
+# Comments: This input file demonstrates the parameter optimization
+#           functionality of Payette.
+begin preprocessing
+  EPSAX = .001
+end preprocessing
+begin simulation exmpl_27
+  nowriteprops
+
+  begin boundary
+    kappa = 0
+    estar = 1
+    stepstar = 1000
+    begin legs
+    # n t s c      xx      yy zz xy yz xz
+      0 0 0 222222 0       0  0  0  0  0
+      1 1 1 244222 {EPSAX} 0  0  0  0  0
+    end legs
+  end boundary
+
+  begin material
+    constitutive model plastic
+    A0 = {A0} # 5.196E+07
+    B0 = {B0} # 1.370E+11
+    G0 = {G0} # 6.323E+10
+  end material
+
+  begin optimization
+    method cobyla
+    obj_fn in Opt_plastic.py
+    gold file exmpl_27.dat
+    optimize A0, initial value = 5.50e7, bounds(4.00e7, 6.00e7)
+    optimize B0, initial value = 135.e9, bounds(130.e9, 140.e9)
+    optimize G0, initial value = 60.0e9, bounds(58.0e9, 70.0e9)
+  end optimization
+
+end simulation
