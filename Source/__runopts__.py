@@ -123,6 +123,7 @@ def restore_default_options():
     for key, val in defaults.items():
         setattr(module, key, val)
         continue
+    set_number_of_steps(reset=True)
 
     return
 
@@ -138,9 +139,12 @@ def get_default_options():
     return _register_default_option(None, None, inquire=True)
 
 
-def set_number_of_steps(N, done=[0]):
-    if done[0]:
-        raise SystemExit("Number of steps already set")
+def set_number_of_steps(N=0, done=[0], reset=False):
+    if reset:
+        done[0] = 0
+    elif done[0]:
+        raise OSError("Number of steps already set")
+    else:
+        done[0] = 1
     sys.modules[__name__].NSTEPS = N
-    done[0] = 1
     return

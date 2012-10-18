@@ -70,7 +70,7 @@ class PayetteError(Exception):
             "ERROR: {0} {1}"
             .format(" ".join(x for x in message.split() if x), reported_by))
 
-        Exception.__init__(self, self.message)
+        super(PayetteError, self).__init__(self.message)
 
 
 class Payette(object):
