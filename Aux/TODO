@@ -1,0 +1,28 @@
+LIST OF THINGS TO DO IN PAYETTE
+===============================
+
+LEGEND
+------
+* - Very important
+# - Not as important
+
+GUI
+---
+
+*) Updated documentation
+*) Overlay files does not work on Linux - missing lignutils libraries.  Could just be a broken link?
+*) Overlay files do not display if ordering of header differs from files already displayed
+*) In fact all files have to have identical headers to plot together
+*) EOS surface visualization
+#) Would be nice to have file names in legend of plots
+#) Time slider would be better if it was a slider for whatever the current x-axis is
+#) Ability to right click on curve and have it removed from display (or in legend)
+#) Be able to move legend around or disable legend
+#) Right hand axes
+#) Exporting plots
+
+DRIVER
+------
+
+#) Integration of Lambda/Alegra/CTH models
+#) Simplify and reduce copying to/from DataContainer object.  Perhaps initialize all data
