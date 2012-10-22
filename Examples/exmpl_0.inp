@@ -53,7 +53,7 @@ begin simulation exmpl_0
     ampl = 1    # multiplier on all components of deformation
     screenout = 1
     efstar, 2
-    stepstar, -100
+    stepstar, 100
     emit sparse
     poop True
 

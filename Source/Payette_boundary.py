@@ -38,6 +38,7 @@ DTYPES = {"strain rate": (1, 6), "strain": (2, 6), "stress rate": (3, 6),
           "stress": (4, 6), "deformation gradient": (5, 9),
           "electric field": (6, 3), "displacement": (8, 3), "vstrain": (2, 1),
           "pressure": (4, 1),}
+EMIT = {"all": 1, "sparse":0}
 
 
 class BoundaryError(Exception):
@@ -67,7 +68,7 @@ class Boundary(object):
             "fstar": [float, 1., None], "dstar": [float, 1., None],
             "efstar": [float, 1., None], "stepstar": [float, 1., 1.],
             "ampl": [float, 1., None], "ratfac": [float, 1., None],
-            "emit": ["choice", "all", ("all", "sparse",)],
+            "emit": ["choice", "all", EMIT.keys()],
             "nprints": [int, 0, None], "screenout": [bool, False, None],}
 
         # intialize container for legs
@@ -97,10 +98,10 @@ class Boundary(object):
         return self.bcontrol("nprints")[1]
 
     def emit(self):
-        return self.bcontrol("emit")[1]
+        return EMIT[self.bcontrol("emit")[1]]
 
     def screenout(self):
-        return self.bcontrol("screenout")[1]
+        return int(self.bcontrol("screenout")[1])
 
     def nsteps(self):
         return self._nsteps

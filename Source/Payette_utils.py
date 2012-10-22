@@ -253,7 +253,7 @@ def close_aux_files():
     return
 
 
-def flatten(x):
+def flatten(x, array=False):
     """flatten(sequence) -> list
 
     Returns a single, flat list which contains all elements retrieved
@@ -276,6 +276,8 @@ def flatten(x):
         else:
             result.append(el)
         continue
+    if array:
+        return np.array(result)
     return result
 
 

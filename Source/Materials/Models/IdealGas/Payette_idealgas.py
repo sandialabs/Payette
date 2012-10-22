@@ -55,34 +55,29 @@ class IdealGas(ConstitutiveModelPrototype):
 
         # Variables already registered:
         #   density, temperature, energy, pressure
-        matdat.register_data("soundspeed", "Scalar",
-                             init_val = 0.,
-                             plot_key = "SNDSPD",
-                             units="VELOCITY_UNITS")
-        matdat.register_data("dpdr", "Scalar",
-                             init_val = 0.,
-                             plot_key = "DPDR",
-                             units="PRESSURE_UNITS_OVER_DENSITY_UNITS")
-        matdat.register_data("dpdt", "Scalar",
-                             init_val = 0.,
-                             plot_key = "DPDT",
-                             units="PRESSURE_UNITS_OVER_TEMPERATURE_UNITS")
-        matdat.register_data("dedt", "Scalar",
-                             init_val = 0.,
-                             plot_key = "DEDT",
-                             units="SPECIFIC_ENERGY_UNITS_OVER_TEMPERATURE_UNITS")
-        matdat.register_data("dedr", "Scalar",
-                             init_val = 0.,
-                             plot_key = "DEDR",
-                             units="SPECIFIC_ENERGY_UNITS_OVER_DENSITY_UNITS")
+        matdat.register("soundspeed", "Scalar",
+                        plot_key = "SNDSPD",
+                        units="VELOCITY_UNITS")
+        matdat.register("dpdr", "Scalar",
+                        plot_key = "DPDR",
+                        units="PRESSURE_UNITS_OVER_DENSITY_UNITS")
+        matdat.register("dpdt", "Scalar",
+                        plot_key = "DPDT",
+                        units="PRESSURE_UNITS_OVER_TEMPERATURE_UNITS")
+        matdat.register("dedt", "Scalar",
+                        plot_key = "DEDT",
+                        units="SPECIFIC_ENERGY_UNITS_OVER_TEMPERATURE_UNITS")
+        matdat.register("dedr", "Scalar",
+                        plot_key = "DEDR",
+                        units="SPECIFIC_ENERGY_UNITS_OVER_DENSITY_UNITS")
         pass
 
-    def evaluate_eos(self, simdat, matdat, unit_system, rho=None, temp=None, enrg=None):
-        """
-          Evaluate the eos - rho and temp are in CGSEV
+    def evaluate_eos(self, simdat, matdat, unit_system, rho=None,
+                     temp=None, enrg=None):
+        """Evaluate the eos - rho and temp are in CGSEV
 
-          By the end of this routine, the following variables should be
-          updated and stored in matdat:
+        By the end of this routine, the following variables should be
+        updated and stored in matdat:
                   density, temperature, energy, pressure
         """
         M = self.ui[0]
@@ -101,22 +96,22 @@ class IdealGas(ConstitutiveModelPrototype):
         P = R * temp * rho / M
 
         # make sure we store the "big three"
-        matdat.store_data("density", rho)
-        matdat.store_data("temperature", temp)
-        matdat.store_data("energy", enrg)
+        matdat.save("density", rho)
+        matdat.save("temperature", temp)
+        matdat.save("energy", enrg)
 
-        matdat.store_data("pressure", P)
-        matdat.store_data("dpdr", R * temp / M)
-        matdat.store_data("dpdt", R * rho / M)
-        matdat.store_data("dedt", CV * R)
-        matdat.store_data("dedr", CV * P * M / rho ** 2)
-        matdat.store_data("soundspeed", (R * temp / M) ** 2)
+        matdat.save("pressure", P)
+        matdat.save("dpdr", R * temp / M)
+        matdat.save("dpdt", R * rho / M)
+        matdat.save("dedt", CV * R)
+        matdat.save("dedr", CV * P * M / rho ** 2)
+        matdat.save("soundspeed", (R * temp / M) ** 2)
 
         matdat.advance_all_data()
         return
 
 
-    def update_state(self,simdat,matdat):
+    def update_state(self, simdat, matdat):
         """update the material state"""
         pu.report_and_raise_error("MGR EOS does not provide update_state")
         return

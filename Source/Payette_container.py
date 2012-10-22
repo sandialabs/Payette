@@ -41,10 +41,10 @@ import Source.Payette_extract as pe
 import Source.Payette_boundary as pb
 import Source.Payette_input_parser as pip
 import Source.__runopts__ as ro
+import Source.Payette_unit_manager as um
 from Source.Payette_material import Material
 from Source.Payette_data_container import DataContainer
 from Source.Payette_boundary import BoundaryError as BoundaryError
-from Source.Payette_unit_manager import UnitManager as UnitManager
 
 
 class PayetteError(Exception):
@@ -75,8 +75,9 @@ class PayetteError(Exception):
 
 class Payette(object):
     """Main container class for a Payette single element simulation,
-    instantiated in the payette script. The documentation is currently sparse,
-    but may be expanded if time allows.
+    instantiated in the payette script.
+
+    The documentation is currently sparse, but may be expanded if time allows.
 
     """
 
@@ -207,23 +208,23 @@ class Payette(object):
 
         # set up the simulation data container and register obligatory data
         self.simdat = DataContainer(self.name)
-        self.simdat.register_data("time", "Scalar",
-                                 init_val=0., plot_key="time",
-                                 units="TIME_UNITS")
-        self.simdat.register_data("time step", "Scalar",
-                                 init_val=0., plot_key="timestep",
-                                 units="TIME_UNITS")
-        self.simdat.register_data("number of steps", "Scalar", init_val=0,
-                                  units="NO_UNITS")
-        self.simdat.register_data("leg number", "Scalar", init_val=0,
-                                  units="NO_UNITS")
-        self.simdat.register_data("payette density", "Scalar",
-                                  init_val=self.material.initial_density(),
-                                  plot_key="PRHO",
-                                  units="DENSITY_UNITS")
-        self.simdat.register_data("volume fraction", "Scalar",
-                                  init_val=1., plot_key="VFRAC",
-                                  units="NO_UNITS")
+        self.simdat.register("time", "Scalar",
+                             plot_key="time",
+                             units="TIME_UNITS")
+        self.simdat.register("time step", "Scalar",
+                             plot_key="timestep",
+                             units="TIME_UNITS")
+        self.simdat.register("number of steps", "Scalar",
+                             units="NO_UNITS")
+        self.simdat.register("leg number", "Scalar",
+                             units="NO_UNITS")
+        self.simdat.register("payette density", "Scalar",
+                             ival=self.material.initial_density(),
+                             plot_key="PRHO",
+                             units="DENSITY_UNITS")
+        self.simdat.register("volume fraction", "Scalar",
+                             ival=1., plot_key="VFRAC",
+                             units="NO_UNITS")
 
         if ro.CHECK_SETUP:
             exit("EXITING to check setup")
@@ -237,13 +238,16 @@ class Payette(object):
 
         self.write_input = ro.WRITE_INPUT or self.simdir != os.getcwd()
 
-        self.simdat.register_static_data("nprints", self.boundary.nprints())
+        self.simdat.register("nprints", "Scalar",
+                             self.boundary.nprints(), constant=True)
         if not self.material.eos_model:
             # register data not needed by the eos models
-            self.simdat.register_static_data("emit", self.boundary.emit())
-            self.simdat.register_static_data("kappa", self.boundary.kappa())
-            self.simdat.register_static_data("screenout",
-                                             self.boundary.screenout())
+            self.simdat.register("emit", "Scalar",
+                                 self.boundary.emit(), constant=True)
+            self.simdat.register("kappa", "Scalar",
+                                 self.boundary.kappa(), constant=True)
+            self.simdat.register( "screenout", "Scalar",
+                                  self.boundary.screenout(), constant=True)
 
         # --- optional information ------------------------------------------ #
         # list of plot keys for all plotable data
@@ -251,7 +255,6 @@ class Payette(object):
         output, oformat = pip.parse_output(output)
         self.plot_keys = [x for x in self.simdat.plot_keys()]
         self.plot_keys.extend(self.matdat.plot_keys())
-        self.plot_keys = [x.upper() for x in self.plot_keys]
         if "ALL" in output:
             self.out_vars = [x for x in self.plot_keys]
         else:
@@ -271,6 +274,12 @@ class Payette(object):
         self.extraction_vars = extraction
         self.eopts = eopts
 
+        # by this point, everything has been registered, finish the data
+        # containers
+        self.simdat.setup_data_container()
+        self.matdat.setup_data_container()
+
+        # finish setting up files
         self._setup_files()
 
         pass
@@ -374,7 +383,6 @@ class Payette(object):
             for key in self.out_vars:
                 self.outfile_obj.write(pu.textformat(key))
                 continue
-
             self.outfile_obj.write("\n")
             self.outfile_obj.flush()
         self._open_files[file_name] = self.outfile_obj
@@ -424,28 +432,27 @@ class Payette(object):
         """ write to the log file a list of all available data and whether or
         not it was requested for being plotted """
 
-        def _write_plotable(idx, key, name, val):
+        def _write_plotable(i, k, n, v):
             """ write to the logfile the available variables """
-            tok = "plotable" if key in self.out_vars else "no request"
+            tok = "plotable" if k in self.out_vars else "no request"
             pu.write_to_simlog(
                 "{0:<3d} {1:<10s}: {2:<10s} = {3:<50s} = {4:12.5E}"
-                .format(idx, tok, key, name, val))
+                .format(i, tok, k, n, v))
             return
 
         # write to the log file what is plotable and not requested, along with
         # inital value
         pu.write_to_simlog("Summary of available output")
 
-        for plot_idx, plot_key in enumerate(self.plot_keys):
-            if plot_key in self.simdat.plot_keys():
+        for idx, key in enumerate(self.plot_keys):
+            if key in self.simdat.plot_keys():
                 dat = self.simdat
             else:
                 dat = self.matdat
-            plot_name = dat.get_plot_name(plot_key)
-            val = dat.get_data(plot_key)
-            _write_plotable(plot_idx + 1, plot_key, plot_name, val)
+            description = dat.get(key, "description")
+            val = dat.get(key)
+            _write_plotable(idx + 1, key, description, val)
             continue
-
         return
 
     def write_state(self, input_unit_system=None, output_unit_system=None):
@@ -458,26 +465,19 @@ class Payette(object):
             UNITCONVERT = True
 
         data = []
-        for plot_key in self.out_vars:
-            if plot_key in self.simdat.plot_keys():
+        for out_var in self.out_vars:
+            if out_var in self.simdat.plot_keys():
                 dat = self.simdat
             else:
                 dat = self.matdat
+            val = dat.get(out_var)
 
-            dum = dat.get_data(plot_key)
             if UNITCONVERT:
-                units = dat.get_data_units(plot_key)
-                dum = UnitManager(dum, input_unit_system, units)
-                dum.convert(output_unit_system)
-                dum = dum.get()
-
-            data.append(dum)
-            continue
-
-
-
-        for dat in data:
-            self.outfile_obj.write(pu.textformat(dat))
+                units = dat.get(out_var, "units")
+                umgr = um.UnitManager(val, input_unit_system, units)
+                umgr.convert(output_unit_system)
+                val = umgr.get()
+            self.outfile_obj.write(pu.textformat(val))
             continue
         self.outfile_obj.write('\n')
         return

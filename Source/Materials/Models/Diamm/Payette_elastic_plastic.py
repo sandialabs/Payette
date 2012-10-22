@@ -109,7 +109,7 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         keya = parse_token(self.nsv,keya)
 
         # register the extra variables with the payette object
-        matdat.register_xtra_vars(self.nsv,namea,keya,sv)
+        matdat.register_xtra_vars(self.nsv, namea, keya, sv)
 
         self.bulk_modulus,self.shear_modulus = self.ui[0],self.ui[3]
 
@@ -119,10 +119,10 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         '''
            update the material state based on current state and strain increment
         '''
-        dt = simdat.get_data("time step")
-        d = matdat.get_data("rate of deformation")
-        sigold = matdat.get_data("stress")
-        svold = matdat.get_data("extra variables")
+        dt = simdat.get("time step")
+        d = matdat.get("rate of deformation")
+        sigold = matdat.get("stress")
+        svold = matdat.get("extra variables")
         a = [1, dt, self.ui, sigold, d, svold]
         if cfg.F2PY["callback"]:
             a.extend([report_and_raise_error, log_message])
@@ -130,8 +130,8 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         signew, svnew, usm = mtllib.diamm_calc(*a)
 
         # update data
-        matdat.store_data("stress",signew)
-        matdat.store_data("extra variables",svnew)
+        matdat.save("stress", signew)
+        matdat.save("extra variables", svnew)
 
         return
 

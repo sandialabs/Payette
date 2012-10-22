@@ -165,8 +165,7 @@ class ConstitutiveModelPrototype(object):
         if not any(x for y in self.J0 for x in y):
             pu.report_and_raise_error("iniatial Jacobian is empty")
 
-        matdat.register_data("jacobian", "Matrix", init_val=self.J0,
-                             units="NO_UNITS")
+        matdat.register("jacobian", "Matrix", ival=self.J0, units="NO_UNITS")
         ro.set_global_option("EFIELD_SIM", self.electric_field_model)
 
         return
@@ -433,6 +432,14 @@ class ConstitutiveModelPrototype(object):
            compute the initial material Jacobian J = dsig / deps, assuming
            isotropy
         '''
+        # nv is the dimension of the needed jacobian matrix (nv x nv) for the
+        # intial jacobian, we need the whole thing
+        nV = 6
+
+        # v array is an array of integers that contains the rows and columns of
+        # the slice needed in the jacobian subroutine.
+        V = np.array([0, 1, 2, 3, 4, 5], dtype=int)
+
         if isotropic:
             j_0 = np.zeros((6, 6))
             threek, twog = 3. * self.bulk_modulus, 2. * self.shear_modulus
@@ -456,31 +463,30 @@ class ConstitutiveModelPrototype(object):
 
         else:
             # material is not isotropic, numerically compute the jacobian
-            matdat.stash_data("prescribed stress components")
-            matdat.store_data("prescribed stress components",
-                              [0, 1, 2, 3, 4, 5])
-            self.J0 = self.jacobian(simdat, matdat)
-            matdat.unstash_data("prescribed stress components")
+            self.J0 = self.jacobian(simdat, matdat, V)
             return
 
         return
 
 
-    def jacobian(self, simdat, matdat):
+    def jacobian(self, simdat, matdat, V):
         """Numerically compute and return a specified submatrix, j_sub, of the
         Jacobian matrix J = J_ij = dsigi / depsj.
 
         Parameters
         ----------
         simdat : object
-          simulation data container
+            simulation data container
         matdat : object
-          material data container
+            material data container
+        V : array_like
+            array is an array of integers that contains the rows and columns
+            of the slice needed in the jacobian subroutine.
 
         Returns
         -------
         j_sub : array_like
-          Jacobian of the deformation J = dsig / deps
+            Jacobian of the deformation J = dsig / deps
 
         Notes
         -----
@@ -509,48 +515,45 @@ class ConstitutiveModelPrototype(object):
 
         # local variables
         epsilon = np.finfo(np.float).eps
-        nzc = matdat.get_data("prescribed stress components")
-        l_nzc = len(nzc)
-        deps, j_sub = math.sqrt(epsilon), np.zeros((l_nzc, l_nzc))
+        nV = len(V)
+        deps, j_sub = math.sqrt(epsilon), np.zeros((nV, nV))
 
-        delt = simdat.get_data("time step")
+        delt = simdat.get("time step")
         delt = 1 if delt == 0. else delt
-        sym_velgrad = matdat.get_data("rate of deformation")
-        f_old = matdat.get_data("deformation gradient", form="Matrix")
+        sym_velgrad = matdat.get("rate of deformation")
+        f_old = matdat.get("deformation gradient", form="Matrix")
 
         # stash the data
-        simdat.stash_data("time step")
-        matdat.stash_data("rate of deformation")
-        matdat.stash_data("deformation gradient")
+        matdat.stash("rate of deformation")
+        matdat.stash("deformation gradient")
 
-        for inum in range(l_nzc):
+        for inum in range(nV):
             # perturb forward
             sym_velgrad_p = np.array(sym_velgrad)
-            sym_velgrad_p[nzc[inum]] = sym_velgrad[nzc[inum]] + (deps / delt) / 2.
+            sym_velgrad_p[V[inum]] = sym_velgrad[V[inum]] + (deps / delt) / 2.
             defgrad_p = (f_old +
                          np.dot(pt.to_matrix(sym_velgrad_p), f_old) * delt)
-            matdat.store_data("rate of deformation", sym_velgrad_p, old=True)
-            matdat.store_data("deformation gradient", defgrad_p, old=True)
+            matdat.save("rate of deformation", sym_velgrad_p, "-")
+            matdat.save("deformation gradient", defgrad_p, "-")
             self.update_state(simdat, matdat)
-            sigp = matdat.get_data("stress", cur=True)
+            sigp = matdat.get("stress", "+")
 
             # perturb backward
             sym_velgrad_m = np.array(sym_velgrad)
-            sym_velgrad_m[nzc[inum]] = sym_velgrad[nzc[inum]] - (deps / delt) / 2.
+            sym_velgrad_m[V[inum]] = sym_velgrad[V[inum]] - (deps / delt) / 2.
             defgrad_m = (f_old +
                          np.dot(pt.to_matrix(sym_velgrad_m), f_old) * delt)
-            matdat.store_data("rate of deformation", sym_velgrad_m, old=True)
-            matdat.store_data("deformation gradient", defgrad_m, old=True)
+            matdat.save("rate of deformation", sym_velgrad_m, "-")
+            matdat.save("deformation gradient", defgrad_m, "-")
             self.update_state(simdat, matdat)
-            sigm = matdat.get_data("stress", cur=True)
+            sigm = matdat.get("stress", "+")
 
-            j_sub[inum, :] = (sigp[nzc] - sigm[nzc]) / deps
+            j_sub[inum, :] = (sigp[V] - sigm[V]) / deps
             continue
 
         # restore data
-        simdat.unstash_data("time step")
-        matdat.unstash_data("deformation gradient")
-        matdat.unstash_data("rate of deformation")
+        matdat.unstash("deformation gradient")
+        matdat.unstash("rate of deformation")
 
         return j_sub
 
