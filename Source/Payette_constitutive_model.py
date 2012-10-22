@@ -438,7 +438,7 @@ class ConstitutiveModelPrototype(object):
 
         # v array is an array of integers that contains the rows and columns of
         # the slice needed in the jacobian subroutine.
-        V = np.array([0, 1, 2, 3, 4, 5], dtype=int)
+        V = np.array(range(nV), dtype=int)
 
         if isotropic:
             j_0 = np.zeros((6, 6))
@@ -513,47 +513,45 @@ class ConstitutiveModelPrototype(object):
         Tim Fuller, Sandial National Laboratories, tjfulle@sandia.gov
         """
 
+        # save data to restore at end
+        Ss = matdat.get("stress", copy=True)
+        Ds = matdat.get("rate of deformation", copy=True)
+        Fs = matdat.get("deformation gradient", copy=True)
+
         # local variables
-        epsilon = np.finfo(np.float).eps
         nV = len(V)
-        deps, j_sub = math.sqrt(epsilon), np.zeros((nV, nV))
+        deps, j_sub = math.sqrt(np.finfo(np.float).eps), np.zeros((nV, nV))
 
+        # simulation data
         delt = simdat.get("time step")
-        delt = 1 if delt == 0. else delt
-        sym_velgrad = matdat.get("rate of deformation")
-        f_old = matdat.get("deformation gradient", form="Matrix")
-
-        # stash the data
-        matdat.stash("rate of deformation")
-        matdat.stash("deformation gradient")
+        delt = 1. if delt == 0. else delt
 
         for inum in range(nV):
             # perturb forward
-            sym_velgrad_p = np.array(sym_velgrad)
-            sym_velgrad_p[V[inum]] = sym_velgrad[V[inum]] + (deps / delt) / 2.
-            defgrad_p = (f_old +
-                         np.dot(pt.to_matrix(sym_velgrad_p), f_old) * delt)
-            matdat.save("rate of deformation", sym_velgrad_p, "-")
-            matdat.save("deformation gradient", defgrad_p, "-")
+            dp = np.array(Ds)
+            dp[V[inum]] = Ds[V[inum]] + (deps / delt) / 2.
+            Fp = Fs + pt.dot(dp, Fs) * delt
+            matdat.save("rate of deformation", dp)
+            matdat.save("deformation gradient", Fp)
             self.update_state(simdat, matdat)
-            sigp = matdat.get("stress", "+")
+            sigp = matdat.get("stress", copy=True)
 
             # perturb backward
-            sym_velgrad_m = np.array(sym_velgrad)
-            sym_velgrad_m[V[inum]] = sym_velgrad[V[inum]] - (deps / delt) / 2.
-            defgrad_m = (f_old +
-                         np.dot(pt.to_matrix(sym_velgrad_m), f_old) * delt)
-            matdat.save("rate of deformation", sym_velgrad_m, "-")
-            matdat.save("deformation gradient", defgrad_m, "-")
+            dm = np.array(Ds)
+            dm[V[inum]] = Ds[V[inum]] - (deps / delt) / 2.
+            Fm = Fs + pt.dot(dm, Fs) * delt
+            matdat.save("rate of deformation", dm)
+            matdat.save("deformation gradient", Fm)
             self.update_state(simdat, matdat)
-            sigm = matdat.get("stress", "+")
+            sigm = matdat.get("stress", copy=True)
 
             j_sub[inum, :] = (sigp[V] - sigm[V]) / deps
             continue
 
         # restore data
-        matdat.unstash("deformation gradient")
-        matdat.unstash("rate of deformation")
+        matdat.save("deformation gradient", Fs)
+        matdat.save("rate of deformation", Ds)
+        matdat.save("stress", Ss)
 
         return j_sub
 

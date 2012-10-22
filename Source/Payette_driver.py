@@ -395,9 +395,6 @@ def solid_driver(the_model, **kwargs):
         material.update_state(simdat, matdat)
         # advance and write data
         the_model.write_state()
-        simdat.advance()
-        matdat.advance()
-        ro.ISTEP += 1
 
     # ----------------------------------------------------------------------- #
 
@@ -550,7 +547,6 @@ def solid_driver(the_model, **kwargs):
             # save known values
             simdat.save("time", t)
             simdat.save("time step", dt)
-            print dt, simdat.get("time step")
             if ro.EFIELD_SIM:
                 matdat.save("electric field", efld_int)
 
@@ -606,7 +602,7 @@ def solid_driver(the_model, **kwargs):
 #            simdat.save_all_data()
 
             # --- write state to file
-            if (nsteps-n)%print_interval == 0:
+            if (nsteps - n) % print_interval == 0:
                 the_model.write_state()
 
             if simdat.SCREENOUT or (verbose and (2 * n - nsteps) == 0):
@@ -655,6 +651,9 @@ def solid_driver(the_model, **kwargs):
 
             # -------------------------------------------- end{end of step SQA}
 
+            # advance state
+            simdat.advance()
+            matdat.advance()
             ro.ISTEP += 1
 
             continue # continue to next step

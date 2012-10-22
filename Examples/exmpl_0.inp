@@ -51,7 +51,7 @@ begin simulation exmpl_0
     kappa = 0   # Seth-Hill specification
     tstar = 1.  # multiplier on the time
     ampl = 1    # multiplier on all components of deformation
-    screenout = 1
+    screenout = 0
     efstar, 2
     stepstar, 100
     emit sparse

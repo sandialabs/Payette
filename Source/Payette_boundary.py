@@ -69,7 +69,7 @@ class Boundary(object):
             "efstar": [float, 1., None], "stepstar": [float, 1., 1.],
             "ampl": [float, 1., None], "ratfac": [float, 1., None],
             "emit": ["choice", "all", EMIT.keys()],
-            "nprints": [int, 0, None], "screenout": [bool, False, None],}
+            "nprints": [int, 0, None], "screenout": [float, 0., None],}
 
         # intialize container for legs
         # -- _legs has form

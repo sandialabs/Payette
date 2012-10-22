@@ -82,6 +82,8 @@ SYM_MAP = {0: "11", 3: "12", 5: "13",
 
 VEC_MAP = {0: (0,), 1: (1,), 2: (2,)}
 
+W = np.array([1., 1., 1., 2., 2., 2.])
+
 
 def to_matrix(arga):
     """convert arga to a matrix"""
@@ -405,8 +407,7 @@ def inv(arga):
 
 def ddp(arga, argb):
     """ double dot product of symmetric second order tensors arga and argb """
-    sym_fac = np.array([1., 1., 1., 2., 2., 2.])
-    return np.sum(sym_fac * arga * argb)
+    return np.sum(W * arga * argb)
 
 
 def mag(arga):
@@ -426,3 +427,43 @@ def iso(arga):
 def trace(arga):
     """trace of the second order tensor arga"""
     return ddp(arga, I6)
+
+def dot(a, b):
+    """dot product of tensors a and b"""
+    sa, sb = a.shape, b.shape
+    if sa == sb == (6, ):
+        return np.array([a[0] * b[0] + a[3] * b[3] + a[5] * b[5], # 1, 1
+                         a[1] * b[1] + a[3] * b[3] + a[4] * b[4], # 2, 2
+                         a[2] * b[2] + a[4] * b[4] + a[5] * b[5], # 3, 3
+                         a[3] * b[1] + a[0] * b[3] + a[5] * b[4], # 1, 2
+                         a[4] * b[2] + a[1] * b[4] + a[3] * b[5], # 2, 3
+                         a[5] * b[2] + a[3] * b[4] + a[0] * b[5]])# 1, 3
+
+    if sa == sb == (9, ):
+        return np.array([a[0] * b[0] + a[1] * b[2] + a[2] * b[6], # 1, 1
+                         a[0] * b[1] + a[1] * b[4] + a[2] * b[7], # 1, 2
+                         a[0] * b[2] + a[1] * b[5] + a[2] * b[9], # 1, 3
+                         a[3] * b[0] + a[4] * b[3] + a[5] * b[6], # 2, 1
+                         a[3] * b[1] + a[4] * b[4] + a[5] * b[7], # 2, 2
+                         a[3] * b[2] + a[4] * b[5] + a[5] * b[9], # 2, 3
+                         a[6] * b[0] + a[7] * b[3] + a[9] * b[6], # 3, 1
+                         a[6] * b[1] + a[7] * b[4] + a[9] * b[7], # 3, 2
+                         a[6] * b[2] + a[7] * b[5] + a[9] * b[9]])# 3, 3
+
+    if sa == (9, ) and sb == (6, ):
+        sa, sb = sb, sa
+        a, b = np.array(b), np.array(a)
+
+    if sa == (6, ) and sb == (9, ):
+        return np.array([a[0] * b[0] + a[3] * b[3] + a[5] * b[6], # 1, 1
+                         a[0] * b[1] + a[3] * b[4] + a[5] * b[7], # 1, 2
+                         a[0] * b[2] + a[3] * b[5] + a[5] * b[9], # 1, 3
+                         a[3] * b[0] + a[1] * b[3] + a[4] * b[6], # 2, 1
+                         a[3] * b[1] + a[1] * b[4] + a[4] * b[7], # 2, 2
+                         a[3] * b[2] + a[1] * b[5] + a[4] * b[9], # 2, 3
+                         a[5] * b[0] + a[4] * b[3] + a[2] * b[6], # 3, 1
+                         a[5] * b[1] + a[4] * b[4] + a[2] * b[7], # 3, 2
+                         a[5] * b[2] + a[4] * b[5] + a[2] * b[9]])# 3, 3
+
+    pu.report_and_raise_error("Bad tensors sent to dot")
+    return
