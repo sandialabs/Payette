@@ -93,7 +93,7 @@ def velgrad_from_strain(simdat, matdat):
 
     # get data from data containers
     kappa = simdat.KAPPA
-    delt = simdat.get("time step")
+    dt = simdat.get("time step")
 
     # strain and rotation
     strain_0 = matdat.get("strain", form="Matrix")
@@ -102,25 +102,25 @@ def velgrad_from_strain(simdat, matdat):
     drotation = matdat.get("rotation rate", form="Matrix")
 
     # rate of strain
-    dstrain = (strain_f - strain_0) / delt
+    dstrain = (strain_f - strain_0) / dt
 
     # stretch and its rate
-    stretch = right_stretch(kappa, strain_f)
+    U = right_stretch(kappa, strain_f)
 
     # center X on half step
     X = 0.5 * (la.inv(kappa * strain_f + I3X3) +
                la.inv(kappa * strain_0 + I3X3))
-    dstretch = stretch * X * dstrain
+    dU = U * X * dstrain
 
     # velocity gradient, sym, and skew parts
-    velgrad = (drotation * rotation.T +
-               rotation * dstretch * la.inv(stretch) * rotation.T)
-    sym_velgrad = .5 * (velgrad + velgrad.T)
-    vorticity = velgrad - sym_velgrad
+    L = (drotation * rotation.T +
+         rotation * dU * la.inv(U) * rotation.T)
+    D = .5 * (L + L.T)
+    W = L - D
 
     # store updated data
-    matdat.save("rate of deformation", sym_velgrad)
-    matdat.save("vorticity", vorticity)
+    matdat.save("rate of deformation", D)
+    matdat.save("vorticity", W)
 
     return
 
@@ -158,18 +158,17 @@ def velgrad_from_defgrad(simdat, matdat):
     """
 
     # get data from containers
-    delt = simdat.get("time step")
-    defgrad_0 = matdat.get("deformation gradient", form="Matrix")
-    defgrad_f = matdat.get("prescribed deformation gradient",
-                           form="Matrix")
-    ddefgrad = (defgrad_f - defgrad_0) / delt
+    dt = simdat.get("time step")
+    F0 = matdat.get("deformation gradient", form="Matrix")
+    Ff = matdat.get("prescribed deformation gradient", form="Matrix")
+    dF = (Ff - F0) / dt
 
-    velgrad = .5 * ddefgrad * (la.inv(defgrad_f) + la.inv(defgrad_0))
-    sym_velgrad = .5 * (velgrad + velgrad.T)
-    vorticity = velgrad - sym_velgrad
+    L = .5 * dF * (la.inv(Ff) + la.inv(F0))
+    D = .5 * (L + L.T)
+    W = L - D
 
-    matdat.save("vorticity", vorticity)
-    matdat.save("rate of deformation", sym_velgrad)
+    matdat.save("vorticity", W)
+    matdat.save("rate of deformation", D)
     return
 
 
@@ -215,7 +214,6 @@ def velgrad_from_stress(material, simdat, matdat, prsig, V):
     written by Tom Pucick for his MMD material model driver.
 
     """
-    matdat.save("vorticity", np.zeros(9))
     depsdt_old = matdat.get("strain rate")
     matdat.stash("strain rate")
     nV = len(V)
@@ -304,24 +302,24 @@ def update_deformation(simdat, matdat):
 
     # get data from containers
     kappa = simdat.KAPPA
-    delt = simdat.get("time step")
-    defgrad_0 = matdat.get("deformation gradient", form="Matrix")
-    sym_velgrad = matdat.get("rate of deformation", form="Matrix")
-    vorticity = matdat.get("vorticity", form="Matrix")
+    dt = simdat.get("time step")
+    F0 = matdat.get("deformation gradient", form="Matrix")
+    D = matdat.get("rate of deformation", form="Matrix")
+    W = matdat.get("vorticity", form="Matrix")
 
-    defgrad_f = expm((sym_velgrad + vorticity) * delt)
-    defgrad_f *= defgrad_0
-    stretch = sqrtm((defgrad_f.T) * defgrad_f)
+    Ff = expm((D + W) * dt) * F0
+    U = sqrtm((Ff.T) * Ff)
+
     if kappa == 0:
-        strain = logm(stretch)
+        strain = logm(U)
     else:
-        strain = 1. / kappa * (powm(stretch, kappa) - I3X3)
+        strain = 1. / kappa * (powm(U, kappa) - I3X3)
 
-    if np.linalg.det(defgrad_f) <= 0.:
+    if np.linalg.det(Ff) <= 0.:
         pu.report_and_raise_error("negative Jacobian encountered")
 
     matdat.save("strain", strain)
-    matdat.save("deformation gradient", defgrad_f)
+    matdat.save("deformation gradient", Ff)
 
     # compute the equivalent strain
     eps = to_array(strain, symmetric=True)
@@ -344,7 +342,7 @@ def right_stretch(kappa, strain):
 
     Returns
     -------
-    stretch : array_like
+    U : array_like
       the right stretch tensor
 
     Theory

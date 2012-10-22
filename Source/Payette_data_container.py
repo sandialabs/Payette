@@ -22,7 +22,7 @@ BOOL_MAP = {True: 1, False: 0}
 
 class DataContainer(object):
     _tensors = ["Tensor", "SymTensor", "Vector", "Matrix",]
-    _dtypes = _tensors + ["Array", "Integer Array","List", "Scalar", "Boolean"]
+    _dtypes = _tensors + ["Array", "List", "Scalar", "Boolean"]
 
     def __init__(self, name):
         self.name = "_".join(name.split())
@@ -173,7 +173,7 @@ class DataContainer(object):
         """
         self._setup = True
         ldata = len(self._ival)
-        self._data = np.empty((ro.NSTEPS + 1, ldata), dtype=float)
+        self._data = np.empty((ro.NSTEPS + 2, ldata), dtype=float)
         self._data[0, :] = self._ival
 
         # initialize constant data
@@ -465,26 +465,27 @@ class DataContainer(object):
                 form = "matrix"
 
         # check for scalar values
-        if end - start == 1: val = self._data[N, start]
-        else: val = self._data[N, start:end]
+        if end - start == 1:
+            return self._data[N, start]
+
+        val = self._data[N, start:end]
 
         # reshape matrices
         if form == "matrix":
             if self._data_container[name]["dtype"] == "SymTensor":
-                val = np.reshape([val[0], val[3], val[5],
-                                  val[3], val[1], val[4],
-                                  val[5], val[4], val[2]], (3, 3))
-            elif data["dtype"] == "Matrix":
-                i = np.sqrt(len(val))
-                val = np.reshape(val, (i, i))
-            else:
-                val = np.reshape(val, (3, 3))
-        elif form == "integer array":
-            val = np.array(val, dtype=int)
+                return np.reshape([val[0], val[3], val[5],
+                                   val[3], val[1], val[4],
+                                   val[5], val[4], val[2]], (3, 3))
 
-        copy = True
+            if data["dtype"] == "Matrix":
+                i = np.sqrt(len(val))
+                return np.reshape(val, (i, i))
+
+            return np.reshape(val, (3, 3))
+
         if copy:
-            return deepcopy(val)
+            return np.array(val)
+
         return val
 
     def _get_name(self, key):
@@ -598,13 +599,6 @@ class DataContainer(object):
                 ival = [0]
             if not isinstance(ival, (list, tuple)):
                 pu.report_and_raise_error("{0} must be a list".format(name))
-
-        elif dtype == "Integer Array":
-            if ival is None:
-                ival = [0]
-            if not isinstance(ival, (np.ndarray, list, tuple)):
-                pu.report_and_raise_error(
-                    "{0} must be of array-like type".format(name))
 
         elif dtype == "Array":
             if ival is None:
@@ -724,15 +718,15 @@ if __name__ == "__main__":
     xtra = np.array([20,21,22,23,24,25,26,27,28,29])
     dc.register_xtra_vars(10, names, keys, xtra)
     dc.setup_data_container()
-    DT = 1.E-03
+
+    DT = 1.
+    dc.advance()
+
     for I in range(0, ro.NSTEPS):
-        if I == 0:
-            dc.advance()
-            ro.ISTEP += 1
-            continue
+
+        ro.ISTEP += 1
 
         dc.save("time", DT, "+=")
-
         a = dc.get("stress")
         dc.save("stress", np.array([4,4,4,4,4,4], dtype=float))
         a = a + np.ones(len(a))
@@ -740,12 +734,13 @@ if __name__ == "__main__":
         dc.save("extra variables", dc.get("extra variables"))
         dc.save("deformation gradient", dc.get("deformation gradient"))
         dc.advance()
-        ro.ISTEP += 1
+
     print
     sys.stdout.write(" ".join("{0:12s}".format(x) for x in dc.plot_keys()) + "\n")
     for row in dc.plotable_data("all"):
         sys.stdout.write(" ".join("{0:12.6E}".format(x) for x in row) + "\n")
         continue
+    print
     print dc.get("deformation gradient")
     print dc.get("deformation gradient", form="matrix")
     print dc.get("F11", "description")
