@@ -165,7 +165,7 @@ class ConstitutiveModelPrototype(object):
         if not any(x for y in self.J0 for x in y):
             pu.report_and_raise_error("iniatial Jacobian is empty")
 
-        matdat.register_data("jacobian", "Matrix", init_val=self.J0,
+        matdat.register("jacobian", "Matrix", init_val=self.J0,
                              units="NO_UNITS")
         ro.set_global_option("EFIELD_SIM", self.electric_field_model)
 
@@ -456,11 +456,11 @@ class ConstitutiveModelPrototype(object):
 
         else:
             # material is not isotropic, numerically compute the jacobian
-            matdat.stash_data("prescribed stress components")
-            matdat.store_data("prescribed stress components",
+            matdat.stash("prescribed stress components")
+            matdat.store("prescribed stress components",
                               [0, 1, 2, 3, 4, 5])
             self.J0 = self.jacobian(simdat, matdat)
-            matdat.unstash_data("prescribed stress components")
+            matdat.unstash("prescribed stress components")
             return
 
         return
@@ -509,19 +509,19 @@ class ConstitutiveModelPrototype(object):
 
         # local variables
         epsilon = np.finfo(np.float).eps
-        nzc = matdat.get_data("prescribed stress components")
+        nzc = matdat.get("prescribed stress components")
         l_nzc = len(nzc)
         deps, j_sub = math.sqrt(epsilon), np.zeros((l_nzc, l_nzc))
 
-        delt = simdat.get_data("time step")
+        delt = simdat.get("time step")
         delt = 1 if delt == 0. else delt
-        sym_velgrad = matdat.get_data("rate of deformation")
-        f_old = matdat.get_data("deformation gradient", form="Matrix")
+        sym_velgrad = matdat.get("rate of deformation")
+        f_old = matdat.get("deformation gradient", form="Matrix")
 
         # stash the data
-        simdat.stash_data("time step")
-        matdat.stash_data("rate of deformation")
-        matdat.stash_data("deformation gradient")
+        simdat.stash("time step")
+        matdat.stash("rate of deformation")
+        matdat.stash("deformation gradient")
 
         for inum in range(l_nzc):
             # perturb forward
@@ -529,28 +529,28 @@ class ConstitutiveModelPrototype(object):
             sym_velgrad_p[nzc[inum]] = sym_velgrad[nzc[inum]] + (deps / delt) / 2.
             defgrad_p = (f_old +
                          np.dot(pt.to_matrix(sym_velgrad_p), f_old) * delt)
-            matdat.store_data("rate of deformation", sym_velgrad_p, old=True)
-            matdat.store_data("deformation gradient", defgrad_p, old=True)
+            matdat.store("rate of deformation", sym_velgrad_p, old=True)
+            matdat.store("deformation gradient", defgrad_p, old=True)
             self.update_state(simdat, matdat)
-            sigp = matdat.get_data("stress", cur=True)
+            sigp = matdat.get("stress", cur=True)
 
             # perturb backward
             sym_velgrad_m = np.array(sym_velgrad)
             sym_velgrad_m[nzc[inum]] = sym_velgrad[nzc[inum]] - (deps / delt) / 2.
             defgrad_m = (f_old +
                          np.dot(pt.to_matrix(sym_velgrad_m), f_old) * delt)
-            matdat.store_data("rate of deformation", sym_velgrad_m, old=True)
-            matdat.store_data("deformation gradient", defgrad_m, old=True)
+            matdat.store("rate of deformation", sym_velgrad_m, old=True)
+            matdat.store("deformation gradient", defgrad_m, old=True)
             self.update_state(simdat, matdat)
-            sigm = matdat.get_data("stress", cur=True)
+            sigm = matdat.get("stress", cur=True)
 
             j_sub[inum, :] = (sigp[nzc] - sigm[nzc]) / deps
             continue
 
         # restore data
-        simdat.unstash_data("time step")
-        matdat.unstash_data("deformation gradient")
-        matdat.unstash_data("rate of deformation")
+        simdat.unstash("time step")
+        matdat.unstash("deformation gradient")
+        matdat.unstash("rate of deformation")
 
         return j_sub
 

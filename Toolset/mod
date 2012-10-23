@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+
+import sys, os, re
+import os.path as op
+
+DOTPAYETTE = op.join(os.getenv("HOME"), "Library/Preferences/Payette")
+FILE = op.realpath(__file__)
+THIS_DIR = op.dirname(FILE)
+ROOT = op.join(THIS_DIR, "../")
+
+sys.path.extend([ROOT, DOTPAYETTE])
+import Source.__config__ as cfg
+
+DIRS = list(set(cfg.MTLDIRS + cfg.TESTS + [ROOT]))
+
+string = "store_data get_data register_data"
+
+regexps = (("register_data", "register"),
+           ("ensure_all_registered_data_have_valid_units", "ensure_valid_units"),
+           ("unregister_data", "unregister"),
+           ("register_xtra_vars", "register_xtra"),
+           ("register_static_data", "register_static"), #***
+           ("get_static_data", "get_static"), #***
+           ("get_data_units", "units"),
+           ("get_data", "get"),
+           ("restore_data", "restore"),
+           ("store_data", "store"),
+           ("stash_data", "stash"), #***
+           ("get_stashed_data", "get_stash"), #***
+           ("unstash_data", "unstash"), #***
+           ("advance_all_data", "advance_all"), #***
+           ("advance_data", "advance"),
+           ("getExName", "_xtra_name"), #***
+           ("get_plot_name", "_plot_name"), #***
+           ("get_plot_key", "_plot_key"), #***
+           ("dump_data", "dump"),
+           ("self\.data_container", "self._container"),
+           ("dataContainer", "data_container"),
+           ("extra variables", "__xtra__"))
+
+for DIR in DIRS:
+    for dirnam, dirs, files in os.walk(DIR):
+        if ".git" in dirnam: continue
+        for f in files:
+            if not f.endswith(".py"): continue
+            lines = open(op.join(dirnam, f), "r").read()
+            for pat, repl in regexps:
+                lines = re.sub(pat, repl, lines)
+                continue
+            open(op.join(dirnam, f), "w").write(lines)
+            continue

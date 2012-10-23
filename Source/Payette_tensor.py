@@ -48,163 +48,168 @@ import Source.Payette_utils as pu
 import Source.__runopts__ as ro
 
 
-DI3 = [[0, 1, 2], [0, 1, 2]]
+# number of dimensions
+NDIM = 3
 
-I3X3 = np.eye(3)
-Z3X3 = np.zeros((3, 3))
+# vector dimension and common vectors
+NVEC = NDIM
+Z3 = np.array([0.] * NVEC)
+I3 = np.array([1.] * NVEC)
+VEC_MAP = {0: "1", 1: "2", 2: "3"}
 
-Z3 = np.array([0., 0., 0.])
-I3 = np.array([1., 1., 1.])
-Z6 = np.array([0., 0., 0.,
-                   0., 0.,
-                       0.])
-
+# symmetric tensor dimension and common symmetric tensors
+NSYM = 6
+Z6 = np.array([0.] * 6)
 I6 = np.array([1., 1., 1., 0., 0., 0.])
-
-Z9 = np.array([0., 0., 0.,
-               0., 0., 0.,
-               0., 0., 0.])
-I9 = np.array([1., 0., 0.,
-               0., 1., 0.,
-               0., 0., 1.])
-
-TENS_MAP = {0: (0, 0), 1: (0, 1), 2: (0, 2),
-            3: (1, 0), 4: (1, 1), 5: (1, 2),
-            6: (2, 0), 7: (2, 1), 8: (2, 2)}
-
+SYM_MAP = {0: "11", 3: "12", 5: "13",
+                    1: "22", 4: "23",
+                             2: "33"}
 SYMTENS_MAP = {0: (0, 0), 3: (0, 1), 5: (0, 2),
                           1: (1, 1), 4: (1, 2),
                                      2: (2, 2)}
 
-SYM_MAP = {0: "11", 3: "12", 5: "13",
-                    1: "22", 4: "23",
-                             2: "33"}
+# tensor dimension and common tensors
+NTENS = 9
+Z9 = np.array([0.] * NTENS)
+I9 = np.array([1., 0., 0., 0., 1., 0., 0., 0., 1.])
+TENS_MAP = {0: "11", 1: "12", 2: "13",
+            3: "21", 4: "22", 5: "23",
+            6: "31", 7: "32", 8: "33"}
+TENSC_MAP = {0: (0, 0), 1: (0, 1), 2: (0, 2),
+            3: (1, 0), 4: (1, 1), 5: (1, 2),
+            6: (2, 0), 7: (2, 1), 8: (2, 2)}
 
-VEC_MAP = {0: (0,), 1: (1,), 2: (2,)}
+# common matrices
+I3X3 = np.eye(NDIM)
+Z3X3 = np.zeros((NDIM, NDIM))
+
+# list to access diagonal components of 3x3 matrix
+DI3 = [[0, 1, 2], [0, 1, 2]]
+W = np.array([1., 1., 1., 2., 2., 2.])
 
 
-def to_matrix(arga):
-    """convert arga to a matrix"""
-    if len(arga) == 6:
-        return np.matrix([[arga[0], arga[3], arga[5]],
-                          [arga[3], arga[1], arga[4]],
-                          [arga[5], arga[4], arga[2]]], dtype='double')
-    elif len(arga) == 9:
-        return np.matrix([[arga[0], arga[1], arga[2]],
-                          [arga[3], arga[4], arga[5]],
-                          [arga[6], arga[7], arga[8]]], dtype='double')
+def to_matrix(a):
+    """convert a to a matrix"""
+    if len(a) == 6:
+        return np.matrix([[a[0], a[3], a[5]],
+                          [a[3], a[1], a[4]],
+                          [a[5], a[4], a[2]]], dtype='double')
+    elif len(a) == 9:
+        return np.matrix([[a[0], a[1], a[2]],
+                          [a[3], a[4], a[5]],
+                          [a[6], a[7], a[8]]], dtype='double')
     else:
-        msg = "wrong size array of size [{0:d}]".format(len(arga))
+        msg = "wrong size array of size [{0:d}]".format(len(a))
         pu.report_and_raise_error(msg)
         return
 
 
-def to_array(arga, symmetric=True):
-    """convert arga to an array"""
-    shape = np.shape(arga)
+def to_array(a, symmetric=True):
+    """convert a to an array"""
+    shape = np.shape(a)
     if shape[0] != shape[1] or shape[0] != 3:
         pu.report_and_raise_error('wrong shape [{0}]'.format(str(shape)))
         return 1
     if not symmetric:
-        return np.array([arga[0, 0], arga[0, 1], arga[0, 2],
-                         arga[1, 0], arga[1, 1], arga[1, 2],
-                         arga[2, 0], arga[2, 1], arga[2, 2]],
+        return np.array([a[0, 0], a[0, 1], a[0, 2],
+                         a[1, 0], a[1, 1], a[1, 2],
+                         a[2, 0], a[2, 1], a[2, 2]],
                         dtype='double')
 
-    arga = 0.5 * (arga + arga.T)
-    return np.array([arga[0, 0], arga[1, 1], arga[2, 2],
-                     arga[0, 1], arga[1, 2], arga[0, 2]], dtype='double')
+    a = 0.5 * (a + a.T)
+    return np.array([a[0, 0], a[1, 1], a[2, 2],
+                     a[0, 1], a[1, 2], a[0, 2]], dtype='double')
 
 
-def powm(arga, pwm):
-    """return the matrix power of arga"""
-    if isdiag(arga) and not ro.STRICT:
-        arga[DI3] = np.diag(arga) ** pwm
+def powm(a, m):
+    """return the matrix power of a"""
+    if isdiag(a) and not ro.STRICT:
+        a[DI3] = np.diag(a) ** m
     else:
-        eig_val, eig_vec = la.eigh(arga)
-        arga = np.dot(np.dot(eig_vec, np.diag(eig_val ** pwm)), eig_vec.T)
+        eig_val, eig_vec = la.eigh(a)
+        a = np.dot(np.dot(eig_vec, np.diag(eig_val ** m)), eig_vec.T)
 
-    return arga
+    return a
 
 
-def expm(arga):
-    """return the matrix exponential of arga"""
-    if isdiag(arga) and not ro.STRICT:
-        arga[DI3] = np.exp(np.diag(arga))
+def expm(a):
+    """return the matrix exponential of a"""
+    if isdiag(a) and not ro.STRICT:
+        a[DI3] = np.exp(np.diag(a))
     elif ro.STRICT:
-        arga = np.real(scipy.linalg.expm(arga))
+        a = np.real(scipy.linalg.expm(a))
     else:
-        arga = I3X3 + arga + np.dot(arga, arga) / 2.
-    return arga
+        a = I3X3 + a + np.dot(a, a) / 2.
+    return a
 
 
-def sqrtm(arga):
-    """return the matrix square root of arga"""
-    if np.isnan(arga).any() or np.isinf(arga).any():
+def sqrtm(a):
+    """return the matrix square root of a"""
+    if np.isnan(a).any() or np.isinf(a).any():
         msg = "Probably reaching the numerical limits for the " +\
               "magnitude of the deformation."
         pu.report_and_raise_error(msg)
-    if isdiag(arga) and not ro.STRICT:
-        arga[DI3] = np.sqrt(np.diag(arga))
+    if isdiag(a) and not ro.STRICT:
+        a[DI3] = np.sqrt(np.diag(a))
     elif ro.STRICT:
-        arga = np.real(scipy.linalg.sqrtm(arga))
+        a = np.real(scipy.linalg.sqrtm(a))
     else:
-        arga = powm(arga, 0.5)
-    return arga
+        a = powm(a, 0.5)
+    return a
 
 
-def logm(arga):
-    """return the matrix log of arga"""
-    if isdiag(arga) and not ro.STRICT:
-        arga[DI3] = np.log(np.diag(arga))
+def logm(a):
+    """return the matrix log of a"""
+    if isdiag(a) and not ro.STRICT:
+        a[DI3] = np.log(np.diag(a))
     elif ro.STRICT:
-        arga = np.real(scipy.linalg.logm(arga))
+        a = np.real(scipy.linalg.logm(a))
     else:
-        arga = ((arga - I3X3) - np.dot(arga - I3X3, arga - I3X3) / 2. +
-             np.dot(arga - I3X3, np.dot(arga - I3X3, arga - I3X3)) / 3.)
-    return arga
+        a = ((a - I3X3) - np.dot(a - I3X3, a - I3X3) / 2. +
+             np.dot(a - I3X3, np.dot(a - I3X3, a - I3X3)) / 3.)
+    return a
 
 
-def isdiag(arga):
-    """return True if arga is diagonal else False"""
+def isdiag(a):
+    """return True if a is diagonal else False"""
     tol = 1.e-16
-    return all([abs(x) <= tol for x in [arga[0, 1], arga[0, 2],
-                                        arga[1, 0], arga[1, 2],
-                                        arga[2, 0], arga[2, 1]]])
+    return all([abs(x) <= tol for x in [a[0, 1], a[0, 2],
+                                        a[1, 0], a[1, 2],
+                                        a[2, 0], a[2, 1]]])
 
 
-def to_mig(arga):
-    """convert array arga to mig ordering"""
-    if len(arga) == 6 or len(arga) == 3:
-        return np.array(arga)
-    if len(arga) == 9:
-        return np.array([arga[0], arga[3], arga[5], arga[6],
-                         arga[1], arga[4], arga[8], arga[7], arga[2]])
+def to_mig(a):
+    """convert array a to mig ordering"""
+    if len(a) == 6 or len(a) == 3:
+        return np.array(a)
+    if len(a) == 9:
+        return np.array([a[0], a[3], a[5], a[6],
+                         a[1], a[4], a[8], a[7], a[2]])
 
 
-def ata(arga):
-    """ Compute Transpose(arga).arga
+def ata(a):
+    """ Compute Transpose(a).a
 
     Parameters
     ----------
-    arga: tensor arga stored as 9x1 Voight array
+    a: tensor a stored as 9x1 Voight array
 
     Returns
     -------
     ata : array_like
-      Symmetric tensor defined by Transpose(arga).arga
+      Symmetric tensor defined by Transpose(a).a
       stored as 6x1 Voight array
 
     """
-    return np.array([arga[0] * arga[0] + arga[3] * arga[3] + arga[6] * arga[6],
-                     arga[1] * arga[1] + arga[4] * arga[4] + arga[7] * arga[7],
-                     arga[2] * arga[2] + arga[5] * arga[5] + arga[8] * arga[8],
-                     arga[0] * arga[1] + arga[3] * arga[4] + arga[6] * arga[7],
-                     arga[1] * arga[2] + arga[4] * arga[5] + arga[7] * arga[8],
-                     arga[0] * arga[2] + arga[3] * arga[5] + arga[6] * arga[8]])
+    return np.array([a[0] * a[0] + a[3] * a[3] + a[6] * a[6],
+                     a[1] * a[1] + a[4] * a[4] + a[7] * a[7],
+                     a[2] * a[2] + a[5] * a[5] + a[8] * a[8],
+                     a[0] * a[1] + a[3] * a[4] + a[6] * a[7],
+                     a[1] * a[2] + a[4] * a[5] + a[7] * a[8],
+                     a[0] * a[2] + a[3] * a[5] + a[6] * a[8]])
 
 
-def get_symleaf(farg):
+def get_symleaf(x):
     """Compute the 6x6 Mandel matrix (with index mapping {11, 22, 33, 12, 23,
     31}) that is the sym-leaf transformation of the input 3x3 matrix F.
 
@@ -223,12 +228,12 @@ def get_symleaf(farg):
 
     Parameters
     ----------
-    farg : array_like
+    x : array_like
       any matrix (in conventional 3x3 storage)
 
     Returns
     -------
-    symleaf : array_like
+    L : array_like
       6x6 Mandel matrix for the sym-leaf transformation matrix
 
     authors
@@ -244,54 +249,54 @@ def get_symleaf(farg):
 
     """
 
-    symleaf = np.zeros((6, 6))
-    fmat = farg.reshape(3, 3)
+    L = np.zeros((6, 6))
+    xm = x.reshape(3, 3)
 
     for i in range(3):
         for j in range(3):
-            symleaf[i, j] = fmat[i, j] ** 2
+            L[i, j] = xm[i, j] ** 2
             continue
-        symleaf[i, 3] = sqrt(2.) * fmat[i, 0] * fmat[i, 1]
-        symleaf[i, 4] = sqrt(2.) * fmat[i, 1] * fmat[i, 2]
-        symleaf[i, 5] = sqrt(2.) * fmat[i, 2] * fmat[i, 0]
-        symleaf[3, i] = sqrt(2.) * fmat[0, i] * fmat[1, i]
-        symleaf[4, i] = sqrt(2.) * fmat[1, i] * fmat[2, i]
-        symleaf[5, i] = sqrt(2.) * fmat[2, i] * fmat[0, i]
+        L[i, 3] = sqrt(2.) * xm[i, 0] * xm[i, 1]
+        L[i, 4] = sqrt(2.) * xm[i, 1] * xm[i, 2]
+        L[i, 5] = sqrt(2.) * xm[i, 2] * xm[i, 0]
+        L[3, i] = sqrt(2.) * xm[0, i] * xm[1, i]
+        L[4, i] = sqrt(2.) * xm[1, i] * xm[2, i]
+        L[5, i] = sqrt(2.) * xm[2, i] * xm[0, i]
         continue
 
-    symleaf[3, 3] = fmat[0, 1] * fmat[1, 0] + fmat[0, 0] * fmat[1, 1]
-    symleaf[4, 3] = fmat[1, 1] * fmat[2, 0] + fmat[1, 0] * fmat[2, 1]
-    symleaf[5, 3] = fmat[2, 1] * fmat[0, 0] + fmat[2, 0] * fmat[0, 1]
+    L[3, 3] = xm[0, 1] * xm[1, 0] + xm[0, 0] * xm[1, 1]
+    L[4, 3] = xm[1, 1] * xm[2, 0] + xm[1, 0] * xm[2, 1]
+    L[5, 3] = xm[2, 1] * xm[0, 0] + xm[2, 0] * xm[0, 1]
 
-    symleaf[3, 4] = fmat[0, 2] * fmat[1, 1] + fmat[0, 1] * fmat[1, 2]
-    symleaf[4, 4] = fmat[1, 2] * fmat[2, 1] + fmat[1, 1] * fmat[2, 2]
-    symleaf[5, 4] = fmat[2, 2] * fmat[0, 1] + fmat[2, 1] * fmat[0, 2]
+    L[3, 4] = xm[0, 2] * xm[1, 1] + xm[0, 1] * xm[1, 2]
+    L[4, 4] = xm[1, 2] * xm[2, 1] + xm[1, 1] * xm[2, 2]
+    L[5, 4] = xm[2, 2] * xm[0, 1] + xm[2, 1] * xm[0, 2]
 
-    symleaf[3, 5] = fmat[0, 0] * fmat[1, 2] + fmat[0, 2] * fmat[1, 0]
-    symleaf[4, 5] = fmat[1, 0] * fmat[2, 2] + fmat[1, 2] * fmat[2, 0]
-    symleaf[5, 5] = fmat[2, 0] * fmat[0, 2] + fmat[2, 2] * fmat[0, 0]
+    L[3, 5] = xm[0, 0] * xm[1, 2] + xm[0, 2] * xm[1, 0]
+    L[4, 5] = xm[1, 0] * xm[2, 2] + xm[1, 2] * xm[2, 0]
+    L[5, 5] = xm[2, 0] * xm[0, 2] + xm[2, 2] * xm[0, 0]
 
-    return symleaf
+    return L
 
 
-def dd66x6(job, arga, argx):
-    """Compute the product of a fourth-order tensor arga times a second-order
-    tensor argx (or vice versa if job=-1)
-                 arga:argx if job=1
-                 argx:arga if job=-1
+def dd66x6(job, a, x):
+    """Compute the product of a fourth-order tensor a times a second-order
+    tensor x (or vice versa if job=-1)
+                 a:x if job=1
+                 x:a if job=-1
 
     Parameters
     ----------
-    arga : array_like
+    a : array_like
       6x6 Mandel matrix for a general (not necessarily major-sym)
       fourth-order minor-sym matrix
-    argx : array_like
+    x : array_like
       6x6 Voigt matrix
 
     returns
     -------
-       arga:argx if JOB=1
-       argx:arga if JOB=-1
+       a:x if JOB=1
+       x:a if JOB=-1
 
     authors
     -------
@@ -309,16 +314,16 @@ def dd66x6(job, arga, argx):
     mandel = np.array([1., 1., 1., sqrt(2.), sqrt(2.), sqrt(2.)])
     res = np.zeros(6)
 
-    # Construct the Mandel version of argx
-    tens = mandel * argx
+    # Construct the Mandel version of x
+    tens = mandel * x
 
     if job == 0:
         # Compute the Mandel form of A:X
-        res = np.dot(arga, tens)
+        res = np.dot(a, tens)
 
     elif job == 1:
         # Compute the Mandel form of X:A
-        res = np.dot(tens, arga)
+        res = np.dot(tens, a)
 
     else:
         pu.report_and_raise_error("unknown job sent to dd66x6")
@@ -329,21 +334,21 @@ def dd66x6(job, arga, argx):
     return res
 
 
-def push(arga, argf):
+def push(a, f):
     """ Performs the "push" transformation
 
                 1
-               ---- argf.arga.Transpose(argf)
+               ---- f.a.Transpose(f)
                detf
 
-    For example, if arga is the Second-Piola Kirchoff stress, then the push
+    For example, if a is the Second-Piola Kirchoff stress, then the push
     transofrmation returns the Cauchy stress
 
     Parameters
     ----------
-    arga : array_like
+    a : array_like
       6x1 Voigt array
-    argf : array_like
+    f : array_like
       9x1 deformation gradient, stored as Voight array
 
     returns
@@ -359,70 +364,103 @@ def push(arga, argf):
 
     """
 
-    detf = (argf[0] * argf[4] * argf[8] +
-            argf[1] * argf[5] * argf[6] +
-            argf[2] * argf[3] * argf[7] -
-           (argf[0] * argf[5] * argf[7] +
-            argf[1] * argf[3] * argf[8] +
-            argf[2] * argf[4] * argf[6]))
-    return np.array(dd66x6(1, get_symleaf(argf), arga)) / detf
+    detf = (f[0] * f[4] * f[8] + f[1] * f[5] * f[6] + f[2] * f[3] * f[7] -
+           (f[0] * f[5] * f[7] + f[1] * f[3] * f[8] + f[2] * f[4] * f[6]))
+    return np.array(dd66x6(1, get_symleaf(f), a)) / detf
 
 
-def unrot(arga, argr):
-    """ unrotate arga """
-    return np.array(dd66x6(1, get_symleaf(inv(argr)), arga))
+def unrot(a, r):
+    """ unrotate a """
+    return np.array(dd66x6(1, get_symleaf(inv(r)), a))
 
 
-def rot(arga, argr):
-    """ rotate arga """
-    return np.array(dd66x6(1, get_symleaf(argr), arga))
+def rot(a, r):
+    """ rotate a """
+    return np.array(dd66x6(1, get_symleaf(r), a))
 
 
-def inv(arga):
-    """ return the inverse of arga, a stored as 9x1 Voight arrray
+def inv(a):
+    """ return the inverse of a, a stored as 9x1 Voight arrray
 
     Ordering is fortran ordering
 
     """
     ainv = np.zeros(9)
-    deta = (arga[0] * arga[4] * arga[8] +
-            arga[1] * arga[5] * arga[6] +
-            arga[2] * arga[3] * arga[7] -
-           (arga[0] * arga[5] * arga[7] +
-            arga[1] * arga[3] * arga[8] +
-            arga[2] * arga[4] * arga[6]))
-    ainv[0] = (arga[4] * arga[8] - arga[7] * arga[5])
-    ainv[1] = (arga[7] * arga[2] - arga[1] * arga[8])
-    ainv[2] = (arga[1] * arga[5] - arga[4] * arga[2])
-    ainv[3] = (arga[5] * arga[6] - arga[8] * arga[3])
-    ainv[4] = (arga[8] * arga[0] - arga[2] * arga[6])
-    ainv[5] = (arga[2] * arga[3] - arga[5] * arga[0])
-    ainv[6] = (arga[3] * arga[7] - arga[6] * arga[4])
-    ainv[7] = (arga[6] * arga[1] - arga[0] * arga[7])
-    ainv[8] = (arga[0] * arga[4] - arga[3] * arga[1])
+    deta = (a[0] * a[4] * a[8] + a[1] * a[5] * a[6] + a[2] * a[3] * a[7] -
+           (a[0] * a[5] * a[7] + a[1] * a[3] * a[8] + a[2] * a[4] * a[6]))
+    ainv[0] = (a[4] * a[8] - a[7] * a[5])
+    ainv[1] = (a[7] * a[2] - a[1] * a[8])
+    ainv[2] = (a[1] * a[5] - a[4] * a[2])
+    ainv[3] = (a[5] * a[6] - a[8] * a[3])
+    ainv[4] = (a[8] * a[0] - a[2] * a[6])
+    ainv[5] = (a[2] * a[3] - a[5] * a[0])
+    ainv[6] = (a[3] * a[7] - a[6] * a[4])
+    ainv[7] = (a[6] * a[1] - a[0] * a[7])
+    ainv[8] = (a[0] * a[4] - a[3] * a[1])
     return ainv / deta
 
 
-def ddp(arga, argb):
-    """ double dot product of symmetric second order tensors arga and argb """
-    sym_fac = np.array([1., 1., 1., 2., 2., 2.])
-    return np.sum(sym_fac * arga * argb)
+def ddp(a, b):
+    """ double dot product of symmetric second order tensors a and b """
+    return np.sum(W * a * b)
 
 
-def mag(arga):
-    """ magnitude of symmetric second order tensor arga """
-    return sqrt(ddp(arga, arga))
+def mag(a):
+    """ magnitude of symmetric second order tensor a """
+    return sqrt(ddp(a, a))
 
 
-def dev(arga):
-    """ deviatoric part of symmetric second order tensor arga """
-    return arga - iso(arga)
+def dev(a):
+    """ deviatoric part of symmetric second order tensor a """
+    return a - iso(a)
 
 
-def iso(arga):
-    """ isotropic part of symmetric second order tensor arga """
-    return ddp(arga, I6) / 3. * I6
+def iso(a):
+    """ isotropic part of symmetric second order tensor a """
+    return ddp(a, I6) / 3. * I6
 
-def trace(arga):
-    """trace of the second order tensor arga"""
-    return ddp(arga, I6)
+
+def trace(a):
+    """trace of the second order tensor a"""
+    return ddp(a, I6)
+
+
+def dot(a, b):
+    """dot product of tensors a and b"""
+    sa, sb = a.shape, b.shape
+    if sa == sb == (6, ):
+        return np.array([a[0] * b[0] + a[3] * b[3] + a[5] * b[5], # 1, 1
+                         a[1] * b[1] + a[3] * b[3] + a[4] * b[4], # 2, 2
+                         a[2] * b[2] + a[4] * b[4] + a[5] * b[5], # 3, 3
+                         a[3] * b[1] + a[0] * b[3] + a[5] * b[4], # 1, 2
+                         a[4] * b[2] + a[1] * b[4] + a[3] * b[5], # 2, 3
+                         a[5] * b[2] + a[3] * b[4] + a[0] * b[5]])# 1, 3
+
+    if sa == sb == (9, ):
+        return np.array([a[0] * b[0] + a[1] * b[2] + a[2] * b[6], # 1, 1
+                         a[0] * b[1] + a[1] * b[4] + a[2] * b[7], # 1, 2
+                         a[0] * b[2] + a[1] * b[5] + a[2] * b[9], # 1, 3
+                         a[3] * b[0] + a[4] * b[3] + a[5] * b[6], # 2, 1
+                         a[3] * b[1] + a[4] * b[4] + a[5] * b[7], # 2, 2
+                         a[3] * b[2] + a[4] * b[5] + a[5] * b[9], # 2, 3
+                         a[6] * b[0] + a[7] * b[3] + a[9] * b[6], # 3, 1
+                         a[6] * b[1] + a[7] * b[4] + a[9] * b[7], # 3, 2
+                         a[6] * b[2] + a[7] * b[5] + a[9] * b[9]])# 3, 3
+
+    if sa == (9, ) and sb == (6, ):
+        sa, sb = sb, sa
+        a, b = np.array(b), np.array(a)
+
+    if sa == (6, ) and sb == (9, ):
+        return np.array([a[0] * b[0] + a[3] * b[3] + a[5] * b[6], # 1, 1
+                         a[0] * b[1] + a[3] * b[4] + a[5] * b[7], # 1, 2
+                         a[0] * b[2] + a[3] * b[5] + a[5] * b[9], # 1, 3
+                         a[3] * b[0] + a[1] * b[3] + a[4] * b[6], # 2, 1
+                         a[3] * b[1] + a[1] * b[4] + a[4] * b[7], # 2, 2
+                         a[3] * b[2] + a[1] * b[5] + a[4] * b[9], # 2, 3
+                         a[5] * b[0] + a[4] * b[3] + a[2] * b[6], # 3, 1
+                         a[5] * b[1] + a[4] * b[4] + a[2] * b[7], # 3, 2
+                         a[5] * b[2] + a[4] * b[5] + a[2] * b[9]])# 3, 3
+
+    pu.report_and_raise_error("Bad tensors sent to dot")
+    return

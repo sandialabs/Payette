@@ -91,17 +91,17 @@ class FiniteElastic(ConstitutiveModelPrototype):
         self.ui[-3:] = self.mui
 
         # register the green lagrange strain and second Piola-Kirchhoff stress
-        matdat.register_data("green strain","SymTensor",
+        matdat.register("green strain","SymTensor",
                              init_val = zeros(6),
                              plot_key = "GREEN_STRAIN")
-        matdat.register_data("pk2 stress","SymTensor",
+        matdat.register("pk2 stress","SymTensor",
                              init_val = zeros(6),
                              plot_key = "PK2")
 
         return
 
     def jacobian(self, simdat, matdat):
-        v = matdat.get_data("prescribed stress components")
+        v = matdat.get("prescribed stress components")
         return self.J0[[[x] for x in v],v]
 
     def update_state(self, simdat, matdat):
@@ -109,7 +109,7 @@ class FiniteElastic(ConstitutiveModelPrototype):
            update the material state based on current state and strain increment
         """
         # deformation gradient and its determinant
-        F = matdat.get_data("deformation gradient")
+        F = matdat.get("deformation gradient")
 
         if self.code == "python":
             E, pk2, sig = _py_update_state(self.mui, F)
@@ -120,9 +120,9 @@ class FiniteElastic(ConstitutiveModelPrototype):
                 a.extend([report_and_raise_error, log_message])
             E, pk2, sig = mtllib.finite_elast_calc(*a)
 
-        matdat.store_data("stress", sig)
-        matdat.store_data("pk2 stress", pk2)
-        matdat.store_data("green strain", E)
+        matdat.store("stress", sig)
+        matdat.store("pk2 stress", pk2)
+        matdat.store("green strain", E)
 
         return
 

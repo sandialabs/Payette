@@ -207,21 +207,21 @@ class Payette(object):
 
         # set up the simulation data container and register obligatory data
         self.simdat = DataContainer(self.name)
-        self.simdat.register_data("time", "Scalar",
+        self.simdat.register("time", "Scalar",
                                  init_val=0., plot_key="time",
                                  units="TIME_UNITS")
-        self.simdat.register_data("time step", "Scalar",
+        self.simdat.register("time step", "Scalar",
                                  init_val=0., plot_key="timestep",
                                  units="TIME_UNITS")
-        self.simdat.register_data("number of steps", "Scalar", init_val=0,
+        self.simdat.register("number of steps", "Scalar", init_val=0,
                                   units="NO_UNITS")
-        self.simdat.register_data("leg number", "Scalar", init_val=0,
+        self.simdat.register("leg number", "Scalar", init_val=0,
                                   units="NO_UNITS")
-        self.simdat.register_data("payette density", "Scalar",
+        self.simdat.register("payette density", "Scalar",
                                   init_val=self.material.initial_density(),
                                   plot_key="PRHO",
                                   units="DENSITY_UNITS")
-        self.simdat.register_data("volume fraction", "Scalar",
+        self.simdat.register("volume fraction", "Scalar",
                                   init_val=1., plot_key="VFRAC",
                                   units="NO_UNITS")
 
@@ -237,12 +237,12 @@ class Payette(object):
 
         self.write_input = ro.WRITE_INPUT or self.simdir != os.getcwd()
 
-        self.simdat.register_static_data("nprints", self.boundary.nprints())
+        self.simdat.register_static("nprints", self.boundary.nprints())
         if not self.material.eos_model:
             # register data not needed by the eos models
-            self.simdat.register_static_data("emit", self.boundary.emit())
-            self.simdat.register_static_data("kappa", self.boundary.kappa())
-            self.simdat.register_static_data("screenout",
+            self.simdat.register_static("emit", self.boundary.emit())
+            self.simdat.register_static("kappa", self.boundary.kappa())
+            self.simdat.register_static("screenout",
                                              self.boundary.screenout())
 
         # --- optional information ------------------------------------------ #
@@ -324,14 +324,14 @@ class Payette(object):
                         "+simdat[[2;;,{0:d}]])/3;".format(sig_idx+2))
                 fobj.write('PRES={0}\n'.format(pres))
             fobj.write(
-                "lastep=Length[{0}]\n".format(self.simdat.get_plot_key("time")))
+                "lastep=Length[{0}]\n".format(self.simdat._plot_key("time")))
 
         # math2 is a file containing mathematica directives to setup default
         # plots that the user requested
         lowhead = [x.lower() for x in self.out_vars]
         with open( math2, "w" ) as fobj:
             fobj.write('showcy[{0},{{"cycle", "time"}}]\n'
-                    .format(self.simdat.get_plot_key("time")))
+                    .format(self.simdat._plot_key("time")))
 
             for item in self.mathplot_vars:
                 name = self.plot_keys[lowhead.index(item.lower())]
@@ -441,8 +441,8 @@ class Payette(object):
                 dat = self.simdat
             else:
                 dat = self.matdat
-            plot_name = dat.get_plot_name(plot_key)
-            val = dat.get_data(plot_key)
+            plot_name = dat._plot_name(plot_key)
+            val = dat.get(plot_key)
             _write_plotable(plot_idx + 1, plot_key, plot_name, val)
             continue
 
@@ -464,9 +464,9 @@ class Payette(object):
             else:
                 dat = self.matdat
 
-            dum = dat.get_data(plot_key)
+            dum = dat.get(plot_key)
             if UNITCONVERT:
-                units = dat.get_data_units(plot_key)
+                units = dat.units(plot_key)
                 dum = UnitManager(dum, input_unit_system, units)
                 dum.convert(output_unit_system)
                 dum = dum.get()

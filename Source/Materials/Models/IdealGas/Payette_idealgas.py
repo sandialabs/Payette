@@ -55,23 +55,23 @@ class IdealGas(ConstitutiveModelPrototype):
 
         # Variables already registered:
         #   density, temperature, energy, pressure
-        matdat.register_data("soundspeed", "Scalar",
+        matdat.register("soundspeed", "Scalar",
                              init_val = 0.,
                              plot_key = "SNDSPD",
                              units="VELOCITY_UNITS")
-        matdat.register_data("dpdr", "Scalar",
+        matdat.register("dpdr", "Scalar",
                              init_val = 0.,
                              plot_key = "DPDR",
                              units="PRESSURE_UNITS_OVER_DENSITY_UNITS")
-        matdat.register_data("dpdt", "Scalar",
+        matdat.register("dpdt", "Scalar",
                              init_val = 0.,
                              plot_key = "DPDT",
                              units="PRESSURE_UNITS_OVER_TEMPERATURE_UNITS")
-        matdat.register_data("dedt", "Scalar",
+        matdat.register("dedt", "Scalar",
                              init_val = 0.,
                              plot_key = "DEDT",
                              units="SPECIFIC_ENERGY_UNITS_OVER_TEMPERATURE_UNITS")
-        matdat.register_data("dedr", "Scalar",
+        matdat.register("dedr", "Scalar",
                              init_val = 0.,
                              plot_key = "DEDR",
                              units="SPECIFIC_ENERGY_UNITS_OVER_DENSITY_UNITS")
@@ -101,18 +101,18 @@ class IdealGas(ConstitutiveModelPrototype):
         P = R * temp * rho / M
 
         # make sure we store the "big three"
-        matdat.store_data("density", rho)
-        matdat.store_data("temperature", temp)
-        matdat.store_data("energy", enrg)
+        matdat.store("density", rho)
+        matdat.store("temperature", temp)
+        matdat.store("energy", enrg)
 
-        matdat.store_data("pressure", P)
-        matdat.store_data("dpdr", R * temp / M)
-        matdat.store_data("dpdt", R * rho / M)
-        matdat.store_data("dedt", CV * R)
-        matdat.store_data("dedr", CV * P * M / rho ** 2)
-        matdat.store_data("soundspeed", (R * temp / M) ** 2)
+        matdat.store("pressure", P)
+        matdat.store("dpdr", R * temp / M)
+        matdat.store("dpdt", R * rho / M)
+        matdat.store("dedt", CV * R)
+        matdat.store("dedr", CV * P * M / rho ** 2)
+        matdat.store("soundspeed", (R * temp / M) ** 2)
 
-        matdat.advance_all_data()
+        matdat.advance_all()
         return
 
 

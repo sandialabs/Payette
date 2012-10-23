@@ -93,13 +93,13 @@ def velgrad_from_strain(simdat, matdat):
 
     # get data from data containers
     kappa = simdat.KAPPA
-    delt = simdat.get_data("time step")
+    delt = simdat.get("time step")
 
     # strain and rotation
-    strain_0 = matdat.get_data("strain", form="Matrix")
-    strain_f = matdat.get_data("prescribed strain", form="Matrix")
-    rotation = matdat.get_data("rotation", form="Matrix")
-    drotation = matdat.get_data("rotation rate", form="Matrix")
+    strain_0 = matdat.get("strain", form="Matrix")
+    strain_f = matdat.get("prescribed strain", form="Matrix")
+    rotation = matdat.get("rotation", form="Matrix")
+    drotation = matdat.get("rotation rate", form="Matrix")
 
     # rate of strain
     dstrain = (strain_f - strain_0) / delt
@@ -119,8 +119,8 @@ def velgrad_from_strain(simdat, matdat):
     vorticity = velgrad - sym_velgrad
 
     # store updated data
-    matdat.store_data("rate of deformation", sym_velgrad)
-    matdat.store_data("vorticity", vorticity)
+    matdat.store("rate of deformation", sym_velgrad)
+    matdat.store("vorticity", vorticity)
 
     return
 
@@ -158,9 +158,9 @@ def velgrad_from_defgrad(simdat, matdat):
     """
 
     # get data from containers
-    delt = simdat.get_data("time step")
-    defgrad_0 = matdat.get_data("deformation gradient", form="Matrix")
-    defgrad_f = matdat.get_data("prescribed deformation gradient",
+    delt = simdat.get("time step")
+    defgrad_0 = matdat.get("deformation gradient", form="Matrix")
+    defgrad_f = matdat.get("prescribed deformation gradient",
                                 form="Matrix")
     ddefgrad = (defgrad_f - defgrad_0) / delt
 
@@ -168,8 +168,8 @@ def velgrad_from_defgrad(simdat, matdat):
     sym_velgrad = .5 * (velgrad + velgrad.T)
     vorticity = velgrad - sym_velgrad
 
-    matdat.store_data("vorticity", vorticity)
-    matdat.store_data("rate of deformation", sym_velgrad)
+    matdat.store("vorticity", vorticity)
+    matdat.store("rate of deformation", sym_velgrad)
     return
 
 
@@ -215,8 +215,8 @@ def velgrad_from_stress(material, simdat, matdat):
     written by Tom Pucick for his MMD material model driver.
 
     """
-    depsdt_old = matdat.get_data("strain rate")
-    nzc = matdat.get_data("prescribed stress components")
+    depsdt_old = matdat.get("strain rate")
+    nzc = matdat.get("prescribed stress components")
     l_nzc = len(nzc)
 
     if not ro.PROPORTIONAL:
@@ -228,9 +228,9 @@ def velgrad_from_stress(material, simdat, matdat):
 
         # --- didn't converge, try Newton's method with initial
         # --- d[nzc]=0.
-        dstrain = matdat.get_data("strain rate")
+        dstrain = matdat.get("strain rate")
         dstrain[nzc] = np.zeros(l_nzc)
-        matdat.store_data("strain rate", dstrain, old=True)
+        matdat.store("strain rate", dstrain, old=True)
 
         converged = piter.newton(material, simdat, matdat)
 
@@ -239,7 +239,7 @@ def velgrad_from_stress(material, simdat, matdat):
 
     # --- Still didn't converge. Try downhill simplex method and accept
     #     whatever answer it returns:
-    matdat.restore_data("strain rate", depsdt_old)
+    matdat.restore("strain rate", depsdt_old)
     piter.simplex(material, simdat, matdat)
     return
 
@@ -297,10 +297,10 @@ def update_deformation(simdat, matdat):
 
     # get data from containers
     kappa = simdat.KAPPA
-    delt = simdat.get_data("time step")
-    defgrad_0 = matdat.get_data("deformation gradient", form="Matrix")
-    sym_velgrad = matdat.get_data("rate of deformation", form="Matrix")
-    vorticity = matdat.get_data("vorticity", form="Matrix")
+    delt = simdat.get("time step")
+    defgrad_0 = matdat.get("deformation gradient", form="Matrix")
+    sym_velgrad = matdat.get("rate of deformation", form="Matrix")
+    vorticity = matdat.get("vorticity", form="Matrix")
 
     defgrad_f = expm((sym_velgrad + vorticity) * delt)
     defgrad_f *= defgrad_0
@@ -313,13 +313,13 @@ def update_deformation(simdat, matdat):
     if np.linalg.det(defgrad_f) <= 0.:
         pu.report_and_raise_error("negative Jacobian encountered")
 
-    matdat.store_data("strain", strain)
-    matdat.store_data("deformation gradient", defgrad_f)
+    matdat.store("strain", strain)
+    matdat.store("deformation gradient", defgrad_f)
 
     # compute the equivalent strain
     eps = to_array(strain, symmetric=True)
     eqveps = np.sqrt(2. / 3. * (sum(eps[:3] ** 2) + 2. * sum(eps[3:] ** 2)))
-    matdat.store_data("equivalent strain", eqveps)
+    matdat.store("equivalent strain", eqveps)
 
     return
 

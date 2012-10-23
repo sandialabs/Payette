@@ -37,7 +37,11 @@ from copy import deepcopy
 
 import Source.Payette_utils as pu
 import Source.Payette_tensor as pt
-from Source.Payette_unit_manager import UnitManager as UnitManager
+import Source.Payette_unit_manager as um
+
+
+BOOL_MAP = {True: 1, False: 0}
+
 
 class DataContainer:
     """
@@ -53,23 +57,17 @@ class DataContainer:
         self.tensor_vars = ["Tensor","SymTensor","Vector","Matrix"]
         self.data_types = self.tensor_vars + ["Scalar","Boolean","Array",
                                               "Integer Array","List"]
-        self.data_container_idx = 0
-        self.data_container = {}
+        self._container_idx = 0
+        self._container = {}
         self.plot_key_map = {}
         self.plot_key_list = []
         self.static_data_container = {}
         self.extra_vars_map = {}
         self.extra_vars_registered = False
         self.num_extra = 0
-        self.I3 = np.array([1.,1.,1.])
-        self.I6 = np.array([1.,1.,1.,0.,0.,0.])
-        self.I9 = np.array([1.,0.,0.,0.,1.,0.,0.,0.,1.])
-        self.nvec = 3
-        self.nsym = 6
-        self.ntens = 9
         pass
 
-    def register_data(self, name, typ, init_val=None, plot_key=None,
+    def register(self, name, typ, init_val=None, plot_key=None,
                       dim=None, constant=False, plot_idx=None, xtra=None,
                       units=None):
 
@@ -85,9 +83,9 @@ class DataContainer:
                         plotable
         """
 
-        if (name in self.data_container or
-            name.upper() in self.data_container or
-            name.lower() in self.data_container):
+        if (name in self._container or
+            name.upper() in self._container or
+            name.lower() in self._container):
             pu.report_and_raise_error(
                 "variable {0} already registered".format(name))
 
@@ -97,7 +95,7 @@ class DataContainer:
 
         # For the time being, we don't care if the data is "None" or some
         # valid unit name. However, if it isn't one of those two, exit.
-        if units is not None and not UnitManager.is_valid_units(units):
+        if units is not None and not um.UnitManager.is_valid_units(units):
             pu.report_and_raise_error(
                  "Units '{0}' for ({1},{2}) is not valid.".
                                          format(units, plot_key, name))
@@ -113,7 +111,7 @@ class DataContainer:
 
             if typ == "SymTensor":
                 if init_val is None:
-                    init_val = np.zeros(self.nsym)
+                    init_val = np.zeros(pt.NSYM)
                 elif init_val == "Identity":
                     init_val = self.I6
                 elif len(init_val) != 6:
@@ -122,18 +120,18 @@ class DataContainer:
 
             elif typ == "Tensor":
                 if init_val is None:
-                    init_val = np.zeros(self.ntens)
+                    init_val = np.zeros(pt.NTENS)
                 elif init_val == "Identity":
-                    init_val = self.I9
+                    init_val = pt.I9
                 elif len(init_val) != 9:
                     msg = "length of Tensor data {0} != 9".format(name)
                     pu.report_and_raise_error(msg)
 
             elif typ == "Vector":
                 if init_val is None:
-                    init_val = np.zeros(self.nvec)
+                    init_val = np.zeros(pt.NVEC)
                 elif init_val == "Identity":
-                    init_val = self.I3
+                    init_val = pt.I3
                 elif len(init_val) != 3:
                     msg = "length of Vector data {0} != 3".format(name)
                     pu.report_and_raise_error(msg)
@@ -246,29 +244,29 @@ class DataContainer:
             plot_name = name
 
             if typ == "Vector":
-                plot_key = ["{0}{1}".format(plot_key,i+1) for i in range(self.nvec)]
+                plot_key = ["{0}{1}".format(plot_key,i+1) for i in range(pt.NVEC)]
 
             elif typ == "SymTensor":
                 plot_key = ["{0}{1}".format(plot_key,self.mapping(i))
-                            for i in range(self.nsym)]
+                            for i in range(pt.NSYM)]
 
             elif typ == "Tensor":
                 plot_key = ["{0}{1}".format(plot_key,self.mapping(i,sym=False))
-                            for i in range(self.ntens)]
+                            for i in range(pt.NTENS)]
 
             # format the plot name
             tmp = " component "
             if typ == "Vector":
                 plot_name = ["{0}{1}{2}".format(i+1,tmp,name)
-                             for i in range(self.nvec)]
+                             for i in range(pt.NVEC)]
 
             elif typ == "SymTensor":
                 plot_name = ["{0}{1}{2}".format(self.mapping(i),tmp,name)
-                             for i in range(self.nsym)]
+                             for i in range(pt.NSYM)]
 
             elif typ == "Tensor":
                 plot_name = ["{0}{1}{2}".format(self.mapping(i,sym=False),tmp,name)
-                             for i in range(self.ntens)]
+                             for i in range(pt.NTENS)]
 
             if not isinstance(plot_key, list):
                 nam = name if xtra is None else xtra
@@ -284,10 +282,10 @@ class DataContainer:
                     self.plot_key_list.append(key)
 
         # register the data
-        self.data_container[name] = {"name": name,
+        self._container[name] = {"name": name,
                                      "plot key": plot_key,
                                      "plot name": plot_name,
-                                     "idx": self.data_container_idx,
+                                     "idx": self._container_idx,
                                      "type": typ,
                                      "shape": shape,
                                      "value": value,
@@ -297,31 +295,31 @@ class DataContainer:
                                      "stashed value": old_value,
                                      "constant": constant,
                                      "plotable": plotable}
-        self.data_container_idx += 1
+        self._container_idx += 1
         setattr(self,name.replace(" ","_").upper(),old_value)
         return
 
 
-    def ensure_all_registered_data_have_valid_units(self):
+    def ensure_valid_units(self):
         """Returns nothing if all registered data have valid units.
         Fails otherwise."""
-        for data, data_dict in self.data_container.iteritems():
-            if not UnitManager.is_valid_units(data_dict['units']):
+        for data, data_dict in self._container.iteritems():
+            if not um.UnitManager.is_valid_units(data_dict['units']):
                 pu.report_and_raise_error(
       "Registered data does not have valid units set:\n"+
       "\n".join(["({0}:{1})".format(x, y) for x, y in data_dict.iteritems()]))
         return
 
 
-    def unregister_data(self, name):
+    def unregister(self, name):
         """ unregister data with the data container """
         try:
-            del self.data_container[name]
+            del self._container[name]
         except KeyError:
             pu.log_warning(
                 "attempting to unregister non-registered data {0}".format(name))
 
-    def register_xtra_vars(self, nxtra, names, keys, values):
+    def register_xtra(self, nxtra, names, keys, values):
         """ register extra data with the data container """
 
         if self.extra_vars_registered:
@@ -335,16 +333,16 @@ class DataContainer:
             name = names[i]
             key = keys[i]
             value = values[i]
-            self.register_data(name, "Scalar",
+            self.register(name, "Scalar",
                                init_val=np.float64(value),
-                               plot_key=key, xtra="extra variables",
+                               plot_key=key, xtra="__xtra__",
                                plot_idx=i)
             self.extra_vars_map[i] = name
             continue
 
         return
 
-    def register_static_data(self, name, val):
+    def register_static(self, name, val):
         """Register unchanging data
 
         Parameters
@@ -361,7 +359,7 @@ class DataContainer:
         setattr(self,name.replace(" ","_").upper(),val)
         return
 
-    def get_static_data(self,name):
+    def get_static(self,name):
 
         """ return static_data[name] """
 
@@ -373,7 +371,7 @@ class DataContainer:
 
         return self.static_data_container.get(name)
 
-    def get_data_units(self, name):
+    def units(self, name):
         """ return the units of the data 'name' """
         idx = None
         if name in self.plot_key_map:
@@ -381,9 +379,9 @@ class DataContainer:
             name = self.plot_key_map[plot_key]["name"]
             idx = self.plot_key_map[plot_key]["idx"]
 
-        return self.data_container.get(name)['units']
+        return self._container.get(name)['units']
 
-    def get_data(self, name, stash=False, cur=False,
+    def get(self, name, stash=False, cur=False,
                  previous=False, form="Array"):
         """ return simulation_data[name][valtyp] """
 
@@ -405,21 +403,21 @@ class DataContainer:
         else:
             valtyp = "old value"
 
-        # handle extra variables
-        if name == "extra variables":
+        # handle __xtra__
+        if name == "__xtra__":
             retval = np.zeros(self.num_extra)
             for ixtra, nam in self.extra_vars_map.items():
-                retval[ixtra] = self.data_container[nam][valtyp]
+                retval[ixtra] = self._container[nam][valtyp]
                 continue
 
         else:
-            data = self.data_container.get(name)
+            data = self._container.get(name)
             if data is None:
                 # data not a key in the container, but data could be a plot key
                 msg = (
                     "{0} not in {1}.data_container. registered data are:\n{2}."
                     .format(name, self.name,
-                            ", ".join(self.data_container.keys())))
+                            ", ".join(self._container.keys())))
                 pu.report_and_raise_error(msg)
 
             typ = data["type"]
@@ -461,13 +459,13 @@ class DataContainer:
         else:
             return retval[idx]
 
-    def restore_data(self, name, newval):
-        self.store_data(name, newval)
-        self.store_data(name, newval,old=True)
-        self.store_data(name, newval,stash=True)
+    def restore(self, name, newval):
+        self.store(name, newval)
+        self.store(name, newval,old=True)
+        self.store(name, newval,stash=True)
         return
 
-    def store_data(self, name, newval, stash=False, old=False):
+    def store(self, name, newval, stash=False, old=False):
 
         """ store the simulation data """
 
@@ -481,22 +479,22 @@ class DataContainer:
         else:
             valtyp = "value"
 
-        # handle extra variables
-        if name == "extra variables":
+        # handle __xtra__
+        if name == "__xtra__":
             if len(newval) != self.num_extra:
                 pu.report_and_raise_error("wrong size for extra variable array")
 
             for ixv,xv in enumerate(newval):
-                name = self.getExName(ixv)
-                self.data_container[name][valtyp] = xv
+                name = self._xtra_name(ixv)
+                self._container[name][valtyp] = xv
                 continue
             return
 
-        data = self.data_container.get(name)
+        data = self._container.get(name)
 
         if data is None:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
-                   .format(name, self.name, ", ".join(self.data_container.keys())))
+                   .format(name, self.name, ", ".join(self._container.keys())))
             pu.report_and_raise_error(msg)
 
         typ = data["type"]
@@ -547,64 +545,64 @@ class DataContainer:
         data[valtyp] = newval
         return
 
-    def stash_data(self, name, cur=False):
+    def stash(self, name, cur=False):
 
         """ stash "old value" in "stashed value" """
 
-        # handle extra variables
-        if name == "extra variables":
+        # handle __xtra__
+        if name == "__xtra__":
             for idx,name in self.extra_vars_map:
-                value = self.get_data(name, cur=cur)
+                value = self.get(name, cur=cur)
                 # stash the value
-                self.store_data(name, value,stash=True)
+                self.store(name, value,stash=True)
                 continue
             return
 
-        value = self.get_data(name, cur=cur)
+        value = self.get(name, cur=cur)
         # stash the value
-        self.store_data(name, value, stash=True)
+        self.store(name, value, stash=True)
 
         return
 
-    def get_stashed_data(self,name):
-        return self.get_data(name, stash=True)
+    def get_stash(self,name):
+        return self.get(name, stash=True)
 
-    def unstash_data(self, name):
+    def unstash(self, name):
 
         """ unstash "value" from "stashed value" """
 
-        # handle extra variables
-        if name == "extra variables":
+        # handle __xtra__
+        if name == "__xtra__":
 
             for idx, name in self.extra_vars_map.items():
-                value = self.get_stashed_data(name)
-                self.store_data(name, value, old=True)
+                value = self.get_stash(name)
+                self.store(name, value, old=True)
                 continue
             return
 
-        if name not in self.data_container:
+        if name not in self._container:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
-                   .format(name, self.name, ", ".join(self.data_container.keys())))
+                   .format(name, self.name, ", ".join(self._container.keys())))
             pu.report_and_raise_error(msg)
 
-        value = self.get_stashed_data(name)
-        self.store_data(name, value, old=True)
+        value = self.get_stash(name)
+        self.store(name, value, old=True)
 
         return
 
-    def advance_all_data(self):
+    def advance_all(self):
 
         """ advance "value" to "old value" """
 
-        for name in self.data_container:
-            self.advance_data(name)
+        for name in self._container:
+            self.advance(name)
             continue
         return
 
-    def advance_data(self, name, value=None):
+    def advance(self, name, value=None):
         """ advance "value" to "old value" """
 
-        if name == "extra variables":
+        if name == "__xtra__":
             if value is not None:
                 if len(value) != self.num_extra:
                     pu.report_and_raise_error(
@@ -613,55 +611,55 @@ class DataContainer:
 
                 for idx, exval in enumerate(value):
                     name = self.extra_vars_map[idx]
-                    self.store_data(name, exval, old=True)
+                    self.store(name, exval, old=True)
                     continue
 
             else:
                 for idx, name in self.extra_vars_map.items():
-                    value = self.get_data(name, cur=True)
-                    self.store_data(name, value, old=True)
+                    value = self.get(name, cur=True)
+                    self.store(name, value, old=True)
                     continue
 
             setattr(self,name.replace(" ","_").upper(),value)
             return
 
-        if name not in self.data_container:
+        if name not in self._container:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
-                   .format(name,self.name,", ".join(self.data_container.keys())))
+                   .format(name,self.name,", ".join(self._container.keys())))
             pu.report_and_raise_error(msg)
 
         if value is None:
-            value = self.get_data(name, cur=True)
+            value = self.get(name, cur=True)
 
-        self.store_data(name, value)
-        self.store_data(name, value, old=True)
+        self.store(name, value)
+        self.store(name, value, old=True)
         setattr(self, name.replace(" ","_").upper(),value)
 
         return
 
-    def getExName(self, idx):
+    def _xtra_name(self, idx):
         name = self.extra_vars_map.get(idx)
         if name is None:
             msg = "{0:d} not in {1}.extra_vars_map.".format(idx,self.name)
             pu.report_and_raise_error(msg)
         return name
 
-    def get_plot_key(self, name):
-        data = self.data_container.get(name)
+    def _plot_key(self, name):
+        data = self._container.get(name)
         if data is None:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
-                   .format(name, self.name,", ".join(self.data_container.keys())))
+                   .format(name, self.name,", ".join(self._container.keys())))
             pu.report_and_raise_error(msg)
         return data["plot key"]
 
-    def get_plot_name(self, name, idx=None):
+    def _plot_name(self, name, idx=None):
 
         if name in self.plot_key_map:
             plot_key = name
             plot_name = self.plot_key_map[plot_key]["plot name"]
 
         else:
-            data = self.data_container.get(name)
+            data = self._container.get(name)
             if data is None:
                 msg = ("{0} not in plotable data. plotable data are:\n{2}."
                        .format(name, self.name,", ".join(self.plot_key_list)))
@@ -676,29 +674,29 @@ class DataContainer:
         return self.plot_key_list
 
     def plotable(self,name):
-        return self.data_container[name]["plotable"]
+        return self._container[name]["plotable"]
 
-    def dump_data(self,name):
-        """ return self.data_container[name] """
+    def dump(self,name):
+        """ return self._container[name] """
 
-        if "extra variables" in name:
+        if "__xtra__" in name:
             ex_vars = {}
             for idx,name in self.extra_vars_map.items():
-                ex_vars[name] = self.data_container[name]
+                ex_vars[name] = self._container[name]
                 continue
             return ex_vars
 
-        data = self.data_container.get(name)
+        data = self._container.get(name)
         if data is None:
             msg = ("{0} not in {1}.data_container. registered data are:\n{2}."
-                   .format(name,self.name,", ".join(self.data_container.keys())))
+                   .format(name,self.name,", ".join(self._container.keys())))
             pu.report_and_raise_error(msg)
 
         return data
 
 
-    def dataContainer(self):
-        return self.data_container
+    def data_container(self):
+        return self._container
 
     def mapping(self, ii, sym = True):
         # return the 2D cartesian component of 1D array

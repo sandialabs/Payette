@@ -107,13 +107,13 @@ def newton(material, simdat, matdat):
     '''
 
     # --- Local variables
-    delt = simdat.get_data("time step")
-    depsdt = matdat.get_data("strain rate")
-    defgrad_old = matdat.get_data("deformation gradient", form="Matrix")
-    dold = matdat.get_data("rate of deformation")
-    prsig = matdat.get_data("prescribed stress")
-    nzc = matdat.get_data("prescribed stress components")
-    sig = matdat.get_data("stress")
+    delt = simdat.get("time step")
+    depsdt = matdat.get("strain rate")
+    defgrad_old = matdat.get("deformation gradient", form="Matrix")
+    dold = matdat.get("rate of deformation")
+    prsig = matdat.get("prescribed stress")
+    nzc = matdat.get("prescribed stress components")
+    sig = matdat.get("stress")
 
     l_nzc = len(nzc)
     sig_dif = np.zeros(l_nzc)
@@ -128,13 +128,13 @@ def newton(material, simdat, matdat):
     defgrad_new = defgrad_old + np.dot(pt.to_matrix(depsdt), defgrad_old) * delt
 
     # replace deformation rate and gradient with current best guesses
-    matdat.store_data("deformation gradient", defgrad_new, old=True)
-    matdat.store_data("rate of deformation", depsdt, old=True)
+    matdat.store("deformation gradient", defgrad_new, old=True)
+    matdat.store("rate of deformation", depsdt, old=True)
 
     # update the material state
     material.update_state(simdat, matdat)
 
-    sig = matdat.get_data("stress", cur=True)
+    sig = matdat.get("stress", cur=True)
     sig_dif = sig[nzc] - prsig
 
     # --- Perform Newton iteration
@@ -150,16 +150,16 @@ def newton(material, simdat, matdat):
 
         if (depsmag(depsdt, delt) > depsmax):
             # increment too large, restore changed data and exit
-            matdat.restore_data("rate of deformation", dold)
-            matdat.restore_data("deformation gradient", defgrad_old)
+            matdat.restore("rate of deformation", dold)
+            matdat.restore("deformation gradient", defgrad_old)
             return converged
 
         defgrad_new = (defgrad_old +
                        np.dot(pt.to_matrix(depsdt), defgrad_old) * delt)
-        matdat.store_data("rate of deformation", depsdt, old=True)
-        matdat.store_data("deformation gradient", defgrad_new, old=True)
+        matdat.store("rate of deformation", depsdt, old=True)
+        matdat.store("deformation gradient", defgrad_new, old=True)
         material.update_state(simdat, matdat)
-        sig = matdat.get_data("stress", cur=True)
+        sig = matdat.get("stress", cur=True)
         sig_dif = sig[nzc] - prsig
         dnom = np.amax(np.abs(prsig)) if np.amax(np.abs(prsig)) > 2.e-16 else 1.
         relerr = np.amax(np.abs(sig_dif)) / dnom
@@ -167,25 +167,25 @@ def newton(material, simdat, matdat):
         if i <= maxit1:
             if relerr < tol1:
                 converged = 1
-                matdat.restore_data("rate of deformation", dold)
-                matdat.restore_data("deformation gradient", defgrad_old)
-                matdat.store_data("strain rate", depsdt)
+                matdat.restore("rate of deformation", dold)
+                matdat.restore("deformation gradient", defgrad_old)
+                matdat.store("strain rate", depsdt)
                 return converged
 
         else:
             if relerr < tol2:
                 converged = 2
                 # restore changed data and store the newly found strain rate
-                matdat.restore_data("rate of deformation", dold)
-                matdat.restore_data("deformation gradient", defgrad_old)
-                matdat.store_data("strain rate", depsdt)
+                matdat.restore("rate of deformation", dold)
+                matdat.restore("deformation gradient", defgrad_old)
+                matdat.store("strain rate", depsdt)
                 return converged
 
         continue
 
     # didn't converge, restore restore data and exit
-    matdat.restore_data("rate of deformation", dold)
-    matdat.restore_data("deformation gradient", defgrad_old)
+    matdat.restore("rate of deformation", dold)
+    matdat.restore("deformation gradient", defgrad_old)
     return converged
 
 
@@ -224,15 +224,15 @@ def simplex(material, simdat, matdat):
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
        M Scot Swan, Sandia National Laboratories, mswan@sandia.gov
     '''
-    nzc = matdat.get_data("prescribed stress components")
-    depsdt = matdat.get_data("strain rate")
+    nzc = matdat.get("prescribed stress components")
+    depsdt = matdat.get("strain rate")
 
     # --- Perform the simplex search
     args = (material, simdat, matdat)
     depsdt[nzc] = scipy.optimize.fmin(func, depsdt[nzc],
                                       args=args, maxiter=20, disp=False)
 
-    matdat.store_data("strain rate", depsdt)
+    matdat.store("strain rate", depsdt)
 
     return
 
@@ -251,21 +251,21 @@ def func(depsdt_opt, material, simdat, matdat):
     '''
 
     # initialize
-    delt = simdat.get_data("time step")
-    nzc = matdat.get_data("prescribed stress components")
-    prsig = matdat.get_data("prescribed stress")
-    depsdt = matdat.get_data("strain rate")
+    delt = simdat.get("time step")
+    nzc = matdat.get("prescribed stress components")
+    prsig = matdat.get("prescribed stress")
+    depsdt = matdat.get("strain rate")
     depsdt[nzc] = depsdt_opt
-    defgrad_old = matdat.get_data("deformation gradient", form="Matrix")
-    dold = matdat.get_data("rate of deformation")
+    defgrad_old = matdat.get("deformation gradient", form="Matrix")
+    dold = matdat.get("rate of deformation")
     defgrad_new = defgrad_old + np.dot(pt.to_matrix(depsdt), defgrad_old) * delt
 
     # store the best guesses
-    matdat.store_data("rate of deformation", depsdt, old=True)
-    matdat.store_data("deformation gradient", defgrad_new, old=True)
+    matdat.store("rate of deformation", depsdt, old=True)
+    matdat.store("deformation gradient", defgrad_new, old=True)
     material.update_state(simdat, matdat)
 
-    sig = matdat.get_data("stress", cur=True)
+    sig = matdat.get("stress", cur=True)
 
     # check the error
     error = 0.
@@ -293,7 +293,7 @@ def func(depsdt_opt, material, simdat, matdat):
             error = np.linalg.norm(stress_v)
 
     # restore data
-    matdat.restore_data("rate of deformation", dold)
-    matdat.restore_data("deformation gradient", defgrad_old)
+    matdat.restore("rate of deformation", dold)
+    matdat.restore("deformation gradient", defgrad_old)
 
     return error
