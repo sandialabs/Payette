@@ -270,6 +270,11 @@ class Payette(object):
         self.extraction_vars = extraction
         self.eopts = eopts
 
+        # set up the data containers and initialize material models
+        self.simdat.setup_data_container()
+        self.matdat.setup_data_container()
+        self.material.constitutive_model.initialize_state(self.matdat)
+
         self._setup_files()
 
         pass
@@ -323,14 +328,14 @@ class Payette(object):
                         "+simdat[[2;;,{0:d}]])/3;".format(sig_idx+2))
                 fobj.write('PRES={0}\n'.format(pres))
             fobj.write(
-                "lastep=Length[{0}]\n".format(self.simdat._plot_key("time")))
+                "lastep=Length[{0}]\n".format(self.simdat.get("time", "plot key")))
 
         # math2 is a file containing mathematica directives to setup default
         # plots that the user requested
         lowhead = [x.lower() for x in self.out_vars]
         with open( math2, "w" ) as fobj:
             fobj.write('showcy[{0},{{"cycle", "time"}}]\n'
-                    .format(self.simdat._plot_key("time")))
+                    .format(self.simdat.get("time", "plot key")))
 
             for item in self.mathplot_vars:
                 name = self.plot_keys[lowhead.index(item.lower())]

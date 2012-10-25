@@ -61,17 +61,12 @@ class DataContainer:
         self._setup = False
 
         #
-        self.data_container = {}
-        self.data_container_idx = 0
-        self.plot_key_map = {}
         self._plot_keys = []
-
         self._xtra_registered = False
         self._xtra_start, self._xtra_end = None, None
         self._xtra_names, self._xtra_keys = [], []
         self._nxtra = 0
 
-        # new
         self._container = {}
         self._plotable_data = {}
         self._ireg = 0
@@ -103,7 +98,6 @@ class DataContainer:
         dim : str
             dimension
         constant : bool
-
 
         """
         if any(name.lower() == x.lower() for x in self._container):
@@ -249,7 +243,7 @@ class DataContainer:
 
         """
         if not self._setup:
-            self.setup_data_container()
+            pu.report_and_raise_error("cannot get data until setup")
 
         # determine what to get and get it
         if name == "all":
@@ -292,7 +286,7 @@ class DataContainer:
         self._setup = True
         ldata = len(self._ival)
         self._data = np.empty((ro.NSTEPS + 1, ldata), dtype=float)
-        self._data[0, :] = self._ival
+        self._data[0, :] = [x for x in self._ival]
 
         # initialize constant data
         for key, val in self._container.items():
@@ -334,7 +328,6 @@ class DataContainer:
             start, end = self._xtra_start, self._xtra_end
         else:
             data = self._container.get(name)
-
             # validity checks
             if data is None:
                 pu.report_and_raise_error("{0} not found".format(name))
@@ -378,6 +371,7 @@ class DataContainer:
 
         if name.lower() == "istep":
             setattr(self, "ISTEP", int(v))
+
         return
 
     def advance(self, args=(), name=None):
@@ -404,7 +398,11 @@ class DataContainer:
             start, end = 0, self._end
 
         N = ro.ISTEP if "-" not in args else ro.ISTEP - 1
-        self._data[N + 1, start:end] = self._data[N, start:end]
+        if N == -1:
+            # restoring on first step, restore from self._ival
+            self._data[0, start:end] = np.array(self._ival)[start:end]
+        else:
+            self._data[N + 1, start:end] = self._data[N, start:end]
         return
 
     def plot_keys(self):
@@ -697,9 +695,5 @@ class DataContainer:
         return
 
 
-def _fix_name(name):
-    return " ".join(name.split()).lower()
-
-
 def _is_xtra(name):
-    return _fix_name(name) == "__xtra__"
+    return name.strip().lower() == "__xtra__"

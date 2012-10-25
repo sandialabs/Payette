@@ -238,7 +238,7 @@ def eos_driver(the_model, **kwargs):
         e = init_energy
         for rho in np.linspace(RH, Rf, Np):
             idx += 1
-            if idx%int(Np / float(nprints)) == 0:
+            if idx % int(Np / float(nprints)) == 0:
                 pu.log_message("Hugoniot step {0}/{1}".format(idx, Np))
 
             # Here we solve the Rankine-Hugoniot equation as
@@ -371,13 +371,15 @@ def solid_driver(the_model, **kwargs):
     # --- call the material model with zero state
     if ileg == 0:
         material.update_state(simdat, matdat)
+        simdat.advance()
+        matdat.advance()
         the_model.write_state()
 
     # ----------------------------------------------------------------------- #
 
     # V is an array of integers that contains the columns of prescribed stress
     V = []
-    Pt = np.zeros(pt.NSYM)
+    Pt = pt.Z6
 
     Ec = matdat.get("strain")
     Fc = matdat.get("deformation gradient")
@@ -410,7 +412,6 @@ def solid_driver(the_model, **kwargs):
             except ValueError:
                 pass
 
-        print simdat.NPRINTS, simdat.EMIT, ro.ISTEP, ro.NSTEPS
         nprints = (simdat.NPRINTS if simdat.NPRINTS else nsteps)
         if simdat.EMIT == 0:
             nprints = min(10, nsteps)
@@ -496,6 +497,12 @@ def solid_driver(the_model, **kwargs):
         # ---------------------------------------------- begin{processing step}
         for n in range(nsteps):
 
+            # advance data from end of last step to this step
+            matdat.advance()
+            simdat.advance()
+            ro.ISTEP += 1
+
+            # increment time
             t += dt
 
             # interpolate values of E, F, EF, and P for the target values for
@@ -509,7 +516,7 @@ def solid_driver(the_model, **kwargs):
 
             if len(V):
                 # prescribed stress components given
-                Pt = a1 * P0 + a2 * PSf # target stress
+                Pt = a1 * PS0 + a2 * PSf # target stress
 
             # advance known values to end of step
             simdat.store("time", t)
@@ -576,11 +583,8 @@ def solid_driver(the_model, **kwargs):
             matdat.store("stress rate", (Pc - matdat.get("stress", "-")) / dt)
             matdat.store("pressure", -np.sum(Pc[:3]) / 3.)
 
-            matdat.advance()
-            simdat.advance()
-
             # --- write state to file
-            if (nsteps-n)%print_interval == 0:
+            if (nsteps-n) % print_interval == 0:
                 the_model.write_state()
 
             if simdat.SCREENOUT or (verbose and (2 * n - nsteps) == 0):
@@ -628,8 +632,6 @@ def solid_driver(the_model, **kwargs):
                                        "deformation gradient")
 
             # -------------------------------------------- end{end of step SQA}
-
-            ro.ISTEP += 1
             simdat.store("istep", ro.ISTEP)
 
             continue # continue to next step

@@ -819,6 +819,8 @@ def rebaseline_tests(args):
     if not args:
         args = list(set([os.path.splitext(os.path.basename(x))[0]
                          for x in os.listdir(os.getcwd())]))
+        try: args.remove(".test")
+        except: pass
         if len(args) > 1:
             print args
             sys.stdout.write("Could not determine which test to rebaseline\n")
@@ -838,7 +840,7 @@ def rebaseline_tests(args):
         if errors:
             sys.stdout.write("ERROR: Test not rebaselined\n")
             continue
-        sys.stdout.write("Rebaseling {0}\n".format(os.path.basename(fnam)))
+        sys.stdout.write("Rebaselining {0}\n".format(os.path.basename(fnam)))
         shutil.move(new, old)
         sys.stdout.write("{0} rebaselined\n".format(os.path.basename(fnam)))
         continue

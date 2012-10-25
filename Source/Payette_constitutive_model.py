@@ -526,8 +526,8 @@ class ConstitutiveModelPrototype(object):
             Dm = np.array(D)
             Dm[V[i]] = D[V[i]] - (dE / dt) / 2.
             Fm = F0 + pt.dot(Dm, F0) * dt
-            matdat.store("rate of deformation")
-            matdat.store("deformation gradient")
+            matdat.store("rate of deformation", Dm)
+            matdat.store("deformation gradient", Fm)
             self.update_state(simdat, matdat)
             Pm = matdat.get("stress", copy=True)
             matdat.restore()

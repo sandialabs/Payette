@@ -107,7 +107,6 @@ Payette developers.""".format(self.constitutive_model.name, cfg.LIBRARY)
         self.constitutive_model.parse_user_params(uparams)
         self.constitutive_model.set_up(self.matdat)
         self.constitutive_model.finish_setup(self.matdat)
-        self.constitutive_model.initialize_state(self.matdat)
 
         param_table = [None] * self.constitutive_model.nprop
         for key, dic in self.constitutive_model.parameter_table.items():
