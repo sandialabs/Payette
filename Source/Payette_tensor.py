@@ -104,13 +104,13 @@ def to_matrix(a):
         return
 
 
-def to_array(a, symmetric=True):
+def to_array(a, sym=True):
     """convert a to an array"""
     shape = np.shape(a)
     if shape[0] != shape[1] or shape[0] != 3:
         pu.report_and_raise_error('wrong shape [{0}]'.format(str(shape)))
         return 1
-    if not symmetric:
+    if not sym:
         return np.array([a[0, 0], a[0, 1], a[0, 2],
                          a[1, 0], a[1, 1], a[1, 2],
                          a[2, 0], a[2, 1], a[2, 2]],
@@ -439,13 +439,13 @@ def dot(a, b):
     if sa == sb == (9, ):
         return np.array([a[0] * b[0] + a[1] * b[2] + a[2] * b[6], # 1, 1
                          a[0] * b[1] + a[1] * b[4] + a[2] * b[7], # 1, 2
-                         a[0] * b[2] + a[1] * b[5] + a[2] * b[9], # 1, 3
+                         a[0] * b[2] + a[1] * b[5] + a[2] * b[8], # 1, 3
                          a[3] * b[0] + a[4] * b[3] + a[5] * b[6], # 2, 1
                          a[3] * b[1] + a[4] * b[4] + a[5] * b[7], # 2, 2
-                         a[3] * b[2] + a[4] * b[5] + a[5] * b[9], # 2, 3
-                         a[6] * b[0] + a[7] * b[3] + a[9] * b[6], # 3, 1
-                         a[6] * b[1] + a[7] * b[4] + a[9] * b[7], # 3, 2
-                         a[6] * b[2] + a[7] * b[5] + a[9] * b[9]])# 3, 3
+                         a[3] * b[2] + a[4] * b[5] + a[5] * b[8], # 2, 3
+                         a[6] * b[0] + a[7] * b[3] + a[8] * b[6], # 3, 1
+                         a[6] * b[1] + a[7] * b[4] + a[8] * b[7], # 3, 2
+                         a[6] * b[2] + a[7] * b[5] + a[8] * b[8]])# 3, 3
 
     if sa == (9, ) and sb == (6, ):
         sa, sb = sb, sa
@@ -454,13 +454,13 @@ def dot(a, b):
     if sa == (6, ) and sb == (9, ):
         return np.array([a[0] * b[0] + a[3] * b[3] + a[5] * b[6], # 1, 1
                          a[0] * b[1] + a[3] * b[4] + a[5] * b[7], # 1, 2
-                         a[0] * b[2] + a[3] * b[5] + a[5] * b[9], # 1, 3
+                         a[0] * b[2] + a[3] * b[5] + a[5] * b[8], # 1, 3
                          a[3] * b[0] + a[1] * b[3] + a[4] * b[6], # 2, 1
                          a[3] * b[1] + a[1] * b[4] + a[4] * b[7], # 2, 2
-                         a[3] * b[2] + a[1] * b[5] + a[4] * b[9], # 2, 3
+                         a[3] * b[2] + a[1] * b[5] + a[4] * b[8], # 2, 3
                          a[5] * b[0] + a[4] * b[3] + a[2] * b[6], # 3, 1
                          a[5] * b[1] + a[4] * b[4] + a[2] * b[7], # 3, 2
-                         a[5] * b[2] + a[4] * b[5] + a[2] * b[9]])# 3, 3
+                         a[5] * b[2] + a[4] * b[5] + a[2] * b[8]])# 3, 3
 
     pu.report_and_raise_error("Bad tensors sent to dot")
     return

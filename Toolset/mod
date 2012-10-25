@@ -12,6 +12,7 @@ sys.path.extend([ROOT, DOTPAYETTE])
 import Source.__config__ as cfg
 
 DIRS = list(set(cfg.MTLDIRS + cfg.TESTS + [ROOT]))
+DIRS = list(set([ROOT]))
 
 string = "store_data get_data register_data"
 
@@ -36,7 +37,10 @@ regexps = (("register_data", "register"),
            ("dump_data", "dump"),
            ("self\.data_container", "self._container"),
            ("dataContainer", "data_container"),
-           ("extra variables", "__xtra__"))
+           ("extra variables", "__xtra__"),
+           ("init_val", "iv",),
+           ("plot_key", "key",
+            )
 
 for DIR in DIRS:
     for dirnam, dirs, files in os.walk(DIR):

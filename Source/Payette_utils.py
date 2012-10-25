@@ -214,8 +214,7 @@ def setup_logger(logfile, mode="w"):
     """ set up the simulation logger """
     global SIMLOG
     SIMLOG = open(logfile, mode)
-    if mode == "w":
-        SIMLOG.write(cfg.INTRO + "\n")
+    if mode == "w": SIMLOG.write(cfg.INTRO + "\n")
     return
 
 
@@ -227,29 +226,16 @@ def textformat(var):
 
     Created: 17 June 2011 by mswan
     """
-    if isinstance(var, (int, float, np.float32, np.float64)):
-        return "{0:<20.10E}".format(float(var))
-    elif isinstance(var,str):
-        return "{0:<20s}".format(str(var))
-    elif isinstance(var, (np.int, np.int8, np.int16, np.int32, np.int64,
-                          np.uint8, np.uint16, np.uint32, np.uint64, np.float)):
-        return "{0:<20.10E}".format(float(var))
-    else:
-        return "{0:<20}".format(str(var))
+    try: return "{0:<20.10E}".format(float(var))
+    except: return "{0:<20s}".format(str(var))
 
 
 def close_aux_files():
     """ close auxilary files """
     global SIMLOG
-
-    try:
-        SIMLOG.close()
-
-    except OSError:
-        pass
-
+    try: SIMLOG.close()
+    except OSError: pass
     SIMLOG = None
-
     return
 
 
@@ -266,8 +252,7 @@ def flatten(x):
     >>> flatten([[[1,2,3], (42,None)], [4,5], [6], 7, MyVector(8,9,10)])
     [1, 2, 3, 42, None, 4, 5, 6, 7, 8, 9, 10]"""
 
-    if isinstance(x,(float,int,str,bool)): return x
-
+    if isinstance(x, (float, int, str, bool)): return x
     result = []
     for el in x:
         #if isinstance(el, (list, tuple)):
@@ -529,7 +514,6 @@ def compute_fast_rms(gold, out):
         normalized root mean square difference between gold and out
 
     """
-
     rmsd = math.sqrt(np.sum((gold - out) ** 2) / float(len(gold)))
     dnom = abs(np.amax(gold) - np.amin(gold))
     nrmsd = rmsd / dnom if dnom >= EPSILON else rmsd

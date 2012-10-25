@@ -240,18 +240,18 @@ class Parameterize(object):
             continue
         for item in fixed:
             key = item.split()[0]
-            init_val = re.search(r"(?i)\binitial.*value\s.*", item)
-            if init_val is None:
+            ival = re.search(r"(?i)\binitial.*value\s.*", item)
+            if ival is None:
                 pu.report_error("Expected initial value for {0}".format(key))
                 continue
-            s, e = init_val.start(), init_val.end()
-            init_val = re.sub(r"(?i)\binitial.*value\s", "", item[s:e]).strip()
+            s, e = ival.start(), ival.end()
+            ival = re.sub(r"(?i)\binitial.*value\s", "", item[s:e]).strip()
             try:
-                init_val = float(init_val)
+                ival = float(ival)
             except ValueError:
                 pu.report_error(
                     "Excpected float for initial value for {0}".format(key))
-            fix[key] = {"initial value": init_val}
+            fix[key] = {"initial value": ival}
 
         for item in self.b.split("\n"):
             item = re.sub(r"[\,=\(\)]", " ", item).split()

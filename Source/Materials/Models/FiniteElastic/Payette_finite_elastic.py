@@ -92,16 +92,15 @@ class FiniteElastic(ConstitutiveModelPrototype):
 
         # register the green lagrange strain and second Piola-Kirchhoff stress
         matdat.register("green strain","SymTensor",
-                             init_val = zeros(6),
+                             iv = zeros(6),
                              plot_key = "GREEN_STRAIN")
         matdat.register("pk2 stress","SymTensor",
-                             init_val = zeros(6),
+                             iv = zeros(6),
                              plot_key = "PK2")
 
         return
 
-    def jacobian(self, simdat, matdat):
-        v = matdat.get("prescribed stress components")
+    def jacobian(self, simdat, matdat, v):
         return self.J0[[[x] for x in v],v]
 
     def update_state(self, simdat, matdat):

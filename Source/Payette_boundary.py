@@ -97,7 +97,7 @@ class Boundary(object):
         return self.bcontrol("nprints")[1]
 
     def emit(self):
-        return self.bcontrol("emit")[1]
+        return {"all": 1, "sparse": 0}[self.bcontrol("emit")[1]]
 
     def screenout(self):
         return self.bcontrol("screenout")[1]

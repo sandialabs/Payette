@@ -139,7 +139,7 @@ def get_default_options():
     return _register_default_option(None, None, inquire=True)
 
 
-def set_number_of_steps(N=0, done=[0], reset=False):
+def set_number_of_steps(N=0, I=0, done=[0], reset=False):
     if reset:
         done[0] = 0
     elif done[0]:
@@ -147,4 +147,5 @@ def set_number_of_steps(N=0, done=[0], reset=False):
     else:
         done[0] = 1
     sys.modules[__name__].NSTEPS = N
+    sys.modules[__name__].ISTEP = I
     return

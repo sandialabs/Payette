@@ -27,17 +27,19 @@
 
 """Module containing methods for computing kinematic quantities"""
 
+import sys
 import numpy as np
 import numpy.linalg as la
 
+import Source.__runopts__ as ro
+import Source.Payette_tensor as pt
 import Source.Payette_iterative_solvers as piter
 import Source.Payette_utils as pu
-import Source.__runopts__ as ro
 
-from Source.Payette_tensor import I3X3, powm, expm, logm, sqrtm, to_array
+import Source.Payette_tensor as pt
 
 
-def velgrad_from_strain(simdat, matdat):
+def velgrad_from_strain(dt, K, E0, R, dR, Et):
     """From the value of the Seth-Hill parameter kappa, current strain E, and
     strain rate dEdt, return the symmetric and skew parts of the velocity
     gradient
@@ -90,42 +92,31 @@ def velgrad_from_strain(simdat, matdat):
                  d = sym(L)
                  w = skew(L)
     """
-
-    # get data from data containers
-    kappa = simdat.KAPPA
-    delt = simdat.get("time step")
-
     # strain and rotation
-    strain_0 = matdat.get("strain", form="Matrix")
-    strain_f = matdat.get("prescribed strain", form="Matrix")
-    rotation = matdat.get("rotation", form="Matrix")
-    drotation = matdat.get("rotation rate", form="Matrix")
+    Et = pt.to_matrix(Et)
+    E0 = pt.to_matrix(E0)
+    R = pt.to_matrix(R)
+    dR = pt.to_matrix(dR)
 
     # rate of strain
-    dstrain = (strain_f - strain_0) / delt
+    dE = (Et - E0) / dt
 
     # stretch and its rate
-    stretch = right_stretch(kappa, strain_f)
+    U = right_stretch(K, Et)
 
     # center X on half step
-    X = 0.5 * (la.inv(kappa * strain_f + I3X3) +
-               la.inv(kappa * strain_0 + I3X3))
-    dstretch = stretch * X * dstrain
+    X = 0.5 * (la.inv(K * Et + pt.I3X3) + la.inv(K * E0 + pt.I3X3))
+    dU = U * X * dE
 
     # velocity gradient, sym, and skew parts
-    velgrad = (drotation * rotation.T +
-               rotation * dstretch * la.inv(stretch) * rotation.T)
-    sym_velgrad = .5 * (velgrad + velgrad.T)
-    vorticity = velgrad - sym_velgrad
+    L = (dR * R.T + R * dU * la.inv(U) * R.T)
+    D = .5 * (L + L.T)
+    W = L - D
 
-    # store updated data
-    matdat.store("rate of deformation", sym_velgrad)
-    matdat.store("vorticity", vorticity)
-
-    return
+    return pt.to_array(D), pt.to_array(W, sym=False)
 
 
-def velgrad_from_defgrad(simdat, matdat):
+def velgrad_from_defgrad(dt, F0, Ft):
     """From the value of the deformation gradient F, return the symmetric and
     skew parts of the velocity gradient
 
@@ -158,22 +149,16 @@ def velgrad_from_defgrad(simdat, matdat):
     """
 
     # get data from containers
-    delt = simdat.get("time step")
-    defgrad_0 = matdat.get("deformation gradient", form="Matrix")
-    defgrad_f = matdat.get("prescribed deformation gradient",
-                                form="Matrix")
-    ddefgrad = (defgrad_f - defgrad_0) / delt
-
-    velgrad = .5 * ddefgrad * (la.inv(defgrad_f) + la.inv(defgrad_0))
-    sym_velgrad = .5 * (velgrad + velgrad.T)
-    vorticity = velgrad - sym_velgrad
-
-    matdat.store("vorticity", vorticity)
-    matdat.store("rate of deformation", sym_velgrad)
-    return
+    F0 = pt.to_matrix(F0)
+    Ft = pt.to_matrix(Ft)
+    dF = (Ft - F0) / dt
+    L = .5 * dF * (la.inv(Ft) + la.inv(F0))
+    D = .5 * (L + L.T)
+    W = L - D
+    return pt.to_array(D), pt.to_array(W, sym=False)
 
 
-def velgrad_from_stress(material, simdat, matdat):
+def velgrad_from_stress(material, simdat, matdat, dt, Ec, Et, Pc, Pt, V):
     """Seek to determine the unknown components of the symmetric part of
     velocity gradient d[v] satisfying
 
@@ -215,36 +200,40 @@ def velgrad_from_stress(material, simdat, matdat):
     written by Tom Pucick for his MMD material model driver.
 
     """
-    depsdt_old = matdat.get("strain rate")
-    nzc = matdat.get("prescribed stress components")
-    l_nzc = len(nzc)
 
+    # Jacobian
+    J0 = matdat.get("jacobian")
+    Js = J0[[[x] for x in V], V]
+
+    Pd = Pt - Pc[V]
+    dEdt = (Et - Ec) / dt
+    try:
+        dEdt[V] = np.linalg.solve(Js, Pd) / dt
+    except:
+        dEdt[V] -= np.linalg.lstsq(Js, Pd)[0] / dt
+    dEdt0 = np.array(dEdt)
+
+    nV = len(V)
+    W = np.zeros(9)
     if not ro.PROPORTIONAL:
-
-        converged = piter.newton(material, simdat, matdat)
-
+        converged, dEdt = piter.newton(material, simdat, matdat, dt, Pt, V, dEdt)
         if converged:
-            return
+            return dEdt, W
 
         # --- didn't converge, try Newton's method with initial
-        # --- d[nzc]=0.
-        dstrain = matdat.get("strain rate")
-        dstrain[nzc] = np.zeros(l_nzc)
-        matdat.store("strain rate", dstrain, old=True)
-
-        converged = piter.newton(material, simdat, matdat)
-
+        # --- d[V]=0.
+        dEdt[V] = np.zeros(nV)
+        converged, dEdt = piter.newton(material, simdat, matdat, dt, Pt, V, dEdt)
         if converged:
-            return
+            return dEdt, W
 
     # --- Still didn't converge. Try downhill simplex method and accept
     #     whatever answer it returns:
-    matdat.restore("strain rate", depsdt_old)
-    piter.simplex(material, simdat, matdat)
-    return
+    dEdt = piter.simplex(material, simdat, matdat, dt, dEdt0, Pt, V)
+    return dEdt, W
 
 
-def update_deformation(simdat, matdat):
+def update_deformation(dt, K, F0, D, W):
     """From the value of the Seth-Hill parameter kappa, current strain E,
     deformation gradient F, and symmetric part of the velocit gradient d,
     update the strain and deformation gradient.
@@ -295,44 +284,31 @@ def update_deformation(simdat, matdat):
 
     """
 
-    # get data from containers
-    kappa = simdat.KAPPA
-    delt = simdat.get("time step")
-    defgrad_0 = matdat.get("deformation gradient", form="Matrix")
-    sym_velgrad = matdat.get("rate of deformation", form="Matrix")
-    vorticity = matdat.get("vorticity", form="Matrix")
+    # convert arrays to matrices for upcoming operations
+    F0 = pt.to_matrix(F0)
+    D = pt.to_matrix(D)
+    W = pt.to_matrix(W)
 
-    defgrad_f = expm((sym_velgrad + vorticity) * delt)
-    defgrad_f *= defgrad_0
-    stretch = sqrtm((defgrad_f.T) * defgrad_f)
-    if kappa == 0:
-        strain = logm(stretch)
+    Ff = pt.expm((D + W) * dt) * F0
+    U = pt.sqrtm((Ff.T) * Ff)
+    if K == 0:
+        Ef = pt.logm(U)
     else:
-        strain = 1. / kappa * (powm(stretch, kappa) - I3X3)
-
-    if np.linalg.det(defgrad_f) <= 0.:
+        Ef = 1. / K * (pt.powm(U, K) - pt.I3X3)
+    if np.linalg.det(Ff) <= 0.:
         pu.report_and_raise_error("negative Jacobian encountered")
-
-    matdat.store("strain", strain)
-    matdat.store("deformation gradient", defgrad_f)
-
-    # compute the equivalent strain
-    eps = to_array(strain, symmetric=True)
-    eqveps = np.sqrt(2. / 3. * (sum(eps[:3] ** 2) + 2. * sum(eps[3:] ** 2)))
-    matdat.store("equivalent strain", eqveps)
-
-    return
+    return pt.to_array(Ff, sym=False), pt.to_array(Ef)
 
 
-def right_stretch(kappa, strain):
+def right_stretch(K, E):
     """Compute the symmtetric part U (right stretch) of the polar
     decomposition of the deformation gradient F = RU.
 
     Parameters
     ----------
-    kappa : float
+    K : float
       Seth-Hill strain parameter
-    strain : array_like
+    E : array_like
       current strain tensor
 
     Returns
@@ -349,21 +325,21 @@ def right_stretch(kappa, strain):
     where k is the Seth-Hill parameter and I is the identity tensor.
 
     """
-    if kappa == 0.:
-        return expm(np.matrix(strain))
+    if K == 0.:
+        return pt.expm(np.matrix(E))
     else:
-        return powm(kappa * np.matrix(strain) + I3X3, 1. / kappa)
+        return pt.powm(K * np.matrix(E) + pt.I3X3, 1. / K)
 
 
-def left_stretch(kappa, strain):
+def left_stretch(K, E):
     """Compute the symmtetric part V (left stretch) of the polar decomposition
     of the deformation gradient F = VR.
 
     Parameters
     ----------
-    kappa : float
+    K : float
       Seth-Hill strain parameter
-    strain : array_like
+    E : array_like
       current spatial strain tensor
 
     Returns
@@ -380,7 +356,7 @@ def left_stretch(kappa, strain):
     where k is the Seth-Hill parameter and I is the identity tensor.
 
     """
-    if kappa == 0.:
-        return expm(np.matrix(strain))
+    if K == 0.:
+        return pt.expm(np.matrix(E))
     else:
-        return powm(kappa * np.matrix(strain) + I3X3, 1. / kappa)
+        return pt.powm(K * np.matrix(E) + pt.I3X3, 1. / K)

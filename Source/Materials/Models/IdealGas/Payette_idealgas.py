@@ -56,23 +56,23 @@ class IdealGas(ConstitutiveModelPrototype):
         # Variables already registered:
         #   density, temperature, energy, pressure
         matdat.register("soundspeed", "Scalar",
-                             init_val = 0.,
+                             iv = 0.,
                              plot_key = "SNDSPD",
                              units="VELOCITY_UNITS")
         matdat.register("dpdr", "Scalar",
-                             init_val = 0.,
+                             iv = 0.,
                              plot_key = "DPDR",
                              units="PRESSURE_UNITS_OVER_DENSITY_UNITS")
         matdat.register("dpdt", "Scalar",
-                             init_val = 0.,
+                             iv = 0.,
                              plot_key = "DPDT",
                              units="PRESSURE_UNITS_OVER_TEMPERATURE_UNITS")
         matdat.register("dedt", "Scalar",
-                             init_val = 0.,
+                             iv = 0.,
                              plot_key = "DEDT",
                              units="SPECIFIC_ENERGY_UNITS_OVER_TEMPERATURE_UNITS")
         matdat.register("dedr", "Scalar",
-                             init_val = 0.,
+                             iv = 0.,
                              plot_key = "DEDR",
                              units="SPECIFIC_ENERGY_UNITS_OVER_DENSITY_UNITS")
         pass
