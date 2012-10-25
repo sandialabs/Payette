@@ -77,7 +77,8 @@ class IdealGas(ConstitutiveModelPrototype):
                              units="SPECIFIC_ENERGY_UNITS_OVER_DENSITY_UNITS")
         pass
 
-    def evaluate_eos(self, simdat, matdat, unit_system, rho=None, temp=None, enrg=None):
+    def evaluate_eos(self, simdat, matdat, unit_system,
+                     rho=None, temp=None, enrg=None):
         """
           Evaluate the eos - rho and temp are in CGSEV
 
@@ -87,9 +88,10 @@ class IdealGas(ConstitutiveModelPrototype):
         """
         M = self.ui[0]
         CV = self.ui[1]
-        R = UnitManager.transform(8.3144621,
+        R = UnitManager.transform(
+            8.3144621,
             "ENERGY_UNITS_OVER_TEMPERATURE_UNITS_OVER_DISCRETE_AMOUNT",
-                                                     "SI", unit_system)
+            "SI", unit_system)
 
         if rho != None and temp != None:
             enrg = CV * R * temp
@@ -111,8 +113,6 @@ class IdealGas(ConstitutiveModelPrototype):
         matdat.store("dedt", CV * R)
         matdat.store("dedr", CV * P * M / rho ** 2)
         matdat.store("soundspeed", (R * temp / M) ** 2)
-
-        matdat.advance_all()
         return
 
 

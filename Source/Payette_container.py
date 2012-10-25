@@ -176,7 +176,7 @@ class Payette(object):
         pu.write_to_simlog("end input")
 
         # file name for the Payette restart file
-        self.is_restart = False
+        self.is_restart = 0
 
         # instantiate the material object
         material = self.ui.find_block("material")
@@ -207,23 +207,20 @@ class Payette(object):
 
         # set up the simulation data container and register obligatory data
         self.simdat = DataContainer(self.name)
-        self.simdat.register("time", "Scalar",
-                                 iv=0., plot_key="time",
-                                 units="TIME_UNITS")
-        self.simdat.register("time step", "Scalar",
-                                 iv=0., plot_key="timestep",
-                                 units="TIME_UNITS")
-        self.simdat.register("number of steps", "Scalar", iv=0,
-                                  units="NO_UNITS")
-        self.simdat.register("leg number", "Scalar", iv=0,
-                                  units="NO_UNITS")
+        self.simdat.register("istep", "Scalar", iv=0, attr=True,
+                             units="NO_UNITS")
+        self.simdat.register("nsteps", "Scalar", iv=self.boundary.nsteps(),
+                             constant=True, units="NO_UNITS")
+        self.simdat.register("time", "Scalar", iv=0., plot_key="time",
+                             units="TIME_UNITS")
+        self.simdat.register("time step", "Scalar", iv=0.,
+                             plot_key="timestep", units="TIME_UNITS")
+        self.simdat.register("leg number", "Scalar", iv=0, units="NO_UNITS")
         self.simdat.register("payette density", "Scalar",
-                                  iv=self.material.initial_density(),
-                                  plot_key="PRHO",
-                                  units="DENSITY_UNITS")
-        self.simdat.register("volume fraction", "Scalar",
-                                  iv=1., plot_key="VFRAC",
-                                  units="NO_UNITS")
+                             iv=self.material.initial_density(),
+                             plot_key="PRHO", units="DENSITY_UNITS")
+        self.simdat.register("volume fraction", "Scalar", iv=1.,
+                             plot_key="VFRAC", units="NO_UNITS")
 
         if ro.CHECK_SETUP:
             exit("EXITING to check setup")
@@ -234,19 +231,18 @@ class Payette(object):
         # write out properties
         if not ro.NOWRITEPROPS:
             self._write_mtl_params()
-
         self.write_input = ro.WRITE_INPUT or self.simdir != os.getcwd()
-
         self.simdat.register("nprints", "Scalar",
-                             self.boundary.nprints(), constant=True)
+                             self.boundary.nprints(), constant=True,
+                             units="NO_UNITS")
         if not self.material.eos_model:
             # register data not needed by the eos models
-            self.simdat.register("emit", "Scalar",
-                                 self.boundary.emit(), constant=True)
-            self.simdat.register("kappa", "Scalar",
-                                 self.boundary.kappa(), constant=True)
-            self.simdat.register("screenout", "Scalar",
-                                 self.boundary.screenout(), constant=True)
+            self.simdat.register("emit", "Scalar", self.boundary.emit(),
+                                 constant=True, units="NO_UNITS")
+            self.simdat.register("kappa", "Scalar", self.boundary.kappa(),
+                                 constant=True, units="NO_UNITS")
+            self.simdat.register("screenout", "Scalar", self.boundary.screenout(),
+                                 constant=True, units="NO_UNITS")
 
         # --- optional information ------------------------------------------ #
         # list of plot keys for all plotable data
@@ -369,6 +365,10 @@ class Payette(object):
             del self._open_files[file_name]
 
         if self.is_restart:
+            if not os.path.isfile(file_name):
+                pu.report_and_raise_error(
+                    "Original output file {0} not found during "
+                    "setup of restart".format(file_name))
             self.outfile_obj = open(file_name, "a")
 
         else:
@@ -451,13 +451,13 @@ class Payette(object):
 
         return
 
-    def write_state(self, input_unit_system=None, output_unit_system=None):
+    def write_state(self, iu=None, ou=None):
         """ write the simulation and material data to the output file. If
-        input_unit_system and output_unit_system are given and valid, convert
+        iu and ou are given and valid, convert
         from the input system to the output system first.
         """
         UNITCONVERT = False
-        if all([input_unit_system, output_unit_system]):
+        if all(x is not None for x in (iu, ou,)):
             UNITCONVERT = True
         for out_var in self.out_vars:
             if out_var in self.simdat.plot_keys():
@@ -468,8 +468,8 @@ class Payette(object):
 
             if UNITCONVERT:
                 units = dat.get(out_var, "units")
-                umgr = um.UnitManager(val, input_unit_system, units)
-                umgr.convert(output_unit_system)
+                umgr = um.UnitManager(val, iu, units)
+                umgr.convert(ou)
                 val = umgr.get()
             self.outfile_obj.write(pu.textformat(val))
             continue
@@ -478,7 +478,11 @@ class Payette(object):
 
     def setup_restart(self):
         """set up the restart files"""
-        self.is_restart = True
+        nsteps, istep = self.simdat.NSTEPS, self.simdat.ISTEP
+        if self.is_restart:
+            pu.report_and_raise_error("Restart file already run")
+        self.is_restart = istep
+        ro.set_number_of_steps(N=nsteps, I=istep)
         pu.setup_logger(self.logfile, mode="a")
         pu.log_message("setting up simulation {0}".format(self.name))
         self._setup_files()

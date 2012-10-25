@@ -45,6 +45,7 @@ np.set_printoptions(precision=4)
 
 ACCLIM = .0001 / 100.
 EPSILON = np.finfo(np.float).eps
+TOL = 1.E-09
 
 def eos_driver(the_model, **kwargs):
     """
@@ -90,13 +91,13 @@ def eos_driver(the_model, **kwargs):
     nprints = simdat.NPRINTS
 
     # get boundary data
-    density_range = the_model.boundary.density_range()
-    temperature_range = the_model.boundary.temperature_range()
-    surface_increments = the_model.boundary.surface_increments()
-    path_increments = the_model.boundary.path_increments()
-    path_isotherm = the_model.boundary.path_isotherm()
-    path_hugoniot = the_model.boundary.path_hugoniot()
-    rho_temp_pairs = the_model.boundary.rho_temp_pairs()
+    Rrange = the_model.boundary.density_range()
+    Trange = the_model.boundary.temperature_range()
+    Sinc = the_model.boundary.surface_increments()
+    Pinc = the_model.boundary.path_increments()
+    isotherm = the_model.boundary.path_isotherm()
+    hugoniot = the_model.boundary.path_hugoniot()
+    RT_pairs = the_model.boundary.rho_temp_pairs()
     simdir = the_model.simdir
     simnam = the_model.name
 
@@ -105,49 +106,36 @@ def eos_driver(the_model, **kwargs):
 
     if not UnitManager.is_valid_unit_system(input_unit_system):
         pu.report_and_raise_error(
-              "Input unit system '{0}' is not a valid unit system".
-                                         format(input_unit_system))
+              "Input unit system '{0}' is not a valid unit system"
+              .format(input_unit_system))
     if not UnitManager.is_valid_unit_system(output_unit_system):
         pu.report_and_raise_error(
-              "Output unit system '{0}' is not a valid unit system".
-                                         format(output_unit_system))
+              "Output unit system '{0}' is not a valid unit system"
+              .format(output_unit_system))
 
     pu.log_message("Input unit system: {0}".format(input_unit_system))
     pu.log_message("Output unit system: {0}".format(output_unit_system))
 
-#    print(dir(the_model.boundary))
-#    print(dir(matdat))
-#    print(dir(simdat))
-#    print(dir(eos_modeldat))
-
-################################################################################
-###############             DENSITY-TEMPERATURE LEGS             ###############
-################################################################################
-    if len(rho_temp_pairs) != 0:
+    # -------------------------------------------- DENSITY-TEMPERATURE LEGS ---
+    if RT_pairs:
         out_fnam = os.path.join(simdir, simnam + ".out")
         the_model._setup_out_file(out_fnam)
 
-        for pair in rho_temp_pairs:
+        for pair in RT_pairs:
             eos_model.evaluate_eos(simdat, matdat, input_unit_system,
-                                   rho = pair[0], temp = pair[1])
-            matdat.advance_all()
-
-            the_model.write_state(input_unit_system=input_unit_system,
-                                  output_unit_system=output_unit_system)
+                                   rho=pair[0], temp=pair[1])
+            matdat.advance()
+            simdat.advance()
+            the_model.write_state(iu=input_unit_system, ou=output_unit_system)
+            ro.ISTEP += 1
         pu.log_message("Legs file: {0}".format(out_fnam))
 
+    # ------------------------------------------------------------- SURFACE ---
+    if all(x is not None for x in (Sinc, Rrange, Trange,)):
 
-
-################################################################################
-###############                     SURFACE                      ###############
-################################################################################
-    if (surface_increments is not None and
-        density_range is not None and
-        temperature_range is not None):
-
-        t_range = temperature_range
-        rho_range = density_range
-        surf_incr = surface_increments
+        T0, Tf = Trange
+        R0, Rf = Rrange
+        Ns = Sinc
 
         out_fnam = os.path.join(simdir, simnam + ".surface")
         the_model._setup_out_file(out_fnam)
@@ -156,38 +144,33 @@ def eos_driver(the_model, **kwargs):
         pu.log_message("Begin surface")
         DEJAVU = False
         idx = 0
-        for rho in np.linspace(rho_range[0], rho_range[1], surf_incr):
-            for temp in np.linspace(t_range[0], t_range[1], surf_incr):
+        for rho in np.linspace(R0, Rf, Ns):
+            for temp in np.linspace(T0, Tf, Ns):
                 idx += 1
-                if idx%int(surf_incr**2/float(nprints)) == 0:
+                if idx % int(Ns ** 2 / float(nprints)) == 0:
                     pu.log_message(
-                        "Surface step {0}/{1}".format(idx, surf_incr ** 2))
+                        "Surface step {0}/{1}".format(idx, Ns ** 2))
 
                 eos_model.evaluate_eos(simdat, matdat, input_unit_system,
                                        rho=rho, temp=temp)
-
-                matdat.advance_all()
-                the_model.write_state(input_unit_system=input_unit_system,
-                                      output_unit_system=output_unit_system)
+                matdat.advance()
+                simdat.advance()
+                the_model.write_state(iu=input_unit_system, ou=output_unit_system)
+                ro.ISTEP += 1
 
         pu.log_message("End surface")
         pu.log_message("Surface file: {0}".format(out_fnam))
         extra_files['surface file'] = out_fnam
 
-################################################################################
-###############                     ISOTHERM                     ###############
-################################################################################
-
-    if (path_increments is not None and
-        path_isotherm is not None and
-        density_range is not None):
+    # ------------------------------------------------------------ ISOTHERM ---
+    if all(x is not None for x in (Pinc, isotherm, Rrange,)):
 
         # isotherm = [density, temperature]
-        isotherm = path_isotherm
-        rho_range = density_range
-        path_incr = path_increments
+        R0I, TfI = isotherm
+        R0, Rf = Rrange
+        Np = Pinc
 
-        if not rho_range[0] <= isotherm[0] <= rho_range[1]:
+        if not R0 <= R0I <= Rf:
             pu.report_and_raise_error(
                 "initial isotherm density not within range")
 
@@ -198,43 +181,37 @@ def eos_driver(the_model, **kwargs):
         pu.log_message("Begin isotherm")
         DEJAVU = False
         idx = 0
-        for rho in np.linspace(isotherm[0], rho_range[1], path_incr):
+        for rho in np.linspace(R0I, Rf, Np):
             idx += 1
-            if idx%int(path_incr/float(nprints)) == 0:
-                pu.log_message("Isotherm step {0}/{1}".format(idx,path_incr))
+            if idx % int(Np / float(nprints)) == 0:
+                pu.log_message("Isotherm step {0}/{1}".format(idx, Np))
 
             eos_model.evaluate_eos(simdat, matdat, input_unit_system,
-                                   rho = rho, temp = isotherm[1])
+                                   rho=rho, temp=TfI)
 
-            matdat.advance_all()
-            the_model.write_state(input_unit_system=input_unit_system,
-                                  output_unit_system=output_unit_system)
+            matdat.advance()
+            simdat.advance()
+            the_model.write_state(iu=input_unit_system, ou=output_unit_system)
+            ro.ISTEP += 1
 
         pu.log_message("End isotherm")
         pu.log_message("Isotherm file: {0}".format(out_fnam))
         extra_files['path files']['isotherm'] = out_fnam
 
-################################################################################
-###############                     HUGONIOT                     ###############
-################################################################################
-
-    if (path_increments is not None and
-        path_hugoniot is not None and
-        temperature_range is not None and
-        density_range is not None):
+    # ------------------------------------------------------------ HUGONIOT ---
+    if all(x is not None for x in (Pinc, hugoniot, Trange, Rrange,)):
 
         # hugoniot = [density, temperature]
-        hugoniot = path_hugoniot
-        rho_range = density_range
-        t_range = temperature_range
-        path_incr = path_increments
+        RH, TH = hugoniot
+        R0, Rf = Rrange
+        T0, Tf = Trange
+        Np = Pinc
 
-
-        if not rho_range[0] <= hugoniot[0] <= rho_range[1]:
-            report_and_raise_error(
+        if not R0 <= RH <= Rf:
+            pu.report_and_raise_error(
                 "initial hugoniot density not within range")
-        if not t_range[0] <= hugoniot[1] <= t_range[1]:
-            report_and_raise_error(
+        if not T0 <= TH <= Tf:
+            pu.report_and_raise_error(
                 "initial hugoniot temperature not within range")
 
         out_fnam = os.path.join(simdir, simnam + ".hugoniot")
@@ -243,8 +220,8 @@ def eos_driver(the_model, **kwargs):
         pu.log_message("=" * (80 - 6))
         pu.log_message("Begin Hugoniot")
 
-        init_density_MKSK = hugoniot[0]
-        init_temperature_MKSK = hugoniot[1]
+        init_density_MKSK = RH
+        init_temperature_MKSK = TH
 
         # Convert to CGSEV
         init_density = init_density_MKSK
@@ -259,11 +236,11 @@ def eos_driver(the_model, **kwargs):
         idx = 0
         DEJAVU = False
         e = init_energy
-        for rho in np.linspace(hugoniot[0], rho_range[1], path_incr):
+        for rho in np.linspace(RH, Rf, Np):
             idx += 1
-            if idx%int(path_incr/float(nprints)) == 0:
-                pu.log_message("Hugoniot step {0}/{1}".format(idx,path_incr))
-            #
+            if idx%int(Np / float(nprints)) == 0:
+                pu.log_message("Hugoniot step {0}/{1}".format(idx, Np))
+
             # Here we solve the Rankine-Hugoniot equation as
             # a function of energy with constant density:
             #
@@ -281,7 +258,6 @@ def eos_driver(the_model, **kwargs):
             # application of newton's method:
             #
             # x_n+1 = x_n - f(E)/(df(E)/dE)
-            #
 
             r = rho
             a = (1./init_density - 1./r)/2.
@@ -297,19 +273,21 @@ def eos_driver(the_model, **kwargs):
                 df = matdat.get("dpdt")/matdat.get("dedt")*a - 1.0
                 e = e - f/df
                 errval = abs(f/init_energy)
-                if errval < 1.0e-9:
+                if errval < TOL:
                     CONVERGED = True
                     if converged_idx > 100:
-                        pu.log_message("Max iterations reached (tol = {0:14.10e}).\n".format(1.0e-9)+
-                               "rel error   = {0:14.10e}\n".format(float(errval))+
-                               "abs error   = {0:14.10e}\n".format(float(f))+
-                               "func val    = {0:14.10e}\n".format(float(f))+
-                               "init_energy = {0:14.10e}\n".format(float(init_energy)))
+                        pu.log_message(
+                         "Max iterations reached (tol={0:14.10e}).\n".format(TOL) +
+                         "rel error   = {0:14.10e}\n".format(float(errval)) +
+                         "abs error   = {0:14.10e}\n".format(float(f)) +
+                         "func val    = {0:14.10e}\n".format(float(f)) +
+                         "init_energy = {0:14.10e}\n".format(float(init_energy)))
                         break
 
-            matdat.advance_all()
-            the_model.write_state(input_unit_system=input_unit_system,
-                                  output_unit_system=output_unit_system)
+            matdat.advance()
+            simdat.advance()
+            the_model.write_state(iu=input_unit_system, ou=output_unit_system)
+            ro.ISTEP += 1
 
         pu.log_message("End Hugoniot")
         pu.log_message("Hugoniot file: {0}".format(out_fnam))
@@ -363,7 +341,7 @@ def solid_driver(the_model, **kwargs):
     ileg = int(simdat.get("leg number"))
     legs = the_model.boundary.legs(ileg)
     lnl = len(str(len(legs)))
-    simsteps = simdat.get("number of steps")
+    simsteps = simdat.ISTEP
     t_beg = simdat.get("time")
     dt = simdat.get("time step")
     Vhld = np.zeros(6, dtype=int)
@@ -432,6 +410,7 @@ def solid_driver(the_model, **kwargs):
             except ValueError:
                 pass
 
+        print simdat.NPRINTS, simdat.EMIT, ro.ISTEP, ro.NSTEPS
         nprints = (simdat.NPRINTS if simdat.NPRINTS else nsteps)
         if simdat.EMIT == 0:
             nprints = min(10, nsteps)
@@ -518,8 +497,6 @@ def solid_driver(the_model, **kwargs):
         for n in range(nsteps):
 
             t += dt
-            simsteps += 1
-            simdat.store("number of steps", simsteps)
 
             # interpolate values of E, F, EF, and P for the target values for
             # this step
@@ -653,6 +630,7 @@ def solid_driver(the_model, **kwargs):
             # -------------------------------------------- end{end of step SQA}
 
             ro.ISTEP += 1
+            simdat.store("istep", ro.ISTEP)
 
             continue # continue to next step
         # ------------------------------------------------ end{processing step}
