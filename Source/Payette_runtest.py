@@ -841,7 +841,7 @@ def rebaseline_tests(args):
             sys.stdout.write("ERROR: Test not rebaselined\n")
             continue
         sys.stdout.write("Rebaselining {0}\n".format(os.path.basename(fnam)))
-        shutil.move(new, old)
+        open(old, "w").write(open(new, "r").read())
         sys.stdout.write("{0} rebaselined\n".format(os.path.basename(fnam)))
         continue
     sys.stdout.write("Rebaselining complete\n")
