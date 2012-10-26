@@ -34,7 +34,7 @@ import subprocess
 import optparse
 import shutil
 
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
 __intro__ = """
 Copyright (2011) Sandia Corporation. Under the terms of Contract
