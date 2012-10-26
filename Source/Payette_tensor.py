@@ -364,8 +364,7 @@ def push(a, f):
 
     """
 
-    detf = (f[0] * f[4] * f[8] + f[1] * f[5] * f[6] + f[2] * f[3] * f[7] -
-           (f[0] * f[5] * f[7] + f[1] * f[3] * f[8] + f[2] * f[4] * f[6]))
+    detf = det(f)
     return np.array(dd66x6(1, get_symleaf(f), a)) / detf
 
 
@@ -386,8 +385,7 @@ def inv(a):
 
     """
     ainv = np.zeros(9)
-    deta = (a[0] * a[4] * a[8] + a[1] * a[5] * a[6] + a[2] * a[3] * a[7] -
-           (a[0] * a[5] * a[7] + a[1] * a[3] * a[8] + a[2] * a[4] * a[6]))
+    deta = det(a)
     ainv[0] = (a[4] * a[8] - a[7] * a[5])
     ainv[1] = (a[7] * a[2] - a[1] * a[8])
     ainv[2] = (a[1] * a[5] - a[4] * a[2])
@@ -464,3 +462,30 @@ def dot(a, b):
 
     pu.report_and_raise_error("Bad tensors sent to dot")
     return
+
+def det(f):
+    """Determine the determinant of the array f
+
+    Parameters
+    ----------
+    f : array_like
+        The array
+
+    Returns
+    -------
+    det(f) : float
+        The determinant of the array f
+
+    Notes
+    -----
+
+    """
+    fs = f.shape
+    if fs == (3, 3):
+        f = f.reshape(9)
+    elif fs == (6,):
+        f = to_matrix(f).reshape(9)
+    if f.shape != (9, ):
+        pu.report_and_raise_error("Bad array sent to det")
+    return (f[0] * f[4] * f[8] + f[1] * f[5] * f[6] + f[2] * f[3] * f[7] -
+            (f[0] * f[5] * f[7] + f[1] * f[3] * f[8] + f[2] * f[4] * f[6]))
