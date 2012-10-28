@@ -333,6 +333,8 @@ class Permutate(object):
                     continue
                 a, b = info[:2]
                 N = DN if len(info) < 3 else int(info[2])
+                if a > b:
+                    pu.report_error("low > high for {0}".format(key))
 
             elif ptype == "normal":
                 # Normal "Gaussian" distribution
@@ -343,6 +345,8 @@ class Permutate(object):
                     continue
                 a, b = info[:2]
                 N = DN if len(info) < 3 else int(info[2])
+                if b > a:
+                    pu.report_error("scale > mean for {0}".format(key))
 
             elif ptype == "uniform":
                 # Uniform distribution
@@ -353,6 +357,8 @@ class Permutate(object):
                     continue
                 a, b = info[:2]
                 N = DN if len(info) < 3 else int(info[2])
+                if a > b:
+                    pu.report_error("low > high for {0}".format(key))
 
             elif ptype == "weibull":
                 # Weibull distribution

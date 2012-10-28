@@ -10,8 +10,6 @@
 
 (add-to-list 'auto-mode-alist '("\\.inp\\'" . payette-mode))
 
-
-
 (defvar payette-begend "\\<\\(begin\\|end\\)\\>")
 
 ; to generate the payette-blocks execute:
@@ -25,9 +23,9 @@
   "\\<\\(nowriteprops\\|use_table\\|write_\\(?:curves\\|\\(?:inpu\\|restar\\)t\\)\\)\\>")
 
 ; to generate the payette-directives execute:
-; (regexp-opt '("error" "disp" "constitutive model" "using" "ampl" "screenout" "emit" "kappa" "stepstar" "estar" "sstar" "ratfac" "efstar" "dstar" "vstar" "tstar" "options" "maxiter" "method" "data file" "seed" "from" "obj_fn in" "obj_fn" "gold file" "tolerance" "matlabel" "input units" "output units" "density range" "temperature range" "surface increments" "path increments" "path isotherm" "path hugoniot") 'words)
+; (regexp-opt '("error" "disp" "constitutive model" "using" "ampl" "screenout" "emit" "kappa" "stepstar" "estar" "sstar" "ratfac" "fstar" "efstar" "dstar" "vstar" "tstar" "options" "maxiter" "method" "data file" "seed" "from" "obj_fn in" "obj_fn" "gold file" "tolerance" "matlabel" "input units" "output units" "density range" "temperature range" "surface increments" "path increments" "path isotherm" "path hugoniot") 'words)
 (defvar payette-keywords
-  "\\<\\(ampl\\|constitutive *model\\|d\\(?:ata *file\\|ensity *range\\|isp\\|star\\)\\|e\\(?:fstar\\|mit\\|\\(?:rro\\|sta\\)r\\)\\|gold *file\\|input *units\\|kappa\\|m\\(?:a\\(?:tlabel\\|xiter\\)\\|ethod\\)\\|o\\(?:bj_fn\\(?: *in\\)?\\|\\(?:ption\\|utput *unit\\)s\\)\\|path *\\(?:hugoniot\\|i\\(?:ncrements\\|sotherm\\)\\)\\|ratfac\\|s\\(?:creenout\\|eed\\|\\(?:tep\\)?star\\)\\|t\\(?:emperature *range\\|olerance\\|star\\)\\|vstar\\|surface *increments\\)\\>")
+  "\\<\\(fstar\\|ampl\\|constitutive *model\\|d\\(?:ata *file\\|ensity *range\\|isp\\|star\\)\\|e\\(?:fstar\\|mit\\|\\(?:rro\\|sta\\)r\\)\\|gold *file\\|input *units\\|kappa\\|m\\(?:a\\(?:tlabel\\|xiter\\)\\|ethod\\)\\|o\\(?:bj_fn\\(?: *in\\)?\\|\\(?:ption\\|utput *unit\\)s\\)\\|path *\\(?:hugoniot\\|i\\(?:ncrements\\|sotherm\\)\\)\\|ratfac\\|s\\(?:creenout\\|eed\\|\\(?:tep\\)?star\\)\\|t\\(?:emperature *range\\|olerance\\|star\\)\\|vstar\\|surface *increments\\)\\>")
 
 ; to generate the payette-directives execute:
 ; (regexp-opt '("optimize" "permutate" "fix" "insert" "from" "from columns") 'words)
@@ -65,6 +63,7 @@
 
 	; Comment styles are same as Python
     (modify-syntax-entry ?# "< b" payette-mode-syntax-table)
+    (modify-syntax-entry ?$ "< b" payette-mode-syntax-table)
     (modify-syntax-entry ?\n "> b" payette-mode-syntax-table)
     payette-mode-syntax-table)
   "Syntax table for payette-mode")

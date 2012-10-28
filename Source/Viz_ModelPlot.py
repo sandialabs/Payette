@@ -220,12 +220,16 @@ class Viz_ModelPlot(HasStrictTraits):
     def __init__(self, **traits):
         HasStrictTraits.__init__(self, **traits)
         self.headers = pu.get_header(self.file_paths[0])
-        data = []
+        data, files = [], []
         for file_path in self.file_paths:
             data.append(pu.read_data(file_path))
-        self.Plot_Data = Viz_Plot2D(plot_data=data,run_names=self.file_variables, headers=self.headers, axis_index=0)
+            files.append(os.path.basename(file_path))
+        self.Plot_Data = Viz_Plot2D(
+            plot_data=data, variables=self.file_variables,
+            headers=self.headers, axis_index=0, files=files)
         self.Multi_Select = MultiSelect(choices=self.headers, plot=self.Plot_Data)
-        self.Change_Axis = ChangeAxis(Plot_Data=self.Plot_Data, headers=self.headers)
+        self.Change_Axis = ChangeAxis(
+            Plot_Data=self.Plot_Data, headers=self.headers)
         self.Single_Select_Overlay_Files = SingleSelectOverlayFiles(choices=[])
 
 def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
@@ -284,9 +288,11 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
         idx = sim_index.get_index()
         for run,info in idx.iteritems():
             output_files.append(info['outfile'])
-            s = ""
+            s = []
             for var, val in info['variables'].iteritems():
-                s += "%s=%.2g" % (var, val)
+                s.append("%s=%.2g" % (var, val))
+                continue
+            s = ", ".join(s)
             variables.append(s)
 
         not_found = [x for x in output_files if not os.path.isfile(x)]
@@ -326,7 +332,7 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
                 height=868,
                 resizable=True,
                 title=window_name)
-    
+
     main_window = Viz_ModelPlot(file_paths=output_files, file_variables=variables)
 
     main_window.configure_traits(view=view, handler=handler)
