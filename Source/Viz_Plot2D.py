@@ -223,7 +223,8 @@ class Viz_Plot2D(HasTraits):
 def get_index(list_, name):
     """Return the index for name in list_"""
     try:
-        return list_.index(name)
+        return [x.lower() for x in list_
+                if x not in ("#", "$",)].index(name.lower())
     except ValueError:
         return None
 

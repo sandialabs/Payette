@@ -28,6 +28,7 @@ WARNING = "warn"
 ERROR = "stop"
 SIMDIR = None
 MTLDB = cfg.MTLDB
+CCHAR = ("#", "$")
 
 # not set through command line
 EFIELD_SIM = False

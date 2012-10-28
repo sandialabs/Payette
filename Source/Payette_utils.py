@@ -289,7 +289,10 @@ def get_header(fpath):
         list of strings containing column names
 
     """
-    return linecache.getline(fpath, 1).split()
+    line = linecache.getline(fpath, 1)
+    if line.strip().startswith(ro.CCHAR):
+        return line.split()[1:]
+    return line.split()
 
 
 def read_data(fpath):
