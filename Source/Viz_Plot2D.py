@@ -44,12 +44,11 @@ LS = ['dot dash', 'dash', 'dot', 'long dash']
 
 class Viz_Plot2D(HasTraits):
     container = Instance(Plot)
+    finfo = Dict(Int, Dict(Str, List(Str)))
     plot_data = List(Array)
-    overlay_plot_data = Dict(Str, Array)
     overlay_headers = Dict(Str, List(Str))
+    overlay_plot_data = Dict(Str, Array)
     variables = List(Str)
-    headers = List(Str)
-    files = List(Str)
     plot_indices = List(Int)
     x_idx = Int
     Time = Float
@@ -99,19 +98,31 @@ class Viz_Plot2D(HasTraits):
         return container
 
     def find_time_index(self):
-        list_of_diffs = [ abs(x-self.Time) for x in self.plot_data[0][:,0] ]
+        list_of_diffs = [abs(x - self.Time) for x in self.plot_data[0][:, 0]]
         tdx = list_of_diffs.index(min(list_of_diffs))
         return tdx
 
     def change_axis(self, index):
+        """Change the x-axis of the current plot
+
+        Parameters
+        ----------
+        index : int
+            The column containing the new x-axis data
+
+        Returns
+        -------
+        None
+
+        """
         self.x_idx = index
         self.change_plot(self.plot_indices)
         return
 
     def create_data_label(self, xp, yp, d, di):
         nform = "[%(x).2g, %(y).2g]"
-        if len(self.files) - 1 or self.overlay_plot_data:
-            lform = "({0}) {1}".format(self.files[d], nform)
+        if self.nfiles() - 1 or self.overlay_plot_data:
+            lform = "({0}) {1}".format(self.get_file_name(d), nform)
         else:
             lform = nform
         label = DataLabel(component=self.container, data_point=(xp, yp),
@@ -165,19 +176,36 @@ class Viz_Plot2D(HasTraits):
             if variables: variables = ": {0}".format(variables)
 
             self.time_data_labels[d] = []
-            x = self.plot_data[d][:, self.x_idx]
             ti = self.find_time_index()
-            for i, yp_idx in enumerate(indices):
-                name = self.headers[yp_idx]
+            mheader = self._mheader()
+            xname = mheader[self.x_idx]
+
+            # indices is an integer list containing the columns of the data to
+            # be plotted. The indices are wrt to the FIRST file in parsed, not
+            # necessarily the same for every file. Here, we loop through the
+            # indices, determine the name from the first file's header and
+            # find the x and y index in the file of interest
+            fnam, header = self.get_info(d)
+            for i, idx in enumerate(indices):
+                yname = mheader[idx]
+
+                # get the indices for this file
+                xp_idx = get_index(header, xname)
+                yp_idx = get_index(header, yname)
+                if xp_idx is None or yp_idx is None:
+                    continue
+
+                x = self.plot_data[d][:, xp_idx]
                 y = self.plot_data[d][:, yp_idx]
-                xp = self.plot_data[d][ti, self.x_idx]
-                yp = self.plot_data[d][ti, yp_idx]
-                if len(self.files) - 1 or self.overlay_plot_data:
-                    entry = "({0}) {1}{2}".format(
-                        self.files[d], name, variables)
+                if self.nfiles() - 1 or self.overlay_plot_data:
+                    entry = "({0}) {1}{2}".format(fnam, yname, variables)
                 else:
-                    entry = "{0} {1}".format(name, variables)
+                    entry = "{0} {1}".format(yname, variables)
                 self.create_plot(x, y, yp_idx, d, entry, "solid")
+
+                # create point marker
+                xp = self.plot_data[d][ti, xp_idx]
+                yp = self.plot_data[d][ti, yp_idx]
                 self.create_data_label(xp, yp, d, yp_idx)
 
                 if not overlays_plotted:
@@ -187,8 +215,8 @@ class Viz_Plot2D(HasTraits):
                     for fnam, head in self.overlay_headers.items():
                         # get the x and y indeces corresponding to what is
                         # being plotted
-                        xo_idx = get_index(head, self.headers[self.x_idx])
-                        yo_idx = get_index(head, self.headers[yp_idx])
+                        xo_idx = get_index(head, xname)
+                        yo_idx = get_index(head, yname)
                         if xo_idx is None or yo_idx is None:
                             continue
                         xo = self.overlay_plot_data[fnam][:, xo_idx]
@@ -200,7 +228,7 @@ class Viz_Plot2D(HasTraits):
                         continue
 
         add_default_grids(self.container)
-        add_default_axes(self.container, htitle=self.headers[self.x_idx])
+        add_default_axes(self.container, htitle=mheader[self.x_idx])
 
         self.container.index_range.tight_bounds = False
         self.container.index_range.refresh()
@@ -219,6 +247,39 @@ class Viz_Plot2D(HasTraits):
 
         self.container.invalidate_and_redraw()
         return
+
+    def _mheader(self):
+        """Returns the "master" header - the header of the first file
+
+        Returns
+        -------
+        header : list
+        """
+        return self.get_info(0)[1]
+
+    def get_info(self, i):
+        """Return the info for index i
+
+        Parameters
+        ----------
+        i : int
+            The location in self.finfo
+
+        Returns
+        -------
+        fnam : str
+            the file name
+        header : list
+            the file header
+
+        """
+        return self.finfo[i].items()[0]
+
+    def get_file_name(self, i):
+        return self.get_info(i)[0]
+
+    def nfiles(self):
+        return len(self.finfo)
 
 def get_index(list_, name):
     """Return the index for name in list_"""
