@@ -355,6 +355,13 @@ def preprocess(lines, preprocessor=None):
     -----
 
     """
+    safe_eval_dict = {
+      'sqrt': math.sqrt, 'sin': math.sin,   'cos': math.cos,   'tan': math.tan,
+      'asin': math.asin, 'acos': math.acos, 'atan': math.atan, 'atan2': math.atan2,
+      'pi': math.pi,     'log': math.log,   'exp': math.exp,   'floor': math.floor,
+      'ceil': math.ceil, 'abs': math.fabs,
+                     }
+
     if preprocessor is None:
         preprocessor = find_block("preprocessing", lines)
 
@@ -362,8 +369,15 @@ def preprocess(lines, preprocessor=None):
         return lines
 
     # split the preprocessor into a list of (pattern, repl) pairs
-    preprocessor = [x.split()
+    preprocessor = [x.split(None,1)
                     for x in re.sub(I_EQ, " ", preprocessor).split("\n") if x]
+
+    # Add the preprocessor values into the safe_eval_dict
+    for idx, [pat, repl] in enumerate(preprocessor):
+        tmp = repl.lstrip('{').rstrip('}')
+        tmpval =  eval(tmp, {"__builtins__":None}, safe_eval_dict)
+        safe_eval_dict[pat] = tmpval
+        preprocessor[idx][1] = "{0:12.6E}".format(tmpval)
 
     for pat, repl in preprocessor:
         full = re.compile(r"{{.*?\b{0:s}\b.*?}}".format(pat), re.I|re.M)
@@ -375,7 +389,12 @@ def preprocess(lines, preprocessor=None):
             npat = re.compile(re.escape(r"{0}".format(lines[bn:en])), re.I|re.M)
             repl = re.sub(r"(?i){0}".format(pat), repl, lines[bn+1:en-1])
             if re.search("[\*+/\-]", repl):
-                repl = "{0:12.6E}".format(eval(repl))
+                try:
+                    repl = "{0:12.6E}".format(eval(repl,
+                                               {"__builtins__":None},
+                                               safe_eval_dict))
+                except:
+                    raise Exception("failure evaluating '{0}' in preprocessor.".format(repl))
             lines = npat.sub(repl, lines)
             continue
         continue
