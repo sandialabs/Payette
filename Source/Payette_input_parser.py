@@ -368,11 +368,12 @@ def preprocess(lines, preprocessor=None):
     block in lines
 
     """
+    import random
     safe_eval_dict = {
       'sqrt': math.sqrt, 'sin': math.sin,   'cos': math.cos,   'tan': math.tan,
       'asin': math.asin, 'acos': math.acos, 'atan': math.atan, 'atan2': math.atan2,
       'pi': math.pi,     'log': math.log,   'exp': math.exp,   'floor': math.floor,
-      'ceil': math.ceil, 'abs': math.fabs,
+      'ceil': math.ceil, 'abs': math.fabs,  'random': random.random,
                      }
 
     if preprocessor is None:
