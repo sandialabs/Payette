@@ -75,8 +75,8 @@ class Plastic(ConstitutiveModelPrototype):
         self.nsv = nxtra
         self.bulk_modulus, self.shear_modulus = self.ui[0], self.ui[1]
 
-        # register extra variables
-        matdat.register_xtra_vars(nxtra, names, keys, xtra)
+        # register __xtra__
+        matdat.register_xtra(nxtra, names, keys, xtra)
 
         return
 
@@ -85,10 +85,10 @@ class Plastic(ConstitutiveModelPrototype):
            update the material state based on current state and strain increment
         """
         # get passed arguments
-        dt = simdat.get_data("time step")
-        d = matdat.get_data("rate of deformation")
-        sigold = matdat.get_data("stress")
-        xtra = matdat.get_data("extra variables")
+        dt = simdat.get("time step")
+        d = matdat.get("rate of deformation")
+        sigold = matdat.get("stress")
+        xtra = matdat.get("__xtra__")
 
         a = [1, self.nsv, dt, self.ui, sigold, d, xtra]
         if cfg.F2PY["callback"]:
@@ -96,6 +96,6 @@ class Plastic(ConstitutiveModelPrototype):
         sig, xtra = mtllib.plastic_calc(*a)
 
         # store updated data
-        matdat.store_data("extra variables", xtra)
-        matdat.store_data("stress", sig)
+        matdat.store("__xtra__", xtra)
+        matdat.store("stress", sig)
         return

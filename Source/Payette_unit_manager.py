@@ -26,7 +26,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import sys
-
+import Source.Payette_utils as pu
 
 class UnitManager:
     """
@@ -206,7 +206,8 @@ class UnitManager:
         # Attempt to determine the common name for the dimensions given.
         self.dimensions = self.is_valid_units(base_dim)
         if not self.dimensions:
-            sys.exit("Cannot process units '{0}'".format(repr(base_dim)))
+            pu.report_and_raise_error(
+                "Cannot process units '{0}'".format(repr(base_dim)))
 
 
     def get(self, system=None):

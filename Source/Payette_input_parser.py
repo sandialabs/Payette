@@ -353,6 +353,19 @@ def preprocess(lines, preprocessor=None):
 
     Notes
     -----
+    If a preprocessor is given, the preprocessor is of form:
+
+       PAT = REPL
+
+    and then all occurrences of PAT will be replaced by REPL in the input
+    file. For example,
+
+       BMOD = 1.E+9
+
+    might be used to replace all occurrences of {BMOD} with 1.E+9
+
+    If no preprocessor block is sent in, it is looked for a "preprocessing"
+    block in lines
 
     """
     safe_eval_dict = {
@@ -380,10 +393,15 @@ def preprocess(lines, preprocessor=None):
         preprocessor[idx][1] = "{0:12.6E}".format(tmpval)
 
     for pat, repl in preprocessor:
+        # We look for any occurence of pat between curly brackets
         full = re.compile(r"{{.*?\b{0:s}\b.*?}}".format(pat), re.I|re.M)
+        nrepl = 0
         while True:
             found = full.search(lines)
             if not found:
+                if nrepl == 0:
+                    pu.log_warning(
+                        "Preprocessing key {0} not found in input".format(pat))
                 break
             bn, en = found.start(), found.end()
             npat = re.compile(re.escape(r"{0}".format(lines[bn:en])), re.I|re.M)
@@ -396,6 +414,7 @@ def preprocess(lines, preprocessor=None):
                 except:
                     raise Exception("failure evaluating '{0}' in preprocessor.".format(repl))
             lines = npat.sub(repl, lines)
+            nrepl += 1
             continue
         continue
 

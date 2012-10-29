@@ -97,7 +97,7 @@ class Boundary(object):
         return self.bcontrol("nprints")[1]
 
     def emit(self):
-        return self.bcontrol("emit")[1]
+        return {"all": 1, "sparse": 0}[self.bcontrol("emit")[1]]
 
     def screenout(self):
         return self.bcontrol("screenout")[1]
@@ -690,11 +690,29 @@ class EOSBoundary(object):
             }
         self.parse_boundary_block()
 
-        self.lcontrol = []
-
         # parse the legs block
-        if self.legs:
-            self.parse_legs_block()
+        self.lcontrol = []
+        if self.legs: self.parse_legs_block()
+
+        # determine the number of steps. In the most general case, the number
+        # of steps N is:
+
+        # N = len(density temperature pairs) + (surface increments) ** 2
+        #   + 2 * (path increments)
+        self._nsteps = len(self.lcontrol)
+        Rrange = self.density_range()
+        Trange = self.temperature_range()
+        Sinc = self.surface_increments()
+        Pinc = self.path_increments()
+        isotherm = self.path_isotherm()
+        hugoniot = self.path_hugoniot()
+        if all(x is not None for x in (Sinc, Rrange, Trange,)):
+            self._nsteps += Sinc ** 2
+        if all(x is not None for x in (Pinc, isotherm, Rrange,)):
+            self._nsteps += Pinc
+        if all(x is not None for x in (Pinc, hugoniot, Trange, Rrange,)):
+            self._nsteps += Pinc
+        pass
 
     def parse_boundary_block(self):
         """parse the eos boundary block"""

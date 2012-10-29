@@ -123,9 +123,9 @@ class PayetteBarf(object):
             material.constitutive_model.ui[self.ipfailstat] = 25.
         matdat = material.material_data()
         material.constitutive_model.dc = self.barf["derived constants"]
-        matdat.advance_data("stress", self.barf["stress"])
-        matdat.advance_data("rate of deformation", self.barf["strain rate"])
-        matdat.advance_data("extra variables", self.barf["extra variables"])
+        matdat.advance("stress", self.barf["stress"])
+        matdat.advance("rate of deformation", self.barf["strain rate"])
+        matdat.advance("__xtra__", self.barf["__xtra__"])
 
         try:
             pdrvr.solid_driver(self.model)
@@ -222,7 +222,7 @@ class PayetteBarf(object):
             self.barf["time step"] = dtime
 
         self.barf["parameters"] = "\n".join(parameters)
-        self.barf["extra variables"] = np.array(extra_variables)
+        self.barf["__xtra__"] = np.array(extra_variables)
         self.barf["derived constants"] = np.array(derived_consts)
 
         # see if this was a barf file produced by the test barf functionality

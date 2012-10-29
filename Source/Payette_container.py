@@ -35,16 +35,16 @@ from copy import deepcopy
 from textwrap import fill as textfill
 
 import Source.__config__ as cfg
+import Source.__runopts__ as ro
 import Source.Payette_driver as pd
 import Source.Payette_utils as pu
 import Source.Payette_extract as pe
 import Source.Payette_boundary as pb
 import Source.Payette_input_parser as pip
-import Source.__runopts__ as ro
+import Source.Payette_unit_manager as um
 from Source.Payette_material import Material
 from Source.Payette_data_container import DataContainer
 from Source.Payette_boundary import BoundaryError as BoundaryError
-from Source.Payette_unit_manager import UnitManager as UnitManager
 
 
 class PayetteError(Exception):
@@ -176,7 +176,7 @@ class Payette(object):
         pu.write_to_simlog("end input")
 
         # file name for the Payette restart file
-        self.is_restart = False
+        self.is_restart = 0
 
         # instantiate the material object
         material = self.ui.find_block("material")
@@ -203,27 +203,24 @@ class Payette(object):
 
         self.t0 = self.boundary.initial_time()
         self.tf = self.boundary.termination_time()
-        ro.set_number_of_steps(self.boundary.nsteps())
+        ro.set_number_of_steps(N=self.boundary.nsteps(), I=0)
 
         # set up the simulation data container and register obligatory data
         self.simdat = DataContainer(self.name)
-        self.simdat.register_data("time", "Scalar",
-                                 init_val=0., plot_key="time",
-                                 units="TIME_UNITS")
-        self.simdat.register_data("time step", "Scalar",
-                                 init_val=0., plot_key="timestep",
-                                 units="TIME_UNITS")
-        self.simdat.register_data("number of steps", "Scalar", init_val=0,
-                                  units="NO_UNITS")
-        self.simdat.register_data("leg number", "Scalar", init_val=0,
-                                  units="NO_UNITS")
-        self.simdat.register_data("payette density", "Scalar",
-                                  init_val=self.material.initial_density(),
-                                  plot_key="PRHO",
-                                  units="DENSITY_UNITS")
-        self.simdat.register_data("volume fraction", "Scalar",
-                                  init_val=1., plot_key="VFRAC",
-                                  units="NO_UNITS")
+        self.simdat.register("istep", "Scalar", iv=0, attr=True,
+                             units="NO_UNITS")
+        self.simdat.register("nsteps", "Scalar", iv=self.boundary.nsteps(),
+                             constant=True, units="NO_UNITS")
+        self.simdat.register("time", "Scalar", iv=0., plot_key="time",
+                             units="TIME_UNITS")
+        self.simdat.register("time step", "Scalar", iv=0.,
+                             plot_key="timestep", units="TIME_UNITS")
+        self.simdat.register("leg number", "Scalar", iv=0, units="NO_UNITS")
+        self.simdat.register("payette density", "Scalar",
+                             iv=self.material.initial_density(),
+                             plot_key="PRHO", units="DENSITY_UNITS")
+        self.simdat.register("volume fraction", "Scalar", iv=1.,
+                             plot_key="VFRAC", units="NO_UNITS")
 
         if ro.CHECK_SETUP:
             exit("EXITING to check setup")
@@ -234,16 +231,18 @@ class Payette(object):
         # write out properties
         if not ro.NOWRITEPROPS:
             self._write_mtl_params()
-
         self.write_input = ro.WRITE_INPUT or self.simdir != os.getcwd()
-
-        self.simdat.register_static_data("nprints", self.boundary.nprints())
+        self.simdat.register("nprints", "Scalar",
+                             self.boundary.nprints(), constant=True,
+                             units="NO_UNITS")
         if not self.material.eos_model:
             # register data not needed by the eos models
-            self.simdat.register_static_data("emit", self.boundary.emit())
-            self.simdat.register_static_data("kappa", self.boundary.kappa())
-            self.simdat.register_static_data("screenout",
-                                             self.boundary.screenout())
+            self.simdat.register("emit", "Scalar", self.boundary.emit(),
+                                 constant=True, units="NO_UNITS")
+            self.simdat.register("kappa", "Scalar", self.boundary.kappa(),
+                                 constant=True, units="NO_UNITS")
+            self.simdat.register("screenout", "Scalar", self.boundary.screenout(),
+                                 constant=True, units="NO_UNITS")
 
         # --- optional information ------------------------------------------ #
         # list of plot keys for all plotable data
@@ -270,6 +269,11 @@ class Payette(object):
                           if x[1:] in self.plot_keys or x[1] == "%"]
         self.extraction_vars = extraction
         self.eopts = eopts
+
+        # set up the data containers and initialize material models
+        self.simdat.setup_data_container()
+        self.matdat.setup_data_container()
+        self.material.constitutive_model.initialize_state(self.matdat)
 
         self._setup_files()
 
@@ -324,14 +328,14 @@ class Payette(object):
                         "+simdat[[2;;,{0:d}]])/3;".format(sig_idx+2))
                 fobj.write('PRES={0}\n'.format(pres))
             fobj.write(
-                "lastep=Length[{0}]\n".format(self.simdat.get_plot_key("time")))
+                "lastep=Length[{0}]\n".format(self.simdat.get("time", "plot key")))
 
         # math2 is a file containing mathematica directives to setup default
         # plots that the user requested
         lowhead = [x.lower() for x in self.out_vars]
         with open( math2, "w" ) as fobj:
             fobj.write('showcy[{0},{{"cycle", "time"}}]\n'
-                    .format(self.simdat.get_plot_key("time")))
+                    .format(self.simdat.get("time", "plot key")))
 
             for item in self.mathplot_vars:
                 name = self.plot_keys[lowhead.index(item.lower())]
@@ -366,6 +370,10 @@ class Payette(object):
             del self._open_files[file_name]
 
         if self.is_restart:
+            if not os.path.isfile(file_name):
+                pu.report_and_raise_error(
+                    "Original output file {0} not found during "
+                    "setup of restart".format(file_name))
             self.outfile_obj = open(file_name, "a")
 
         else:
@@ -441,50 +449,45 @@ class Payette(object):
                 dat = self.simdat
             else:
                 dat = self.matdat
-            plot_name = dat.get_plot_name(plot_key)
-            val = dat.get_data(plot_key)
+            plot_name = dat.get(plot_key, "description")
+            val = dat.get(plot_key)
             _write_plotable(plot_idx + 1, plot_key, plot_name, val)
             continue
 
         return
 
-    def write_state(self, input_unit_system=None, output_unit_system=None):
+    def write_state(self, iu=None, ou=None):
         """ write the simulation and material data to the output file. If
-        input_unit_system and output_unit_system are given and valid, convert
+        iu and ou are given and valid, convert
         from the input system to the output system first.
         """
         UNITCONVERT = False
-        if all([input_unit_system, output_unit_system]):
+        if all(x is not None for x in (iu, ou,)):
             UNITCONVERT = True
-
-        data = []
-        for plot_key in self.out_vars:
-            if plot_key in self.simdat.plot_keys():
+        for out_var in self.out_vars:
+            if out_var in self.simdat.plot_keys():
                 dat = self.simdat
             else:
                 dat = self.matdat
+            val = dat.get(out_var)
 
-            dum = dat.get_data(plot_key)
             if UNITCONVERT:
-                units = dat.get_data_units(plot_key)
-                dum = UnitManager(dum, input_unit_system, units)
-                dum.convert(output_unit_system)
-                dum = dum.get()
-
-            data.append(dum)
-            continue
-
-
-
-        for dat in data:
-            self.outfile_obj.write(pu.textformat(dat))
+                units = dat.get(out_var, "units")
+                umgr = um.UnitManager(val, iu, units)
+                umgr.convert(ou)
+                val = umgr.get()
+            self.outfile_obj.write(pu.textformat(val))
             continue
         self.outfile_obj.write('\n')
         return
 
     def setup_restart(self):
         """set up the restart files"""
-        self.is_restart = True
+        nsteps, istep = self.simdat.NSTEPS, self.simdat.ISTEP
+        if self.is_restart:
+            pu.report_and_raise_error("Restart file already run")
+        self.is_restart = istep
+        ro.set_number_of_steps(N=nsteps, I=istep)
         pu.setup_logger(self.logfile, mode="a")
         pu.log_message("setting up simulation {0}".format(self.name))
         self._setup_files()

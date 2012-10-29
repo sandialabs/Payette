@@ -45,6 +45,7 @@ np.set_printoptions(precision=4)
 
 ACCLIM = .0001 / 100.
 EPSILON = np.finfo(np.float).eps
+TOL = 1.E-09
 
 def eos_driver(the_model, **kwargs):
     """
@@ -84,19 +85,19 @@ def eos_driver(the_model, **kwargs):
 
     # This will make sure that everything has units set.
     eos_model.ensure_all_parameters_have_valid_units()
-    simdat.ensure_all_registered_data_have_valid_units()
-    matdat.ensure_all_registered_data_have_valid_units()
+    simdat.ensure_valid_units()
+    matdat.ensure_valid_units()
 
     nprints = simdat.NPRINTS
 
     # get boundary data
-    density_range = the_model.boundary.density_range()
-    temperature_range = the_model.boundary.temperature_range()
-    surface_increments = the_model.boundary.surface_increments()
-    path_increments = the_model.boundary.path_increments()
-    path_isotherm = the_model.boundary.path_isotherm()
-    path_hugoniot = the_model.boundary.path_hugoniot()
-    rho_temp_pairs = the_model.boundary.rho_temp_pairs()
+    Rrange = the_model.boundary.density_range()
+    Trange = the_model.boundary.temperature_range()
+    Sinc = the_model.boundary.surface_increments()
+    Pinc = the_model.boundary.path_increments()
+    isotherm = the_model.boundary.path_isotherm()
+    hugoniot = the_model.boundary.path_hugoniot()
+    RT_pairs = the_model.boundary.rho_temp_pairs()
     simdir = the_model.simdir
     simnam = the_model.name
 
@@ -105,49 +106,36 @@ def eos_driver(the_model, **kwargs):
 
     if not UnitManager.is_valid_unit_system(input_unit_system):
         pu.report_and_raise_error(
-              "Input unit system '{0}' is not a valid unit system".
-                                         format(input_unit_system))
+              "Input unit system '{0}' is not a valid unit system"
+              .format(input_unit_system))
     if not UnitManager.is_valid_unit_system(output_unit_system):
         pu.report_and_raise_error(
-              "Output unit system '{0}' is not a valid unit system".
-                                         format(output_unit_system))
+              "Output unit system '{0}' is not a valid unit system"
+              .format(output_unit_system))
 
     pu.log_message("Input unit system: {0}".format(input_unit_system))
     pu.log_message("Output unit system: {0}".format(output_unit_system))
 
-#    print(dir(the_model.boundary))
-#    print(dir(matdat))
-#    print(dir(simdat))
-#    print(dir(eos_modeldat))
-
-################################################################################
-###############             DENSITY-TEMPERATURE LEGS             ###############
-################################################################################
-    if len(rho_temp_pairs) != 0:
+    # -------------------------------------------- DENSITY-TEMPERATURE LEGS ---
+    if RT_pairs:
         out_fnam = os.path.join(simdir, simnam + ".out")
         the_model._setup_out_file(out_fnam)
 
-        for pair in rho_temp_pairs:
+        for pair in RT_pairs:
             eos_model.evaluate_eos(simdat, matdat, input_unit_system,
-                                   rho = pair[0], temp = pair[1])
-            matdat.advance_all_data()
-
-            the_model.write_state(input_unit_system=input_unit_system,
-                                  output_unit_system=output_unit_system)
+                                   rho=pair[0], temp=pair[1])
+            matdat.advance()
+            simdat.advance()
+            the_model.write_state(iu=input_unit_system, ou=output_unit_system)
+            ro.ISTEP += 1
         pu.log_message("Legs file: {0}".format(out_fnam))
 
+    # ------------------------------------------------------------- SURFACE ---
+    if all(x is not None for x in (Sinc, Rrange, Trange,)):
 
-
-################################################################################
-###############                     SURFACE                      ###############
-################################################################################
-    if (surface_increments is not None and
-        density_range is not None and
-        temperature_range is not None):
-
-        t_range = temperature_range
-        rho_range = density_range
-        surf_incr = surface_increments
+        T0, Tf = Trange
+        R0, Rf = Rrange
+        Ns = Sinc
 
         out_fnam = os.path.join(simdir, simnam + ".surface")
         the_model._setup_out_file(out_fnam)
@@ -156,38 +144,33 @@ def eos_driver(the_model, **kwargs):
         pu.log_message("Begin surface")
         DEJAVU = False
         idx = 0
-        for rho in np.linspace(rho_range[0], rho_range[1], surf_incr):
-            for temp in np.linspace(t_range[0], t_range[1], surf_incr):
+        for rho in np.linspace(R0, Rf, Ns):
+            for temp in np.linspace(T0, Tf, Ns):
                 idx += 1
-                if idx%int(surf_incr**2/float(nprints)) == 0:
+                if idx % int(Ns ** 2 / float(nprints)) == 0:
                     pu.log_message(
-                        "Surface step {0}/{1}".format(idx, surf_incr ** 2))
+                        "Surface step {0}/{1}".format(idx, Ns ** 2))
 
                 eos_model.evaluate_eos(simdat, matdat, input_unit_system,
                                        rho=rho, temp=temp)
-
-                matdat.advance_all_data()
-                the_model.write_state(input_unit_system=input_unit_system,
-                                      output_unit_system=output_unit_system)
+                matdat.advance()
+                simdat.advance()
+                the_model.write_state(iu=input_unit_system, ou=output_unit_system)
+                ro.ISTEP += 1
 
         pu.log_message("End surface")
         pu.log_message("Surface file: {0}".format(out_fnam))
         extra_files['surface file'] = out_fnam
 
-################################################################################
-###############                     ISOTHERM                     ###############
-################################################################################
-
-    if (path_increments is not None and
-        path_isotherm is not None and
-        density_range is not None):
+    # ------------------------------------------------------------ ISOTHERM ---
+    if all(x is not None for x in (Pinc, isotherm, Rrange,)):
 
         # isotherm = [density, temperature]
-        isotherm = path_isotherm
-        rho_range = density_range
-        path_incr = path_increments
+        R0I, TfI = isotherm
+        R0, Rf = Rrange
+        Np = Pinc
 
-        if not rho_range[0] <= isotherm[0] <= rho_range[1]:
+        if not R0 <= R0I <= Rf:
             pu.report_and_raise_error(
                 "initial isotherm density not within range")
 
@@ -198,43 +181,37 @@ def eos_driver(the_model, **kwargs):
         pu.log_message("Begin isotherm")
         DEJAVU = False
         idx = 0
-        for rho in np.linspace(isotherm[0], rho_range[1], path_incr):
+        for rho in np.linspace(R0I, Rf, Np):
             idx += 1
-            if idx%int(path_incr/float(nprints)) == 0:
-                pu.log_message("Isotherm step {0}/{1}".format(idx,path_incr))
+            if idx % int(Np / float(nprints)) == 0:
+                pu.log_message("Isotherm step {0}/{1}".format(idx, Np))
 
             eos_model.evaluate_eos(simdat, matdat, input_unit_system,
-                                   rho = rho, temp = isotherm[1])
+                                   rho=rho, temp=TfI)
 
-            matdat.advance_all_data()
-            the_model.write_state(input_unit_system=input_unit_system,
-                                  output_unit_system=output_unit_system)
+            matdat.advance()
+            simdat.advance()
+            the_model.write_state(iu=input_unit_system, ou=output_unit_system)
+            ro.ISTEP += 1
 
         pu.log_message("End isotherm")
         pu.log_message("Isotherm file: {0}".format(out_fnam))
         extra_files['path files']['isotherm'] = out_fnam
 
-################################################################################
-###############                     HUGONIOT                     ###############
-################################################################################
-
-    if (path_increments is not None and
-        path_hugoniot is not None and
-        temperature_range is not None and
-        density_range is not None):
+    # ------------------------------------------------------------ HUGONIOT ---
+    if all(x is not None for x in (Pinc, hugoniot, Trange, Rrange,)):
 
         # hugoniot = [density, temperature]
-        hugoniot = path_hugoniot
-        rho_range = density_range
-        t_range = temperature_range
-        path_incr = path_increments
+        RH, TH = hugoniot
+        R0, Rf = Rrange
+        T0, Tf = Trange
+        Np = Pinc
 
-
-        if not rho_range[0] <= hugoniot[0] <= rho_range[1]:
-            report_and_raise_error(
+        if not R0 <= RH <= Rf:
+            pu.report_and_raise_error(
                 "initial hugoniot density not within range")
-        if not t_range[0] <= hugoniot[1] <= t_range[1]:
-            report_and_raise_error(
+        if not T0 <= TH <= Tf:
+            pu.report_and_raise_error(
                 "initial hugoniot temperature not within range")
 
         out_fnam = os.path.join(simdir, simnam + ".hugoniot")
@@ -243,8 +220,8 @@ def eos_driver(the_model, **kwargs):
         pu.log_message("=" * (80 - 6))
         pu.log_message("Begin Hugoniot")
 
-        init_density_MKSK = hugoniot[0]
-        init_temperature_MKSK = hugoniot[1]
+        init_density_MKSK = RH
+        init_temperature_MKSK = TH
 
         # Convert to CGSEV
         init_density = init_density_MKSK
@@ -253,17 +230,17 @@ def eos_driver(the_model, **kwargs):
         eos_model.evaluate_eos(simdat, matdat, input_unit_system,
                                rho = init_density, temp = init_temperature)
 
-        init_energy = matdat.get_data("energy")
-        init_pressure = matdat.get_data("pressure")
+        init_energy = matdat.get("energy")
+        init_pressure = matdat.get("pressure")
 
         idx = 0
         DEJAVU = False
         e = init_energy
-        for rho in np.linspace(hugoniot[0], rho_range[1], path_incr):
+        for rho in np.linspace(RH, Rf, Np):
             idx += 1
-            if idx%int(path_incr/float(nprints)) == 0:
-                pu.log_message("Hugoniot step {0}/{1}".format(idx,path_incr))
-            #
+            if idx % int(Np / float(nprints)) == 0:
+                pu.log_message("Hugoniot step {0}/{1}".format(idx, Np))
+
             # Here we solve the Rankine-Hugoniot equation as
             # a function of energy with constant density:
             #
@@ -281,7 +258,6 @@ def eos_driver(the_model, **kwargs):
             # application of newton's method:
             #
             # x_n+1 = x_n - f(E)/(df(E)/dE)
-            #
 
             r = rho
             a = (1./init_density - 1./r)/2.
@@ -293,23 +269,25 @@ def eos_driver(the_model, **kwargs):
                 eos_model.evaluate_eos(simdat, matdat, input_unit_system,
                                        rho = r, enrg = e)
 
-                f = (matdat.get_data("pressure") + init_pressure)*a - e + init_energy
-                df = matdat.get_data("dpdt")/matdat.get_data("dedt")*a - 1.0
+                f = (matdat.get("pressure") + init_pressure)*a - e + init_energy
+                df = matdat.get("dpdt")/matdat.get("dedt")*a - 1.0
                 e = e - f/df
                 errval = abs(f/init_energy)
-                if errval < 1.0e-9:
+                if errval < TOL:
                     CONVERGED = True
                     if converged_idx > 100:
-                        pu.log_message("Max iterations reached (tol = {0:14.10e}).\n".format(1.0e-9)+
-                               "rel error   = {0:14.10e}\n".format(float(errval))+
-                               "abs error   = {0:14.10e}\n".format(float(f))+
-                               "func val    = {0:14.10e}\n".format(float(f))+
-                               "init_energy = {0:14.10e}\n".format(float(init_energy)))
+                        pu.log_message(
+                         "Max iterations reached (tol={0:14.10e}).\n".format(TOL) +
+                         "rel error   = {0:14.10e}\n".format(float(errval)) +
+                         "abs error   = {0:14.10e}\n".format(float(f)) +
+                         "func val    = {0:14.10e}\n".format(float(f)) +
+                         "init_energy = {0:14.10e}\n".format(float(init_energy)))
                         break
 
-            matdat.advance_all_data()
-            the_model.write_state(input_unit_system=input_unit_system,
-                                  output_unit_system=output_unit_system)
+            matdat.advance()
+            simdat.advance()
+            the_model.write_state(iu=input_unit_system, ou=output_unit_system)
+            ro.ISTEP += 1
 
         pu.log_message("End Hugoniot")
         pu.log_message("Hugoniot file: {0}".format(out_fnam))
@@ -360,19 +338,19 @@ def solid_driver(the_model, **kwargs):
     verbose = ro.VERBOSITY > 0
 
     # --- data
-    ileg = int(simdat.get_data("leg number"))
+    ileg = int(simdat.get("leg number"))
     legs = the_model.boundary.legs(ileg)
     lnl = len(str(len(legs)))
-    simsteps = simdat.get_data("number of steps")
-    t_beg = simdat.get_data("time")
-    dt = simdat.get_data("time step")
-    vdum = np.zeros(6, dtype=int)
-    sig_hld = np.zeros(6)
+    simsteps = simdat.ISTEP
+    t_beg = simdat.get("time")
+    dt = simdat.get("time step")
+    Vhld = np.zeros(6, dtype=int)
+    Ph = np.zeros(6)
+    K = simdat.KAPPA
 
     # --- material data
     material = the_model.material
     matdat = material.material_data()
-    J0 = matdat.get_data("jacobian")
 
     # -------------------------------------------------------- initialize model
     # --- log information to user for this run
@@ -393,13 +371,20 @@ def solid_driver(the_model, **kwargs):
     # --- call the material model with zero state
     if ileg == 0:
         material.update_state(simdat, matdat)
-
-        # advance and write data
-        simdat.advance_all_data()
-        matdat.advance_all_data()
+        simdat.advance()
+        matdat.advance()
         the_model.write_state()
 
     # ----------------------------------------------------------------------- #
+
+    # V is an array of integers that contains the columns of prescribed stress
+    V = []
+    Pt = pt.Z6
+
+    Ec = matdat.get("strain")
+    Fc = matdat.get("deformation gradient")
+    Pc = matdat.get("stress")
+    R, dR = matdat.get("rotation"), matdat.get("rotation rate")
 
     # --------------------------------------------------- begin{processing leg}
     for leg in legs:
@@ -428,24 +413,20 @@ def solid_driver(the_model, **kwargs):
                 pass
 
         nprints = (simdat.NPRINTS if simdat.NPRINTS else nsteps)
-        if simdat.EMIT == "sparse":
-            nprints = min(10,nsteps)
+        if simdat.EMIT == 0:
+            nprints = min(10, nsteps)
         print_interval = max(1, int(nsteps / nprints))
 
         # pass values from the end of the last leg to beginning of this leg
-        eps_beg = matdat.get_data("strain")
-        sig_beg = matdat.get_data("stress")
-        F_beg = matdat.get_data("deformation gradient")
-        v = matdat.get_data("prescribed stress components")
-        if ro.EFIELD_SIM:
-            efld_beg = matdat.get_data("electric field")
+        E0 = matdat.get("strain", copy=True)
+        P0 = matdat.get("stress", copy=True)
+        F0 = matdat.get("deformation gradient", copy=True)
+        if ro.EFIELD_SIM: EF0 = matdat.get("electric field", copy=True)
 
-        if len(v):
-            prsig_beg = matdat.get_data("prescribed stress")
-            j = 0
-            for i in v:
-                sig_beg[i] = prsig_beg[j]
-                j += 1
+        if len(V):
+            PS0 = Pt
+            for i, j in enumerate(V):
+                P0[i] = PS0[j]
                 continue
 
         if verbose:
@@ -453,17 +434,17 @@ def solid_driver(the_model, **kwargs):
 
         # --- loop through components of prdef and compute the values at the end
         #     of this leg:
-        #       for ltype = 1: eps_end at t_end -> eps_beg + prdef*delt
-        #       for ltype = 2: eps_end at t_end -> prdef
-        #       for ltype = 3: Pf at t_end -> sig_beg + prdef*delt
+        #       for ltype = 1: Ef at t_end -> E0 + prdef*delt
+        #       for ltype = 2: Ef at t_end -> prdef
+        #       for ltype = 3: Pf at t_end -> P0 + prdef*delt
         #       for ltype = 4: Pf at t_end -> prdef
-        #       for ltype = 5: F_end at t_end -> prdef
-        #       for ltype = 6: efld_end at t_end-> prdef
-        eps_end, F_end = pt.Z6, pt.I9
+        #       for ltype = 5: Ff at t_end -> prdef
+        #       for ltype = 6: EFf at t_end-> prdef
+        Ef, Ff = pt.Z6, pt.I9
         if ro.EFIELD_SIM:
-            efld_end = pt.Z3
+            EFf = pt.Z3
 
-        # if stress is prescribed, we don't compute sig_end just yet, but sig_hld
+        # if stress is prescribed, we don't compute Pf just yet, but Ph
         # which holds just those values of stress that are actually prescribed.
         for i in range(len(prdef)):
 
@@ -478,39 +459,37 @@ def solid_driver(the_model, **kwargs):
 
             # -- strain rate
             elif i < 6 and ltype[i] == 1:
-                eps_end[i] = eps_beg[i] + prdef[i] * delt
+                Ef[i] = E0[i] + prdef[i] * delt
 
             # -- strain
             elif i < 6 and ltype[i] == 2:
-                eps_end[i] = prdef[i]
+                Ef[i] = prdef[i]
 
             # stress rate
             elif i < 6 and ltype[i] == 3:
-                sig_hld[i] = sig_beg[i] + prdef[i] * delt
-                vdum[nv] = i
+                Ph[i] = P0[i] + prdef[i] * delt
+                Vhld[nv] = i
                 nv += 1
 
             # stress
             elif i < 6 and ltype[i] == 4:
-                sig_hld[i] = prdef[i]
-                vdum[nv] = i
+                Ph[i] = prdef[i]
+                Vhld[nv] = i
                 nv += 1
 
             # deformation gradient
             elif ltype[i] == 5:
-                F_end[i] = prdef[i]
+                Ff[i] = prdef[i]
 
             # electric field
             elif ro.EFIELD_SIM and (i >= 6 and ltype[i] == 6):
-                efld_end[i - 9] = prdef[i]
+                EFf[i - 9] = prdef[i]
 
             continue
 
-        v = vdum[0:nv]
-        matdat.advance_data("prescribed stress components", v)
-        if len(v):
-            prsig_beg, prsig_end = sig_beg[v], sig_hld[v]
-            Js = J0[[[x] for x in v], v]
+        V = Vhld[0:nv]
+        if len(V):
+            PS0, PSf = P0[V], Ph[V]
 
         t = t_beg
         dt = delt / nsteps
@@ -518,104 +497,94 @@ def solid_driver(the_model, **kwargs):
         # ---------------------------------------------- begin{processing step}
         for n in range(nsteps):
 
-            t += dt
-            simsteps += 1
-            simdat.advance_data("number of steps", simsteps)
+            # advance data from end of last step to this step
+            matdat.advance()
+            simdat.advance()
+            ro.ISTEP += 1
 
-            # interpolate values of E, F, EF, and P for the current step
+            # increment time
+            t += dt
+
+            # interpolate values of E, F, EF, and P for the target values for
+            # this step
             a1 = float(nsteps - (n + 1)) / nsteps
             a2 = float(n + 1) / nsteps
-
-            eps_int = a1 * eps_beg + a2 * eps_end
-
-            F_int = a1 * F_beg + a2 * F_end
-
+            Et = a1 * E0 + a2 * Ef
+            Ft = a1 * F0 + a2 * Ff
             if ro.EFIELD_SIM:
-                efld_int = a1 * efld_beg + a2 * efld_end
+                EFt = a1 * EF0 + a2 * EFf
 
-            if len(v):
-                # prescribed stress components given, get initial guess for
-                # depsdt[v]
-                prsig_int = a1 * prsig_beg + a2 * prsig_end
-                prsig_dif = prsig_int - matdat.get_data("stress")[v]
-                depsdt = (eps_int - matdat.get_data("strain")) / dt
-                try:
-                    depsdt[v] = np.linalg.solve(Js, prsig_dif) / dt
-                except:
-                    depsdt[v] -= np.linalg.lstsq(Js, prsig_dif)[0] / dt
+            if len(V):
+                # prescribed stress components given
+                Pt = a1 * PS0 + a2 * PSf # target stress
 
             # advance known values to end of step
-            simdat.advance_data("time", t)
-            simdat.advance_data("time step", dt)
+            simdat.store("time", t)
+            simdat.store("time step", dt)
             if ro.EFIELD_SIM:
-                matdat.advance_data("electric field", efld_int)
+                matdat.store("electric field", EFt)
 
-            # --- find d (symmetric part of velocity gradient)
-            if not len(v):
+            # --- find current value of d: sym(velocity gradient)
+            if not len(V):
 
                 if dflg[0] == 5:
                     # --- deformation gradient prescribed
-                    matdat.advance_data("prescribed deformation gradient", F_int)
-                    pk.velgrad_from_defgrad(simdat, matdat)
+                    Dc, Wc = pk.velgrad_from_defgrad(dt, Fc, Ft)
 
                 else:
                     # --- strain or strain rate prescribed
-                    matdat.advance_data("prescribed strain", eps_int)
-                    pk.velgrad_from_strain(simdat, matdat)
+                    Dc, Wc = pk.velgrad_from_strain(dt, K, Ec, R, dR, Et)
 
             else:
                 # --- One or more stresses prescribed
-                matdat.advance_data("strain rate", depsdt)
-                matdat.advance_data("prescribed stress", prsig_int)
-                pk.velgrad_from_stress(material, simdat, matdat)
-                matdat.advance_data("strain rate")
-                depsdt = matdat.get_data("strain rate")
-                matdat.store_data("rate of deformation", depsdt)
+                Dc, Wc = pk.velgrad_from_stress(
+                    material, simdat, matdat, dt, Ec, Et, Pc, Pt, V)
 
-            # --- update the deformation to the end of the step at this point,
-            #     the rate of deformation and vorticity to the end of the step
-            #     are known, advance them.
-            matdat.advance_data("rate of deformation")
-            matdat.advance_data("vorticity")
+            if not ro.USE_TABLE:
+                # compute the current deformation gradient and strain from
+                # previous values and the deformation rate
+                Fc, Ec = pk.update_deformation(dt, K, Fc, Dc, Wc)
 
-            # find the current {deformation gradient,strain} and advance them
-            pk.update_deformation(simdat, matdat)
-            matdat.advance_data("deformation gradient")
-            matdat.advance_data("strain")
-            matdat.advance_data("equivalent strain")
-
-            if ro.USE_TABLE:
+            else:
                 # use the actual table values, not the values computed above
                 if dflg == [1] or dflg == [2] or dflg == [1, 2]:
                     if ro.VERBOSITY > 3:
                         pu.log_message("retrieving updated strain from table")
-                    matdat.advance_data("strain", eps_int)
                 elif dflg[0] == 5:
                     if ro.VERBOSITY > 3:
                         pu.log_message("retrieving updated deformation "
                                        "gradient from table")
-                    matdat.advance_data("deformation gradient", F_int)
+                Ec, Fc = Et, Ft
+
+            # --- update the deformation to the end of the step at this point,
+            #     the rate of deformation and vorticity to the end of the step
+            #     are known, advance them.
+            matdat.store("rate of deformation", Dc)
+            matdat.store("vorticity", Wc)
+            matdat.store("deformation gradient", Fc)
+            matdat.store("strain", Ec)
+            # compute the equivalent strain
+            matdat.store(
+                "equivalent strain",
+                np.sqrt(2. / 3. * (sum(Ec[:3] ** 2) + 2. * sum(Ec[3:] ** 2))))
+
 
             # udpate density
-            dev = pt.trace(matdat.get_data("rate of deformation")) * dt
-            rho_old = simdat.get_data("payette density")
-            simdat.advance_data("payette density", rho_old * math.exp(-dev))
+            dev = pt.trace(matdat.get("rate of deformation")) * dt
+            rho_old = simdat.get("payette density")
+            simdat.store("payette density", rho_old * math.exp(-dev))
 
             # update material state
             material.update_state(simdat, matdat)
 
             # advance all data after updating state
-            matdat.store_data("stress rate",
-                             (matdat.get_data("stress", cur=True) -
-                              matdat.get_data("stress")) / dt)
-            sig = matdat.get_data("stress", cur=True)
-            matdat.store_data("pressure", -(sig[0] + sig[1] + sig[2]) / 3.)
-
-            matdat.advance_all_data()
-            simdat.advance_all_data()
+            Pc = matdat.get("stress")
+            dsig = (Pc - matdat.get("stress", "-")) / dt
+            matdat.store("stress rate", (Pc - matdat.get("stress", "-")) / dt)
+            matdat.store("pressure", -np.sum(Pc[:3]) / 3.)
 
             # --- write state to file
-            if (nsteps-n)%print_interval == 0:
+            if (nsteps-n) % print_interval == 0:
                 the_model.write_state()
 
             if simdat.SCREENOUT or (verbose and (2 * n - nsteps) == 0):
@@ -628,9 +597,9 @@ def solid_driver(the_model, **kwargs):
                     if ro.VERBOSITY > 3:
                         pu.log_message("checking that computed strain matches "
                                        "at end of step prescribed strain")
-                    eps_tmp = matdat.get_data("strain")
-                    max_diff = np.max(np.abs(eps_tmp - eps_int))
-                    dnom = max(np.max(np.abs(eps_int)), 0.)
+                    Etmp = matdat.get("strain")
+                    max_diff = np.max(np.abs(Etmp - Ec))
+                    dnom = max(np.max(np.abs(Ec)), 0.)
                     dnom = dnom if dnom != 0. else 1.
                     rel_diff = max_diff / dnom
                     if rel_diff > ACCLIM:
@@ -647,9 +616,9 @@ def solid_driver(the_model, **kwargs):
                         pu.log_message("checking that computed deformation "
                                        "gradient at end of step matches "
                                        "prescribed deformation gradient")
-                    F_tmp = matdat.get_data("deformation gradient")
-                    max_diff = (np.max(F_tmp - F_int)) / np.max(np.abs(F_int))
-                    dnom = max(np.max(np.abs(F_int)), 0.)
+                    F_tmp = matdat.get("deformation gradient")
+                    max_diff = (np.max(F_tmp - Fc)) / np.max(np.abs(Fc))
+                    dnom = max(np.max(np.abs(Fc)), 0.)
                     dnom = dnom if dnom != 0. else 1.
                     rel_diff = max_diff / dnom
                     if rel_diff > ACCLIM:
@@ -663,18 +632,17 @@ def solid_driver(the_model, **kwargs):
                                        "deformation gradient")
 
             # -------------------------------------------- end{end of step SQA}
-
-            ro.ISTEP += 1
+            simdat.store("istep", ro.ISTEP)
 
             continue # continue to next step
         # ------------------------------------------------ end{processing step}
 
         # --- pass quantities from end of leg to beginning of new leg
         ileg += 1
-        simdat.advance_data("leg number", ileg)
+        simdat.store("leg number", ileg)
 
         if ro.WRITE_VANDD_TABLE:
-            the_model.write_vel_and_disp(t_beg, t_end, eps_beg, eps_end)
+            the_model.write_vel_and_disp(t_beg, t_end, E0, Ef)
 
         # advances time must come after writing the v & d tables above
         t_beg = t_end
@@ -693,9 +661,9 @@ def solid_driver(the_model, **kwargs):
                 if ro.VERBOSITY > 3:
                     pu.log_message("checking that computed strain at end of "
                                    "leg matches prescribed strain")
-                eps_tmp = matdat.get_data("strain")
-                max_diff = np.max(np.abs(eps_tmp - eps_end))
-                dnom = np.max(eps_end) if np.max(eps_end) >= EPSILON else 1.
+                Et = matdat.get("strain")
+                max_diff = np.max(np.abs(Et - Ef))
+                dnom = np.max(Ef) if np.max(Ef) >= EPSILON else 1.
                 rel_diff = max_diff / dnom
                 if rel_diff > ACCLIM:
                     msg = ("E differs from prdef excessively at end of "
@@ -711,9 +679,9 @@ def solid_driver(the_model, **kwargs):
                     pu.log_message("checking that computed deformation gradient "
                                    "at end of leg matches prescribed "
                                    "deformation gradient")
-                F_tmp = matdat.get_data("deformation gradient")
-                max_diff = np.max(np.abs(F_tmp - F_end)) / np.max(np.abs(F_end))
-                dnom = np.max(F_end) if np.max(F_end) >= EPSILON else 1.
+                F_tmp = matdat.get("deformation gradient")
+                max_diff = np.max(np.abs(F_tmp - Ff)) / np.max(np.abs(Ff))
+                dnom = np.max(Ff) if np.max(Ff) >= EPSILON else 1.
                 rel_diff = max_diff / dnom
                 if rel_diff > ACCLIM:
                     msg = ("F differs from prdef excessively at end of "

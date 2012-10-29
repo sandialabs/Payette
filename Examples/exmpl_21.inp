@@ -37,9 +37,8 @@ begin simulation exmpl_21
 
   begin material
     constitutive model hooke
-    G {two_shear_modulus} / 2.
-    K {half_bulk_modulus} * 2.
-
+    G {two_shear_modulus / 2.}
+    K {half_bulk_modulus * 2.}
   end material
 
 end simulation

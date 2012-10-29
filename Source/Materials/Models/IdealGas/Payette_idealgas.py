@@ -55,29 +55,30 @@ class IdealGas(ConstitutiveModelPrototype):
 
         # Variables already registered:
         #   density, temperature, energy, pressure
-        matdat.register_data("soundspeed", "Scalar",
-                             init_val = 0.,
+        matdat.register("soundspeed", "Scalar",
+                             iv = 0.,
                              plot_key = "SNDSPD",
                              units="VELOCITY_UNITS")
-        matdat.register_data("dpdr", "Scalar",
-                             init_val = 0.,
+        matdat.register("dpdr", "Scalar",
+                             iv = 0.,
                              plot_key = "DPDR",
                              units="PRESSURE_UNITS_OVER_DENSITY_UNITS")
-        matdat.register_data("dpdt", "Scalar",
-                             init_val = 0.,
+        matdat.register("dpdt", "Scalar",
+                             iv = 0.,
                              plot_key = "DPDT",
                              units="PRESSURE_UNITS_OVER_TEMPERATURE_UNITS")
-        matdat.register_data("dedt", "Scalar",
-                             init_val = 0.,
+        matdat.register("dedt", "Scalar",
+                             iv = 0.,
                              plot_key = "DEDT",
                              units="SPECIFIC_ENERGY_UNITS_OVER_TEMPERATURE_UNITS")
-        matdat.register_data("dedr", "Scalar",
-                             init_val = 0.,
+        matdat.register("dedr", "Scalar",
+                             iv = 0.,
                              plot_key = "DEDR",
                              units="SPECIFIC_ENERGY_UNITS_OVER_DENSITY_UNITS")
         pass
 
-    def evaluate_eos(self, simdat, matdat, unit_system, rho=None, temp=None, enrg=None):
+    def evaluate_eos(self, simdat, matdat, unit_system,
+                     rho=None, temp=None, enrg=None):
         """
           Evaluate the eos - rho and temp are in CGSEV
 
@@ -87,9 +88,10 @@ class IdealGas(ConstitutiveModelPrototype):
         """
         M = self.ui[0]
         CV = self.ui[1]
-        R = UnitManager.transform(8.3144621,
+        R = UnitManager.transform(
+            8.3144621,
             "ENERGY_UNITS_OVER_TEMPERATURE_UNITS_OVER_DISCRETE_AMOUNT",
-                                                     "SI", unit_system)
+            "SI", unit_system)
 
         if rho != None and temp != None:
             enrg = CV * R * temp
@@ -101,18 +103,16 @@ class IdealGas(ConstitutiveModelPrototype):
         P = R * temp * rho / M
 
         # make sure we store the "big three"
-        matdat.store_data("density", rho)
-        matdat.store_data("temperature", temp)
-        matdat.store_data("energy", enrg)
+        matdat.store("density", rho)
+        matdat.store("temperature", temp)
+        matdat.store("energy", enrg)
 
-        matdat.store_data("pressure", P)
-        matdat.store_data("dpdr", R * temp / M)
-        matdat.store_data("dpdt", R * rho / M)
-        matdat.store_data("dedt", CV * R)
-        matdat.store_data("dedr", CV * P * M / rho ** 2)
-        matdat.store_data("soundspeed", (R * temp / M) ** 2)
-
-        matdat.advance_all_data()
+        matdat.store("pressure", P)
+        matdat.store("dpdr", R * temp / M)
+        matdat.store("dpdt", R * rho / M)
+        matdat.store("dedt", CV * R)
+        matdat.store("dedr", CV * P * M / rho ** 2)
+        matdat.store("soundspeed", (R * temp / M) ** 2)
         return
 
 

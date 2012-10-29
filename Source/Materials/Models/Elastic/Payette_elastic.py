@@ -86,8 +86,7 @@ class Elastic(ConstitutiveModelPrototype):
 
         return
 
-    def jacobian(self, simdat, matdat):
-        v = matdat.get_data("prescribed stress components")
+    def jacobian(self, simdat, matdat, v):
         return self.J0[[[x] for x in v],v]
 
     def update_state(self, simdat, matdat):
@@ -95,9 +94,9 @@ class Elastic(ConstitutiveModelPrototype):
            update the material state based on current state and strain increment
         """
         # get passed arguments
-        dt = simdat.get_data("time step")
-        d = matdat.get_data("rate of deformation")
-        sigold = matdat.get_data("stress")
+        dt = simdat.get("time step")
+        d = matdat.get("rate of deformation")
+        sigold = matdat.get("stress")
 
         if self.code == "python":
             sig = _py_update_state(self.mui, dt, d, sigold)
@@ -109,7 +108,7 @@ class Elastic(ConstitutiveModelPrototype):
             sig = mtllib.elast_calc(*a)
 
         # store updated data
-        matdat.store_data("stress", sig)
+        matdat.store("stress", sig)
 
     def _py_set_up(self, mui):
 

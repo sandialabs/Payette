@@ -165,8 +165,8 @@ class ConstitutiveModelPrototype(object):
         if not any(x for y in self.J0 for x in y):
             pu.report_and_raise_error("iniatial Jacobian is empty")
 
-        matdat.register_data("jacobian", "Matrix", init_val=self.J0,
-                             units="NO_UNITS")
+        matdat.register("jacobian", "Matrix", iv=self.J0,
+                        units="NO_UNITS")
         ro.set_global_option("EFIELD_SIM", self.electric_field_model)
 
         return
@@ -430,7 +430,7 @@ class ConstitutiveModelPrototype(object):
            compute_init_jacobian
 
         PURPOSE
-           compute the initial material Jacobian J = dsig / deps, assuming
+           compute the initial material Jacobian J = dsig / dE, assuming
            isotropy
         '''
         if isotropic:
@@ -456,19 +456,15 @@ class ConstitutiveModelPrototype(object):
 
         else:
             # material is not isotropic, numerically compute the jacobian
-            matdat.stash_data("prescribed stress components")
-            matdat.store_data("prescribed stress components",
-                              [0, 1, 2, 3, 4, 5])
-            self.J0 = self.jacobian(simdat, matdat)
-            matdat.unstash_data("prescribed stress components")
+            V = [0, 1, 2, 3, 4, 5]
+            self.J0 = self.jacobian(simdat, matdat, V)
             return
 
         return
 
-
-    def jacobian(self, simdat, matdat):
-        """Numerically compute and return a specified submatrix, j_sub, of the
-        Jacobian matrix J = J_ij = dsigi / depsj.
+    def jacobian(self, simdat, matdat, V):
+        """Numerically compute and return a specified submatrix, Js, of the
+        Jacobian matrix J = J_ij = dsigi / dE.
 
         Parameters
         ----------
@@ -479,19 +475,19 @@ class ConstitutiveModelPrototype(object):
 
         Returns
         -------
-        j_sub : array_like
-          Jacobian of the deformation J = dsig / deps
+        Js : array_like
+          Jacobian of the deformation J = dsig / dE
 
         Notes
         -----
         The submatrix returned is the one formed by the intersections of the
         rows and columns specified in the vector subscript array, v. That is,
-        j_sub = J[v, v]. The physical array containing this submatrix is
-        assumed to be dimensioned j_sub[nv, nv], where nv is the number of
+        Js = J[v, v]. The physical array containing this submatrix is
+        assumed to be dimensioned Js[nv, nv], where nv is the number of
         elements in v. Note that in the special case v = [1,2,3,4,5,6], with
         nv = 6, the matrix that is returned is the full Jacobian matrix, J.
 
-        The components of j_sub are computed numerically using a centered
+        The components of Js are computed numerically using a centered
         differencing scheme which requires two calls to the material model
         subroutine for each element of v. The centering is about the point eps
         = epsold + d * dt, where d is the rate-of-strain array.
@@ -508,51 +504,39 @@ class ConstitutiveModelPrototype(object):
         """
 
         # local variables
-        epsilon = np.finfo(np.float).eps
-        nzc = matdat.get_data("prescribed stress components")
-        l_nzc = len(nzc)
-        deps, j_sub = math.sqrt(epsilon), np.zeros((l_nzc, l_nzc))
+        nV = len(V)
+        dE, Js = math.sqrt(np.finfo(np.float).eps), np.zeros((nV, nV))
+        dt = simdat.get("time step")
+        dt = 1 if dt == 0. else dt
+        D = matdat.get("rate of deformation", copy=True)
+        F0 = matdat.get("deformation gradient", copy=True)
 
-        delt = simdat.get_data("time step")
-        delt = 1 if delt == 0. else delt
-        sym_velgrad = matdat.get_data("rate of deformation")
-        f_old = matdat.get_data("deformation gradient", form="Matrix")
-
-        # stash the data
-        simdat.stash_data("time step")
-        matdat.stash_data("rate of deformation")
-        matdat.stash_data("deformation gradient")
-
-        for inum in range(l_nzc):
+        for i in range(nV):
             # perturb forward
-            sym_velgrad_p = np.array(sym_velgrad)
-            sym_velgrad_p[nzc[inum]] = sym_velgrad[nzc[inum]] + (deps / delt) / 2.
-            defgrad_p = (f_old +
-                         np.dot(pt.to_matrix(sym_velgrad_p), f_old) * delt)
-            matdat.store_data("rate of deformation", sym_velgrad_p, old=True)
-            matdat.store_data("deformation gradient", defgrad_p, old=True)
+            Dp = np.array(D)
+            Dp[V[i]] = D[V[i]] + (dE / dt) / 2.
+            Fp = F0 + pt.dot(Dp, F0) * dt
+            matdat.store("rate of deformation", Dp)
+            matdat.store("deformation gradient", Fp)
             self.update_state(simdat, matdat)
-            sigp = matdat.get_data("stress", cur=True)
+            Pp = matdat.get("stress", copy=True)
+            matdat.restore()
 
             # perturb backward
-            sym_velgrad_m = np.array(sym_velgrad)
-            sym_velgrad_m[nzc[inum]] = sym_velgrad[nzc[inum]] - (deps / delt) / 2.
-            defgrad_m = (f_old +
-                         np.dot(pt.to_matrix(sym_velgrad_m), f_old) * delt)
-            matdat.store_data("rate of deformation", sym_velgrad_m, old=True)
-            matdat.store_data("deformation gradient", defgrad_m, old=True)
+            Dm = np.array(D)
+            Dm[V[i]] = D[V[i]] - (dE / dt) / 2.
+            Fm = F0 + pt.dot(Dm, F0) * dt
+            matdat.store("rate of deformation", Dm)
+            matdat.store("deformation gradient", Fm)
             self.update_state(simdat, matdat)
-            sigm = matdat.get_data("stress", cur=True)
+            Pm = matdat.get("stress", copy=True)
+            matdat.restore()
 
-            j_sub[inum, :] = (sigp[nzc] - sigm[nzc]) / deps
+            # compute component of jacobian
+            Js[i, :] = (Pp[V] - Pm[V]) / dE
             continue
 
-        # restore data
-        simdat.unstash_data("time step")
-        matdat.unstash_data("deformation gradient")
-        matdat.unstash_data("rate of deformation")
-
-        return j_sub
+        return Js
 
     def parse_mtldb_file(self, material=None):
         """Parse the material database file

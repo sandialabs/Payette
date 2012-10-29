@@ -32,8 +32,9 @@ import Source.Payette_utils as pu
 import Source.Payette_sim_index as psi
 from Viz_Plot2D import Viz_Plot2D
 
-from enthought.traits.api import HasStrictTraits, Instance, String, Button, \
-                         Bool, List, Str, Property, HasPrivateTraits, on_trait_change
+from enthought.traits.api import (HasStrictTraits, Instance, String, Button,
+                                  Bool, List, Dict, Str, Int, Property,
+                                  HasPrivateTraits, on_trait_change, Trait)
 from enthought.traits.ui.api import View, Item, HSplit, VGroup, Handler, TabularEditor, HGroup, UItem
 from enthought.traits.ui.tabular_adapter import TabularAdapter
 from enthought.pyface.api import FileDialog, OK
@@ -164,7 +165,7 @@ class MultiSelect(HasPrivateTraits):
 class Viz_ModelPlot(HasStrictTraits):
 
     Plot_Data = Instance(Viz_Plot2D)
-    headers = List(Str)
+    finfo = Dict(Int, Dict(Str, List(Str)))
     Multi_Select = Instance(MultiSelect)
     Change_Axis = Instance(ChangeAxis)
     Reset_Zoom = Button('Reset Zoom')
@@ -175,18 +176,48 @@ class Viz_ModelPlot(HasStrictTraits):
     file_paths = List(String)
     file_variables = List(String)
 
+    def __init__(self, **traits):
+        HasStrictTraits.__init__(self, **traits)
+
+        # put together information to be sent to Viz_Plot2D
+        # information needed:
+        # finfo : dict
+        #   {0: {file_0: header_0}}
+        #   {1: {file_1: header_1}}
+        #   ...
+        #   {n: {file_n: header_n}}
+        # variables : list
+        #   list of variables that changed from one simulation to another
+        # x_idx : int
+        #   column containing x variable to be plotted
+
+        data = []
+        for idx, file_path in enumerate(self.file_paths):
+            if idx == 0: mheader = pu.get_header(file_path)
+            fnam = os.path.basename(file_path)
+            self.finfo[idx] = {fnam: pu.get_header(file_path)}
+            data.append(pu.read_data(file_path))
+        self.Plot_Data = Viz_Plot2D(
+            plot_data=data, variables=self.file_variables,
+            x_idx=0, finfo=self.finfo)
+        self.Multi_Select = MultiSelect(choices=mheader, plot=self.Plot_Data)
+        self.Change_Axis = ChangeAxis(Plot_Data=self.Plot_Data, headers=mheader)
+        self.Single_Select_Overlay_Files = SingleSelectOverlayFiles(choices=[])
+
     def _Reset_Zoom_fired(self):
         self.Plot_Data.change_plot(self.Plot_Data.plot_indices)
 
     def _Reload_Data_fired(self):
-        self.headers = pu.get_header(self.file_paths[0])
         data = []
-        for file_path in self.file_paths:
+        for idx, file_path in enumerate(self.file_paths):
+            if idx == 0: mheader = pu.get_header(file_path)
+            fnam = os.path.basename(file_path)
+            self.finfo[idx] = {fnam: pu.get_header(file_path)}
             data.append(pu.read_data(file_path))
-        self.Plot_Data.plot_data=data
-        self.Plot_Data.headers = self.headers
-        self.Multi_Select.choices = self.headers
-        self.Change_Axis.headers = self.headers
+        self.Plot_Data.plot_data = data
+        self.Plot_Data.finfo = self.finfo
+        self.Multi_Select.choices = mheader
+        self.Change_Axis.headers = mheader
         self.Plot_Data.change_plot(self.Plot_Data.plot_indices)
 
     def _Close_Overlay_fired(self):
@@ -205,28 +236,22 @@ class Viz_ModelPlot(HasStrictTraits):
     def _Load_Overlay_fired(self):
         dialog = FileDialog(action="open")
         dialog.open()
+        info = {}
         if dialog.return_code == OK:
             for eachfile in dialog.paths:
                 try:
                     overlay_data = pu.read_data(eachfile)
                     overlay_headers = pu.get_header(eachfile)
-                    self.Plot_Data.overlay_plot_data[os.path.basename(eachfile)] = overlay_data
-                    self.Plot_Data.overlay_headers[os.path.basename(eachfile)] = overlay_headers
-                    self.Single_Select_Overlay_Files.choices.append(os.path.basename(eachfile))
                 except:
                     print "Error reading overlay data in file " + eachfile
+                fnam = os.path.basename(eachfile)
+                self.Plot_Data.overlay_plot_data[fnam] = overlay_data
+                self.Plot_Data.overlay_headers[fnam] = overlay_headers
+                self.Single_Select_Overlay_Files.choices.append(fnam)
+                continue
             self.Plot_Data.change_plot(self.Plot_Data.plot_indices)
+        return
 
-    def __init__(self, **traits):
-        HasStrictTraits.__init__(self, **traits)
-        self.headers = pu.get_header(self.file_paths[0])
-        data = []
-        for file_path in self.file_paths:
-            data.append(pu.read_data(file_path))
-        self.Plot_Data = Viz_Plot2D(plot_data=data,run_names=self.file_variables, headers=self.headers, axis_index=0)
-        self.Multi_Select = MultiSelect(choices=self.headers, plot=self.Plot_Data)
-        self.Change_Axis = ChangeAxis(Plot_Data=self.Plot_Data, headers=self.headers)
-        self.Single_Select_Overlay_Files = SingleSelectOverlayFiles(choices=[])
 
 def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
     """Create the plot window
@@ -284,9 +309,11 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
         idx = sim_index.get_index()
         for run,info in idx.iteritems():
             output_files.append(info['outfile'])
-            s = ""
+            s = []
             for var, val in info['variables'].iteritems():
-                s += "%s=%.2g" % (var, val)
+                s.append("%s=%.2g" % (var, val))
+                continue
+            s = ", ".join(s)
             variables.append(s)
 
         not_found = [x for x in output_files if not os.path.isfile(x)]
@@ -326,7 +353,7 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
                 height=868,
                 resizable=True,
                 title=window_name)
-    
+
     main_window = Viz_ModelPlot(file_paths=output_files, file_variables=variables)
 
     main_window.configure_traits(view=view, handler=handler)

@@ -40,35 +40,35 @@ import Source.__runopts__ as ro
 EPSILON = np.finfo(np.float).eps
 
 
-def newton(material, simdat, matdat):
+def newton(material, simdat, matdat, dt, Pt, V, dEdt):
     '''
     NAME
        newton
 
     PURPOSE
        Seek to determine the unknown components of the symmetric part of velocity
-       gradient depsdt[nzc] satisfying
+       gradient dEdt[V] satisfying
 
-                               sig(depsdt[nzc]) = prsig
+                               P(dEdt[V]) = Pt
 
-       where P is the current stress, depsdt the symmetric part of the velocity
-       gradient, nzc is a vector subscript array containing the components for
-       which stresses (or stress rates) are prescribed, and prsig are the
+       where P is the current stress, dEdt the symmetric part of the velocity
+       gradient, V is a vector subscript array containing the components for
+       which stresses (or stress rates) are prescribed, and Pt are the
        prescribed values at the current time.
 
     INPUT
        material:   constiutive model instance
        simdat: simulation data container
-               depsdt: strain rate
-               delt: timestep
-               sig: current stress
-               prsig: prescribed values of stress
-               nzc: vector subscript array containing the components for which
+               dEdt: strain rate
+               dt: timestep
+               P: current stress
+               Pt: prescribed values of stress
+               V: vector subscript array containing the components for which
                   stresses are prescribed
 
     OUTPUT
        simdat: simulation data container
-               depsdt: strain rate at the half step
+               dEdt: strain rate at the half step
        converged: 0  did not converge
                   1  converged based on tol1 (more stringent)
                   2  converged based on tol2 (less stringent)
@@ -78,16 +78,16 @@ def newton(material, simdat, matdat):
        method. Each iteration begins with a call to subroutine jacobian, which
        numerically computes the Jacobian submatrix
 
-                                  Js = J[nzc, nzc]
+                                  Js = J[V, V]
 
        where J[:,;] is the full Jacobian matrix J = dsig/deps. The value of
-       depsdt[nzc] is then updated according to
+       dEdt[V] is then updated according to
 
-                depsdt[nzc] = depsdt[nzc] - Jsi*sig_dif(depsdt[nzc])/delt
+                dEdt[V] = dEdt[V] - Jsi*Pd(dEdt[V])/dt
 
        where
 
-                   sig_dif(depsdt[nzc]) = P(depsdt[nzc]) - prsig
+                   Pd(dEdt[V]) = P(dEdt[V]) - Pt
 
        The process is repeated until a convergence critierion is satisfied. The
        argument converged is a flag indicat- ing whether or not the procedure
@@ -107,89 +107,82 @@ def newton(material, simdat, matdat):
     '''
 
     # --- Local variables
-    delt = simdat.get_data("time step")
-    depsdt = matdat.get_data("strain rate")
-    defgrad_old = matdat.get_data("deformation gradient", form="Matrix")
-    dold = matdat.get_data("rate of deformation")
-    prsig = matdat.get_data("prescribed stress")
-    nzc = matdat.get_data("prescribed stress components")
-    sig = matdat.get_data("stress")
+    F0 = matdat.get("deformation gradient", copy=True)
+    D0 = matdat.get("rate of deformation", copy=True)
 
-    l_nzc = len(nzc)
-    sig_dif = np.zeros(l_nzc)
+    nV = len(V)
+    Pd = np.zeros(nV)
     tol1, tol2 = EPSILON, math.sqrt(EPSILON)
     maxit1, maxit2, depsmax, converged = 20, 30, 0.2, 0
 
     # --- Check if strain increment is too large
-    if (depsmag(depsdt, delt) > depsmax):
-        return converged
+    if (depsmag(dEdt, dt) > depsmax):
+        return converged, dEdt
 
     # --- Initialize
-    defgrad_new = defgrad_old + np.dot(pt.to_matrix(depsdt), defgrad_old) * delt
+    Ff = F0 + pt.dot(dEdt, F0) * dt
 
     # replace deformation rate and gradient with current best guesses
-    matdat.store_data("deformation gradient", defgrad_new, old=True)
-    matdat.store_data("rate of deformation", depsdt, old=True)
+    matdat.store("deformation gradient", Ff)
+    matdat.store("rate of deformation", dEdt)
 
-    # update the material state
+    # update the material state to get the first guess at the new stress
     material.update_state(simdat, matdat)
-
-    sig = matdat.get_data("stress", cur=True)
-    sig_dif = sig[nzc] - prsig
+    P = matdat.get("stress")
+    Pd = P[V] - Pt
+    matdat.restore()
 
     # --- Perform Newton iteration
     for i in range(maxit2):
-        jac_sub = material.jacobian(simdat, matdat)
+        Js = material.jacobian(simdat, matdat, V)
         try:
-            depsdt[nzc] -= np.linalg.solve(jac_sub, sig_dif) / delt
+            dEdt[V] -= np.linalg.solve(Js, Pd) / dt
 
         except:
-            depsdt[nzc] -= np.linalg.lstsq(jac_sub, sig_dif)[0] / delt
+            dEdt[V] -= np.linalg.lstsq(Js, Pd)[0] / dt
             msg = 'Using least squares approximation to matrix inverse'
             pu.log_warning(msg, limit=True)
 
-        if (depsmag(depsdt, delt) > depsmax):
+        if (depsmag(dEdt, dt) > depsmax):
             # increment too large, restore changed data and exit
-            matdat.restore_data("rate of deformation", dold)
-            matdat.restore_data("deformation gradient", defgrad_old)
-            return converged
+            matdat.restore("rate of deformation")
+            matdat.restore("deformation gradient")
+            return converged, D0
 
-        defgrad_new = (defgrad_old +
-                       np.dot(pt.to_matrix(depsdt), defgrad_old) * delt)
-        matdat.store_data("rate of deformation", depsdt, old=True)
-        matdat.store_data("deformation gradient", defgrad_new, old=True)
+        Ff = F0 + pt.dot(dEdt, F0) * dt
+        matdat.store("rate of deformation", dEdt)
+        matdat.store("deformation gradient", Ff)
         material.update_state(simdat, matdat)
-        sig = matdat.get_data("stress", cur=True)
-        sig_dif = sig[nzc] - prsig
-        dnom = np.amax(np.abs(prsig)) if np.amax(np.abs(prsig)) > 2.e-16 else 1.
-        relerr = np.amax(np.abs(sig_dif)) / dnom
+        P = matdat.get("stress")
+        Pd = P[V] - Pt
+        dnom = np.amax(np.abs(Pt)) if np.amax(np.abs(Pt)) > 2.e-16 else 1.
+        relerr = np.amax(np.abs(Pd)) / dnom
+        matdat.restore()
 
         if i <= maxit1:
             if relerr < tol1:
                 converged = 1
-                matdat.restore_data("rate of deformation", dold)
-                matdat.restore_data("deformation gradient", defgrad_old)
-                matdat.store_data("strain rate", depsdt)
-                return converged
+                matdat.restore("rate of deformation")
+                matdat.restore("deformation gradient")
+                return converged, dEdt
 
         else:
             if relerr < tol2:
                 converged = 2
                 # restore changed data and store the newly found strain rate
-                matdat.restore_data("rate of deformation", dold)
-                matdat.restore_data("deformation gradient", defgrad_old)
-                matdat.store_data("strain rate", depsdt)
-                return converged
+                matdat.restore("rate of deformation")
+                matdat.restore("deformation gradient")
+                return converged, dEdt
 
         continue
 
     # didn't converge, restore restore data and exit
-    matdat.restore_data("rate of deformation", dold)
-    matdat.restore_data("deformation gradient", defgrad_old)
-    return converged
+    matdat.restore("rate of deformation")
+    matdat.restore("deformation gradient")
+    return converged, dEdt
 
 
-def depsmag(sym_velgrad, delt):
+def depsmag(sym_velgrad, dt):
     '''
     NAME
        depsmag
@@ -199,7 +192,7 @@ def depsmag(sym_velgrad, delt):
 
     INPUT
        sym_velgrad:  symmetric part of the velocity gradient at the half-step
-       delt: time step
+       dt: time step
 
     OUTPUT
        depsmag: L2 norm of the strain increment
@@ -208,36 +201,30 @@ def depsmag(sym_velgrad, delt):
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
     '''
     return math.sqrt(sum(sym_velgrad[:3] ** 2) +
-                     2. * sum(sym_velgrad[3:] ** 2)) * delt
+                     2. * sum(sym_velgrad[3:] ** 2)) * dt
 
 
-def simplex(material, simdat, matdat):
+def simplex(material, simdat, matdat, dt, dEdt, Pt, V):
     '''
     NAME
        simplex
 
     PURPOSE
-       Perform a downhill simplex search to find sym_velgrad[nzc] such that
-                        P(sym_velgrad[nzc]) = prsig[nzc]
+       Perform a downhill simplex search to find sym_velgrad[V] such that
+                        P(sym_velgrad[V]) = Pt[V]
 
     AUTHORS
        Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
        M Scot Swan, Sandia National Laboratories, mswan@sandia.gov
     '''
-    nzc = matdat.get_data("prescribed stress components")
-    depsdt = matdat.get_data("strain rate")
-
     # --- Perform the simplex search
-    args = (material, simdat, matdat)
-    depsdt[nzc] = scipy.optimize.fmin(func, depsdt[nzc],
-                                      args=args, maxiter=20, disp=False)
-
-    matdat.store_data("strain rate", depsdt)
-
-    return
+    args = (material, simdat, matdat, dt, dEdt.copy(), Pt, V)
+    dEdt[V] = scipy.optimize.fmin(func, dEdt[V],
+                                  args=args, maxiter=20, disp=False)
+    return dEdt
 
 
-def func(depsdt_opt, material, simdat, matdat):
+def func(x, material, simdat, matdat, dt, dEdt, Pt, V):
     '''
     NAME
        func
@@ -251,36 +238,31 @@ def func(depsdt_opt, material, simdat, matdat):
     '''
 
     # initialize
-    delt = simdat.get_data("time step")
-    nzc = matdat.get_data("prescribed stress components")
-    prsig = matdat.get_data("prescribed stress")
-    depsdt = matdat.get_data("strain rate")
-    depsdt[nzc] = depsdt_opt
-    defgrad_old = matdat.get_data("deformation gradient", form="Matrix")
-    dold = matdat.get_data("rate of deformation")
-    defgrad_new = defgrad_old + np.dot(pt.to_matrix(depsdt), defgrad_old) * delt
+    dEdt[V] = x
+    F0 = matdat.get("deformation gradient", copy=True)
+    D0 = matdat.get("rate of deformation", copy=True)
+    Ff = F0 + pt.dot(dEdt, F0) * dt
 
     # store the best guesses
-    matdat.store_data("rate of deformation", depsdt, old=True)
-    matdat.store_data("deformation gradient", defgrad_new, old=True)
+    matdat.store("rate of deformation", dEdt)
+    matdat.store("deformation gradient", Ff)
     material.update_state(simdat, matdat)
-
-    sig = matdat.get_data("stress", cur=True)
+    P = matdat.get("stress", copy=True)
+    matdat.restore()
 
     # check the error
     error = 0.
     if not ro.PROPORTIONAL:
-        for i, j in enumerate(nzc):
-            error += (sig[j] - prsig[i]) ** 2
+        for i, j in enumerate(V):
+            error += (P[j] - Pt[i]) ** 2
             continue
 
     else:
         stress_v, stress_u = [], []
-        for i, j in enumerate(nzc):
-            stress_u.append(prsig[i])
-            stress_v.append(sig[j])
+        for i, j in enumerate(V):
+            stress_u.append(Pt[i])
+            stress_v.append(P[j])
             continue
-    #    print(stress_u, stress_v)
         stress_v = np.array(stress_v)
         stress_u = np.array(stress_u)
 
@@ -293,7 +275,7 @@ def func(depsdt_opt, material, simdat, matdat):
             error = np.linalg.norm(stress_v)
 
     # restore data
-    matdat.restore_data("rate of deformation", dold)
-    matdat.restore_data("deformation gradient", defgrad_old)
+    matdat.restore("rate of deformation")
+    matdat.restore("deformation gradient")
 
     return error

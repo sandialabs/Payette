@@ -34,7 +34,7 @@ import subprocess
 import optparse
 import shutil
 
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
 __intro__ = """
 Copyright (2011) Sandia Corporation. Under the terms of Contract
@@ -743,8 +743,8 @@ import os
 
     def get_dotpayette(self):
         return """\
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-if [ -z "${DOTPAYETTE:+x}" ]; then
+DIR={0}
+if [ -z "${{DOTPAYETTE:+x}}" ]; then
     ostype=`uname -a | tr '[A-Z]' '[a-z]'`
     if [ -n "$(echo $ostype | grep 'darwin')" ];
     then
@@ -761,7 +761,7 @@ if [ ! -f "$DOTPAYETTE/__user_config__.py" ]; then
     echo "INFO: Copying __user_config__.py to $DOTPAYETTE"
     cp $DIR/../.payette/__user_config__.py.copy "$DOTPAYETTE/__user_config__.py"
 fi
-"""
+""".format(self.toolset)
 
 def clean_payette():
     root = os.path.dirname(os.path.realpath(__file__))
