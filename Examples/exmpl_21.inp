@@ -10,14 +10,16 @@ begin preprocessing
   _kappa = 0
   two_shear_modulus = 106.e9
   half_bulk_modulus = 67.5e9
+  one = {-1. * mone}
+  mone = -1.
 end preprocessing
 
 begin simulation exmpl_21
   nowriteprops
   begin boundary
     kappa = {_kappa}
-    tstar = 1.
-    ampl = 1
+    tstar = {one}
+    ampl = {one}
     begin legs
       using time, strain
       #TIME     STRAIN11  STRAIN22  STRAIN33  STRAIN12  STRAIN23  STRAIN13

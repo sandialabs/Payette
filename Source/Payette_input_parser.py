@@ -373,8 +373,7 @@ def preprocess(lines, preprocessor=None):
       'sqrt': math.sqrt, 'sin': math.sin,   'cos': math.cos,   'tan': math.tan,
       'asin': math.asin, 'acos': math.acos, 'atan': math.atan, 'atan2': math.atan2,
       'pi': math.pi,     'log': math.log,   'exp': math.exp,   'floor': math.floor,
-      'ceil': math.ceil, 'abs': math.fabs,  'random': random.random,
-                     }
+      'ceil': math.ceil, 'abs': math.fabs,  'random': random.random, }
 
     if preprocessor is None:
         preprocessor = find_block("preprocessing", lines)
@@ -383,39 +382,62 @@ def preprocess(lines, preprocessor=None):
         return lines
 
     # split the preprocessor into a list of (pattern, repl) pairs
-    preprocessor = [x.split(None,1)
+    preprocessor = [x.split(None, 1)
                     for x in re.sub(I_EQ, " ", preprocessor).split("\n") if x]
 
     # Add the preprocessor values into the safe_eval_dict
-    for idx, [pat, repl] in enumerate(preprocessor):
-        tmp = repl.lstrip('{').rstrip('}')
-        tmpval =  eval(tmp, {"__builtins__":None}, safe_eval_dict)
-        safe_eval_dict[pat] = tmpval
-        preprocessor[idx][1] = "{0:12.6E}".format(tmpval)
+    gdict, ldict, I = {"__builtins__": None}, safe_eval_dict, 0
+    while True:
+        errors = 0
+        for idx, [pat, repl] in enumerate(preprocessor):
+            tmp = repl.lstrip('{').rstrip('}')
+            try:
+                tmpval =  eval(tmp, gdict, ldict)
+            except NameError:
+                errors += 1
+                continue
+            safe_eval_dict[pat] = tmpval
+            preprocessor[idx][1] = "{0:12.6E}".format(tmpval)
+            continue
+        if not errors or I > 10: break
+        I += 1
+        continue
+
+    if errors or I > 10:
+        pu.report_and_raise_error("Unresolvable preprocessing block")
 
     for pat, repl in preprocessor:
-        # We look for any occurence of pat between curly brackets
+        # Check that each preprocessor variable is used somewhere else in the
+        # file. Issue a warning if not. It is done here outside of the
+        # replacement loop to be sure that we can check all variables. Because
+        # variables in the preprocessor block were put in the safe_eval_dict
+        # it is possible for, say, var_2 to be replaced when replacing var_1
+        # if the user specified something like
+        #          param = {var_1 * var_2}
+        # So, since we want to check that all preprocessed variables are used,
+        # we do it here. Checking is important for permutate and optimization
+        # jobs to make sure that all permutated and optimized variables are
+        # used properly in the file before the job actually begins.
+        if not re.search(r"(?i){{.*?\b{0:s}\b.*?}}".format(pat), lines):
+            pu.log_warning(
+                "Preprocessing key '{0}' not found in input".format(pat))
+        continue
+
+    for pat, repl in preprocessor:
         full = re.compile(r"{{.*?\b{0:s}\b.*?}}".format(pat), re.I|re.M)
-        nrepl = 0
         while True:
             found = full.search(lines)
             if not found:
-                if nrepl == 0:
-                    pu.log_warning(
-                        "Preprocessing key {0} not found in input".format(pat))
                 break
             bn, en = found.start(), found.end()
             npat = re.compile(re.escape(r"{0}".format(lines[bn:en])), re.I|re.M)
             repl = re.sub(r"(?i){0}".format(pat), repl, lines[bn+1:en-1])
-            if re.search("[\*+/\-]", repl):
-                try:
-                    repl = "{0:12.6E}".format(eval(repl,
-                                               {"__builtins__":None},
-                                               safe_eval_dict))
-                except:
-                    raise Exception("failure evaluating '{0}' in preprocessor.".format(repl))
+            try:
+                repl = "{0:12.6E}".format(eval(repl, gdict, ldict))
+            except:
+                pu.report_and_raise_error(
+                    "failure evaluating '{0}' in preprocessor.".format(repl))
             lines = npat.sub(repl, lines)
-            nrepl += 1
             continue
         continue
 
