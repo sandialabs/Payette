@@ -25,7 +25,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import os, sys, shutil, imp
+import os, sys, shutil, imp, tempfile
 import subprocess as sbp
 from distutils import sysconfig
 from copy import deepcopy
@@ -163,47 +163,42 @@ class MaterialBuilder(object):
         libsearch = ["-L{0}".format(x) for x in self.libdirs]
         libs = ["-l{0}".format(x) for x in self.libs]
         f2pycmd = self.f2pyopts + incsearch + libsearch + libs
-        f2pycmd.extend(["-m",self.name,self.signature_file])
+        f2pycmd.extend(["-m", self.name, self.signature_file])
         f2pycmd.extend(self.pre_directives)
         f2pycmd.extend(ffiles)
 
         tmp = deepcopy(sys.argv)
         sys.argv = f2pycmd
 
-        try:
-            echo = os.path.join(self.source_directory,"build.echo")
-            with open(echo,"w") as sys.stdout:
-                with open(echo,"a") as sys.stderr:
-                    # f2py returns none if successful, it is an exception if not
-                    # successful
-                    built = not f2py()
-        except:
-            built = False
+        if os.access(self.source_directory, os.W_OK):
+            echo = os.path.join(self.source_directory, "build.echo")
+        else:
+            echo = os.path.join(tempfile.gettempdir(), "build.echo")
 
-        # restore sys.{argv,stdout,stderr}
+        with open(echo, "w") as sys.stdout:
+            with open(echo, "a") as sys.stderr:
+                # f2py returns none if successful, it is an exception if not
+                # successful
+                try: built = not f2py()
+                except: built = False
+
+        # restore sys.{argv, stdout, stderr}
         sys.argv = deepcopy(tmp)
         sys.stdout, sys.stderr  = sys.__stdout__, sys.__stderr__
 
         # remove nocallback_file, if it exists
-        try:
-            os.remove(self.nocallback_file)
-        except OSError:
-            pass
+        try: os.remove(self.nocallback_file)
+        except OSError: pass
 
         # remove object files
         for f in self.source_files:
-            fnam,fext = os.path.splitext(f)
-            obj = fnam + ".o"
-            try:
-                os.remove(obj)
-            except OSError:
-                pass
-
+            try: os.remove(os.path.splitext(f)[0] + ".o")
+            except OSError: pass
             continue
 
         if not built:
             raise BuildError("failed to build {0} with f2py, see {1}"
-                             .format(self.libname,echo), 2)
+                             .format(self.libname, echo), 2)
 
         # make sure the module is loadable
         try:
@@ -223,10 +218,8 @@ class MaterialBuilder(object):
         shutil.move(self.libname,
                     os.path.join(self.payette_libdir, self.libname))
 
-        try:
-            os.remove(echo)
-        except OSError:
-            pass
+        try: os.remove(echo)
+        except OSError: pass
 
         return 0
 
