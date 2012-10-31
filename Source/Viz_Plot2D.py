@@ -271,11 +271,17 @@ class Viz_Plot2D(HasTraits):
     def max_x(self):
         return np.amax(self.plot_data[0][:, self.x_idx])
 
+    def abs_max_x(self):
+        return np.amax(np.abs(self.plot_data[0][:, self.x_idx]))
+
     def min_y(self):
         return np.amin(self.plot_data[0][:, self.y_idx])
 
     def max_y(self):
         return np.amax(self.plot_data[0][:, self.y_idx])
+
+    def abs_max_y(self):
+        return np.amax(np.abs(self.plot_data[0][:, self.y_idx]))
 
     def get_info(self, i):
         """Return the info for index i

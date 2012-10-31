@@ -232,7 +232,9 @@ class Viz_ModelPlot(HasStrictTraits):
         elif scale == "min":
             scale = str(self.Plot_Data.min_x())
         elif scale == "normalize":
-            scale = str(1. / self.Plot_Data.max_x())
+            _max = self.Plot_Data.abs_max_x()
+            _max = 1. if _max < pu.EPSILON else _max
+            scale = str(1. / _max)
         try: scale = float(eval(scale, GDICT, LDICT))
         except: return
         self.Plot_Data.change_plot(self.Plot_Data.plot_indices, x_scale=scale)
@@ -269,7 +271,9 @@ class Viz_ModelPlot(HasStrictTraits):
         elif scale == "min":
             scale = str(self.Plot_Data.min_y())
         elif scale == "normalize":
-            scale = str(1. / self.Plot_Data.max_y())
+            _max = self.Plot_Data.abs_max_y()
+            _max = 1. if _max < pu.EPSILON else _max
+            scale = str(1. / _max)
         try: scale = float(eval(scale, GDICT, LDICT))
         except: return
         self.Plot_Data.change_plot(self.Plot_Data.plot_indices, y_scale=scale)
