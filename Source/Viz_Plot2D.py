@@ -25,7 +25,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from numpy import arange
+import numpy as np
 from scipy.special import jn
 
 from enthought.chaco.example_support import COLOR_PALETTE
@@ -44,18 +44,21 @@ LS = ['dot dash', 'dash', 'dot', 'long dash']
 
 class Viz_Plot2D(HasTraits):
     container = Instance(Plot)
-    finfo = Dict(Int, Dict(Str, List(Str)))
+    plot_info = Dict(Int, Dict(Str, List(Str)))
     plot_data = List(Array)
     overlay_headers = Dict(Str, List(Str))
     overlay_plot_data = Dict(Str, Array)
     variables = List(Str)
     plot_indices = List(Int)
     x_idx = Int
+    y_idx = Int
     Time = Float
     high_time = Float
     low_time = Float
     time_data_labels = Dict(Int,List)
     runs_shown = List(Bool)
+    x_scale = Float
+    y_scale = Float
 
     traits_view = View(
         Group(
@@ -75,7 +78,10 @@ class Viz_Plot2D(HasTraits):
         HasTraits.__init__(self, **traits)
         self.time_data_labels = {}
         self.x_idx = 0
+        self.y_idx = 0
         self.runs_shown = [True] * len(self.variables)
+        self.x_scale, self.y_scale = 1., 1.
+        pass
 
     @on_trait_change('Time')
     def change_data_markers(self):
@@ -85,8 +91,8 @@ class Viz_Plot2D(HasTraits):
 
             for i, y_idx in enumerate(self.plot_indices):
                 self.time_data_labels[d][i].data_point = (
-                    self.plot_data[d][ti, self.x_idx],
-                    self.plot_data[d][ti, y_idx])
+                    self.plot_data[d][ti, self.x_idx] * self.x_scale,
+                    self.plot_data[d][ti, y_idx] * self.y_scale)
 
         self.container.invalidate_and_redraw()
         return
@@ -149,7 +155,7 @@ class Viz_Plot2D(HasTraits):
             bgcolor="white", border_visible=True, line_style=ls)
         return
 
-    def change_plot(self, indices):
+    def change_plot(self, indices, x_scale=None, y_scale=None):
         self.plot_indices = indices
         self.container = self.create_container()
         self.high_time = float(max(self.plot_data[0][:, 0]))
@@ -158,6 +164,7 @@ class Viz_Plot2D(HasTraits):
         self.time_data_labels = {}
         if len(indices) == 0:
             return
+        x_scale, y_scale = self.get_axis_scales(x_scale, y_scale)
 
         # loop through plot data and plot it
         overlays_plotted = False
@@ -179,6 +186,7 @@ class Viz_Plot2D(HasTraits):
             ti = self.find_time_index()
             mheader = self._mheader()
             xname = mheader[self.x_idx]
+            self.y_idx = get_index(mheader, mheader[indices[0]])
 
             # indices is an integer list containing the columns of the data to
             # be plotted. The indices are wrt to the FIRST file in parsed, not
@@ -195,8 +203,8 @@ class Viz_Plot2D(HasTraits):
                 if xp_idx is None or yp_idx is None:
                     continue
 
-                x = self.plot_data[d][:, xp_idx]
-                y = self.plot_data[d][:, yp_idx]
+                x = self.plot_data[d][:, xp_idx] * x_scale
+                y = self.plot_data[d][:, yp_idx] * y_scale
                 if self.nfiles() - 1 or self.overlay_plot_data:
                     entry = "({0}) {1}{2}".format(fnam, yname, variables)
                 else:
@@ -204,8 +212,8 @@ class Viz_Plot2D(HasTraits):
                 self.create_plot(x, y, yp_idx, d, entry, "solid")
 
                 # create point marker
-                xp = self.plot_data[d][ti, xp_idx]
-                yp = self.plot_data[d][ti, yp_idx]
+                xp = self.plot_data[d][ti, xp_idx] * x_scale
+                yp = self.plot_data[d][ti, yp_idx] * y_scale
                 self.create_data_label(xp, yp, d, yp_idx)
 
                 if not overlays_plotted:
@@ -219,8 +227,8 @@ class Viz_Plot2D(HasTraits):
                         yo_idx = get_index(head, yname)
                         if xo_idx is None or yo_idx is None:
                             continue
-                        xo = self.overlay_plot_data[fnam][:, xo_idx]
-                        yo = self.overlay_plot_data[fnam][:, yo_idx]
+                        xo = self.overlay_plot_data[fnam][:, xo_idx] * x_scale
+                        yo = self.overlay_plot_data[fnam][:, yo_idx] * y_scale
                         # legend entry
                         entry = "({0}) {1}".format(fnam, head[yo_idx])
                         self.create_plot(xo, yo, yo_idx, d, entry, LS[ls_ % 4])
@@ -257,13 +265,25 @@ class Viz_Plot2D(HasTraits):
         """
         return self.get_info(0)[1]
 
+    def min_x(self):
+        return np.amin(self.plot_data[0][:, self.x_idx])
+
+    def max_x(self):
+        return np.amax(self.plot_data[0][:, self.x_idx])
+
+    def min_y(self):
+        return np.amin(self.plot_data[0][:, self.y_idx])
+
+    def max_y(self):
+        return np.amax(self.plot_data[0][:, self.y_idx])
+
     def get_info(self, i):
         """Return the info for index i
 
         Parameters
         ----------
         i : int
-            The location in self.finfo
+            The location in self.plot_info
 
         Returns
         -------
@@ -273,13 +293,37 @@ class Viz_Plot2D(HasTraits):
             the file header
 
         """
-        return self.finfo[i].items()[0]
+        return self.plot_info[i].items()[0]
 
     def get_file_name(self, i):
         return self.get_info(i)[0]
 
     def nfiles(self):
-        return len(self.finfo)
+        return len(self.plot_info)
+
+    def get_axis_scales(self, x_scale, y_scale):
+        """Get/Set the scales for the x and y axis
+
+        Parameters
+        ----------
+        x_scale : float, optional
+        y_scale : float, optional
+
+        Returns
+        -------
+        x_scale : float
+        y_scale : float
+
+        """
+        # get/set x_scale
+        if x_scale is None: x_scale = self.x_scale
+        else: self.x_scale = x_scale
+
+        # get/set y_scale
+        if y_scale is None: y_scale = self.y_scale
+        else: self.y_scale = y_scale
+
+        return x_scale, y_scale
 
 def get_index(list_, name):
     """Return the index for name in list_"""

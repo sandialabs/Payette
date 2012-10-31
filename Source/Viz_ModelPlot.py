@@ -27,19 +27,27 @@
 
 import os
 import linecache
-import os
+import math, random
 import Source.Payette_utils as pu
 import Source.Payette_sim_index as psi
 from Viz_Plot2D import Viz_Plot2D
 
 from enthought.traits.api import (HasStrictTraits, Instance, String, Button,
                                   Bool, List, Dict, Str, Int, Property,
-                                  HasPrivateTraits, on_trait_change, Trait)
-from enthought.traits.ui.api import View, Item, HSplit, VGroup, Handler, TabularEditor, HGroup, UItem
+                                  HasPrivateTraits, on_trait_change, Trait,
+                                  Float)
+from enthought.traits.ui.api import (View, Item, HSplit, VGroup, Handler,
+                                     TabularEditor, Group, HGroup, UItem)
 from enthought.traits.ui.tabular_adapter import TabularAdapter
 from enthought.pyface.api import FileDialog, OK
 
 Change_X_Axis_Enabled = True
+LDICT = {"sqrt": math.sqrt, "sin": math.sin, "cos": math.cos, "tan": math.tan,
+         "asin": math.asin, "acos": math.acos,
+         "atan": math.atan, "atan2": math.atan2, "pi": math.pi,
+         "log": math.log, "exp": math.exp, "floor": math.floor,
+         "ceil": math.ceil, "abs": math.fabs, "random": random.random,}
+GDICT = {"__builtins__": None}
 
 class ChangeAxisHandler(Handler):
 
@@ -64,9 +72,7 @@ class ChangeAxis(HasStrictTraits):
 
     view = View(Item('Change_X_Axis',
                      enabled_when='Change_X_Axis_Enabled==True',
-                     show_label=False
-                     )
-                )
+                     show_label=False))
 
 class SingleSelectAdapter(TabularAdapter):
     columns = [ ('Payette Outputs', 'myvalue') ]
@@ -84,18 +90,10 @@ class SingleSelect(HasPrivateTraits):
     view = View(
         HGroup(
             UItem('choices',
-                  editor     = TabularEditor(
-                                   show_titles  = True,
-                                   selected     = 'selected',
-                                   editable     = False,
-                                   multi_select = False,
-                                   adapter      = SingleSelectAdapter())
-        )),
-        width=224,
-        height=668,
-        resizable=True,
-        title='Change X-axis'
-    )
+                  editor=TabularEditor(
+                    show_titles=True, selected='selected', editable=False,
+                    multi_select=False, adapter=SingleSelectAdapter()))),
+        width=224, height=668, resizable=True, title='Change X-axis')
 
     @on_trait_change( 'selected' )
     def _selected_modified ( self, object, name, new ):
@@ -116,16 +114,11 @@ class SingleSelectOverlayFiles(HasPrivateTraits):
     view = View(
         HGroup(
             UItem('choices',
-                  editor     = TabularEditor(
-                                   show_titles  = True,
-                                   selected     = 'selected',
-                                   editable     = False,
-                                   multi_select = False,
-                                   adapter      = SingleSelectOverlayFilesAdapter())
-        )),
-        width=224,
-        height=100
-    )
+                  editor=TabularEditor(
+                    show_titles=True, selected='selected',
+                    editable=False, multi_select=False,
+                    adapter=SingleSelectOverlayFilesAdapter()))),
+        width=224, height=100)
 
 class MultiSelectAdapter(TabularAdapter):
     columns = [ ('Payette Outputs', 'myvalue') ]
@@ -143,17 +136,13 @@ class MultiSelect(HasPrivateTraits):
     view = View(
         HGroup(
             UItem('choices',
-                  editor     = TabularEditor(
-                                   show_titles  = True,
-                                   selected     = 'selected',
-                                   editable     = False,
-                                   multi_select = True,
-                                   adapter      = MultiSelectAdapter())
-        )),
-        width=224,
-        height=568,
-        resizable=True
-    )
+                  editor=TabularEditor(
+                    show_titles=True,
+                    selected='selected',
+                    editable=False,
+                    multi_select=True,
+                    adapter=MultiSelectAdapter()))),
+        width=224, height=568, resizable=True)
 
     @on_trait_change( 'selected' )
     def _selected_modified ( self, object, name, new ):
@@ -165,57 +154,136 @@ class MultiSelect(HasPrivateTraits):
 class Viz_ModelPlot(HasStrictTraits):
 
     Plot_Data = Instance(Viz_Plot2D)
-    finfo = Dict(Int, Dict(Str, List(Str)))
+    plot_info = Dict(Int, Dict(Str, List(Str)))
     Multi_Select = Instance(MultiSelect)
     Change_Axis = Instance(ChangeAxis)
     Reset_Zoom = Button('Reset Zoom')
     Reload_Data = Button('Reload Data')
     Load_Overlay = Button('Open Overlay')
     Close_Overlay = Button('Close Overlay')
+    X_Scale = String("1.0")
+    Y_Scale = String("1.0")
     Single_Select_Overlay_Files = Instance(SingleSelectOverlayFiles)
     file_paths = List(String)
     file_variables = List(String)
 
     def __init__(self, **traits):
-        HasStrictTraits.__init__(self, **traits)
+        """Put together information to be sent to Viz_Plot2D information
+        needed:
 
-        # put together information to be sent to Viz_Plot2D
-        # information needed:
-        # finfo : dict
-        #   {0: {file_0: header_0}}
-        #   {1: {file_1: header_1}}
-        #   ...
-        #   {n: {file_n: header_n}}
-        # variables : list
-        #   list of variables that changed from one simulation to another
-        # x_idx : int
-        #   column containing x variable to be plotted
+        plot_info : dict
+           {0: {file_0: header_0}}
+           {1: {file_1: header_1}}
+           ...
+           {n: {file_n: header_n}}
+        variables : list
+           list of variables that changed from one simulation to another
+        x_idx : int
+           column containing x variable to be plotted
+
+        """
+
+        HasStrictTraits.__init__(self, **traits)
 
         data = []
         for idx, file_path in enumerate(self.file_paths):
             if idx == 0: mheader = pu.get_header(file_path)
             fnam = os.path.basename(file_path)
-            self.finfo[idx] = {fnam: pu.get_header(file_path)}
+            self.plot_info[idx] = {fnam: pu.get_header(file_path)}
             data.append(pu.read_data(file_path))
         self.Plot_Data = Viz_Plot2D(
             plot_data=data, variables=self.file_variables,
-            x_idx=0, finfo=self.finfo)
+            x_idx=0, plot_info=self.plot_info)
         self.Multi_Select = MultiSelect(choices=mheader, plot=self.Plot_Data)
         self.Change_Axis = ChangeAxis(Plot_Data=self.Plot_Data, headers=mheader)
         self.Single_Select_Overlay_Files = SingleSelectOverlayFiles(choices=[])
+        pass
 
     def _Reset_Zoom_fired(self):
         self.Plot_Data.change_plot(self.Plot_Data.plot_indices)
+
+    def _X_Scale_changed(self, scale):
+        """Detect if the x-axis scale was changed and let the plotter know
+
+        Parameters
+        ----------
+        scale : str
+           The user entered scale
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        scale should be a float, one of the operations in LDICT, or one of the
+        optional magic keywords: min, max, normalize. On entry, scale is
+        stripped, and if an empty string is sent in, it is reset to 1.0. If
+        the magic words min or max are specified, the scale is set to the min
+        or max of the x-axis data for the FIRST set of data. If the magic
+        keyword normalize is specified, scale is set to 1 / max.
+
+        """
+        scale = scale.strip()
+        if not scale:
+            scale = self.X_Scale = "1.0"
+        if scale == "max":
+            scale = str(self.Plot_Data.max_x())
+        elif scale == "min":
+            scale = str(self.Plot_Data.min_x())
+        elif scale == "normalize":
+            scale = str(1. / self.Plot_Data.max_x())
+        try: scale = float(eval(scale, GDICT, LDICT))
+        except: return
+        self.Plot_Data.change_plot(self.Plot_Data.plot_indices, x_scale=scale)
+        return
+
+    def _Y_Scale_changed(self, scale):
+        """Detect if the y-axis scale was changed and let the plotter know
+
+        Parameters
+        ----------
+        scale : str
+           The user entered scale
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+
+        scale should be a float, one of the operations in LDICT, or one of the
+        optional magic keywords: min, max, normalize. On entry, scale is
+        stripped, and if an empty string is sent in, it is reset to 1.0. If
+        the magic words min or max are specified, the scale is set to the min
+        or max of the y-axis data for the FIRST set of data. If the magic
+        keyword normalize is specified, scale is set to 1 / max.
+
+        """
+        scale = scale.strip()
+        if not scale:
+            scale = self.Y_Scale = "1.0"
+        if scale == "max":
+            scale = str(self.Plot_Data.max_y())
+        elif scale == "min":
+            scale = str(self.Plot_Data.min_y())
+        elif scale == "normalize":
+            scale = str(1. / self.Plot_Data.max_y())
+        try: scale = float(eval(scale, GDICT, LDICT))
+        except: return
+        self.Plot_Data.change_plot(self.Plot_Data.plot_indices, y_scale=scale)
+        return
 
     def _Reload_Data_fired(self):
         data = []
         for idx, file_path in enumerate(self.file_paths):
             if idx == 0: mheader = pu.get_header(file_path)
             fnam = os.path.basename(file_path)
-            self.finfo[idx] = {fnam: pu.get_header(file_path)}
+            self.plot_info[idx] = {fnam: pu.get_header(file_path)}
             data.append(pu.read_data(file_path))
         self.Plot_Data.plot_data = data
-        self.Plot_Data.finfo = self.finfo
+        self.Plot_Data.plot_info = self.plot_info
         self.Multi_Select.choices = mheader
         self.Change_Axis.headers = mheader
         self.Plot_Data.change_plot(self.Plot_Data.plot_indices)
@@ -272,21 +340,14 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
     """
 
     view = View(HSplit(
-                       VGroup(
-                             Item('Multi_Select',
-                                  show_label=False, width=224, height=668, springy=True, resizable=True),
-                             Item('Change_Axis',
-                                  show_label=False),
-                             ),
-                       Item('Plot_Data',
-                            show_label=False, width=800, height=768, springy=True, resizable=True)
-                      ),
-                style='custom',
-                width=1124,
-                height=868,
-                resizable=True,
-                title=window_name)
-
+            VGroup(
+                Item('Multi_Select', show_label=False, width=224,
+                     height=668, springy=True, resizable=True),
+                Item('Change_Axis', show_label=False), ),
+            Item('Plot_Data', show_label=False, width=800, height=768,
+                 springy=True, resizable=True) ),
+                style='custom', width=1124, height=868,
+                resizable=True, title=window_name)
 
     if metadata is not None:
         metadata.plot.configure_traits(view=view)
@@ -327,35 +388,27 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
         variables = [""]
 
     view = View(HSplit(
-                       VGroup(
-                             Item('Multi_Select', show_label=False),
-                             Item('Change_Axis',
-                                  show_label=False),
-                             Item('Reset_Zoom',
-                                  show_label = False),
-                             Item('Reload_Data',
-                                  show_label = False),
-                             VGroup(
-                                    HGroup(
-                                          Item('Load_Overlay',
-                                               show_label = False, springy=True),
-                                          Item('Close_Overlay',
-                                               show_label = False, springy=True),
-                                          ),
-                                    Item('Single_Select_Overlay_Files', show_label=False, resizable=False),
-                                    show_border=True)
-                             ),
-                       Item('Plot_Data',
-                            show_label=False, width=800, height=768, springy=True, resizable=True)
-                      ),
-                style='custom',
-                width=1124,
-                height=868,
-                resizable=True,
-                title=window_name)
+            VGroup(
+                Item('Multi_Select', show_label=False),
+                Item('Change_Axis', show_label=False),
+                Item('Reset_Zoom', show_label=False),
+                Item('Reload_Data', show_label=False),
+                VGroup(
+                    HGroup(Item("X_Scale", label="X Scale"),
+                           Item("Y_Scale", label="Y Scale")),
+                    show_border=True),
+                VGroup(
+                    HGroup(
+                        Item('Load_Overlay', show_label=False, springy=True),
+                        Item('Close_Overlay', show_label=False, springy=True),),
+                    Item('Single_Select_Overlay_Files', show_label=False,
+                         resizable=False), show_border=True)),
+            Item('Plot_Data', show_label=False, width=800, height=768,
+                 springy=True, resizable=True)),
+                style='custom', width=1124, height=868,
+                resizable=True, title=window_name)
 
     main_window = Viz_ModelPlot(file_paths=output_files, file_variables=variables)
-
     main_window.configure_traits(view=view, handler=handler)
 
 if __name__ == "__main__":

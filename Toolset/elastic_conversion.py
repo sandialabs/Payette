@@ -274,7 +274,7 @@ def compute_elastic_constants(*args):
         if 9.*K - E == 0.  or  K == 0.:
             return {"retcode": -1}
         G  = 3.*E*K/(9.*K - E)
-        nu = (3.*K - E)/R6/K
+        nu = (3.*K - E)/6./K
     elif case == 36: # E, H
         B = E*E + 9.*H*H - 10.*E*H
         if B <0.  or  H == 0.:
