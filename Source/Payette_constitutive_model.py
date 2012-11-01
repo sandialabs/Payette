@@ -106,8 +106,9 @@ class ConstitutiveModelPrototype(object):
         # specialized models
         if self.material_type is None:
             self.material_type = "eos"
-        self.electric_field_model = "electromechanical" in self.material_type.lower()
-        self.eos_model = "eos" in self.material_type.lower()
+        mattype = self.material_type.lower()
+        self.electric_field_model = "electromechanical" in mattype
+        self.eos_model = "eos" in mattype
 
         # data to be initialized later
         self.registered_params = []
@@ -125,6 +126,12 @@ class ConstitutiveModelPrototype(object):
         self.dc = np.zeros(self.ndc)
         self.bulk_modulus = 0.
         self.shear_modulus = 0.
+
+        # Dummy holders
+        self._pi = DummyHolder()
+        self._p = DummyHolder()
+        self._xi = DummyHolder()
+        self._x = DummyHolder()
 
         pass
 
@@ -153,6 +160,8 @@ class ConstitutiveModelPrototype(object):
             # mss: do something here? But is seems unnecessary.
             return
 
+        for i, p in enumerate(self.ui):
+
         if not self.bulk_modulus:
             pu.report_and_raise_error("bulk modulus not defined")
 
@@ -168,6 +177,17 @@ class ConstitutiveModelPrototype(object):
         matdat.register_data("jacobian", "Matrix", init_val=self.J0,
                              units="NO_UNITS")
         ro.set_global_option("EFIELD_SIM", self.electric_field_model)
+
+        # register parameters with self._p
+        params = get_parameter_names()
+        for i, p in enumerate(self.ui):
+            setattr(self._p, params[i].upper(), p)
+            continue
+
+        if self.matdat.extra_vars_registered:
+            for k, v in self.extra_vars_map.items():
+                setattr(self._xi, v, k)
+                continue
 
         return
 
@@ -318,13 +338,13 @@ class ConstitutiveModelPrototype(object):
 
     def parse_parameters(self, *args):
         """ populate the materials ui array from the self.params dict """
-
         self.ui0 = np.zeros(self.nprop)
         self.ui = np.zeros(self.nprop)
         for param, param_dict in self.parameter_table.items():
             idx = param_dict["ui pos"]
             self.ui0[idx] = param_dict["default value"]
             self.ui[idx] = param_dict["default value"]
+            setattr(self._pi, param.upper(), idx)
             continue
 
         # we have the name and value, now we need to get its position in the
@@ -351,6 +371,7 @@ class ConstitutiveModelPrototype(object):
 
             ui_idx = self.parameter_table[param_name]["ui pos"]
             self.ui0[ui_idx] = param_val
+            setattr(self._p, param_name.upper(), param_val)
             continue
 
         if ignored:
@@ -591,6 +612,12 @@ class ConstitutiveModelPrototype(object):
                 return self.ui0[info["ui pos"]]
             continue
         return 1.
+
+    def param_indices(self):
+        return self._pi
+
+    def parameters(self):
+        return self._p
 
     # The methods below are going to be depricated in favor of
     # under_score_separated names. We keep them here for compatibility.
