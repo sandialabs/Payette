@@ -71,6 +71,7 @@ class MaterialBuilder(object):
         self.source_files = []
         self.libname = libname
         self.pre_directives = []
+        self.use_lapack = False
 
         # directory to copy libraries
         if not os.path.isdir(libdir):
@@ -154,6 +155,9 @@ class MaterialBuilder(object):
 
             continue
 
+        self.pre_directives.append("-DPAYETTE_SINGLE_CELL_DRIVER")
+        self.pre_directives = list(set(self.pre_directives))
+
         # f2py pulls its arguments from sys.argv. Here, we build sys.argv to what
         # f2py expects. Later sys.argv will be restored.
         ffiles = [x for x in self.source_files]
@@ -165,6 +169,7 @@ class MaterialBuilder(object):
         f2pycmd = self.f2pyopts + incsearch + libsearch + libs
         f2pycmd.extend(["-m", self.name, self.signature_file])
         f2pycmd.extend(self.pre_directives)
+        if self.use_lapack: f2pycmd.append("--link-lapack_opt")
         f2pycmd.extend(ffiles)
 
         tmp = deepcopy(sys.argv)

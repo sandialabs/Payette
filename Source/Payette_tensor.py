@@ -489,3 +489,23 @@ def det(f):
         pu.report_and_raise_error("Bad array sent to det")
     return (f[0] * f[4] * f[8] + f[1] * f[5] * f[6] + f[2] * f[3] * f[7] -
             (f[0] * f[5] * f[7] + f[1] * f[3] * f[8] + f[2] * f[4] * f[6]))
+
+def cross(a, b):
+    """Cross product of a and b
+
+    Parameters
+    ----------
+    a : array_like
+    b : array_like
+
+    Returns
+    -------
+    c : array_like
+
+    """
+    if len(a) != len(b) != NVEC:
+        pu.report_and_raise_error("Bad length vector sent to cross")
+
+    return np.array([-a[2] * b[1] + a[1] * b[2],
+                      a[2] * b[0] - a[0] * b[2],
+                     -a[1] * b[0] + a[0] * b[1]])

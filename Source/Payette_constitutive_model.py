@@ -106,7 +106,8 @@ class ConstitutiveModelPrototype(object):
         # specialized models
         if self.material_type is None:
             self.material_type = "eos"
-        self.electric_field_model = "electromechanical" in self.material_type.lower()
+        self.electric_field_model = (
+            "electromechanical" in self.material_type.lower())
         self.eos_model = "eos" in self.material_type.lower()
 
         # data to be initialized later
@@ -125,6 +126,10 @@ class ConstitutiveModelPrototype(object):
         self.dc = np.zeros(self.ndc)
         self.bulk_modulus = 0.
         self.shear_modulus = 0.
+        self._xtra_registered = False
+
+        # Dummy place holders
+        self._pi, self._xi = pu.DummyHolder(), pu.DummyHolder()
 
         pass
 
@@ -168,6 +173,23 @@ class ConstitutiveModelPrototype(object):
         matdat.register("jacobian", "Matrix", iv=self.J0,
                         units="NO_UNITS")
         ro.set_global_option("EFIELD_SIM", self.electric_field_model)
+
+        return
+
+    def register_xtra(self, nxtra, names, keys, values):
+        """ register extra data with the data container """
+
+        if self._xtra_registered:
+            pu.report_and_raise_error(
+                "extra variables can only be registered once")
+        self._xtra_registered = True
+        self.nxtra = nxtra
+
+        for i in range(nxtra):
+            setattr(self._xi, keys[i], i)
+            continue
+
+        matdat.register_xtra(nxtra, names, keys, values)
 
         return
 
@@ -256,8 +278,14 @@ class ConstitutiveModelPrototype(object):
                                            "default value": default,
                                            "description": description,}
         self.parameter_table_idx_map[param_idx] = full_name
-
         self.nprop += 1
+
+        # the self._pi object holds the param index
+        for name in param_names:
+            setattr(self._pi, name.upper(), param_idx)
+            if "density" in name:
+                setattr(self._pi, "_DENSITY", param_idx)
+            continue
 
         return
 
@@ -302,11 +330,7 @@ class ConstitutiveModelPrototype(object):
         return table
 
     def parameter_index(self, name):
-        for key, val in self.parameter_table.items():
-            if name.lower() in val["names"]:
-                return val["ui pos"]
-        else:
-            return None
+        return getattr(self._pi, name.upper(), None)
 
     def get_parameter_names(self, aliases=False):
         """Returns a list of parameter names, and optionally aliases"""
@@ -398,6 +422,11 @@ class ConstitutiveModelPrototype(object):
 
             line = line.split()
             name, val = "_".join(line[:-1]), line[-1]
+            if not name:
+                errors += 1
+                pu.log_warning("No value for parameter '{0}' found".format(val))
+                continue
+
             try:
                 # Horrible band-aid for poorly formatted fortran output.
                 # when it meant 1.0E+100, it spit out 1.0+100
@@ -569,12 +598,16 @@ class ConstitutiveModelPrototype(object):
 
     def initial_density(self):
         """return the initial density"""
-        for name, info in self.parameter_table.items():
-            names = info["names"]
-            if "density" in names and self.ui0[info["ui pos"]] > 0.:
-                return self.ui0[info["ui pos"]]
-            continue
-        return 1.
+        try:
+            return self.ui0[self.parameter_indices()._DENSITY]
+        except AttributeError:
+            return 1.
+
+    def parameter_indices(self):
+        return self._pi
+
+    def xtra_indices(self):
+        return self._xi
 
     # The methods below are going to be depricated in favor of
     # under_score_separated names. We keep them here for compatibility.

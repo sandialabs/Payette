@@ -76,7 +76,7 @@ class Plastic(ConstitutiveModelPrototype):
         self.bulk_modulus, self.shear_modulus = self.ui[0], self.ui[1]
 
         # register __xtra__
-        matdat.register_xtra(nxtra, names, keys, xtra)
+        self.register_xtra(nxtra, names, keys, xtra)
 
         return
 

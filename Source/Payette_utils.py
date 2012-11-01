@@ -57,6 +57,10 @@ AUTHORS
 '''
 
 
+class DummyHolder:
+    pass
+
+
 def whoami():
     """ return name of calling function """
     return inspect.stack()[1][3]

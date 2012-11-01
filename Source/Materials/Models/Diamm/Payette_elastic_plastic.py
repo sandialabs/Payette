@@ -109,7 +109,7 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         keya = parse_token(self.nsv,keya)
 
         # register the __xtra__ with the payette object
-        matdat.register_xtra(self.nsv,namea,keya,sv)
+        self.register_xtra(self.nsv, namea, keya, sv)
 
         self.bulk_modulus,self.shear_modulus = self.ui[0],self.ui[3]
 

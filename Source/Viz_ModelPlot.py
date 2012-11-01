@@ -37,7 +37,8 @@ from enthought.traits.api import (HasStrictTraits, Instance, String, Button,
                                   HasPrivateTraits, on_trait_change, Trait,
                                   Float)
 from enthought.traits.ui.api import (View, Item, HSplit, VGroup, Handler,
-                                     TabularEditor, Group, HGroup, UItem)
+                                     TabularEditor, Group, HGroup, UItem,
+                                     TextEditor)
 from enthought.traits.ui.tabular_adapter import TabularAdapter
 from enthought.pyface.api import FileDialog, OK
 
@@ -398,8 +399,10 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
                 Item('Reset_Zoom', show_label=False),
                 Item('Reload_Data', show_label=False),
                 VGroup(
-                    HGroup(Item("X_Scale", label="X Scale"),
-                           Item("Y_Scale", label="Y Scale")),
+                    HGroup(Item("X_Scale", label="X Scale",
+                                editor=TextEditor(multi_line=False)),
+                           Item("Y_Scale", label="Y Scale",
+                                editor=TextEditor(multi_line=False))),
                     show_border=True),
                 VGroup(
                     HGroup(
