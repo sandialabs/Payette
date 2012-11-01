@@ -379,7 +379,6 @@ def solid_driver(the_model, **kwargs):
 
     # V is an array of integers that contains the columns of prescribed stress
     V = []
-    Pt = pt.Z6
 
     Ec = matdat.get("strain")
     Fc = matdat.get("deformation gradient")
@@ -422,12 +421,6 @@ def solid_driver(the_model, **kwargs):
         P0 = matdat.get("stress", copy=True)
         F0 = matdat.get("deformation gradient", copy=True)
         if ro.EFIELD_SIM: EF0 = matdat.get("electric field", copy=True)
-
-        if len(V):
-            PS0 = Pt
-            for i, j in enumerate(V):
-                P0[i] = PS0[j]
-                continue
 
         if verbose:
             pu.log_message(cons_msg.format(lnum, lnl, 1, lns, t_beg, dt))
