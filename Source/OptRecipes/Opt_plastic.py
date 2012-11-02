@@ -96,9 +96,9 @@ class ObjectiveFunction(object):
 
 def _find_e_and_y(data):
     """Find the Young's modulus"""
-    youngs = []
     eps, sig = data[:, 1], data[:, 2]
-    for i in range(len(sig) - 1):
+    youngs = [(sig[1] - sig[0]) / (eps[1] - eps[0])]
+    for i in range(1, len(sig) - 1):
         deps = eps[i + 1] - eps[i]
         dsig = sig[i + 1] - sig[i]
         if abs(deps) > 1.e-16:

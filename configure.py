@@ -34,7 +34,13 @@ import subprocess
 import optparse
 import shutil
 
-__version__ = "1.1.0"
+# git hash
+GIT = os.path.join(os.path.dirname(os.path.realpath(__file__)), ".git")
+HEAD = os.path.join(
+    GIT, open(os.path.join(GIT, "HEAD")).readlines()[0].split()[1])
+__hash__ = open(HEAD).read().strip()
+
+__version__ = "1.{0}.{1}".format(__hash__[:2], __hash__[2:7])
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
 __intro__ = """
 Copyright (2011) Sandia Corporation. Under the terms of Contract
@@ -53,6 +59,7 @@ rights in this software.
                               An Object Oriented Material Model Driver
 {0}
 """.format(" "*(62 - len(__version__)) + "version " + __version__)
+
 (major, minor, micro, releaselevel, serial) = sys.version_info
 
 # --- Environmental variables used by Payette
@@ -144,7 +151,7 @@ def configure(argv):
 
     opts, args = parser.parse_args(argv)
 
-    logmes(__intro__)
+    logmes(__intro__, skip=False, pre="")
     if opts.DEPLOYED:
         opts.DONTWRITEBYTECODE = True
 
@@ -219,6 +226,7 @@ class PayetteConfig:
     tests = [os.path.join(root, "Benchmarks")]
     toolset = os.path.join(root, "Toolset")
     fortran = os.path.join(source, "Fortran")
+    version = __version__
 
     # materials is the directory where we search for Payette material models
     materials = os.path.join(source, "Materials")
@@ -786,12 +794,12 @@ def remove(paths):
     return
 
 
-def logmes(message, pre="INFO: ", end="\n"):
+def logmes(message, pre="INFO: ", end="\n", skip=True):
     """ log info """
     if pre.lower() == "indent":
         pre = " " * 6
     for line in message.split("\n"):
-        if not line.split():
+        if not line.split() and skip:
             continue
         sys.stdout.write("{0}{1}{2}".format(pre, line, end))
     return

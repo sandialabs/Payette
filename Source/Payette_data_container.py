@@ -424,6 +424,12 @@ class DataContainer:
                     "Units '{0}' for '{1}' not valid".format(units, name))
         return
 
+    def xtra_keys(self):
+        return [x for x in self._xtra_keys]
+
+    def nxtra(self):
+        return self._nxtra
+
     # ---------------------------------------- P R I V A T E  M E T H O D S ---
 
     def _initial_value(self, dtype, iv):

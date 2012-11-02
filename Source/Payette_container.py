@@ -157,7 +157,9 @@ class Payette(object):
         pu.write_to_simlog("Date: {0}".format(now.strftime("%A %B %d, %Y")))
         pu.write_to_simlog("Time: {0}".format(now.strftime("%H:%M:%S")))
         pu.write_to_simlog("Platform: {0}".format(cfg.OSTYPE))
+        pu.write_to_simlog("Payette version: {0}".format(cfg.VERSION))
         pu.write_to_simlog("Python interpreter: {0}".format(cfg.PYINT))
+        pu.write_to_simlog("Description:")
 
         desc = self.ui.find_block("description", "  None")
         desc = textfill(desc, initial_indent="  ", subsequent_indent="  ")

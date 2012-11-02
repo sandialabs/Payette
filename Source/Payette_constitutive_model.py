@@ -174,22 +174,10 @@ class ConstitutiveModelPrototype(object):
                         units="NO_UNITS")
         ro.set_global_option("EFIELD_SIM", self.electric_field_model)
 
-        return
-
-    def register_xtra(self, nxtra, names, keys, values):
-        """ register extra data with the data container """
-
-        if self._xtra_registered:
-            pu.report_and_raise_error(
-                "extra variables can only be registered once")
-        self._xtra_registered = True
-        self.nxtra = nxtra
-
-        for i in range(nxtra):
-            setattr(self._xi, keys[i], i)
-            continue
-
-        matdat.register_xtra(nxtra, names, keys, values)
+        if matdat.nxtra():
+            for i, k in enumerate(matdat.xtra_keys()):
+                setattr(self._xi, k.upper(), i)
+                continue
 
         return
 
