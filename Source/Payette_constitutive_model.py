@@ -127,6 +127,7 @@ class ConstitutiveModelPrototype(object):
         self.bulk_modulus = 0.
         self.shear_modulus = 0.
         self._xtra_registered = False
+        self._initial_density = 1.
 
         # Dummy place holders
         self._pi, self._xi = pu.DummyHolder(), pu.DummyHolder()
@@ -178,6 +179,12 @@ class ConstitutiveModelPrototype(object):
             for i, k in enumerate(matdat.xtra_keys()):
                 setattr(self._xi, k.upper(), i)
                 continue
+
+        # initial density
+        try: rho = self.ui0[self._pi._DENSITY]
+        except AttributeError: rho = 1.
+        if abs(rho) > pu.EPSILON:
+            self._initial_density = rho
 
         return
 
@@ -271,7 +278,7 @@ class ConstitutiveModelPrototype(object):
         # the self._pi object holds the param index
         for name in param_names:
             setattr(self._pi, name.upper(), param_idx)
-            if "density" in name:
+            if name in ("density", "rho", "rho0"):
                 setattr(self._pi, "_DENSITY", param_idx)
             continue
 
@@ -586,10 +593,7 @@ class ConstitutiveModelPrototype(object):
 
     def initial_density(self):
         """return the initial density"""
-        try:
-            return self.ui0[self.parameter_indices()._DENSITY]
-        except AttributeError:
-            return 1.
+        return self._initial_density
 
     def parameter_indices(self):
         return self._pi
