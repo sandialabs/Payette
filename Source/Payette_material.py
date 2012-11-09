@@ -240,6 +240,8 @@ def _parse_material(mblock):
         s, e = cmod.start(), cmod.end()
         name = re.sub(r"\s", "_", re.sub(pat, "", mblock[s:e]).strip())
         mblock = (mblock[:s] + mblock[e:]).strip()
+    else:
+        pu.report_and_raise_error("Constitutive model not found")
 
     # --- get user options -------------------------------------------------- #
     options = {}
