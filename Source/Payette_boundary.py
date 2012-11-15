@@ -68,7 +68,8 @@ class Boundary(object):
             "efstar": [float, 1., None], "stepstar": [float, 1., 1.],
             "ampl": [float, 1., None], "ratfac": [float, 1., None],
             "emit": ["choice", "all", ("all", "sparse",)],
-            "nprints": [int, 0, None], "screenout": [bool, False, None],}
+            "nprints": [int, 0, None], "screenout": [bool, False, None],
+            "initial stress": [bool, False, None]}
 
         # intialize container for legs
         # -- _legs has form
@@ -190,12 +191,12 @@ class Boundary(object):
         self.dfac = ampl * dstar
         return
 
-    def bcontrol(self, btype=None, value=None):
+    def bcontrol(self, name=None, value=None):
         """The boundary control parameters allowed for by Payette
 
         Parameters
         ----------
-        btype : str, optional [None]
+        name : str, optional [None]
             boundary control parameter
         value : float, optional [None]
             value to set control parameter
@@ -208,23 +209,23 @@ class Boundary(object):
             Length of deformation type
         """
 
-        if btype is None:
+        if name is None:
             return self._bcontrol.keys()
 
-        btype = btype.lower()
-        if btype not in self._bcontrol:
+        name = " ".join(name.split()).lower()
+        if name not in self._bcontrol:
             raise BoundaryError(
-                "{0} not a valid bcontrol parameter".format(btype))
+                "{0} not a valid bcontrol parameter".format(name))
 
         if value is None:
-            return self._bcontrol[btype]
+            return self._bcontrol[name]
 
-        default = self._bcontrol[btype]
+        default = self._bcontrol[name]
         try:
             default[1] = default[0](value)
         except TypeError:
             default[1] = value
-        self._bcontrol[btype] = default
+        self._bcontrol[name] = default
         return
 
     def _parse_legs(self, lblock):
@@ -320,6 +321,7 @@ class Boundary(object):
 
             # stress control if any of the control types are 3 or 4
             if not stress_control:
+                stress_control = re.search(r"[34]", control)
                 stress_control = any([x in "34" for x in control])
 
             # we need to know what to do with each deformation value, so the
@@ -486,8 +488,20 @@ class Boundary(object):
             try: self.sfac = sfac_hold
             except NameError: pass
 
+            # convert cij to array
+            cij = np.array(cij)
+
             # append to legs
-            self._legs.append([num, ltime, steps, control, np.array(cij)])
+            if ltime == 0.:
+                if re.search(r"3", control):
+                    pu.report_and_raise_error(
+                        "initial stress rate ambiguous")
+                elif re.search(r"4", control):
+                    # check if nonzero initial stress was given
+                    if np.any(np.abs(cij[:6]) > 0.):
+                        self.bcontrol("initial stress", True)
+
+            self._legs.append([num, ltime, steps, control, cij])
 
             if table:
                 # increment
@@ -499,8 +513,8 @@ class Boundary(object):
             # these cases, kappa is set to 0. globally.
             if self._kappa != 0.:
                 self._kappa = 0.
-                sys.stdout.write(
-                    "WARNING: stress control boundary conditions "
+                pu.log_warning(
+                    "Stress control boundary conditions "
                     "only compatible with kappa=0. Kappa is being "
                     "reset to 0. from {0:f}\n".format(kappa))
                 self.bcontrol("kappa", 0.)

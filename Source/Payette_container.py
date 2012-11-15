@@ -275,7 +275,8 @@ class Payette(object):
         # set up the data containers and initialize material models
         self.simdat.setup_data_container()
         self.matdat.setup_data_container()
-        self.material.constitutive_model.initialize_state(self.matdat)
+        self.material.constitutive_model.initialize_state(
+            self.simdat, self.matdat, self.boundary.legs()[0])
 
         self._setup_files()
 

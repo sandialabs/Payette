@@ -444,7 +444,7 @@ class ConstitutiveModelPrototype(object):
 
         return
 
-    def initialize_state(self, material_data):
+    def initialize_state(self, *args):
         """initialize the material state"""
         pass
 
