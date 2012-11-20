@@ -494,6 +494,7 @@ class Boundary(object):
             # append to legs
             if ltime == 0.:
                 if re.search(r"3", control):
+                    import Source.Payette_utils as pu
                     pu.report_and_raise_error(
                         "initial stress rate ambiguous")
                 elif re.search(r"4", control):
