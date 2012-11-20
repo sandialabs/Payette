@@ -431,13 +431,16 @@ def preprocess(lines, preprocessor=None):
                 break
             bn, en = found.start(), found.end()
             npat = re.compile(re.escape(r"{0}".format(lines[bn:en])), re.I|re.M)
-            repl = re.sub(r"(?i){0}".format(pat), repl, lines[bn+1:en-1])
+            # tmprepl is used because I (Scot) was having issues with
+            # persistence of just 'repl' when it was used in multiple {} sets.
+            tmprepl = re.sub(r"(?i){0}".format(pat), repl, lines[bn+1:en-1])
             try:
-                repl = "{0:12.6E}".format(eval(repl, gdict, ldict))
+                tmprepl = "{0:12.6E}".format(eval(tmprepl, gdict, ldict))
             except:
                 pu.report_and_raise_error(
-                    "failure evaluating '{0}' in preprocessor.".format(repl))
-            lines = npat.sub(repl, lines)
+                    "failure evaluating '{0}' in preprocessor.".format(tmprepl))
+
+            lines = npat.sub(tmprepl, lines)
             continue
         continue
 
