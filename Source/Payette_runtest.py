@@ -155,6 +155,12 @@ def main(argv, print_help=False):
         action="store_true",
         default=False,
         help="Rebaseline a test [default: %default]")
+    parser.add_option(
+        "-w",
+        dest="WIPE",
+        action="store_true",
+        default=False,
+        help="Wipe results directory first [default: %default].")
 
     # indexing
     parser.add_option(
@@ -181,14 +187,14 @@ def main(argv, print_help=False):
             notify=opts.NOTIFY, ignoreerror=opts.IGNOREERROR,
             testfile=opts.TESTFILE, switch=opts.SWITCH,
             rebaseline=opts.REBASELINE, index=opts.INDEX,
-            index_name=opts.INDEX_NAME))
+            index_name=opts.INDEX_NAME, wipe=opts.WIPE))
 
 
 def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
                  spectests=[], benchdirs=[], forcererun=False, nproc=1,
                  postprocess=False, notify=False, ignoreerror=False,
                  testfile=False, switch=None, rebaseline=False, index=False,
-                 index_name=False):
+                 index_name=False, wipe=False):
     """Run the Payette benchmarks.
 
     Walk through and run the Payette test simulations, compare results
@@ -229,6 +235,8 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
     index : bool {False}
     index_name : bool {False}
         write index [_name] and exit
+    wipe : bool {False}
+        Wipe test directory first
 
     """
     if switch is not None:
@@ -255,7 +263,7 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
                 pyfile = line[1]
                 break
         else:
-            pu.report_error("FILE not found in {0}".format(test_info))
+            pu.report_and_raise_error("FILE not found in {0}".format(TEST_INFO))
         _run_the_test(pyfile, postprocess=postprocess)
         return
 
@@ -379,6 +387,11 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
 
     # start the timer
     t_start = time.time()
+
+    # wipe directory if requested
+    if wipe:
+        try: shutil.rmtree(testresdir)
+        except OSError: pass
 
     # Make a TestResults directory named "TestResults.{platform}"
     if not os.path.isdir(testresdir):

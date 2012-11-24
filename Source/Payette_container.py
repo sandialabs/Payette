@@ -62,7 +62,7 @@ class PayetteError(Exception):
         # message
         message = " ".join([x for x in message.split() if x])
         self.message = "ERROR: {0} {1}".format(message, caller)
-        if ro.DEBUG: super(FEMError, self).__init__(self.message)
+        if ro.DEBUG: super(PayetteError, self).__init__(self.message)
         else: raise SystemExit(self.message)
 
 

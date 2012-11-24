@@ -316,7 +316,7 @@ class DataContainer:
         inc, N = False, ro.ISTEP
         if "+=" in args:
             inc = True
-            args = tuple([x for x in args if x != "+="])
+            args = tuple(x for x in args if x not in ("+=",))
 
         N = ro.ISTEP if not len(args) else args[0]
         if not isinstance(N, int):
