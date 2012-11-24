@@ -32,6 +32,7 @@ import numpy as np
 
 import Source.__runopts__ as ro
 import Source.Payette_input_parser as pip
+import Source.Payette_utils as pu
 
 
 DTYPES = {"strain rate": (1, 6), "strain": (2, 6), "stress rate": (3, 6),
