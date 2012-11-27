@@ -53,24 +53,17 @@ class PayetteError(Exception):
         if caller is None:
             caller = pu.who_is_calling()
 
-        if not ro.DEBUG:
-            sys.tracebacklimit = 0
-        else:
-            sys.tracebacklimit = 10
-
         # do not report who is calling. Sometimes other functions act as
         # intermediaries to PayetteError and it is nice to leave them out of
         # the "reported by" section
-        if caller == "anonymous":
-            reported_by = ""
-        else:
-            reported_by = "[reported by: {0}]".format(caller)
+        if re.search("(?i)anonymous", caller): caller = ""
+        else: caller = "[reported by: {0}]".format(caller)
 
-        self.message = (
-            "ERROR: {0} {1}"
-            .format(" ".join(x for x in message.split() if x), reported_by))
-
-        super(PayetteError, self).__init__(self.message)
+        # message
+        message = " ".join([x for x in message.split() if x])
+        self.message = "ERROR: {0} {1}".format(message, caller)
+        if ro.DEBUG: super(PayetteError, self).__init__(self.message)
+        else: raise SystemExit(self.message)
 
 
 class Payette(object):

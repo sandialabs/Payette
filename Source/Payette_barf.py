@@ -123,9 +123,10 @@ class PayetteBarf(object):
             material.constitutive_model.ui[self.ipfailstat] = 25.
         matdat = material.material_data()
         material.constitutive_model.dc = self.barf["derived constants"]
-        matdat.advance("stress", self.barf["stress"])
-        matdat.advance("rate of deformation", self.barf["strain rate"])
-        matdat.advance("__xtra__", self.barf["__xtra__"])
+        matdat.store("stress", self.barf["stress"])
+        matdat.store("rate of deformation", self.barf["strain rate"])
+        matdat.store("__xtra__", self.barf["__xtra__"])
+        matdat.advance()
 
         try:
             pdrvr.solid_driver(self.model)
