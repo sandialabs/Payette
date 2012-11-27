@@ -395,6 +395,15 @@ def preprocess(lines, preprocessor=None):
     preprocessor = [x.split(None, 1)
                     for x in re.sub(I_EQ, " ", preprocessor).split("\n") if x]
 
+    # Check for incompatible names (like "_r" and "_root3")
+    for idx in range(0, len(preprocessor)):
+        for jdx in range(0, len(preprocessor)):
+            if idx == jdx:
+                continue
+            if preprocessor[idx][0] in preprocessor[jdx][0]:
+                pu.report_and_raise_error("Incompatible variable names:\n" +
+             "'{0}'\n'{1}'".format(preprocessor[idx][0], preprocessor[jdx][0]))
+
     # Add the preprocessor values into the safe_eval_dict
     gdict, ldict, I = {"__builtins__": None}, safe_eval_dict, 0
     while True:
@@ -433,6 +442,12 @@ def preprocess(lines, preprocessor=None):
             pu.log_warning(
                 "Preprocessing key '{0}' not found in input".format(pat))
         continue
+
+    # Print out preprocessed values for debugging
+    pu.log_message("Preprocessor values:")
+    name_len = max([len(dum) for dum, dumdum in preprocessor])
+    for pat, repl in preprocessor:
+        pu.log_message("    {0:<{1}s} {2}".format(pat + ':', name_len + 2, repl))
 
     for pat, repl in preprocessor:
         full = re.compile(r"{{.*?\b{0:s}\b.*?}}".format(pat), re.I | re.M)
