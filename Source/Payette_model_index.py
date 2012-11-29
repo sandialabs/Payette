@@ -187,6 +187,17 @@ class ModelIndex(object):
         fobj, pathname, description = imp.find_module(py_mod, py_path)
         py_module = imp.load_module(py_mod, fobj, pathname, description)
         fobj.close()
+        version = getattr(py_module, "PAYETTE_VERSION", None)
+        if version is None:
+            pu.report_and_raise_error(
+                "PAYETTE_VERSION attribute missing from the "
+                "material model interface file")
+        major, minor = [int(x) for x in version.split(".")]
+        M, m = cfg.version()[:2]
+        if (major, minor) < (M, m):
+            pu.report_and_raise_error(
+                "Material model requires Payette version {0}.{1}"
+                .format(major, minor))
         cmod = getattr(py_module, cls_nam)
         del py_module
         return cmod

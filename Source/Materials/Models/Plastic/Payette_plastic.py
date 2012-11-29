@@ -41,6 +41,8 @@ try:
 except:
     imported = False
 
+PAYETTE_VERSION = "1.1"
+
 class Plastic(ConstitutiveModelPrototype):
     """ Plasticity model. """
 
