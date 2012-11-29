@@ -41,6 +41,7 @@ except:
     imported = False
     pass
 
+PAYETTE_VERSION = "1.1"
 
 class Elastic(ConstitutiveModelPrototype):
     """ Elasticity model. """

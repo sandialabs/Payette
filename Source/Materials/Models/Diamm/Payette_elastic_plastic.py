@@ -37,6 +37,8 @@ except:
     imported = False
     pass
 
+PAYETTE_VERSION = "1.1"
+
 class ElasticPlastic(ConstitutiveModelPrototype):
 
     def __init__(self, control_file, *args, **kwargs):

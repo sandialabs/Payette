@@ -40,7 +40,7 @@ HEAD = os.path.join(
     GIT, open(os.path.join(GIT, "HEAD")).readlines()[0].split()[1])
 __hash__ = open(HEAD).read().strip()
 
-__version__ = "1.{0}.{1}".format(__hash__[:2], __hash__[2:7])
+__version__ = "1.1.0.{0}".format(__hash__[:7])
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
 __intro__ = """
 Copyright (2011) Sandia Corporation. Under the terms of Contract
@@ -578,6 +578,10 @@ import os
             fobj.write("for PATH in MTLDIRS:\n"
                        "    if os.path.basename(PATH) != 'code': "
                        "sys.path.append(PATH)\n")
+            fobj.write("""\
+def version():
+    major, minor, micro, hash = VERSION.split(".")
+    return int(major), int(minor), int(micro), hash""")
         logmes("{0} written".format(os.path.basename(self.config_file)),
                pre="")
 
