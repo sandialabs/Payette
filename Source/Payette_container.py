@@ -587,19 +587,17 @@ class Payette(object):
         try:
             retcode = driver(self, restart=self.is_restart, extra_files=extra_files)
 
-        except PayetteError as error:
-
+        except (SystemExit, PayetteError) as error:
             if ro.DEBUG:
                 self.finish()
                 raise
-
             if ro.ERROR.lower() == "ignore":
                 retcode = 0
-                sys.stderr.write("WARNING: Payette simulation "
-                                 "{0} failed with the following message:\n{1}\n"
-                                 .format(self.name,
-                                         re.sub("ERROR:\s*", "", error.message)))
-
+                pu.log_warning(
+                    "Payette simulation {0} failed with the following "
+                    " message:\n{1}\n".format(
+                        self.name, re.sub("ERROR:\s*", "", error.message)),
+                    caller="anonymous")
             else:
                 retcode = 66
                 l = 79 # should be odd number

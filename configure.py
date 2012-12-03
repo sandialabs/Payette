@@ -40,7 +40,8 @@ HEAD = os.path.join(
     GIT, open(os.path.join(GIT, "HEAD")).readlines()[0].split()[1])
 __hash__ = open(HEAD).read().strip()
 
-__version__ = "1.1.0.{0}".format(__hash__[:7])
+__version_info__ = (1, 1, 0, __hash__[:7])
+__version__ = ".".join(str(x) for x in __version_info__)
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
 __intro__ = """
 Copyright (2011) Sandia Corporation. Under the terms of Contract
@@ -227,6 +228,7 @@ class PayetteConfig:
     toolset = os.path.join(root, "Toolset")
     fortran = os.path.join(source, "Fortran")
     version = __version__
+    version_info = __version_info__
 
     # materials is the directory where we search for Payette material models
     materials = os.path.join(source, "Materials")
@@ -578,10 +580,6 @@ import os
             fobj.write("for PATH in MTLDIRS:\n"
                        "    if os.path.basename(PATH) != 'code': "
                        "sys.path.append(PATH)\n")
-            fobj.write("""\
-def version():
-    major, minor, micro, hash = VERSION.split(".")
-    return int(major), int(minor), int(micro), hash""")
         logmes("{0} written".format(os.path.basename(self.config_file)),
                pre="")
 

@@ -32,7 +32,7 @@ import Source.Payette_utils as pu
 from Source.Payette_constitutive_model import ConstitutiveModelPrototype
 from Source.Payette_unit_manager import UnitManager as UnitManager
 
-PAYETTE_VERSION = "1.1"
+PAYETTE_VERSION = (1, 1)
 
 class IdealGas(ConstitutiveModelPrototype):
     def __init__(self, control_file, *args, **kwargs):

@@ -192,8 +192,12 @@ class ModelIndex(object):
             pu.report_and_raise_error(
                 "PAYETTE_VERSION attribute missing from the "
                 "material model interface file")
-        major, minor = [int(x) for x in version.split(".")]
-        M, m = cfg.version()[:2]
+        # --- legacy support -> version now a tuple
+        try: version = tuple(version.split("."))
+        except AttributeError: pass
+
+        major, minor = version[:2]
+        M, m = cfg.VERSION_INFO[:2]
         if (major, minor) < (M, m):
             pu.report_and_raise_error(
                 "Material model requires Payette version {0}.{1}"

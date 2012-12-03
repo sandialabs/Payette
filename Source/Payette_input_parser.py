@@ -332,7 +332,14 @@ def strip_cruft(lines):
         lines stripped of all comments and blank lines
 
     """
-    return re.sub(r"\n\s*\n*", "\n", re.sub(r"[#$].*","", lines)) + "\n"
+    #return re.sub(r"\n\s*\n*", "\n", re.sub(r"[#$].*","", lines)) + "\n"
+    # strip comments
+    lines = re.sub(r"[#$].*", "", lines)
+    # strip blank lines
+    lines = re.sub(r"\n\s*\n*", "\n", lines)
+    # remove all consectutive spaces, i.e. A    string -> A string
+    lines = re.sub(r"(?m)[^\S\n]+", " ", lines)
+    return lines.strip() + "\n"
 
 
 def preprocess(lines, preprocessor=None):

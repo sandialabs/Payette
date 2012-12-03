@@ -668,11 +668,14 @@ class DataContainer:
            the name
 
         """
+        key = None
         if name in self._plotable_data:
-            name = self._get_name_from_plot_key(name)
+            key, name = name, self._get_name_from_plot_key(name)
         data = self._container.get(name)
         if data is None:
             pu.report_and_raise_error("{0} not found".format(name))
+        if key is not None:
+            N = data["plot key"].index(key)
         return data["name"][N]
 
     def _get_plot_key(self, name, N):
