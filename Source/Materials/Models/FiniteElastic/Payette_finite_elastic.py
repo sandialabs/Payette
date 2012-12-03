@@ -40,7 +40,7 @@ except:
     imported = False
     pass
 
-PAYETTE_VERSION = "1.1"
+PAYETTE_VERSION = (1, 1)
 
 class FiniteElastic(ConstitutiveModelPrototype):
     """ Finite elasticity model.

@@ -195,6 +195,12 @@ def main(argv):
         default=None,
         help=("Alternate directory to find material database "
               "file [default: %default]"))
+    parser.add_option(
+        "-N",
+        dest="NAMES",
+        action="append",
+        default=[],
+        help=("Simulations to run from input file [default: ALL]"))
 
     # the following options have defaults set in runopt.py, later, we pass the
     # user requested options back to runopt.py so they are set of the rest of
@@ -488,7 +494,7 @@ def main(argv):
     # call the run_payette function
     siminfo = run_payette(siminp=siminp, restart=restart, barf=barf,
                           timing=opts.timing, nproc=opts.nproc, disp=opts.disp,
-                          verbosity=opts.verbosity)
+                          verbosity=opts.verbosity, torun=opts.NAMES)
 
     # visualize the results if requested
     if opts.VIZ:

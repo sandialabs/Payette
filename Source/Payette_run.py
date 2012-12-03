@@ -52,15 +52,18 @@ import Source.Payette_barf as pb
 import Source.Payette_parameterize as pparam
 import Source.Payette_input_parser as pip
 import Source.__runopts__ as ro
+from Source.Payette_container import PayetteError as PayetteError
 
 def run_payette(siminp=None, restart=False, timing=False, barf=False,
-                nproc=ro.NPROC, disp=ro.DISP, verbosity=ro.VERBOSITY):
+                nproc=ro.NPROC, disp=ro.DISP, verbosity=ro.VERBOSITY,
+                torun=None):
     """Main function for running a Payette job.
     Read the user inputs from argv, parse options, read user input, and run
     the jobs.
 
     """
 
+    user_input_sets = []
     if restart:
         with open(restart, "rb") as ftmp:
             the_model = pickle.load(ftmp)
@@ -77,12 +80,18 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
         # parse the user input
         user_input_sets = pip.parse_user_input(siminp)
 
+    # if the user requested to run only a subset of the inputs in an input
+    # file, filter out the ones not requested. we have a list of user input.
+    if torun:
+        names = [(j, pip.get("name", y)) for j, y in enumerate(user_input_sets)]
+        user_input_sets = [user_input_sets[i] for i, x in names if x in torun]
+
     if not user_input_sets:
         pu.report_and_raise_error("No user input found in input files")
 
-    # we have a list of user input.  now create a generator to send to _run_job
-    nsyms = len(user_input_sets) - 1
-    job_inp = ((item, disp, restart, barf, timing, idx==nsyms)
+
+    # now create a generator to send to _run_job
+    job_inp = ((item, disp, restart, barf, timing, idx==len(user_input_sets)-1)
                for idx, item in enumerate(user_input_sets))
 
     # number of processors
@@ -120,6 +129,8 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
         write_final_timing_info(tim0)
 
     retcode = 1 if any(x["retcode"] for x in return_info) else 0
+    bad = [i for i, x in enumerate(return_info) if x["retcode"]]
+    return_info = [x for i, x in enumerate(return_info) if i not in bad]
 
     if not disp:
         # just return retcode
@@ -167,6 +178,7 @@ def _run_job(args):
         tim1 = time.time()
 
     siminfo = the_model.run_job()
+
     if disp:
         retcode = siminfo["retcode"]
     else:
