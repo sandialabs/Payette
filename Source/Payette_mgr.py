@@ -50,15 +50,6 @@ USAGE = "" if "-H" in sys.argv or "--man" in sys.argv else """\
 {0}: top level interface to the Payette material model driver
 usage: {0} [file_0.ext [file_1.ext [... file_n.ext]]]""".format(EXENAM)
 
-INSTALLED_MODELS = pmi.ModelIndex().constitutive_models()
-if INSTALLED_MODELS:
-    INSTALLED_MODELS = "{0}".format(
-        textfill(", ".join(INSTALLED_MODELS), initial_indent=" " * 6,
-                 subsequent_indent=" " * 6))
-else:
-    INSTALLED_MODELS = (
-        "      buildPayette must be executed to build and install models")
-
 MAN_PAGE = """\
 NAME
       payette - setup and launch the Payette simulation
@@ -77,7 +68,7 @@ DESCRIPTION
       run in it.  Otherwise, Payette is driven from the command line.
 
 INSTALLED MODELS
-{1}
+{{0}}
 
 CONFIGURATION INFO
       Python interpreter: {0}
@@ -86,7 +77,7 @@ OPTIONS
       There are a set of options recognized by the payette script, which are
       listed here.  If an option is given which is not listed here, it is
       passed through to the different Payette modules.
-""".format(cfg.PYINT, INSTALLED_MODELS)
+""".format(cfg.PYINT)
 
 
 class PassThroughOptionParser(OptionParser):
@@ -340,14 +331,6 @@ def main(argv):
     if opts.CLEAN or opts.CLEANALL:
         sys.exit(_clean_file_exts(args, opts.CLEANALL))
 
-    if opts.MAN:
-        # print the man page for this and other scripts
-        pu.log_message(MAN_PAGE, pre="")
-        sys.exit(parser.print_help())
-
-    # pass command line arguments to global Payette variables
-    ro.set_command_line_options(opts)
-
     # ----------------------------------------------- start: get the user input
     if opts.AUXMTL is not None:
         if os.path.isfile(opts.AUXMTL):
@@ -368,6 +351,22 @@ def main(argv):
         pu.report_and_raise_error(
             "buildPayette must first be executed to create\n\t{0}"
             .format(material_db))
+
+    if opts.MAN:
+        # print the man page for this and other scripts
+        installed_models = pmi.ModelIndex(material_db).constitutive_models()
+        if installed_models:
+            installed_models = "{0}".format(
+                textfill(", ".join(installed_models), initial_indent=" " * 6,
+                         subsequent_indent=" " * 6))
+        else:
+            installed_models = ("      buildPayette must be executed to build "
+                                "and install models")
+        pu.log_message(MAN_PAGE.format(installed_models), pre="")
+        sys.exit(parser.print_help())
+
+    # pass command line arguments to global Payette variables
+    ro.set_command_line_options(opts)
     ro.set_global_option("MTLDB", material_db, default=True)
 
     if opts.VIZCNTRL:
@@ -384,11 +383,6 @@ def main(argv):
         import Source.Viz_ModelSelector as vms
         window = vms.PayetteMaterialModelSelector(model_type="any")
         sys.exit(window.configure_traits())
-
-    if opts.verbosity:
-        pu.log_message(cfg.INTRO, pre="")
-        pu.log_message("Using material database {0}"
-                       .format(os.path.basename(material_db)))
 
     # determine file type given, whether output files for viewing, input files
     # for running, or barf files for barf processing
@@ -450,7 +444,13 @@ def main(argv):
 
     if oargs:
         # output files given, launch visualizer
+        pu.log_message(cfg.INTRO, pre="")
         sys.exit(_visualize_results(outfiles=oargs))
+
+    if opts.verbosity:
+        pu.log_message(cfg.INTRO, pre="")
+        pu.log_message("Using material database {0}"
+                       .format(os.path.basename(material_db)))
 
     # We are now to the point where we will call run_payette, this could be
     # with either a restart file, or with the contents of input files.
