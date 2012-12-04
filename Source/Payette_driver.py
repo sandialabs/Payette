@@ -395,11 +395,11 @@ def solid_driver(the_model, **kwargs):
         # test restart capability
         if ro.TESTRESTART and not restart:
             if ileg == int(len(legs) / 2):
-                print("\n\nStopping to test Payette restart capabilities.\n"
-                      "Restart the simulation by executing\n\n"
-                      "\t\tpayette {0}\n\n".format(the_model.restart_file))
-                the_model.finish()
-                sys.exit(76)
+                pu.report_and_raise_error(
+                    "\n\nStopping to test Payette restart capabilities.\n"
+                    "Restart the simulation by executing\n\n"
+                    "\t\tpayette {0}\n\n".format(the_model.restart_file),
+                    retcode=76)
 
         # read inputs and initialize for this leg
         lnum, t_end, nsteps, ltype, prdef = leg
