@@ -85,6 +85,43 @@ def set_command_line_options(opts):
     return
 
 
+def set_control_options(control):
+    """Set global Payette options based on options passed to payette through
+    the input files 'control' block.
+
+    Parameters
+    ----------
+    control : list
+      control options in (key, val) pairs
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    Througout Payette, there are several global variabes used to custom taylor
+    each simulation. For example, additional SQA coding is run if the user
+    specifies
+
+    begin control
+      sqa
+    end control
+
+    In payette, the user options are passed in to this function where there
+    are made module attributes that can then be used throughout Payette by
+    importing this module.
+
+    """
+    module = sys.modules[__name__]
+    for opt, val in control:
+        gopt = opt.upper()
+        setattr(module, gopt, val)
+        _register_default_option(gopt, val)
+        continue
+    return
+
+
 def set_global_option(attr, val, default=False):
     """Set/create global Payette options
 

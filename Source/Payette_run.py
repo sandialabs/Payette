@@ -78,6 +78,22 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
     else:
         if isinstance(siminp, (list, tuple)):
             siminp = "\n".join(siminp)
+
+        # look for the "control" block from the input file
+        control = []
+        for item in pip.find_block("control", siminp).split("\n"):
+            item = re.sub(r"[=:\,]", " ", item).split()
+            if not item:
+                continue
+            try:
+                key, val = item
+            except ValueError:
+                key, val = item[0], True
+            control.append((key, val))
+            continue
+        if control:
+            ro.set_control_options(control)
+
         # parse the user input
         user_input_sets = pip.parse_user_input(siminp)
 
@@ -92,7 +108,7 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
         pu.report_and_raise_error("No user input found in input files")
 
     # now create a generator to send to _run_job
-    job_inp = ((item, disp, restart, barf, timing, idx == len(user_input_sets) - 1)
+    job_inp = ((item, restart, barf, timing, idx == len(user_input_sets) - 1)
                for idx, item in enumerate(user_input_sets))
 
     # number of processors
@@ -129,14 +145,9 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
     if timing:
         write_final_timing_info(tim0)
 
-    retcode = 1 if any(x["retcode"] for x in return_info) else 0
-    bad = [i for i, x in enumerate(return_info) if x["retcode"]]
-    return_info = [x for i, x in enumerate(return_info) if i not in bad]
-
     if not disp:
         # just return retcode
-        return retcode
-
+        return [x["retcode"] for x in return_info]
     return return_info
 
 
@@ -145,7 +156,7 @@ def _run_job(args):
     """ run each individual job """
 
     # pass passed args to local arguments
-    user_input, disp, restart, barf, timing, last = args
+    user_input, restart, barf, timing, last = args
 
     if timing:
         tim0 = time.time()
@@ -157,7 +168,6 @@ def _run_job(args):
 
     elif barf:
         the_model = pb.PayetteBarf(user_input)
-        disp = 0
 
     elif re.search(r"(?i)\boptimization\b.*", user_input):
         # intantiate the Optimize object
@@ -180,10 +190,10 @@ def _run_job(args):
 
     siminfo = the_model.run_job()
 
-    if disp:
-        retcode = siminfo["retcode"]
-    else:
+    if barf:
         retcode = siminfo
+    else:
+        retcode = siminfo["retcode"]
 
     if retcode != 0:
         sys.stderr.write("ERROR: simulation failed\n")
@@ -202,9 +212,6 @@ def _run_job(args):
     the_model.finish()
 
     del the_model
-
-    if not disp:
-        return {"retcode": retcode}
 
     return siminfo
 

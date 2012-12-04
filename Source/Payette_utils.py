@@ -121,12 +121,13 @@ def report_error(message, count=True):
     return
 
 
-def report_and_raise_error(message, tracebacklimit=None, caller=None):
+def report_and_raise_error(message, tracebacklimit=None, caller=None,
+                           retcode=None):
     """Report and raise an error"""
     if caller is None:
         caller = who_is_calling()
     from Source.Payette_container import PayetteError as PayetteError
-    raise PayetteError(message, caller=caller)
+    raise PayetteError(message, caller=caller, retcode=retcode)
 
 
 # the following methods define warning logging, counting

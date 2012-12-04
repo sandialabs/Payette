@@ -499,10 +499,13 @@ def main(argv):
 
     # visualize the results if requested
     if opts.VIZ:
-        _visualize_results(simulation_info=siminfo)
+        simulation_info = [x for x in siminfo if x["retcode"] == 0]
+        sys.exit(_visualize_results(simulation_info=siminfo))
 
-    retcode = 1 if any(x["retcode"] for x in siminfo) else 0
-    return retcode
+    retcodes = [x["retcode"] for x in siminfo]
+    if len(retcodes) == 1:
+        return retcodes[0]
+    return retcodes
 
 
 def _visualize_results(simulation_info=None, outfiles=None):

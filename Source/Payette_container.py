@@ -51,7 +51,7 @@ from Source.Payette_boundary import BoundaryError as BoundaryError
 
 
 class PayetteError(Exception):
-    def __init__(self, message, caller=None):
+    def __init__(self, message, caller=None, retcode=None):
 
         if caller is None:
             caller = pu.who_is_calling()
@@ -64,13 +64,11 @@ class PayetteError(Exception):
         else:
             caller = "[reported by: {0}]".format(caller)
 
+        self.retcode = retcode if retcode is not None else 1
         # message
         message = " ".join([x for x in message.split() if x])
         self.message = "ERROR: {0} {1}".format(message, caller)
-        if ro.DEBUG:
-            super(PayetteError, self).__init__(self.message)
-        else:
-            raise SystemExit(self.message)
+        super(PayetteError, self).__init__(self.message)
 
 
 class Payette(object):
@@ -596,10 +594,11 @@ class Payette(object):
             retcode = driver(
                 self, restart=self.is_restart, extra_files=extra_files)
 
-        except (SystemExit, PayetteError) as error:
+        except PayetteError as e:
             if ro.DEBUG:
                 self.finish()
                 raise
+
             if ro.ERROR.lower() == "ignore":
                 retcode = 0
                 pu.log_warning(
@@ -608,7 +607,7 @@ class Payette(object):
                         self.name, re.sub("ERROR:\s*", "", error.message)),
                     caller="anonymous")
             else:
-                retcode = 66
+                retcode = e.retcode
                 l = 79  # should be odd number
                 stars = "*" * (l + 2) + '\n'
                 stars_spaces = "*" + " " * (l) + '*\n'
@@ -617,23 +616,23 @@ class Payette(object):
                 ll = (l - len(psf)) / 2
                 psa = "*" + " " * ll + psf + " " * ll + "*\n"
                 head = stars + stars_spaces + psa + stars_spaces + stars
-                sys.stderr.write(
+                pu.log_message(
                     "{0} Payette simulation {1} failed with the following "
-                    "message:\n{2}\n".format(head, self.name, error.message))
+                    "message:\n{2}\n".format(head, self.name, e.message),
+                    noisy=True)
+        except KeyboardInterrupt:
+            self.finish()
+            sys.exit(0)
 
         if retcode == 0:
             pu.log_message("Payette simulation {0} ran to completion"
                            .format(self.name))
 
-        if not ro.DISP:
-            return retcode
-
-        else:
-            return {"retcode": retcode,
-                    "output file": self.outfile,
-                    "extra files": extra_files,
-                    "simulation name": self.name,
-                    "simulation directory": self.simdir}
+        return {"retcode": retcode,
+                "output file": self.outfile,
+                "extra files": extra_files,
+                "simulation name": self.name,
+                "simulation directory": self.simdir}
 
     def finish(self, wipe=False, wipeall=False):
         """finish up"""
