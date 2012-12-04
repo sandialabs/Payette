@@ -508,6 +508,7 @@ def main(argv):
     return retcodes
 
 
+
 def _visualize_results(simulation_info=None, outfiles=None):
     """visualize the results from a simulation
 
