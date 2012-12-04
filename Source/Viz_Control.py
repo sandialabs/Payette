@@ -31,7 +31,7 @@ from enthought.traits.api import (HasStrictTraits, String, Int, List,
                                   cached_property)
 from enthought.traits.ui.api import (View, HGroup, VGroup, Item,
                                      UItem, ListEditor, TabularEditor, Label,
-                                    Handler)
+                                     Handler)
 from enthought.traits.ui.tabular_adapter import TabularAdapter
 from enthought.traits.ui.menu import OKButton, CancelButton
 from enthought.traits.ui.message import message
@@ -51,10 +51,12 @@ from Viz_ModelPlot import create_Viz_ModelPlot
 from Viz_Search import filter_metadata
 from Viz_DataImport import DataImportDialog
 from Viz_Utility import message_box
-#from Viz_Optimizer import VizOptimizer
+# from Viz_Optimizer import VizOptimizer
+
 
 class MetadataTabularAdapter(TabularAdapter):
-    columns = [('Name', 'name'), ('Model Type', 'model_type'), ('Data Type', 'data_type'), ('Created', 'created_timestamp')]
+    columns = [('Name', 'name'), ('Model Type', 'model_type'), (
+        'Data Type', 'data_type'), ('Created', 'created_timestamp')]
     created_timestamp_content = Property
     bg_color = Property
     text_color = Property
@@ -82,6 +84,7 @@ class MetadataTabularAdapter(TabularAdapter):
             return None
         return "yellow"
 
+
 class ModelTypeDialog(HasStrictTraits):
     model_type = Enum('Solid Mechanics', 'Equation of State')
 
@@ -96,6 +99,7 @@ class ModelTypeDialog(HasStrictTraits):
         title='Choose a Model Type',
     )
 
+
 class IControlWindow(Interface):
     """
     This class serves as an interface for use in the VisualizationHandler
@@ -103,6 +107,7 @@ class IControlWindow(Interface):
     the ControlWindow can be passed as a parameter.
     """
     pass
+
 
 class VisualizationHandler(Handler):
     """
@@ -114,8 +119,9 @@ class VisualizationHandler(Handler):
     original = Instance(VizMetaData)
 
     def close(self, info, is_ok):
-        result = message_box('Do you wish to save these visualization parameters?', 'Close Visualization',
-                             ['Cancel', None, 'Don\'t Save', 'Save'])
+        result = message_box(
+            'Do you wish to save these visualization parameters?', 'Close Visualization',
+            ['Cancel', None, 'Don\'t Save', 'Save'])
         if result == 'Cancel':
             return False
 
@@ -126,13 +132,14 @@ class VisualizationHandler(Handler):
 
         return True
 
+
 class ControlWindow(HasStrictTraits):
     implements(IControlWindow)
     implements(IModelRunnerCallbacks)
 
     search_string = String
     files = List(VizMetaData)
-    filtered_files = Property(depends_on=['files','search_string'])
+    filtered_files = Property(depends_on=['files', 'search_string'])
     selected_metadata = Instance(VizMetaData)
     session_id = String
     create_button = Button("Create Simulation")
@@ -140,7 +147,7 @@ class ControlWindow(HasStrictTraits):
     optimize_button = Button("Perform Optimization")
     visualize_button = Button("Visualize Data")
     import_button = Button("Import Data")
-    
+
     def __init__(self, **traits):
         HasStrictTraits.__init__(self, **traits)
         self.session_id = str(uuid.uuid1())
@@ -155,12 +162,11 @@ class ControlWindow(HasStrictTraits):
 
         self.files = files
 
-
     def FindMetadata(self, path):
         all_files = os.listdir(path)
         files = []
         for f in all_files:
-            filepath = os.path.join(path,f)
+            filepath = os.path.join(path, f)
             base, ext = os.path.splitext(filepath)
             if os.path.isdir(filepath):
                 files2 = self.FindMetadata(filepath)
@@ -184,7 +190,7 @@ class ControlWindow(HasStrictTraits):
             mt = 'Mechanical'
         else:
             mt = 'eos'
-        selector = PayetteMaterialModelSelector(model_type=mt,callbacks=self)
+        selector = PayetteMaterialModelSelector(model_type=mt, callbacks=self)
         selector.configure_traits()
 
     def _rerun_button_fired(self):
@@ -196,7 +202,7 @@ class ControlWindow(HasStrictTraits):
                                                 auto_generated=False,
                                                 callbacks=self,
                                                 rerun=True
-                                               )
+                                                )
         selector.configure_traits()
 
     def _visualize_button_fired(self):
@@ -208,31 +214,34 @@ class ControlWindow(HasStrictTraits):
 
         args = {}
         if len(metadata.index_file) > 0:
-            args['index file'] = os.path.join(metadata.base_directory, metadata.index_file)
+            args['index file'] = os.path.join(
+                metadata.base_directory, metadata.index_file)
         elif len(metadata.out_file) > 0:
-            args['output file'] = os.path.join(metadata.base_directory, metadata.out_file)
+            args['output file'] = os.path.join(
+                metadata.base_directory, metadata.out_file)
 
         now = datetime.datetime.now()
 
         metadata2 = VizMetaData(
-            name = self.GenerateName(metadata.name, 'viz'),
-            base_directory = metadata.base_directory,
-            data_type = 'Visualization',
-            model_type = metadata.model_type,
-            created_date = now.date(),
-            created_time = now.time(),
-            session_id = self.session_id
+            name=self.GenerateName(metadata.name, 'viz'),
+            base_directory=metadata.base_directory,
+            data_type='Visualization',
+            model_type=metadata.model_type,
+            created_date=now.date(),
+            created_time=now.time(),
+            session_id=self.session_id
         )
 
         create_Viz_ModelPlot(metadata.name, handler=VisualizationHandler(
             control_window=self, metadata=metadata2, original=metadata), metadata=previous, **args)
 
     def _optimize_button_fired(self):
-        message_box('This functionality is not yet implemented', 'Not Implemented', ['OK'])
-        #metadata = self.selected_metadata
-        #gold_file = os.path.join(metadata.base_directory, metadata.out_file)
-        #optimizer = VizOptimizer(gold_file=gold_file)
-        #optimizer.configure_traits()
+        message_box('This functionality is not yet implemented',
+                    'Not Implemented', ['OK'])
+        # metadata = self.selected_metadata
+        # gold_file = os.path.join(metadata.base_directory, metadata.out_file)
+        # optimizer = VizOptimizer(gold_file=gold_file)
+        # optimizer.configure_traits()
 
     def GenerateName(self, name, prefix):
         match = re.search('(.*\\.%s)([0-9]+)$' % (prefix), name)
@@ -251,7 +260,6 @@ class ControlWindow(HasStrictTraits):
                 pickle.dump(metadata, f)
             self.files.append(metadata)
 
-
     # IModelRunnerCallbacks implementation
     def RunFinished(self, metadata):
         metadata.session_id = self.session_id
@@ -263,16 +271,18 @@ class ControlWindow(HasStrictTraits):
         HGroup(
             VGroup(
                 Item('search_string', label='Search'),
-                UItem("filtered_files", editor=TabularEditor(adapter=MetadataTabularAdapter(),
-                                                   selected='selected_metadata',
-                                                   editable=False),
-                     ),
+                UItem(
+                    "filtered_files", editor=TabularEditor(adapter=MetadataTabularAdapter(),
+                                                           selected='selected_metadata',
+                                                           editable=False),
+                ),
             ),
             VGroup(
                 UItem('create_button'),
                 UItem('rerun_button', enabled_when="selected_metadata is not None and selected_metadata.data_type == 'Simulation'"),
                 UItem('optimize_button', enabled_when="selected_metadata is not None and selected_metadata.data_type == 'Imported'"),
-                UItem('visualize_button', enabled_when="selected_metadata is not None"),
+                UItem('visualize_button',
+                      enabled_when="selected_metadata is not None"),
                 UItem('import_button'),
                 padding=5
             )

@@ -34,7 +34,10 @@ Tim Fuller, Sandia National Laboratories, tjfulle@sandia.gov
 M. Scot Swan, Sandia National Laboratories, mswan@sandia.gov
 
 """
-import os, sys, imp, optparse
+import os
+import sys
+import imp
+import optparse
 import subprocess as sbp
 import multiprocessing as mp
 import pyclbr
@@ -196,12 +199,13 @@ def build_payette(argv):
     search_directories = list(set(search_directories))
 
     # prepare compiler options
-    f2pyopts = ["--f{0}exec={1}".format(x, cfg.F2PY["fexe"]) for x in ("77", "90")]
+    f2pyopts = ["--f{0}exec={1}".format(x, cfg.F2PY["fexe"]) for x in (
+        "77", "90")]
     if opts.DBG:
         f2pyopts.append("--debug")
 
     # compiler options to send to the fortran build scripts
-    compiler_info = {"f2py": {"options": f2pyopts},}
+    compiler_info = {"f2py": {"options": f2pyopts}, }
 
     # intro message
     pu.log_message("Building Payette materials")
@@ -238,7 +242,6 @@ class BuildError(Exception):
         self.message = message + " [reported by {0}]".format(caller)
         self.errno = errno
         super(BuildError, self).__init__(self.message)
-
 
     def __repr__(self):
         return self.__name__
@@ -347,7 +350,7 @@ class BuildPayette(object):
             libname = name + cfg.EXT_MOD_FEXT
 
             if (self.requested_materials and
-                name.lower() not in [x.lower() for x in self.requested_materials]):
+                    name.lower() not in [x.lower() for x in self.requested_materials]):
                 continue
 
             # check for interface file
@@ -433,7 +436,7 @@ class BuildPayette(object):
                 "class name": model_class_name,
                 "parameterization file": parameterization_file,
                 "parameterization class": param_class_name,
-                }
+            }
 
             continue
 
@@ -446,8 +449,8 @@ class BuildPayette(object):
                            .format(", ".join(non_existent)) +
                            "Valid materials are:\n{0}"
                            .format(textfill(", ".join([x for x in all_mtls]),
-                                 initial_indent=SPACE,
-                                 subsequent_indent=SPACE)))
+                                            initial_indent=SPACE,
+                                            subsequent_indent=SPACE)))
         return
 
     def build_libraries(self, nproc=1):
@@ -543,7 +546,6 @@ class BuildPayette(object):
             continue
         model_index.dump()
         return
-
 
 
 def _build_lib(args):

@@ -30,7 +30,8 @@ import uuid
 from enthought.traits.api import HasStrictTraits, String, List, File, Date, Time, Bool, Enum, Instance, Directory, Tuple
 
 from Viz_ModelData import PayetteModel
-from Viz_ModelPlot import Viz_ModelPlot 
+from Viz_ModelPlot import Viz_ModelPlot
+
 
 class VizMetaData(HasStrictTraits):
     name = String

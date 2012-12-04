@@ -25,16 +25,18 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import os, sys
+import os
+import sys
 
 from Source.Payette_material_builder import MaterialBuilder
 from Source.Payette_build import BuildError as BuildError
+
 
 class Build(MaterialBuilder):
 
     def __init__(self, name, libname, libdir, compiler_info):
 
-        fdir,fnam = os.path.split(os.path.realpath(__file__))
+        fdir, fnam = os.path.split(os.path.realpath(__file__))
 
         srcd = fdir
         sigf = os.path.join(fdir, "Payette_elastic_plastic.pyf")

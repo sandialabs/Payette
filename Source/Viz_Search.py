@@ -32,13 +32,16 @@ import datetime
 common_date = r'(?P<cmonth__>0{,1}[0-9]|1[0-2])(?P<csep__>[-./])(?P<cday__>[0-2]{,1}[0-9]|3[0-1])(?P=csep__)(?P<cyear__>[0-9]{4}|[0-9]{2})'
 iso_date = r'(?P<iyear__>[0-9]{4})(?P<isep__>[-./])(?P<imonth__>0[0-9]|1[0-2])(?P=isep__)(?P<iday__>[0-2][0-9]|3[0-1])'
 dates = '(%s|%s)' % (iso_date, common_date)
-unary_range = '(?P<query>after|since|before|until)\\s+%s' % (dates.replace('__', ''))
-binary_range = '(?:from\\s+){,1}%s\\s+to\\s+%s' % (dates.replace('__', '1'), dates.replace('__', '2'))
+unary_range = '(?P<query>after|since|before|until)\\s+%s' % (
+    dates.replace('__', ''))
+binary_range = '(?:from\\s+){,1}%s\\s+to\\s+%s' % (
+    dates.replace('__', '1'), dates.replace('__', '2'))
 
 date_prog = re.compile(dates.replace('__', ''))
 unary_prog = re.compile(unary_range, re.I)
 binary_prog = re.compile(binary_range, re.I)
 today_prog = re.compile('today', re.I)
+
 
 def extract_date(res, suffix=''):
     g = res.groupdict()
@@ -56,10 +59,11 @@ def extract_date(res, suffix=''):
     year = int(year)
 
     if year < 70:
-        year += 2000 
+        year += 2000
     elif year < 100:
         year += 1900
     return datetime.date(year, month, day)
+
 
 def filter_metadata(metadata, search):
     res = binary_prog.match(search)
@@ -79,7 +83,7 @@ def filter_metadata(metadata, search):
         if query == 'until':
             return filter(lambda x: x.created_date <= date, metadata)
         return filter(lambda x: x.created_date >= date, metadata)
-        
+
     res = date_prog.match(search)
     if res is not None:
         date = extract_date(res)
@@ -89,8 +93,9 @@ def filter_metadata(metadata, search):
     if res is not None:
         date = datetime.datetime.now().date()
         return filter(lambda x: x.created_date == date, metadata)
-    
+
     keywords = search.split()
+
     def kw_filter(x):
         for kw in keywords:
             if kw not in x.name:

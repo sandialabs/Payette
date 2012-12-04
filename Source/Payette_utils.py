@@ -25,7 +25,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import os, sys
+import os
+import sys
 import logging
 import re
 import math
@@ -88,9 +89,13 @@ def reset_error_and_warnings():
     __count_error(reset=True)
     __count_warning(reset=True)
     return
+
+
 def error_count():
     """Return the current number of errors"""
     return __count_error(inquire=True)
+
+
 def __count_error(ecount=[0], inquire=False, reset=False):
     """Count the number of errors"""
     if reset:
@@ -100,6 +105,8 @@ def __count_error(ecount=[0], inquire=False, reset=False):
         return ecount[0]
     ecount[0] += 1
     return
+
+
 def report_error(message, count=True):
     """Report error to screen and write to log file if open"""
     if count:
@@ -112,6 +119,8 @@ def report_error(message, count=True):
     sys.stdout.flush()
     sys.stderr.write(message)
     return
+
+
 def report_and_raise_error(message, tracebacklimit=None, caller=None):
     """Report and raise an error"""
     if caller is None:
@@ -123,6 +132,8 @@ def report_and_raise_error(message, tracebacklimit=None, caller=None):
 # the following methods define warning logging, counting
 def warn_count():
     return __count_warning(inquire=True)
+
+
 def __count_warning(wcount=[0], inquire=False, reset=False):
     if reset:
         wcount = [0]
@@ -131,6 +142,8 @@ def __count_warning(wcount=[0], inquire=False, reset=False):
         return wcount[0]
     wcount[0] += 1
     return
+
+
 def log_warning(message, limit=False, caller=None, pre="WARNING: ",
                 beg="", end="\n"):
     """Report warning to screen and write to log file if open"""
@@ -166,7 +179,7 @@ def log_warning(message, limit=False, caller=None, pre="WARNING: ",
         caller = " [reported by: {0}]".format(caller)
 
     message = (textfill("{0}{1}{2}{3}".format(beg, pre, message, caller),
-                        subsequent_indent=" "*(len(beg)+len(pre))) + end)
+                        subsequent_indent=" " * (len(beg) + len(pre))) + end)
     if SIMLOG is not None:
         SIMLOG.write(message)
     sys.stdout.flush()
@@ -188,8 +201,10 @@ def parse_token(n, stringa, token=r'|'):
     while i < n:
         stat = False
         for s in stringa:
-            try: s = s.decode('utf-8')
-            except: s = str(s)
+            try:
+                s = s.decode('utf-8')
+            except:
+                s = str(s)
             if not stat:
                 x = ''
                 stat = True
@@ -218,7 +233,8 @@ def setup_logger(logfile, mode="w"):
     """ set up the simulation logger """
     global SIMLOG
     SIMLOG = open(logfile, mode)
-    if mode == "w": SIMLOG.write(cfg.INTRO + "\n")
+    if mode == "w":
+        SIMLOG.write(cfg.INTRO + "\n")
     return
 
 
@@ -230,15 +246,19 @@ def textformat(var):
 
     Created: 17 June 2011 by mswan
     """
-    try: return "{0:<20.10E}".format(float(var))
-    except: return "{0:<20s}".format(str(var))
+    try:
+        return "{0:<20.10E}".format(float(var))
+    except:
+        return "{0:<20s}".format(str(var))
 
 
 def close_aux_files():
     """ close auxilary files """
     global SIMLOG
-    try: SIMLOG.close()
-    except OSError: pass
+    try:
+        SIMLOG.close()
+    except OSError:
+        pass
     SIMLOG = None
     return
 
@@ -256,10 +276,11 @@ def flatten(x):
     >>> flatten([[[1,2,3], (42,None)], [4,5], [6], 7, MyVector(8,9,10)])
     [1, 2, 3, 42, None, 4, 5, 6, 7, 8, 9, 10]"""
 
-    if isinstance(x, (float, int, str, bool)): return x
+    if isinstance(x, (float, int, str, bool)):
+        return x
     result = []
     for el in x:
-        #if isinstance(el, (list, tuple)):
+        # if isinstance(el, (list, tuple)):
         if hasattr(el, "__iter__") and not isinstance(el, basestring):
             result.extend(flatten(el))
         else:
@@ -363,17 +384,18 @@ def compute_rms_closest_point_residual(set1x, set1y, set2x, set2y):
     if lset2x < 1:
         report_and_raise_error("set2 must have at least one point.")
 
-    dx = max(set1x)-min(set1x)
-    dy = max(set1y)-min(set1y)
-    dd = math.sqrt(dx*dx+dy*dy)
+    dx = max(set1x) - min(set1x)
+    dy = max(set1y) - min(set1y)
+    dd = math.sqrt(dx * dx + dy * dy)
 
-    dist_pt_to_pt = lambda x0, y0, x1, y1: math.sqrt((x1-x0)**2+(y1-y0)**2)
+    dist_pt_to_pt = lambda x0, y0, x1, y1: math.sqrt(
+        (x1 - x0) ** 2 + (y1 - y0) ** 2)
     # compute the running square of the difference
     err = 0.0
     for idx in range(0, lset2x):
         tmp_arr = []
         for jdx in range(0, lset1x - 1):
-            kdx = jdx+1
+            kdx = jdx + 1
             dist_from_pt0 = dist_pt_to_pt(
                 set1x[jdx], set1y[jdx], set2x[idx], set2y[idx])
             dist_from_pt1 = dist_pt_to_pt(
@@ -381,27 +403,27 @@ def compute_rms_closest_point_residual(set1x, set1y, set2x, set2y):
 
             # use dot(a,b)/(mag(a)*mag(b)) = cos(theta) to find the distance
             # from the line.
-            vec_a_x = set1x[jdx]-set1x[kdx]
-            vec_a_y = set1y[jdx]-set1y[kdx]
-            vec_b_x = set2x[idx]-set1x[kdx]
-            vec_b_y = set2y[idx]-set1y[kdx]
-            mag_a = math.sqrt(vec_a_x**2 + vec_a_y**2)
-            mag_b = math.sqrt(vec_b_x**2 + vec_b_y**2)
+            vec_a_x = set1x[jdx] - set1x[kdx]
+            vec_a_y = set1y[jdx] - set1y[kdx]
+            vec_b_x = set2x[idx] - set1x[kdx]
+            vec_b_y = set2y[idx] - set1y[kdx]
+            mag_a = math.sqrt(vec_a_x ** 2 + vec_a_y ** 2)
+            mag_b = math.sqrt(vec_b_x ** 2 + vec_b_y ** 2)
 
             if mag_a == 0.0 or mag_b == 0.0:
-                tmp_arr.append(min(dist_from_pt0,dist_from_pt1))
+                tmp_arr.append(min(dist_from_pt0, dist_from_pt1))
                 continue
 
-            costheta = (vec_a_x*vec_b_x+vec_a_y*vec_b_y)/mag_a/mag_b
+            costheta = (vec_a_x * vec_b_x + vec_a_y * vec_b_y) / mag_a / mag_b
 
-            if costheta < 0.0 or mag_b*costheta > mag_a:
-                tmp_arr.append(min(dist_from_pt0,dist_from_pt1))
+            if costheta < 0.0 or mag_b * costheta > mag_a:
+                tmp_arr.append(min(dist_from_pt0, dist_from_pt1))
                 continue
 
-            theta = math.acos( max(min(1.0,costheta),-1.0) )
-            dist_from_line = mag_b*math.sin(theta)
+            theta = math.acos(max(min(1.0, costheta), -1.0))
+            dist_from_line = mag_b * math.sin(theta)
 
-            dist = min( dist_from_line, min(dist_from_pt0,dist_from_pt1) )
+            dist = min(dist_from_line, min(dist_from_pt0, dist_from_pt1))
             tmp_arr.append(dist)
             continue
         err += min(tmp_arr)
@@ -411,7 +433,7 @@ def compute_rms_closest_point_residual(set1x, set1y, set2x, set2y):
 #    dnom = abs(np.amax(set1y) - np.amin(set1y))
 #    nrmsd = rmsd / dnom if dnom >= 2.e-16 else rmsd
 #    return rmsd, nrmsd
-    return err, err/dd
+    return err, err / dd
 
 
 def compute_rms(set1x, set1y, set2x, set2y, step=1):
@@ -466,7 +488,7 @@ def compute_rms(set1x, set1y, set2x, set2y, step=1):
     # if len(set1y) == len(set2y). This check allows for the possibility of
     # the lengths of the data to be equal but for the spacing to be not equal.
     if (lset1y == lset2y and
-        np.sum((set1x[::10] - set2x[::10]) ** 2) < 1.0e-6 * np.amax(set1x)):
+            np.sum((set1x[::10] - set2x[::10]) ** 2) < 1.0e-6 * np.amax(set1x)):
         return compute_fast_rms(set1y, set2y)
 
     else:
@@ -582,7 +604,8 @@ def compare_out_to_gold_rms(gold_f, out_f, to_skip=None):
         rmsd, nrmsd = 1.0e99, 1.0e99
 
     if nrmsd > EPSILON:
-        report_error("time step error between {0} and {1}".format(out_f, gold_f))
+        report_error(
+            "time step error between {0} and {1}".format(out_f, gold_f))
 
     if error_count():
         return 1, None, None
@@ -652,7 +675,7 @@ def compare_file_cols(file_1, file_2, cols=["all"]):
         report_error("shape of {0} != shape of {1}".format(file_1, file_2))
         return 1, None, None
 
-    to_compare = [x for x in head_2 if x in head_1] # if x not in to_skip]
+    to_compare = [x for x in head_2 if x in head_1]  # if x not in to_skip]
 
     # do the comparison
     anrmsd, armsd = [], []

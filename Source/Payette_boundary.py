@@ -27,7 +27,9 @@
 
 """Main Payette boundary class definitions"""
 
-import math, sys, re
+import math
+import sys
+import re
 import numpy as np
 
 import Source.__runopts__ as ro
@@ -38,7 +40,7 @@ import Source.Payette_utils as pu
 DTYPES = {"strain rate": (1, 6), "strain": (2, 6), "stress rate": (3, 6),
           "stress": (4, 6), "deformation gradient": (5, 9),
           "electric field": (6, 3), "displacement": (8, 3), "vstrain": (2, 1),
-          "pressure": (4, 1), "efield": (6, 3),}
+          "pressure": (4, 1), "efield": (6, 3), }
 
 
 class BoundaryError(Exception):
@@ -139,7 +141,7 @@ class Boundary(object):
                     boundary_options[kwd] = val
                 continue
 
-            bc = self.bcontrol(kwd) # [type, default, extra]
+            bc = self.bcontrol(kwd)  # [type, default, extra]
             if bc[0] == "choice":
                 choices = bc[2]
                 if val not in choices:
@@ -327,7 +329,8 @@ class Boundary(object):
                 stress_control = any([x in "34" for x in control])
 
             # we need to know what to do with each deformation value, so the
-            # length of the deformation values must be same as the control values
+            # length of the deformation values must be same as the control
+            # values
             if len(control) != len(cij):
                 pu.report_and_raise_error(
                     "Length of leg control != number of control "
@@ -410,7 +413,8 @@ class Boundary(object):
                 for j in range(3):
                     stretch = self.dfac * cij[j] + 1
                     if self._kappa != 0:
-                        cij[j] = 1 / self._kappa * (stretch ** self._kappa - 1.)
+                        cij[j] = 1 / self._kappa * \
+                            (stretch ** self._kappa - 1.)
                     else:
                         cij[j] = math.log(stretch)
                     continue
@@ -423,7 +427,8 @@ class Boundary(object):
                 # only one strain value given -> volumetric strain
                 evol = cij[0] * self.efac
                 if self._kappa * evol + 1. < 0.:
-                    pu.report_and_raise_error("1 + kappa * ev must be positive")
+                    pu.report_and_raise_error(
+                        "1 + kappa * ev must be positive")
 
                 if self._kappa == 0.:
                     eij = evol / 3.
@@ -485,10 +490,14 @@ class Boundary(object):
 
                 continue
 
-            try: self.efac = efac_hold
-            except NameError: pass
-            try: self.sfac = sfac_hold
-            except NameError: pass
+            try:
+                self.efac = efac_hold
+            except NameError:
+                pass
+            try:
+                self.sfac = sfac_hold
+            except NameError:
+                pass
 
             # convert cij to array
             cij = np.array(cij)
@@ -662,7 +671,8 @@ class Boundary(object):
             # specifications
             cols, skip = [], -1
             for idx, item in enumerate(cspec):
-                if idx == skip: continue
+                if idx == skip:
+                    continue
                 try:
                     s, e = item.split(RSEP)
                 except ValueError:
@@ -725,9 +735,9 @@ class EOSBoundary(object):
         self.allowed_unit_systems = ("MKSK", "CGSEV",)
         self.bcontrol = {
             "nprints": {"value": 4, "type": int},
-            "input units": {"value": None, "type":"choice",
+            "input units": {"value": None, "type": "choice",
                             "choices": self.allowed_unit_systems},
-            "output units": {"value": None, "type":"choice",
+            "output units": {"value": None, "type": "choice",
                              "choices": self.allowed_unit_systems},
             "density range": {"value": [0.0, 0.0], "type": list},
             "temperature range": {"value": [0.0, 0.0], "type": list},
@@ -735,12 +745,13 @@ class EOSBoundary(object):
             "path increments": {"value": 100, "type": int},
             "path isotherm": {"value": None, "type": list},
             "path hugoniot": {"value": None, "type": list},
-            }
+        }
         self.parse_boundary_block()
 
         # parse the legs block
         self.lcontrol = []
-        if self.legs: self.parse_legs_block()
+        if self.legs:
+            self.parse_legs_block()
 
         # determine the number of steps. In the most general case, the number
         # of steps N is:
@@ -774,7 +785,7 @@ class EOSBoundary(object):
         iu = iu.upper()
         if iu not in self.bcontrol["input units"]["choices"]:
             pu.report_and_raise_error("Unrecognized input unit system: '{0}'"
-                                .format(iu))
+                                      .format(iu))
         self.bcontrol["input units"]["value"] = iu
 
         # get the output units
@@ -839,7 +850,6 @@ class EOSBoundary(object):
             if len(isotherm) != 2 or bad_rho or bad_temp:
                 pu.report_and_raise_error("Bad initial state for isotherm.")
             self.bcontrol["path isotherm"]["value"] = isotherm
-
 
         val = pip.get("path hugoniot", self.boundary)
         if val is not None:

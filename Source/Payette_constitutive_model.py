@@ -27,7 +27,10 @@
 
 """Main constitutive model class file."""
 
-import os, imp, re, warnings
+import os
+import imp
+import re
+import warnings
 import math
 import numpy as np
 
@@ -181,8 +184,10 @@ class ConstitutiveModelPrototype(object):
                 continue
 
         # initial density
-        try: rho = self.ui0[self._pi._DENSITY]
-        except AttributeError: rho = 1.
+        try:
+            rho = self.ui0[self._pi._DENSITY]
+        except AttributeError:
+            rho = 1.
         if abs(rho) > pu.EPSILON:
             self._initial_density = rho
 
@@ -244,9 +249,9 @@ class ConstitutiveModelPrototype(object):
 
         # register full name, low case name, and aliases
         full_name = param_name
-        param_name = param_name.lower().replace(" ","_")
+        param_name = param_name.lower().replace(" ", "_")
         param_names = [param_name]
-        param_names.extend([x.lower().replace(" ","_") for x in aliases])
+        param_names.extend([x.lower().replace(" ", "_") for x in aliases])
 
         dupl_name = [x for x in param_names
                      if x in self.registered_params_and_aliases]
@@ -271,7 +276,7 @@ class ConstitutiveModelPrototype(object):
                                            "units": units,
                                            "parseable": parseable,
                                            "default value": default,
-                                           "description": description,}
+                                           "description": description, }
         self.parameter_table_idx_map[param_idx] = full_name
         self.nprop += 1
 
@@ -290,8 +295,8 @@ class ConstitutiveModelPrototype(object):
         for param, param_dict in self.parameter_table.items():
             if not UnitManager.is_valid_units(param_dict['units']):
                 pu.report_and_raise_error(
-      "Parameter does not have valid units set:\n"+
-      "\n".join(["({0}:{1})".format(x, y) for x, y in param_dict.iteritems()]))
+                    "Parameter does not have valid units set:\n" +
+                    "\n".join(["({0}:{1})".format(x, y) for x, y in param_dict.iteritems()]))
         return
 
     def get_parameter_names_and_values(self, default=True, version=None):
@@ -419,7 +424,8 @@ class ConstitutiveModelPrototype(object):
             name, val = "_".join(line[:-1]), line[-1]
             if not name:
                 errors += 1
-                pu.log_warning("No value for parameter '{0}' found".format(val))
+                pu.log_warning(
+                    "No value for parameter '{0}' found".format(val))
                 continue
 
             try:
@@ -471,9 +477,9 @@ class ConstitutiveModelPrototype(object):
                 j_0[i, i] = twog
 
             # off diagonal
-            (          j_0[0, 1], j_0[0, 2],
-             j_0[1, 0],           j_0[1, 2],
-             j_0[2, 0], j_0[2, 1]           ) = [threek * const_2] * 6
+            (j_0[0, 1], j_0[0, 2],
+             j_0[1, 0], j_0[1, 2],
+             j_0[2, 0], j_0[2, 1]) = [threek * const_2] * 6
             self.J0 = np.array(j_0)
 
             return
@@ -607,14 +613,17 @@ class ConstitutiveModelPrototype(object):
         """docstring"""
         self.parse_parameters(*args)
         return
+
     def setUp(self, *args, **kwargs):
         """docstring"""
         self.set_up(*args, **kwargs)
         return
+
     def updateState(self, *args):
         """docstring"""
         self.update_state(*args)
         return
+
     def registerParameter(self, *args):
         """docstring"""
         self.register_parameter(*args)

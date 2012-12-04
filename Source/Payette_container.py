@@ -27,7 +27,10 @@
 
 """Main Payette class definition"""
 
-import os, sys, math, re
+import os
+import sys
+import math
+import re
 import numpy as np
 import datetime
 import shutil
@@ -56,14 +59,18 @@ class PayetteError(Exception):
         # do not report who is calling. Sometimes other functions act as
         # intermediaries to PayetteError and it is nice to leave them out of
         # the "reported by" section
-        if re.search("(?i)anonymous", caller): caller = ""
-        else: caller = "[reported by: {0}]".format(caller)
+        if re.search("(?i)anonymous", caller):
+            caller = ""
+        else:
+            caller = "[reported by: {0}]".format(caller)
 
         # message
         message = " ".join([x for x in message.split() if x])
         self.message = "ERROR: {0} {1}".format(message, caller)
-        if ro.DEBUG: super(PayetteError, self).__init__(self.message)
-        else: raise SystemExit(self.message)
+        if ro.DEBUG:
+            super(PayetteError, self).__init__(self.message)
+        else:
+            raise SystemExit(self.message)
 
 
 class Payette(object):
@@ -236,8 +243,9 @@ class Payette(object):
                                  constant=True, units="NO_UNITS")
             self.simdat.register("kappa", "Scalar", self.boundary.kappa(),
                                  constant=True, units="NO_UNITS")
-            self.simdat.register("screenout", "Scalar", self.boundary.screenout(),
-                                 constant=True, units="NO_UNITS")
+            self.simdat.register(
+                "screenout", "Scalar", self.boundary.screenout(),
+                constant=True, units="NO_UNITS")
 
         # --- optional information ------------------------------------------ #
         # list of plot keys for all plotable data
@@ -293,7 +301,8 @@ class Payette(object):
         # output for mathematica to use
         cmod = self.material.constitutive_model
         user_params = cmod.get_parameter_names_and_values(version="unmodified")
-        adjusted_params = cmod.get_parameter_names_and_values(version="modified")
+        adjusted_params = cmod.get_parameter_names_and_values(
+            version="modified")
         with open(math1, "w") as fobj:
             # write out user given input
             for name, desc, val in user_params:
@@ -308,7 +317,7 @@ class Payette(object):
 
             # write out user requested plotable output
             fobj.write('simdat = Delete[Import["{0:s}", "Table"],-1];\n'
-                    .format(self.outfile))
+                       .format(self.outfile))
 
             sig_idx = None
             for i, item in enumerate(self.out_vars):
@@ -321,7 +330,7 @@ class Payette(object):
             if sig_idx is not None:
                 pres = ("-(simdat[[2;;,{0:d}]]".format(sig_idx) +
                         "+simdat[[2;;,{0:d}]]".format(sig_idx + 1) +
-                        "+simdat[[2;;,{0:d}]])/3;".format(sig_idx+2))
+                        "+simdat[[2;;,{0:d}]])/3;".format(sig_idx + 2))
                 fobj.write('PRES={0}\n'.format(pres))
             fobj.write(
                 "lastep=Length[{0}]\n".format(self.simdat.get("time", "plot key")))
@@ -329,9 +338,9 @@ class Payette(object):
         # math2 is a file containing mathematica directives to setup default
         # plots that the user requested
         lowhead = [x.lower() for x in self.out_vars]
-        with open( math2, "w" ) as fobj:
+        with open(math2, "w") as fobj:
             fobj.write('showcy[{0},{{"cycle", "time"}}]\n'
-                    .format(self.simdat.get("time", "plot key")))
+                       .format(self.simdat.get("time", "plot key")))
 
             for item in self.mathplot_vars:
                 name = self.plot_keys[lowhead.index(item.lower())]
@@ -353,7 +362,7 @@ class Payette(object):
         cmod = self.material.constitutive_model
         params = cmod.get_parameter_names_and_values(default=False)
         props_f = os.path.join(self.simdir, self.name + ".props")
-        with open(props_f, "w" ) as fobj:
+        with open(props_f, "w") as fobj:
             for param, desc, val in params:
                 fobj.write("{0:s} ={1:12.5E}\n".format(param, val))
                 continue
@@ -517,7 +526,6 @@ class Payette(object):
         delt = tend - tbeg
         disp, vlcty = np.zeros(3), np.zeros(3)
 
-
         psbeg, psend = epsbeg, epsend
 
         # determine average velocities that will ensure passing through the
@@ -585,7 +593,8 @@ class Payette(object):
         # jrh: This dictionary to get extra info from eos_driver
         extra_files = {}
         try:
-            retcode = driver(self, restart=self.is_restart, extra_files=extra_files)
+            retcode = driver(
+                self, restart=self.is_restart, extra_files=extra_files)
 
         except (SystemExit, PayetteError) as error:
             if ro.DEBUG:
@@ -600,7 +609,7 @@ class Payette(object):
                     caller="anonymous")
             else:
                 retcode = 66
-                l = 79 # should be odd number
+                l = 79  # should be odd number
                 stars = "*" * (l + 2) + '\n'
                 stars_spaces = "*" + " " * (l) + '*\n'
                 psf = ("Payette simulation {0} failed"
@@ -652,12 +661,16 @@ class Payette(object):
         if wipe or wipeall:
             # remove cruft
             for ext in (".log", ".props", ".math1", ".math2", ".prf", ".xout"):
-                try: os.remove(self.name + ext)
-                except OSError: pass
+                try:
+                    os.remove(self.name + ext)
+                except OSError:
+                    pass
                 continue
         if wipeall:
-            try: os.remove(self.name + ".out")
-            except OSError: pass
+            try:
+                os.remove(self.name + ".out")
+            except OSError:
+                pass
         return
 
     def simulation_data(self):

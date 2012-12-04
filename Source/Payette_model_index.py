@@ -29,7 +29,8 @@
 optimization simulations
 
 """
-import os, sys
+import os
+import sys
 import imp
 
 try:
@@ -121,7 +122,7 @@ class ModelIndex(object):
             "interface file": intrfc, "control file": cntrl,
             "aliases": aliases, "libdir": libdir,
             "parameterization file": param_file,
-            "parameterization class": param_cls,}
+            "parameterization class": param_cls, }
 
         return
 
@@ -193,8 +194,10 @@ class ModelIndex(object):
                 "PAYETTE_VERSION attribute missing from the "
                 "material model interface file")
         # --- legacy support -> version now a tuple
-        try: version = tuple(version.split("."))
-        except AttributeError: pass
+        try:
+            version = tuple(version.split("."))
+        except AttributeError:
+            pass
 
         major, minor = version[:2]
         M, m = cfg.VERSION_INFO[:2]

@@ -54,6 +54,7 @@ import Source.Payette_input_parser as pip
 import Source.__runopts__ as ro
 from Source.Payette_container import PayetteError as PayetteError
 
+
 def run_payette(siminp=None, restart=False, timing=False, barf=False,
                 nproc=ro.NPROC, disp=ro.DISP, verbosity=ro.VERBOSITY,
                 torun=None):
@@ -83,15 +84,15 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
     # if the user requested to run only a subset of the inputs in an input
     # file, filter out the ones not requested. we have a list of user input.
     if torun:
-        names = [(j, pip.get("name", y)) for j, y in enumerate(user_input_sets)]
+        names = [(j, pip.get("name", y)) for j, y in enumerate(
+            user_input_sets)]
         user_input_sets = [user_input_sets[i] for i, x in names if x in torun]
 
     if not user_input_sets:
         pu.report_and_raise_error("No user input found in input files")
 
-
     # now create a generator to send to _run_job
-    job_inp = ((item, disp, restart, barf, timing, idx==len(user_input_sets)-1)
+    job_inp = ((item, disp, restart, barf, timing, idx == len(user_input_sets) - 1)
                for idx, item in enumerate(user_input_sets))
 
     # number of processors

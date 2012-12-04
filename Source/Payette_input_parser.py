@@ -25,7 +25,10 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import re, sys, os, shutil
+import re
+import sys
+import os
+import shutil
 import math
 import numpy as np
 
@@ -151,9 +154,9 @@ def parse_options(lines):
 
     """
     options = {}
-    known_options = (re.compile(r"\bwrite.*input\b", re.I|re.M),
-                     re.compile(r"\bnowriteprops\b", re.I|re.M),
-                     re.compile(r"\brestart\b", re.I|re.M),)
+    known_options = (re.compile(r"\bwrite.*input\b", re.I | re.M),
+                     re.compile(r"\bnowriteprops\b", re.I | re.M),
+                     re.compile(r"\brestart\b", re.I | re.M),)
     for option in known_options:
         found = option.search(lines)
         if found:
@@ -214,8 +217,8 @@ def find_item_name(lines, item, pop=False):
 def get_content(lines, pop=False):
     block = []
     rlines, content = [], []
-    bexp = re.compile(r"\bbegin\s*", re.I|re.M)
-    eexp = re.compile(r"\bend\s.*", re.I|re.M)
+    bexp = re.compile(r"\bbegin\s*", re.I | re.M)
+    eexp = re.compile(r"\bend\s.*", re.I | re.M)
     for iline, line in enumerate(lines.split("\n")):
         if bexp.search(line):
             block.append(1)
@@ -264,8 +267,8 @@ def parse_user_input(lines):
     lines = strip_cruft(lines)
 
     simulations = find_block("simulation", lines, findall=True)
-    opt = re.compile(r"\bbegin\s*optimization\b.*", re.I|re.M)
-    prm = re.compile(r"\bbegin\s*permutation\b.*", re.I|re.M)
+    opt = re.compile(r"\bbegin\s*optimization\b.*", re.I | re.M)
+    prm = re.compile(r"\bbegin\s*permutation\b.*", re.I | re.M)
     post = "\nend input"
     for name, content in simulations.items():
         check_incompatibilities(content)
@@ -332,7 +335,7 @@ def strip_cruft(lines):
         lines stripped of all comments and blank lines
 
     """
-    #return re.sub(r"\n\s*\n*", "\n", re.sub(r"[#$].*","", lines)) + "\n"
+    # return re.sub(r"\n\s*\n*", "\n", re.sub(r"[#$].*","", lines)) + "\n"
     # strip comments
     lines = re.sub(r"[#$].*", "", lines)
     # strip blank lines
@@ -377,10 +380,10 @@ def preprocess(lines, preprocessor=None):
     """
     import random
     safe_eval_dict = {
-      'sqrt': math.sqrt, 'sin': math.sin,   'cos': math.cos,   'tan': math.tan,
-      'asin': math.asin, 'acos': math.acos, 'atan': math.atan, 'atan2': math.atan2,
-      'pi': math.pi,     'log': math.log,   'exp': math.exp,   'floor': math.floor,
-      'ceil': math.ceil, 'abs': math.fabs,  'random': random.random, }
+        'sqrt': math.sqrt, 'sin': math.sin, 'cos': math.cos, 'tan': math.tan,
+        'asin': math.asin, 'acos': math.acos, 'atan': math.atan, 'atan2': math.atan2,
+        'pi': math.pi, 'log': math.log, 'exp': math.exp, 'floor': math.floor,
+        'ceil': math.ceil, 'abs': math.fabs, 'random': random.random, }
 
     if preprocessor is None:
         preprocessor = find_block("preprocessing", lines)
@@ -399,14 +402,15 @@ def preprocess(lines, preprocessor=None):
         for idx, [pat, repl] in enumerate(preprocessor):
             tmp = repl.lstrip('{').rstrip('}')
             try:
-                tmpval =  eval(tmp, gdict, ldict)
+                tmpval = eval(tmp, gdict, ldict)
             except NameError:
                 errors += 1
                 continue
             safe_eval_dict[pat] = tmpval
             preprocessor[idx][1] = "{0:12.6E}".format(tmpval)
             continue
-        if not errors or I > 10: break
+        if not errors or I > 10:
+            break
         I += 1
         continue
 
@@ -431,16 +435,18 @@ def preprocess(lines, preprocessor=None):
         continue
 
     for pat, repl in preprocessor:
-        full = re.compile(r"{{.*?\b{0:s}\b.*?}}".format(pat), re.I|re.M)
+        full = re.compile(r"{{.*?\b{0:s}\b.*?}}".format(pat), re.I | re.M)
         while True:
             found = full.search(lines)
             if not found:
                 break
             bn, en = found.start(), found.end()
-            npat = re.compile(re.escape(r"{0}".format(lines[bn:en])), re.I|re.M)
+            npat = re.compile(
+                re.escape(r"{0}".format(lines[bn:en])), re.I | re.M)
             # tmprepl is used because I (Scot) was having issues with
             # persistence of just 'repl' when it was used in multiple {} sets.
-            tmprepl = re.sub(r"(?i){0}".format(pat), repl, lines[bn+1:en-1])
+            tmprepl = re.sub(
+                r"(?i){0}".format(pat), repl, lines[bn + 1:en - 1])
             try:
                 tmprepl = "{0:12.6E}".format(eval(tmprepl, gdict, ldict))
             except:
@@ -478,8 +484,8 @@ def find_nested_blocks(major, nested, lines, default=None):
     blocks = []
     blocks.append(find_block(major, lines))
     for name in nested:
-        bexp = re.compile(r"\bbegin\s*{0}\b.*".format(name), re.I|re.M)
-        eexp = re.compile(r"\bend\s*{0}\b.*".format(name), re.I|re.M)
+        bexp = re.compile(r"\bbegin\s*{0}\b.*".format(name), re.I | re.M)
+        eexp = re.compile(r"\bend\s*{0}\b.*".format(name), re.I | re.M)
         start = bexp.search(blocks[0])
         stop = eexp.search(blocks[0])
         if start and not stop:
@@ -518,8 +524,8 @@ def find_block(name, lines, default=None, findall=False, named=False):
     pat = r"\bbegin\s*{0}\b".format(name)
     fpat = pat + r".*"
     namexp = re.compile(pat, re.I)
-    bexp = re.compile(fpat, re.I|re.M)
-    eexp = re.compile(r"\bend\s*{0}\b.*".format(name), re.I|re.M)
+    bexp = re.compile(fpat, re.I | re.M)
+    eexp = re.compile(r"\bend\s*{0}\b.*".format(name), re.I | re.M)
     k = 0
 
     named = True if findall else named
@@ -576,8 +582,8 @@ def pop_block(name, lines):
         lines with name popped
 
     """
-    bexp = re.compile(r"\bbegin\s*{0}\b.*".format(name), re.I|re.M)
-    eexp = re.compile(r"\bend\s*{0}\b.*".format(name), re.I|re.M)
+    bexp = re.compile(r"\bbegin\s*{0}\b.*".format(name), re.I | re.M)
+    eexp = re.compile(r"\bend\s*{0}\b.*".format(name), re.I | re.M)
     bexp, eexp = bexp.search(lines), eexp.search(lines)
     if bexp and eexp:
         s, e = bexp.start(), eexp.end()
@@ -602,7 +608,7 @@ def fill_in_inserts(lines):
     pat = r"^.*\binsert\b\s"
     namexp = re.compile(pat, re.I)
     fpat = pat + r".*"
-    regexp = re.compile(fpat, re.I|re.M)
+    regexp = re.compile(fpat, re.I | re.M)
     while True:
         lines = strip_cruft(lines)
         found = regexp.search(lines)
@@ -691,7 +697,7 @@ def parse_output(oblock):
     specials = {
         "stress": ["SIG11", "SIG22", "SIG33", "SIG12", "SIG23", "SIG13"],
         "strain": ["EPS11", "EPS22", "EPS33", "EPS12", "EPS23", "EPS13"],
-        "efield": ["EFIELD1", "EFIELD2", "EFIELD3"],}
+        "efield": ["EFIELD1", "EFIELD2", "EFIELD3"], }
 
     for idx, ovar in enumerate(ovars):
         try:
@@ -753,8 +759,10 @@ def parse_extraction(eblock):
 def flatten(x):
     result = []
     for el in x:
-        if isinstance(el, list): result.extend(flatten(el))
-        else: result.append(el)
+        if isinstance(el, list):
+            result.extend(flatten(el))
+        else:
+            result.append(el)
     return result
 
 

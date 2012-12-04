@@ -34,12 +34,13 @@ from Source.Payette_unit_manager import UnitManager as UnitManager
 
 PAYETTE_VERSION = (1, 1)
 
+
 class IdealGas(ConstitutiveModelPrototype):
     def __init__(self, control_file, *args, **kwargs):
         super(IdealGas, self).__init__(
             control_file, *args, **kwargs)
         self.eos_model = True
-        #self.code = "python"
+        # self.code = "python"
         self.imported = True
 
         self.num_ui = 2
@@ -50,7 +51,7 @@ class IdealGas(ConstitutiveModelPrototype):
         pass
 
     # Public methods
-    def set_up(self,matdat):
+    def set_up(self, matdat):
 
         self.parse_parameters()
         self.ui = self.ui0
@@ -58,25 +59,25 @@ class IdealGas(ConstitutiveModelPrototype):
         # Variables already registered:
         #   density, temperature, energy, pressure
         matdat.register("soundspeed", "Scalar",
-                             iv = 0.,
-                             plot_key = "SNDSPD",
-                             units="VELOCITY_UNITS")
+                        iv=0.,
+                        plot_key="SNDSPD",
+                        units="VELOCITY_UNITS")
         matdat.register("dpdr", "Scalar",
-                             iv = 0.,
-                             plot_key = "DPDR",
-                             units="PRESSURE_UNITS_OVER_DENSITY_UNITS")
+                        iv=0.,
+                        plot_key="DPDR",
+                        units="PRESSURE_UNITS_OVER_DENSITY_UNITS")
         matdat.register("dpdt", "Scalar",
-                             iv = 0.,
-                             plot_key = "DPDT",
-                             units="PRESSURE_UNITS_OVER_TEMPERATURE_UNITS")
+                        iv=0.,
+                        plot_key="DPDT",
+                        units="PRESSURE_UNITS_OVER_TEMPERATURE_UNITS")
         matdat.register("dedt", "Scalar",
-                             iv = 0.,
-                             plot_key = "DEDT",
-                             units="SPECIFIC_ENERGY_UNITS_OVER_TEMPERATURE_UNITS")
+                        iv=0.,
+                        plot_key="DEDT",
+                        units="SPECIFIC_ENERGY_UNITS_OVER_TEMPERATURE_UNITS")
         matdat.register("dedr", "Scalar",
-                             iv = 0.,
-                             plot_key = "DEDR",
-                             units="SPECIFIC_ENERGY_UNITS_OVER_DENSITY_UNITS")
+                        iv=0.,
+                        plot_key="DEDR",
+                        units="SPECIFIC_ENERGY_UNITS_OVER_DENSITY_UNITS")
         pass
 
     def evaluate_eos(self, simdat, matdat, unit_system,
@@ -117,8 +118,7 @@ class IdealGas(ConstitutiveModelPrototype):
         matdat.store("soundspeed", (R * temp / M) ** 2)
         return
 
-
-    def update_state(self,simdat,matdat):
+    def update_state(self, simdat, matdat):
         """update the material state"""
         pu.report_and_raise_error("MGR EOS does not provide update_state")
         return

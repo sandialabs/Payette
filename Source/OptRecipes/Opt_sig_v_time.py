@@ -29,7 +29,8 @@
 stress vs. time slope and the simulated.
 
 """
-import os, sys
+import os
+import sys
 import numpy as np
 import Source.Payette_utils as pu
 import Source.Payette_extract as pe
@@ -53,7 +54,8 @@ class ObjectiveFunction(object):
         self.minvars = ["@time", "@sig11", "@sig22", "@sig33"]
         gold_f = args[0]
         if gold_f is None:
-            pu.report_and_raise_error("No gold file given for Opt_sig_v_time.py")
+            pu.report_and_raise_error(
+                "No gold file given for Opt_sig_v_time.py")
 
         elif not os.path.isfile(gold_f):
             pu.report_and_raise_error("{0} not found".format(gold_f))

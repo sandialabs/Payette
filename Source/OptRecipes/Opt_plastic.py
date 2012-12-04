@@ -29,7 +29,8 @@
 stress vs. time slope and the simulated.
 
 """
-import os, sys
+import os
+import sys
 import numpy as np
 import Source.Payette_utils as pu
 import Source.Payette_extract as pe
@@ -55,7 +56,8 @@ class ObjectiveFunction(object):
                         "@sig12", "@sig23", "@sig13"]
         gold_f = args[0]
         if gold_f is None:
-            pu.report_and_raise_error("No gold file given for Opt_sig_v_time.py")
+            pu.report_and_raise_error(
+                "No gold file given for Opt_sig_v_time.py")
 
         elif not os.path.isfile(gold_f):
             pu.report_and_raise_error("{0} not found".format(gold_f))
@@ -90,7 +92,8 @@ class ObjectiveFunction(object):
         exargs = [out_f] + self.minvars
         out_data = np.array(pe.extract(exargs, silent=True))
         E, rtj2 = _find_e_and_y(out_data)
-        error = np.sqrt(np.mean(np.array([self.Eg - E, self.RTJ2g - rtj2]) ** 2))
+        error = np.sqrt(
+            np.mean(np.array([self.Eg - E, self.RTJ2g - rtj2]) ** 2))
         return error
 
 

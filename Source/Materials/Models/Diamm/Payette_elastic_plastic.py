@@ -39,6 +39,7 @@ except:
 
 PAYETTE_VERSION = (1, 1)
 
+
 class ElasticPlastic(ConstitutiveModelPrototype):
 
     def __init__(self, control_file, *args, **kwargs):
@@ -47,53 +48,53 @@ class ElasticPlastic(ConstitutiveModelPrototype):
 
         self.imported = imported
 
-        self.register_parameter("B0",0,aliases=['BKMOD'])
-        self.register_parameter("B1",1,aliases=[])
-        self.register_parameter("B2",2,aliases=[])
-        self.register_parameter("G0",3,aliases=['SHMOD'])
-        self.register_parameter("G1",4,aliases=[])
-        self.register_parameter("G2",5,aliases=[])
-        self.register_parameter("G3",6,aliases=[])
-        self.register_parameter("A1",7,aliases=['yield strength'])
-        self.register_parameter("A2",8,aliases=[])
-        self.register_parameter("A3",9,aliases=[])
-        self.register_parameter("A4",10,aliases=[])
-        self.register_parameter("A5",11,aliases=[])
-        self.register_parameter("A6",12,aliases=[])
-        self.register_parameter("AN",13,aliases=[])
-        self.register_parameter("R0",14,aliases=[])
-        self.register_parameter("T0",15,aliases=[])
-        self.register_parameter("C0",16,aliases=[])
-        self.register_parameter("S1",17,aliases=['S1MG'])
-        self.register_parameter("GP",18,aliases=['GRPAR'])
-        self.register_parameter("CV",19,aliases=[])
-        self.register_parameter("TM",20,aliases=[])
-        self.register_parameter("T1",21,aliases=[])
-        self.register_parameter("T2",22,aliases=[])
-        self.register_parameter("T3",23,aliases=[])
-        self.register_parameter("T4",24,aliases=[])
-        self.register_parameter("TMPRXP",25,aliases=[])
-        self.register_parameter("SC",26,aliases=[])
-        self.register_parameter("IDK",27,aliases=[])
-        self.register_parameter("IDG",28,aliases=[])
-        self.register_parameter("A4PF",29,aliases=[])
-        self.register_parameter("CHI",30,aliases=['TQC'])
-        self.register_parameter("FREE01",31,aliases=['F1'])
-        self.register_parameter("SERIAL",32,aliases=[])
-        self.register_parameter("DEJAVU",33,aliases=[])
-        self.register_parameter("DC1",34,aliases=[])
-        self.register_parameter("DC2",35,aliases=[])
-        self.register_parameter("DC3",36,aliases=[])
-        self.register_parameter("DC4",37,aliases=[])
-        self.register_parameter("DC5",38,aliases=[])
-        self.register_parameter("DC6",39,aliases=[])
-        self.register_parameter("DC7",40,aliases=[])
-        self.register_parameter("DC8",41,aliases=[])
-        self.register_parameter("DC9",42,aliases=[])
-        self.register_parameter("DC10",43,aliases=[])
-        self.register_parameter("DC11",44,aliases=[])
-        self.register_parameter("DC12",45,aliases=[])
-        self.register_parameter("DC13",46,aliases=[])
+        self.register_parameter("B0", 0, aliases=['BKMOD'])
+        self.register_parameter("B1", 1, aliases=[])
+        self.register_parameter("B2", 2, aliases=[])
+        self.register_parameter("G0", 3, aliases=['SHMOD'])
+        self.register_parameter("G1", 4, aliases=[])
+        self.register_parameter("G2", 5, aliases=[])
+        self.register_parameter("G3", 6, aliases=[])
+        self.register_parameter("A1", 7, aliases=['yield strength'])
+        self.register_parameter("A2", 8, aliases=[])
+        self.register_parameter("A3", 9, aliases=[])
+        self.register_parameter("A4", 10, aliases=[])
+        self.register_parameter("A5", 11, aliases=[])
+        self.register_parameter("A6", 12, aliases=[])
+        self.register_parameter("AN", 13, aliases=[])
+        self.register_parameter("R0", 14, aliases=[])
+        self.register_parameter("T0", 15, aliases=[])
+        self.register_parameter("C0", 16, aliases=[])
+        self.register_parameter("S1", 17, aliases=['S1MG'])
+        self.register_parameter("GP", 18, aliases=['GRPAR'])
+        self.register_parameter("CV", 19, aliases=[])
+        self.register_parameter("TM", 20, aliases=[])
+        self.register_parameter("T1", 21, aliases=[])
+        self.register_parameter("T2", 22, aliases=[])
+        self.register_parameter("T3", 23, aliases=[])
+        self.register_parameter("T4", 24, aliases=[])
+        self.register_parameter("TMPRXP", 25, aliases=[])
+        self.register_parameter("SC", 26, aliases=[])
+        self.register_parameter("IDK", 27, aliases=[])
+        self.register_parameter("IDG", 28, aliases=[])
+        self.register_parameter("A4PF", 29, aliases=[])
+        self.register_parameter("CHI", 30, aliases=['TQC'])
+        self.register_parameter("FREE01", 31, aliases=['F1'])
+        self.register_parameter("SERIAL", 32, aliases=[])
+        self.register_parameter("DEJAVU", 33, aliases=[])
+        self.register_parameter("DC1", 34, aliases=[])
+        self.register_parameter("DC2", 35, aliases=[])
+        self.register_parameter("DC3", 36, aliases=[])
+        self.register_parameter("DC4", 37, aliases=[])
+        self.register_parameter("DC5", 38, aliases=[])
+        self.register_parameter("DC6", 39, aliases=[])
+        self.register_parameter("DC7", 40, aliases=[])
+        self.register_parameter("DC8", 41, aliases=[])
+        self.register_parameter("DC9", 42, aliases=[])
+        self.register_parameter("DC10", 43, aliases=[])
+        self.register_parameter("DC11", 44, aliases=[])
+        self.register_parameter("DC12", 45, aliases=[])
+        self.register_parameter("DC13", 46, aliases=[])
         self.nprop = len(self.parameter_table.keys())
         self.ndc = 0
         pass
@@ -106,14 +107,14 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         self.parse_parameters()
 
         self.ui = self._check_props()
-        (self.nsv,namea,keya,sv,rdim,iadvct,itype) = self._set_field()
-        namea = parse_token(self.nsv,namea)
-        keya = parse_token(self.nsv,keya)
+        (self.nsv, namea, keya, sv, rdim, iadvct, itype) = self._set_field()
+        namea = parse_token(self.nsv, namea)
+        keya = parse_token(self.nsv, keya)
 
         # register the __xtra__ with the payette object
         matdat.register_xtra(self.nsv, namea, keya, sv)
 
-        self.bulk_modulus,self.shear_modulus = self.ui[0],self.ui[3]
+        self.bulk_modulus, self.shear_modulus = self.ui[0], self.ui[3]
 
         pass
 
@@ -132,14 +133,13 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         signew, svnew, usm = mtllib.diamm_calc(*a)
 
         # update data
-        matdat.store("stress",signew)
-        matdat.store("__xtra__",svnew)
+        matdat.store("stress", signew)
+        matdat.store("__xtra__", svnew)
 
         return
 
-
     # Private method
-    def _check_props(self,**kwargs):
+    def _check_props(self, **kwargs):
         props = array(self.ui0)
         a = [props]
         if cfg.F2PY["callback"]:
@@ -147,7 +147,7 @@ class ElasticPlastic(ConstitutiveModelPrototype):
         ui = mtllib.dmmchk(*a)
         return ui
 
-    def _set_field(self,*args,**kwargs):
+    def _set_field(self, *args, **kwargs):
         a = [self.ui]
         if cfg.F2PY["callback"]:
             a.extend([report_and_raise_error, log_message])

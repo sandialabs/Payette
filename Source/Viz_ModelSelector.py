@@ -36,6 +36,7 @@ from Viz_ModelData import PayetteModel, PayetteModelParameter, PayetteMaterial, 
 from Viz_ModelRunner import ModelRunner, IModelRunnerCallbacks
 import Viz_Utility as vu
 
+
 class PayetteInputStringPreview(HasStrictTraits):
     class ISPHandler(Handler):
         def _run(self, info):
@@ -53,12 +54,14 @@ class PayetteInputStringPreview(HasStrictTraits):
         VGroup(
             Item('input_string', style='custom', show_label=False),
         ),
-        buttons=[Action(name='Close', action='_close'), Action(name='Run', action='_run')],
+        buttons=[Action(name='Close', action='_close'), Action(
+            name='Run', action='_run')],
         handler=ISPHandler(),
         width=800,
         height=600,
         resizable=True
     )
+
 
 class PayetteMaterialModelSelector(HasStrictTraits):
     model_type = Enum('Mechanical', 'eos', 'any')
@@ -90,22 +93,27 @@ class PayetteMaterialModelSelector(HasStrictTraits):
     def update_sim_name(self):
         if self.auto_generated:
             if self.selected_model is not None and self.selected_model.selected_material is not None:
-                self.simulation_name = self.selected_model.model_name + "_" + self.selected_model.selected_material.name
-            # A trick to reset the flag, since _simulation_name_changed() is called first
+                self.simulation_name = self.selected_model.model_name + \
+                    "_" + self.selected_model.selected_material.name
+            # A trick to reset the flag, since _simulation_name_changed() is
+            # called first
             self.auto_generated = True
 
     def _run_button_fired(self, event):
-        runner = ModelRunner(simulation_name=self.simulation_name, material_models=[self.selected_model],
-                            callbacks=self.callbacks)
+        runner = ModelRunner(
+            simulation_name=self.simulation_name, material_models=[
+                self.selected_model],
+            callbacks=self.callbacks)
         runner.RunModels()
 
     def _show_button_fired(self, event):
-        runner = ModelRunner(simulation_name=self.simulation_name, material_models=[self.selected_model],
-                            callbacks=self.callbacks)
+        runner = ModelRunner(
+            simulation_name=self.simulation_name, material_models=[
+                self.selected_model],
+            callbacks=self.callbacks)
         input_string = runner.CreateModelInputString(self.selected_model)
         preview = PayetteInputStringPreview(input_string=input_string, runner=runner, model=self.selected_model)
         preview.configure_traits()
-
 
     traits_view = View(
         VGroup(
@@ -113,52 +121,58 @@ class PayetteMaterialModelSelector(HasStrictTraits):
                 VGroup(
                     Label("Installed Models"),
                     UItem('models',
-                        editor = TabularEditor(
-                            show_titles = True,
-                            editable = False,
-                            selected = 'selected_model',
-                            multi_select = False,
-                            adapter = TabularAdapter(columns = [('Models', 'model_name')])
-                        )
-                    ),
+                          editor=TabularEditor(
+                          show_titles=True,
+                          editable=False,
+                          selected='selected_model',
+                          multi_select=False,
+                          adapter=TabularAdapter(
+                          columns=[('Models', 'model_name')])
+                          )
+                          ),
                     VGroup(
                         Label("Available Materials"),
-                        UItem('selected_model', label="Foo", editor = InstanceEditor(view='material_view'),
-                              visible_when="selected_model is not None and len(selected_model.materials) > 0"),
-                        Item("none_constant", style='readonly', show_label=False,
-                              visible_when="selected_model is not None and len(selected_model.materials) < 1")
+                        UItem(
+                            'selected_model', label="Foo", editor=InstanceEditor(view='material_view'),
+                            visible_when="selected_model is not None and len(selected_model.materials) > 0"),
+                        Item(
+                            "none_constant", style='readonly', show_label=False,
+                            visible_when="selected_model is not None and len(selected_model.materials) < 1")
                     ),
                     visible_when='not rerun',
-                    show_border = True
+                    show_border=True
                 ),
                 VGroup(
                     Label("Material Parameters"),
-                    UItem('selected_model', editor=InstanceEditor(view='param_view')),
-                    show_border = True
+                    UItem('selected_model',
+                          editor=InstanceEditor(view='param_view')),
+                    show_border=True
                 )
             ),
             VGroup(
                 Label("Boundary Parameters"),
                 UItem('selected_model',
-                    editor = InstanceEditor(
-                        view='boundary_legs_view'
-                    ),
-                    visible_when='selected_model is not None and "eos" not in selected_model.model_type'
-                ),
+                      editor=InstanceEditor(
+                      view='boundary_legs_view'
+                      ),
+                      visible_when='selected_model is not None and "eos" not in selected_model.model_type'
+                      ),
                 UItem('selected_model',
-                    editor = InstanceEditor(
-                        view='eos_boundary_view'
-                    ),
-                    visible_when='selected_model is not None and "eos" in selected_model.model_type'
-                ),
-                show_border = True,
+                      editor=InstanceEditor(
+                      view='eos_boundary_view'
+                      ),
+                      visible_when='selected_model is not None and "eos" in selected_model.model_type'
+                      ),
+                show_border=True,
             ),
             Item('simulation_name', style="simple"),
             HGroup(
                 Spring(),
-                Item('show_button', show_label = False, enabled_when="selected_model is not None"),
-                Item('run_button', show_label = False, enabled_when="selected_model is not None"),
-                show_border = True
+                Item('show_button', show_label=False,
+                     enabled_when="selected_model is not None"),
+                Item('run_button', show_label=False,
+                     enabled_when="selected_model is not None"),
+                show_border=True
             )
         ),
         style='custom',
@@ -168,6 +182,6 @@ class PayetteMaterialModelSelector(HasStrictTraits):
     )
 
 if __name__ == "__main__":
-    pm = PayetteMaterialModelSelector(model_type='any', supplied_data = [('Foo', 'elastic_al_6061.out')])
+    pm = PayetteMaterialModelSelector(
+        model_type='any', supplied_data=[('Foo', 'elastic_al_6061.out')])
     pm.configure_traits()
-

@@ -66,7 +66,7 @@ class Optimize(object):
         ui = pip.InputParser(ilines)
         self.name = ui.name
 
-        regex = re.compile(r"simdir", re.I|re.M)
+        regex = re.compile(r"simdir", re.I | re.M)
         if regex.search("\n".join(ui.options())) or ro.SIMDIR is not None:
             pu.report_and_raise_error(
                 "cannot specify simdir for permutation jobs")
@@ -186,12 +186,12 @@ class Optimize(object):
         opt_options = {"maxiter": self.data["maximum iterations"],
                        "xtol": self.data["tolerance"],
                        "ftol": self.data["tolerance"],
-                       "disp": self.data["disp"],}
+                       "disp": self.data["disp"], }
 
         opt_params = minimize(
             func, opt_params, args=opt_args, method=opt_method,
             bounds=opt_bounds, options=opt_options,
-            )
+        )
 
         # optimum parameters found, write out final info
         msg = ", ".join(["{0} = {1:12.6E}".format(opt_nams[i], x)
@@ -267,7 +267,7 @@ class Optimize(object):
             "simplex": {"method": "Nelder-Mead", "name": "fmin"},
             "powell": {"method": "Powell", "name": "fmin_powell"},
             "cobyla": {"method": "COBYLA", "name": "fmin_cobyla"},
-            "slsqp": {"method": "SLSQP", "name":"fmin_slsqp"}}
+            "slsqp": {"method": "SLSQP", "name": "fmin_slsqp"}}
 
         # default method
         opt_method = allowed_methods["simplex"]
@@ -302,7 +302,7 @@ class Optimize(object):
                 disp = True
 
         # objective function
-        fnam = os.path.join(cfg.OPTREC, "Opt_legacy.py") # default
+        fnam = os.path.join(cfg.OPTREC, "Opt_legacy.py")  # default
         fnam = self.find_oblock_option("obj_fn", fnam)
         fnam = re.sub(r"\bin\s", "", fnam).strip()
         if not os.path.isfile(fnam):
@@ -340,7 +340,7 @@ class Optimize(object):
             if "bounds" in vals:
                 try:
                     idx = vals.index("bounds") + 1
-                    bounds = [float(x) for x in vals[idx:idx+2]]
+                    bounds = [float(x) for x in vals[idx:idx + 2]]
                 except ValueError:
                     bounds = [None, None]
                     pu.report_error("Bounds requires 2 arguments")
@@ -355,7 +355,7 @@ class Optimize(object):
                 idx = vals.index("initial")
                 if vals[idx + 1] == "value":
                     idx = idx + 1
-                    ival = float(vals[idx+1])
+                    ival = float(vals[idx + 1])
                 else:
                     ival = None
                 optimize[key]["initial value"] = ival
@@ -566,8 +566,8 @@ def minimize(fcn, x0, args=(), method="Nelder-Mead",
                 pu.report_error("lbnd({0:12.6E}) > ubnd({1:12.6E})"
                                 .format(lbnd, ubnd))
 
-            lcons.append(lambda z, idx=ibnd, bnd=lbnd: z[idx] - bnd/FAC[idx])
-            ucons.append(lambda z, idx=ibnd, bnd=ubnd: bnd/FAC[idx] - z[idx])
+            lcons.append(lambda z, idx=ibnd, bnd=lbnd: z[idx] - bnd / FAC[idx])
+            ucons.append(lambda z, idx=ibnd, bnd=ubnd: bnd / FAC[idx] - z[idx])
 
             bounds[ibnd] = (lbnd, ubnd)
 
