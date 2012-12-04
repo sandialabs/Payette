@@ -26,7 +26,8 @@
 # DEALINGS IN THE SOFTWARE.
 
 """ Top level interface to the Payette material model driver. """
-import sys, os
+import sys
+import os
 import optparse
 from optparse import OptionParser, BadOptionError, AmbiguousOptionError
 from textwrap import fill as textfill
@@ -97,8 +98,8 @@ class PassThroughOptionParser(OptionParser):
     def _process_args(self, largs, rargs, values):
         while rargs:
             try:
-                OptionParser._process_args(self,largs,rargs,values)
-            except (BadOptionError,AmbiguousOptionError), e:
+                OptionParser._process_args(self, largs, rargs, values)
+            except (BadOptionError, AmbiguousOptionError), e:
                 largs.append(e.opt_str)
 
 
@@ -153,14 +154,14 @@ def main(argv):
         action="store",
         default=None,
         help=("Input string for simulation instead of file "
-                "[default: %default]"))
+              "[default: %default]"))
     parser.add_option(
         "-p", "--princ",
         dest="principal",
         action="store_true",
         default=False,
         help=("Diagonalize input arguments and run problem in "
-                "principal coordinates [default: %default]"))
+              "principal coordinates [default: %default]"))
     parser.add_option(
         "-t",
         dest="timing",
@@ -221,7 +222,7 @@ def main(argv):
         action="store_true",
         default=ro.STRICT,
         help=("Do not use approximations to update kinematic "
-                "quantities (slow) [default: %default]"))
+              "quantities (slow) [default: %default]"))
     parser.add_option(
         "--write-restart",
         dest="writerestart",
@@ -272,7 +273,7 @@ def main(argv):
         action="store_true",
         default=ro.PROPORTIONAL,
         help=("Use proportional loading for prescribed stress"
-                "components. [default: %default]"))
+              "components. [default: %default]"))
     parser.add_option(
         "-j", "--nproc",
         dest="nproc",
@@ -503,6 +504,7 @@ def main(argv):
     retcode = 1 if any(x["retcode"] for x in siminfo) else 0
     return retcode
 
+
 def _visualize_results(simulation_info=None, outfiles=None):
     """visualize the results from a simulation
 
@@ -515,7 +517,8 @@ def _visualize_results(simulation_info=None, outfiles=None):
        list of output files to visualize
     """
     if not cfg.VIZ_COMPATIBLE:
-        pu.log_warning("Visualization not supported by your Python distribution")
+        pu.log_warning(
+            "Visualization not supported by your Python distribution")
         return
 
     from Viz_ModelPlot import create_Viz_ModelPlot
@@ -541,7 +544,7 @@ def _visualize_results(simulation_info=None, outfiles=None):
                 simname = os.path.splitext(fnam)[0]
                 simulation_info.append({"simulation name": simname,
                                         "simulation directory": fdir,
-                                        "output file": outfile,})
+                                        "output file": outfile, })
                 continue
             if warned:
                 return

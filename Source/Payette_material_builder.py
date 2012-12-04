@@ -25,7 +25,11 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import os, sys, shutil, imp, tempfile
+import os
+import sys
+import shutil
+import imp
+import tempfile
 import subprocess as sbp
 from distutils import sysconfig
 from copy import deepcopy
@@ -34,6 +38,7 @@ from numpy.f2py import main as f2py
 import Source.__config__ as cfg
 import Source.Payette_utils as pu
 from Source.Payette_build import BuildError as BuildError
+
 
 class MaterialBuilder(object):
 
@@ -96,8 +101,8 @@ class MaterialBuilder(object):
                     "{0} signature file not found".format(self.name), 40)
 
         # include directories
-        self.incdirs = [ ".", "{0}".format(self.source_directory),
-                         "{0}".format(cfg.INCLUDES) ]
+        self.incdirs = [".", "{0}".format(self.source_directory),
+                        "{0}".format(cfg.INCLUDES)]
         if incdirs is not None:
             if not isinstance(incdirs, (list, tuple)):
                 incdirs = [incdirs]
@@ -127,13 +132,13 @@ class MaterialBuilder(object):
         pass
 
     def build_extension_module(self):
-        raise BuildError("fortran build script must provide this function",1)
+        raise BuildError("fortran build script must provide this function", 1)
 
     def build_extension_module_with_f2py(self):
         fcn = "build_extension_module_with_f2py"
 
         if not self.source_files:
-            raise BuildError("no source files sent to {0}".format(fcn),1)
+            raise BuildError("no source files sent to {0}".format(fcn), 1)
 
         elif not isinstance(self.source_files, list):
             self.source_files = [self.source_files]
@@ -169,7 +174,8 @@ class MaterialBuilder(object):
         f2pycmd = self.f2pyopts + incsearch + libsearch + libs
         f2pycmd.extend(["-m", self.name, self.signature_file])
         f2pycmd.extend(self.pre_directives)
-        if self.use_lapack: f2pycmd.append("--link-lapack_opt")
+        if self.use_lapack:
+            f2pycmd.append("--link-lapack_opt")
         f2pycmd.extend(ffiles)
 
         tmp = deepcopy(sys.argv)
@@ -184,21 +190,27 @@ class MaterialBuilder(object):
             with open(echo, "a") as sys.stderr:
                 # f2py returns none if successful, it is an exception if not
                 # successful
-                try: built = not f2py()
-                except: built = False
+                try:
+                    built = not f2py()
+                except:
+                    built = False
 
         # restore sys.{argv, stdout, stderr}
         sys.argv = deepcopy(tmp)
-        sys.stdout, sys.stderr  = sys.__stdout__, sys.__stderr__
+        sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
 
         # remove nocallback_file, if it exists
-        try: os.remove(self.nocallback_file)
-        except OSError: pass
+        try:
+            os.remove(self.nocallback_file)
+        except OSError:
+            pass
 
         # remove object files
         for f in self.source_files:
-            try: os.remove(os.path.splitext(f)[0] + ".o")
-            except OSError: pass
+            try:
+                os.remove(os.path.splitext(f)[0] + ".o")
+            except OSError:
+                pass
             continue
 
         if not built:
@@ -223,8 +235,10 @@ class MaterialBuilder(object):
         shutil.move(self.libname,
                     os.path.join(self.payette_libdir, self.libname))
 
-        try: os.remove(echo)
-        except OSError: pass
+        try:
+            os.remove(echo)
+        except OSError:
+            pass
 
         return 0
 
@@ -235,7 +249,7 @@ class MaterialBuilder(object):
         if cfg.F2PY["callback"]:
             return
 
-        sigf_lines = open(self.signature_file,"r").readlines()
+        sigf_lines = open(self.signature_file, "r").readlines()
 
         in_callback = False
         user_routines = []
@@ -258,7 +272,8 @@ class MaterialBuilder(object):
 
             if in_callback:
                 if line.split() and line.split()[0] == "subroutine":
-                    sub = line.split("(")[0].strip()[len("subroutine"):].strip()
+                    sub = line.split(
+                        "(")[0].strip()[len("subroutine"):].strip()
                     user_routines.append(sub)
 
                 continue
@@ -269,7 +284,7 @@ class MaterialBuilder(object):
 
         self.signature_file = self.nocallback_file
 
-        with open(self.signature_file,"w") as f:
+        with open(self.signature_file, "w") as f:
 
             for line in lines:
                 if [x for x in user_routines if x in line.split()]:

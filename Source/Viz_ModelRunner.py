@@ -39,9 +39,11 @@ from Viz_ModelData import PayetteModel
 from Viz_MetaData import VizMetaData
 from Viz_ModelPlot import create_Viz_ModelPlot
 
+
 class IModelRunnerCallbacks(Interface):
     def RunFinished(self, metadata):
         ''' Called when a run completes or fails. '''
+
 
 class ModelRunner(HasStrictTraits):
     simulation_name = String
@@ -66,9 +68,9 @@ class ModelRunner(HasStrictTraits):
         self.RunInputString(inputString, material, 'Optimization')
 
     def RunInputString(self, inputString, material, run_type='Simulation'):
-        #output = StringIO.StringIO()
+        # output = StringIO.StringIO()
         oldout = sys.stdout
-        #sys.stdout = output
+        # sys.stdout = output
 
         # tjf: run_payette can be invoked with disp=1 and then it returns a
         # tjf: dictionary with some extra information. I pass that extra
@@ -84,17 +86,17 @@ class ModelRunner(HasStrictTraits):
             if index_file is None:
                 index_file = ''
             else:
-                base_dir,index_file = os.path.split(index_file)
+                base_dir, index_file = os.path.split(index_file)
             output_file = siminfo.get('output file')
             if output_file is None:
                 output_file = ''
             else:
-                base_dir,output_file = os.path.split(output_file)
+                base_dir, output_file = os.path.split(output_file)
             extra_files = siminfo.get('extra files')
             if extra_files is not None and len(extra_files) > 0:
                 surface_file = extra_files['surface file']
                 path_files = []
-                for k,v in extra_files['path files'].iteritems():
+                for k, v in extra_files['path files'].iteritems():
                     path_file = os.path.split(v)[1]
                     path_files.append((k, path_file))
             else:
@@ -102,18 +104,18 @@ class ModelRunner(HasStrictTraits):
                 path_files = []
 
             metadata = VizMetaData(
-                name = self.simulation_name,
-                base_directory = base_dir,
-                index_file = index_file,
-                out_file = output_file,
-                surface_file = surface_file,
-                path_files = path_files,
-                data_type = run_type,
-                model_type = ', '.join(material.model_type),
-                created_date = now.date(),
-                created_time = now.time(),
-                successful = True,
-                model = material
+                name=self.simulation_name,
+                base_directory=base_dir,
+                index_file=index_file,
+                out_file=output_file,
+                surface_file=surface_file,
+                path_files=path_files,
+                data_type=run_type,
+                model_type=', '.join(material.model_type),
+                created_date=now.date(),
+                created_time=now.time(),
+                successful=True,
+                model=material
             )
 
             self.callbacks.RunFinished(metadata)
@@ -128,7 +130,7 @@ class ModelRunner(HasStrictTraits):
             "begin simulation %s\n"
             "  begin material\n"
             "    constitutive model %s\n"
-        % (self.simulation_name, material.model_name))
+            % (self.simulation_name, material.model_name))
 
         for p in material.parameters:
 
@@ -146,7 +148,7 @@ class ModelRunner(HasStrictTraits):
                 val = p.default
             if optimization is not None:
                 #@tjf: code to determine if p is optimized or not so that the
-                #proper form for "val" can be written to the input
+                # proper form for "val" can be written to the input
                 pu.report_and_raise_error("Support code needed")
             result += "    %s = %s\n" % (p.name, val)
 
@@ -178,7 +180,7 @@ class ModelRunner(HasStrictTraits):
 
         result = ("  begin permutation\n"
                   "    method %s\n"
-                 % material.permutation_method.lower())
+                  % material.permutation_method.lower())
         for p in material.parameters:
             if p.distribution == '+/-':
                 result += "    permutate %s, +/-(%s, %s)\n" % (
@@ -196,7 +198,8 @@ class ModelRunner(HasStrictTraits):
                 vals = []
                 for i in range(p.samples):
                     vals.append(abs(random.normalvariate(p.mean, p.std_dev)))
-                result += "    permutate %s, sequence = %s\n" % (p.name, str(tuple(vals)))
+                result += "    permutate %s, sequence = %s\n" % (
+                    p.name, str(tuple(vals)))
             elif p.distribution == 'Weibull':
                 result += "    permutate %s, weibull(%s, %s, %s)\n" % (
                     p.name, p.scale, p.shape, p.samples)
@@ -212,7 +215,8 @@ class ModelRunner(HasStrictTraits):
                 continue
             optimize_params += "    optimize %s" % (param.name)
             if param.use_bounds:
-                optimize_params += ", bounds = (%f, %f)" % (param.bounds_min, param.bounds_max)
+                optimize_params += ", bounds = (%f, %f)" % (
+                    param.bounds_min, param.bounds_max)
             optimize_params += ", initial value = %f\n" % (param.initial_value)
 
         minimize_vars = []
@@ -236,15 +240,15 @@ class ModelRunner(HasStrictTraits):
                   "    minimize %s %s\n"
                   "\n"
                   "  end optimization\n"
-                 ) % (
-                     optimization.method.lower(),
-                     optimization.max_iterations,
-                     optimization.tolerance,
-                     optimize_params,
-                     optimization.gold_file,
-                    ', '.join(minimize_vars),
-                     versus
-                 )
+                  ) % (
+                      optimization.method.lower(),
+                      optimization.max_iterations,
+                      optimization.tolerance,
+                      optimize_params,
+                      optimization.gold_file,
+                      ', '.join(minimize_vars),
+                      versus
+                  )
         return result
 
     def CreateEOSBoundaryInput(self, material):
@@ -253,9 +257,9 @@ class ModelRunner(HasStrictTraits):
         R0 = 0.0
         for p in material.parameters:
             if p.name == "T0":
-                T0 = float(p.default)/0.861738573E-4
+                T0 = float(p.default) / 0.861738573E-4
             elif p.name == "R0":
-                R0 = float(p.default)#*1000.0
+                R0 = float(p.default)  # *1000.0
 
         result = (
             "  begin boundary\n"
@@ -308,7 +312,8 @@ class ModelRunner(HasStrictTraits):
 
         leg_num = 0
         for leg in material.legs:
-            result += "      %d %f %d %s %s\n" % (leg_num, leg.time, leg.nsteps, leg.types, leg.components)
+            result += "      %d %f %d %s %s\n" % (
+                leg_num, leg.time, leg.nsteps, leg.types, leg.components)
             leg_num += 1
 
         result += (

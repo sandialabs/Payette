@@ -27,7 +27,8 @@
 
 import os
 import linecache
-import math, random
+import math
+import random
 import Source.Payette_utils as pu
 import Source.Payette_sim_index as psi
 from Viz_Plot2D import Viz_Plot2D
@@ -47,14 +48,16 @@ LDICT = {"sqrt": math.sqrt, "sin": math.sin, "cos": math.cos, "tan": math.tan,
          "asin": math.asin, "acos": math.acos,
          "atan": math.atan, "atan2": math.atan2, "pi": math.pi,
          "log": math.log, "exp": math.exp, "floor": math.floor,
-         "ceil": math.ceil, "abs": math.fabs, "random": random.random,}
+         "ceil": math.ceil, "abs": math.fabs, "random": random.random, }
 GDICT = {"__builtins__": None}
+
 
 class ChangeAxisHandler(Handler):
 
     def closed(self, info, is_ok):
         global Change_X_Axis_Enabled
         Change_X_Axis_Enabled = True
+
 
 class ChangeAxis(HasStrictTraits):
 
@@ -75,16 +78,18 @@ class ChangeAxis(HasStrictTraits):
                      enabled_when='Change_X_Axis_Enabled==True',
                      show_label=False))
 
+
 class SingleSelectAdapter(TabularAdapter):
-    columns = [ ('Payette Outputs', 'myvalue') ]
+    columns = [('Payette Outputs', 'myvalue')]
 
     myvalue_text = Property
 
     def _get_myvalue_text(self):
         return self.item
 
+
 class SingleSelect(HasPrivateTraits):
-    choices  = List(Str)
+    choices = List(Str)
     selected = Str
     plot = Instance(Viz_Plot2D)
 
@@ -92,45 +97,49 @@ class SingleSelect(HasPrivateTraits):
         HGroup(
             UItem('choices',
                   editor=TabularEditor(
-                    show_titles=True, selected='selected', editable=False,
-                    multi_select=False, adapter=SingleSelectAdapter()))),
+                  show_titles=True, selected='selected', editable=False,
+                  multi_select=False, adapter=SingleSelectAdapter()))),
         width=224, height=668, resizable=True, title='Change X-axis')
 
-    @on_trait_change( 'selected' )
-    def _selected_modified ( self, object, name, new ):
+    @on_trait_change('selected')
+    def _selected_modified(self, object, name, new):
         self.plot.change_axis(object.choices.index(object.selected))
 
+
 class SingleSelectOverlayFilesAdapter(TabularAdapter):
-    columns = [ ('Overlay File Name', 'myvalue') ]
+    columns = [('Overlay File Name', 'myvalue')]
 
     myvalue_text = Property
 
     def _get_myvalue_text(self):
         return self.item
 
+
 class SingleSelectOverlayFiles(HasPrivateTraits):
-    choices  = List(Str)
+    choices = List(Str)
     selected = Str
 
     view = View(
         HGroup(
             UItem('choices',
                   editor=TabularEditor(
-                    show_titles=True, selected='selected',
-                    editable=False, multi_select=False,
-                    adapter=SingleSelectOverlayFilesAdapter()))),
+                  show_titles=True, selected='selected',
+                  editable=False, multi_select=False,
+                  adapter=SingleSelectOverlayFilesAdapter()))),
         width=224, height=100)
 
+
 class MultiSelectAdapter(TabularAdapter):
-    columns = [ ('Payette Outputs', 'myvalue') ]
+    columns = [('Payette Outputs', 'myvalue')]
 
     myvalue_text = Property
 
     def _get_myvalue_text(self):
         return self.item
 
+
 class MultiSelect(HasPrivateTraits):
-    choices  = List(Str)
+    choices = List(Str)
     selected = List(Str)
     plot = Instance(Viz_Plot2D)
 
@@ -138,19 +147,20 @@ class MultiSelect(HasPrivateTraits):
         HGroup(
             UItem('choices',
                   editor=TabularEditor(
-                    show_titles=True,
-                    selected='selected',
-                    editable=False,
-                    multi_select=True,
-                    adapter=MultiSelectAdapter()))),
+                  show_titles=True,
+                  selected='selected',
+                  editable=False,
+                  multi_select=True,
+                  adapter=MultiSelectAdapter()))),
         width=224, height=568, resizable=True)
 
-    @on_trait_change( 'selected' )
-    def _selected_modified ( self, object, name, new ):
+    @on_trait_change('selected')
+    def _selected_modified(self, object, name, new):
         ind = []
         for i in object.selected:
-           ind.append(object.choices.index(i))
+            ind.append(object.choices.index(i))
         self.plot.change_plot(ind)
+
 
 class Viz_ModelPlot(HasStrictTraits):
 
@@ -188,7 +198,8 @@ class Viz_ModelPlot(HasStrictTraits):
 
         data = []
         for idx, file_path in enumerate(self.file_paths):
-            if idx == 0: mheader = pu.get_header(file_path)
+            if idx == 0:
+                mheader = pu.get_header(file_path)
             fnam = os.path.basename(file_path)
             self.plot_info[idx] = {fnam: pu.get_header(file_path)}
             data.append(pu.read_data(file_path))
@@ -196,7 +207,8 @@ class Viz_ModelPlot(HasStrictTraits):
             plot_data=data, variables=self.file_variables,
             x_idx=0, plot_info=self.plot_info)
         self.Multi_Select = MultiSelect(choices=mheader, plot=self.Plot_Data)
-        self.Change_Axis = ChangeAxis(Plot_Data=self.Plot_Data, headers=mheader)
+        self.Change_Axis = ChangeAxis(
+            Plot_Data=self.Plot_Data, headers=mheader)
         self.Single_Select_Overlay_Files = SingleSelectOverlayFiles(choices=[])
         pass
 
@@ -236,8 +248,10 @@ class Viz_ModelPlot(HasStrictTraits):
             _max = self.Plot_Data.abs_max_x()
             _max = 1. if _max < pu.EPSILON else _max
             scale = str(1. / _max)
-        try: scale = float(eval(scale, GDICT, LDICT))
-        except: return
+        try:
+            scale = float(eval(scale, GDICT, LDICT))
+        except:
+            return
         self.Plot_Data.change_plot(self.Plot_Data.plot_indices, x_scale=scale)
         return
 
@@ -275,15 +289,18 @@ class Viz_ModelPlot(HasStrictTraits):
             _max = self.Plot_Data.abs_max_y()
             _max = 1. if _max < pu.EPSILON else _max
             scale = str(1. / _max)
-        try: scale = float(eval(scale, GDICT, LDICT))
-        except: return
+        try:
+            scale = float(eval(scale, GDICT, LDICT))
+        except:
+            return
         self.Plot_Data.change_plot(self.Plot_Data.plot_indices, y_scale=scale)
         return
 
     def _Reload_Data_fired(self):
         data = []
         for idx, file_path in enumerate(self.file_paths):
-            if idx == 0: mheader = pu.get_header(file_path)
+            if idx == 0:
+                mheader = pu.get_header(file_path)
             fnam = os.path.basename(file_path)
             self.plot_info[idx] = {fnam: pu.get_header(file_path)}
             data.append(pu.read_data(file_path))
@@ -295,9 +312,12 @@ class Viz_ModelPlot(HasStrictTraits):
 
     def _Close_Overlay_fired(self):
         if self.Single_Select_Overlay_Files.selected:
-            index = self.Single_Select_Overlay_Files.choices.index(self.Single_Select_Overlay_Files.selected)
-            self.Single_Select_Overlay_Files.choices.remove(self.Single_Select_Overlay_Files.selected)
-            del self.Plot_Data.overlay_plot_data[self.Single_Select_Overlay_Files.selected]
+            index = self.Single_Select_Overlay_Files.choices.index(
+                self.Single_Select_Overlay_Files.selected)
+            self.Single_Select_Overlay_Files.choices.remove(
+                self.Single_Select_Overlay_Files.selected)
+            del self.Plot_Data.overlay_plot_data[
+                self.Single_Select_Overlay_Files.selected]
             if not self.Single_Select_Overlay_Files.choices:
                 self.Single_Select_Overlay_Files.selected = ""
             else:
@@ -345,14 +365,14 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
     """
 
     view = View(HSplit(
-            VGroup(
+        VGroup(
                 Item('Multi_Select', show_label=False, width=224,
                      height=668, springy=True, resizable=True),
                 Item('Change_Axis', show_label=False), ),
-            Item('Plot_Data', show_label=False, width=800, height=768,
-                 springy=True, resizable=True) ),
-                style='custom', width=1124, height=868,
-                resizable=True, title=window_name)
+        Item('Plot_Data', show_label=False, width=800, height=768,
+             springy=True, resizable=True)),
+        style='custom', width=1124, height=868,
+        resizable=True, title=window_name)
 
     if metadata is not None:
         metadata.plot.configure_traits(view=view)
@@ -373,7 +393,7 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
         output_files = []
         variables = []
         idx = sim_index.get_index()
-        for run,info in idx.iteritems():
+        for run, info in idx.iteritems():
             output_files.append(info['outfile'])
             s = []
             for var, val in info['variables'].iteritems():
@@ -393,7 +413,7 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
         variables = [""]
 
     view = View(HSplit(
-            VGroup(
+        VGroup(
                 Item('Multi_Select', show_label=False),
                 Item('Change_Axis', show_label=False),
                 Item('Reset_Zoom', show_label=False),
@@ -407,15 +427,17 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
                 VGroup(
                     HGroup(
                         Item('Load_Overlay', show_label=False, springy=True),
-                        Item('Close_Overlay', show_label=False, springy=True),),
+                        Item(
+                            'Close_Overlay', show_label=False, springy=True),),
                     Item('Single_Select_Overlay_Files', show_label=False,
                          resizable=False), show_border=True)),
-            Item('Plot_Data', show_label=False, width=800, height=768,
-                 springy=True, resizable=True)),
-                style='custom', width=1124, height=868,
-                resizable=True, title=window_name)
+        Item('Plot_Data', show_label=False, width=800, height=768,
+             springy=True, resizable=True)),
+        style='custom', width=1124, height=868,
+        resizable=True, title=window_name)
 
-    main_window = Viz_ModelPlot(file_paths=output_files, file_variables=variables)
+    main_window = Viz_ModelPlot(
+        file_paths=output_files, file_variables=variables)
     main_window.configure_traits(view=view, handler=handler)
 
 if __name__ == "__main__":

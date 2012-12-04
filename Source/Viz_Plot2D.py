@@ -34,13 +34,14 @@ from enthought.enable.api import Window, Component, ComponentEditor
 from enthought.traits.api import HasTraits, Instance, Array, List, Str, Int, Float, Bool, Dict, on_trait_change
 from enthought.traits.ui.api import Item, Group, View, RangeEditor
 from enthought.chaco.api import create_line_plot, add_default_axes, \
-        add_default_grids, PlotLabel, Plot, \
-        create_scatter_plot, DataLabel, ArrayPlotData
+    add_default_grids, PlotLabel, Plot, \
+    create_scatter_plot, DataLabel, ArrayPlotData
 from enthought.chaco.tools.api import PanTool, ZoomTool, \
-        TraitsTool, DragZoom
+    TraitsTool, DragZoom
 
 SIZE = (700, 600)
 LS = ['dot dash', 'dash', 'dot', 'long dash']
+
 
 class Viz_Plot2D(HasTraits):
     container = Instance(Plot)
@@ -55,7 +56,7 @@ class Viz_Plot2D(HasTraits):
     Time = Float
     high_time = Float
     low_time = Float
-    time_data_labels = Dict(Int,List)
+    time_data_labels = Dict(Int, List)
     runs_shown = List(Bool)
     x_scale = Float
     y_scale = Float
@@ -65,14 +66,14 @@ class Viz_Plot2D(HasTraits):
             Item('container', editor=ComponentEditor(size=SIZE),
                  show_label=False),
             Item('Time',
-                 editor = RangeEditor(low_name='low_time',
-                                      high_name='high_time',
-                                      format='%.1f',
-                                      label_width=28,
-                                      mode='auto' )),
+                 editor=RangeEditor(low_name='low_time',
+                                    high_name='high_time',
+                                    format='%.1f',
+                                    label_width=28,
+                                    mode='auto')),
             orientation="vertical"),
         resizable=True,
-        width=SIZE[0], height=SIZE[1]+100)
+        width=SIZE[0], height=SIZE[1] + 100)
 
     def __init__(self, **traits):
         HasTraits.__init__(self, **traits)
@@ -87,7 +88,8 @@ class Viz_Plot2D(HasTraits):
     def change_data_markers(self):
         ti = self.find_time_index()
         for d in range(len(self.plot_data)):
-            if d not in self.time_data_labels: continue
+            if d not in self.time_data_labels:
+                continue
 
             for i, y_idx in enumerate(self.plot_indices):
                 self.time_data_labels[d][i].data_point = (
@@ -180,7 +182,8 @@ class Viz_Plot2D(HasTraits):
             variables = self.variables[d]
             if len(variables) > 30:
                 variables = ", ".join(variables.split(",")[:-1])
-            if variables: variables = ": {0}".format(variables)
+            if variables:
+                variables = ": {0}".format(variables)
 
             self.time_data_labels[d] = []
             ti = self.find_time_index()
@@ -322,14 +325,19 @@ class Viz_Plot2D(HasTraits):
 
         """
         # get/set x_scale
-        if x_scale is None: x_scale = self.x_scale
-        else: self.x_scale = x_scale
+        if x_scale is None:
+            x_scale = self.x_scale
+        else:
+            self.x_scale = x_scale
 
         # get/set y_scale
-        if y_scale is None: y_scale = self.y_scale
-        else: self.y_scale = y_scale
+        if y_scale is None:
+            y_scale = self.y_scale
+        else:
+            self.y_scale = y_scale
 
         return x_scale, y_scale
+
 
 def get_index(list_, name):
     """Return the index for name in list_"""

@@ -25,7 +25,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import sys, os
+import sys
+import os
 import numpy
 import optparse
 
@@ -45,8 +46,8 @@ OUTPUT
 
 SILENT = False
 exe = "extractPayette"  # os.path.basename(__file__)
-manpage=\
-"""
+manpage =\
+    """
 NAME
       {0} - extract data from a Payette simulation output file
 
@@ -74,24 +75,25 @@ EXAMPLES
 
 kwtoken, coltoken = "@", "%"
 
-optokens = [ "+", "-", "*", "/", "**", "^" ]
+optokens = ["+", "-", "*", "/", "**", "^"]
 tokens = optokens + [kwtoken] + [coltoken]
-opchoices = ["","print"]
+opchoices = ["", "print"]
+
 
 def main(argv):
 
     usage =\
-"""
+        """
 {0}: extract columns of data from a Payette simulation output file.
   % {0} [options] file [@key1 [@key2 [...]]] [%col1 [%col2 [ %coln ]]]""".format(exe)
 
-    parser = optparse.OptionParser(usage = usage, version = "%prog 1.0")
+    parser = optparse.OptionParser(usage=usage, version="%prog 1.0")
     parser.add_option(
         "-s", "--sep",
         dest="SEP",
         action="store",
         type="choice",
-        choices=("space","tab","comma"),
+        choices=("space", "tab", "comma"),
         default="space",
         help=("output file column seperation format. "
               "[choices: (space, tab, comma) ] [default: space]"))
@@ -131,7 +133,7 @@ def main(argv):
         dest="OPP",
         action="store",
         default=None,
-        type="choice",choices=(None,"print"),
+        type="choice", choices=(None, "print"),
         help=("Operation to perform, choose from ({0})"
               .format(", ".join(opchoices))))
     parser.add_option(
@@ -159,6 +161,7 @@ def main(argv):
     if opts.DISP:
         return 0, extract_data
     return 0
+
 
 def extract(passed_args, sep="space", cols=False, silent=True,
             write_xout=False, step=1):
@@ -195,7 +198,7 @@ def extract(passed_args, sep="space", cols=False, silent=True,
 
         # only print out column names
         if cols:
-            print_cols(fnam,arg["file header"])
+            print_cols(fnam, arg["file header"])
             continue
 
         # open the file and extract only the data that the user asked for
@@ -206,11 +209,11 @@ def extract(passed_args, sep="space", cols=False, silent=True,
             if iline == 0 or not line.split() or line.split()[0] == "#":
                 continue
 
-            linedat = [ float(x) for x in line.split() ]
+            linedat = [float(x) for x in line.split()]
 
             extracted_data = []
             for item in to_extract:
-                oper = isinstance(item,(list,tuple))
+                oper = isinstance(item, (list, tuple))
 
                 if not oper:
                     # extract requested column
@@ -254,11 +257,14 @@ def extract(passed_args, sep="space", cols=False, silent=True,
 
     return data
 
+
 def ffrmt(x):
     return "{0:<12.5E}".format(x)
 
+
 def sfrmt(x):
     return "{0:<12s}".format(x)
+
 
 def message(msg):
     if SILENT:
@@ -266,11 +272,13 @@ def message(msg):
     sys.stdout.write("{0}: INFO: {1}\n".format(exe, msg))
     return
 
+
 class ExtractError(Exception):
     def __init__(self, message, errno):
         super(ExtractError, self).__init__(message)
 
-def args2dict(args,sep):
+
+def args2dict(args, sep):
 
     """
     PURPOSE
@@ -305,7 +313,7 @@ def args2dict(args,sep):
                 if len(linedat) != length:
                     sys.stderr.write(linedat, length)
                     msg = ("Number of columns in line {0} of {1} not consistent"
-                           .format(iline+1,argf))
+                           .format(iline + 1, argf))
                     raise ExtractError(msg, 6)
             continue
         fobj.close()
@@ -317,7 +325,7 @@ def args2dict(args,sep):
             nam = head_dict[kw.lower()]["nam"]
         except:
             msg = ("keyword {0} not in {1}, choose from:\n {2}"
-                   .format(kw,argf,header))
+                   .format(kw, argf, header))
             raise ExtractError(msg, 4)
 
         return col, nam
@@ -331,10 +339,11 @@ def args2dict(args,sep):
             raise ExtractError("non integer column number {0}".format(col), 7)
         except IndexError:
             msg = ("{0} has only {1} columns, requested column {2}"
-                   .format(argf,len(header.split()),col+1))
+                   .format(argf, len(header.split()), col + 1))
             raise ExtractError(msg, 8)
         except:
-            raise ExtractError("error processing {0} in {1}" .format(arg,args), 9)
+            raise ExtractError(
+                "error processing {0} in {1}" .format(arg, args), 9)
 
         col = coltoken + str(col)
         return col, nam
@@ -358,7 +367,7 @@ def args2dict(args,sep):
         arg_dict["file"] = argf
         arg_dict["extract"] = []
         arg_dict["extract header"] = []
-        fnam, fext =  os.path.splitext(argf)
+        fnam, fext = os.path.splitext(argf)
         header = open(argf).readline()
         head_dict = header2dict(header)
         arg_dict["file header"] = header.strip()
@@ -379,15 +388,15 @@ def args2dict(args,sep):
 
                 if len(arg) == 1:
                     # optoken on its own not allowed
-                    bad_op(arg,args)
+                    bad_op(arg, args)
 
                 elif arg[0] in optokens:
                     # beginning with optoken is ambiguous
-                    ambiguous_op(arg,args)
+                    ambiguous_op(arg, args)
 
                 elif arg[-1] in optokens:
                     # ending with optoken is ambiguous
-                    ambiguous_op(arg,args)
+                    ambiguous_op(arg, args)
 
                 else:
                     pass
@@ -396,29 +405,31 @@ def args2dict(args,sep):
                 # get column names
                 tmp = ""
                 for ii in arg:
-                    if ii in optokens: ii = " {0:s} ".format(ii)
+                    if ii in optokens:
+                        ii = " {0:s} ".format(ii)
                     tmp += ii
                     continue
-                tmpcol,tmpnam = [],[]
+                tmpcol, tmpnam = [], []
                 tmparg = [x for x in tmp.split(" ") if x]
-                for ix,x in enumerate(tmparg):
+                for ix, x in enumerate(tmparg):
                     if x[0] == kwtoken:
                         if len(x) == 1:
                             msg = "empty keyword identifier".format(args)
                             raise ExtractError(msg, 12)
-                        tmparg[ix],nam = kw2col(x[1:])
+                        tmparg[ix], nam = kw2col(x[1:])
                     elif x[0] == coltoken:
                         if len(x) == 1:
                             msg = "empty column identifier".format(args)
                             raise ExtractError(msg, 13)
-                        tmparg[ix],nam = col2col(x[1:])
+                        tmparg[ix], nam = col2col(x[1:])
                     else:
                         nam = x
                         pass
                     tmpnam.append(nam)
 
                     continue
-                arg_dict["extract header"].append("".join([x for x in tmpnam if x]))
+                arg_dict["extract header"].append(
+                    "".join([x for x in tmpnam if x]))
                 arg_dict["extract"].append(tmparg)
 
             else:
@@ -434,7 +445,7 @@ def args2dict(args,sep):
                         raise ExtractError(
                             "empty column identifier".format(args), 12)
                         pass
-                    arg,nam = col2col(arg[1:])
+                    arg, nam = col2col(arg[1:])
                 else:
                     nam = arg
                     pass
@@ -447,12 +458,12 @@ def args2dict(args,sep):
 
         # check that all extraction requests are valid
         for item in arg_dict["extract"]:
-            if isinstance(item,(list,tuple)):
-                xval = "".join([x.replace(coltoken,"") for x in item])
+            if isinstance(item, (list, tuple)):
+                xval = "".join([x.replace(coltoken, "") for x in item])
             else:
-                xval = item.replace(coltoken,"")
+                xval = item.replace(coltoken, "")
             try:
-                eval("".join([x.replace(coltoken,"") for x in item]))
+                eval("".join([x.replace(coltoken, "") for x in item]))
             except:
                 raise ExtractError(
                     "bad extraction request: {0}".format(item), 2)
@@ -466,33 +477,37 @@ def args2dict(args,sep):
 
     return parsed_args
 
+
 def header2dict(header):
     dicthead = {}
-    for i,item in enumerate(header.split()):
-        dicthead[item.lower()] = {"col":"{0}{1}".format(coltoken,i),
-                                  "nam":item}
+    for i, item in enumerate(header.split()):
+        dicthead[item.lower()] = {"col": "{0}{1}".format(coltoken, i),
+                                  "nam": item}
         continue
     return dicthead
 
-def bad_op(op,args):
+
+def bad_op(op, args):
     sys.stdout.write("""bad operation specification "{0}" in "{1}".
 Operations between entries must not be padded with any whitespace in the
 argument list.  i.e., specify @kw1+@kw2 and not @kw1 + @kw2"""
-                    .format(op," ".join(args)))
+                     .format(op, " ".join(args)))
     return 1
 
-def ambiguous_op(op,args):
+
+def ambiguous_op(op, args):
     sys.stdout.write("ambiguous operation specification '{0}' in '{1}'"
-                    .format(op," ".join(args)))
+                     .format(op, " ".join(args)))
     return 3
 
+
 def arg2list(arg):
-    if not isinstance(arg, (tuple,list)):
+    if not isinstance(arg, (tuple, list)):
         return [arg]
 
     flattened = []
     for item in arg:
-        if isinstance(item, (tuple,list)):
+        if isinstance(item, (tuple, list)):
             flattened.extend(flatten(item))
         else:
             flattened.append(item)
@@ -502,17 +517,19 @@ def arg2list(arg):
     return flattened
 
 
-def print_cols(fnam,header):
-    if not isinstance(header,list): header = header.split()
+def print_cols(fnam, header):
+    if not isinstance(header, list):
+        header = header.split()
     with open(fnam + ".cols", "w") as colf:
         for i, col in enumerate(header):
-            item = "{0:d}\t{1:s}\n".format(i+1, col)
+            item = "{0:d}\t{1:s}\n".format(i + 1, col)
             if not SILENT:
                 sys.stdout.write(item)
             colf.write(item)
             continue
         pass
     return
+
 
 class Logger(object):
 

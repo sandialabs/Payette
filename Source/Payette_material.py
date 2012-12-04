@@ -117,7 +117,6 @@ Payette developers.""".format(self.constitutive_model.name, cfg.LIBRARY)
 
         pass
 
-
     def register_default_data(self):
         """Register the default data for the material """
 
@@ -187,21 +186,21 @@ Payette developers.""".format(self.constitutive_model.name, cfg.LIBRARY)
         """Register default data to the matdat data container for eos jobs"""
 
         self.matdat.register("density", "Scalar",
-                                 iv=0.,
-                                 plot_key="rho",
-                                 units="DENSITY_UNITS")
+                             iv=0.,
+                             plot_key="rho",
+                             units="DENSITY_UNITS")
         self.matdat.register("temperature", "Scalar",
-                                 iv=0.,
-                                 plot_key="temp",
-                                 units="TEMPERATURE_UNITS")
+                             iv=0.,
+                             plot_key="temp",
+                             units="TEMPERATURE_UNITS")
         self.matdat.register("energy", "Scalar",
-                                 iv=0.,
-                                 plot_key="enrg",
-                                 units="SPECIFIC_ENERGY_UNITS")
+                             iv=0.,
+                             plot_key="enrg",
+                             units="SPECIFIC_ENERGY_UNITS")
         self.matdat.register("pressure", "Scalar",
-                                 iv=0.,
-                                 plot_key="pres",
-                                 units="PRESSURE_UNITS")
+                             iv=0.,
+                             plot_key="pres",
+                             units="PRESSURE_UNITS")
         return
 
     def material_data(self):

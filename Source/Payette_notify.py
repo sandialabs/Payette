@@ -28,7 +28,7 @@
 import os
 import sys
 import smtplib
-if sys.version_info < (3,0):
+if sys.version_info < (3, 0):
     from email.MIMEMultipart import MIMEMultipart
     from email.MIMEBase import MIMEBase
     from email.MIMEText import MIMEText
@@ -43,6 +43,7 @@ gmail_user = "csm.uofu@gmail.com"
 gmail_pwd = "thisiscsm"
 
 mailing_list = ["scot.swan@gmail.com"]
+
 
 def notify(subject, text):
     try:

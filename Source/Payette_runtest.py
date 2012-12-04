@@ -180,14 +180,14 @@ def main(argv, print_help=False):
         return
     (opts, args) = parser.parse_args(argv)
     sys.exit(test_payette(
-            opts.TESTRESDIR, args, builtin=opts.BUILTIN, keywords=opts.KEYWORDS,
-            nokeywords=opts.NOKEYWORDS, spectests=opts.SPECTESTS,
-            benchdirs=opts.BENCHDIRS, forcererun=opts.FORCERERUN,
-            nproc=opts.NPROC, postprocess=opts.POSTPROCESS,
-            notify=opts.NOTIFY, ignoreerror=opts.IGNOREERROR,
-            testfile=opts.TESTFILE, switch=opts.SWITCH,
-            rebaseline=opts.REBASELINE, index=opts.INDEX,
-            index_name=opts.INDEX_NAME, wipe=opts.WIPE))
+        opts.TESTRESDIR, args, builtin=opts.BUILTIN, keywords=opts.KEYWORDS,
+        nokeywords=opts.NOKEYWORDS, spectests=opts.SPECTESTS,
+        benchdirs=opts.BENCHDIRS, forcererun=opts.FORCERERUN,
+        nproc=opts.NPROC, postprocess=opts.POSTPROCESS,
+        notify=opts.NOTIFY, ignoreerror=opts.IGNOREERROR,
+        testfile=opts.TESTFILE, switch=opts.SWITCH,
+        rebaseline=opts.REBASELINE, index=opts.INDEX,
+        index_name=opts.INDEX_NAME, wipe=opts.WIPE))
 
 
 def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
@@ -263,7 +263,8 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
                 pyfile = line[1]
                 break
         else:
-            pu.report_and_raise_error("FILE not found in {0}".format(TEST_INFO))
+            pu.report_and_raise_error(
+                "FILE not found in {0}".format(TEST_INFO))
         _run_the_test(pyfile, postprocess=postprocess)
         return
 
@@ -361,7 +362,8 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
                 # load module
                 py_path = [os.path.dirname(py_file)]
                 fobj, pathname, description = imp.find_module(py_mod, py_path)
-                py_module = imp.load_module(py_mod, fobj, pathname, description)
+                py_module = imp.load_module(
+                    py_mod, fobj, pathname, description)
                 fobj.close()
                 test = py_module.Test()
 
@@ -390,8 +392,10 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
 
     # wipe directory if requested
     if wipe:
-        try: shutil.rmtree(testresdir)
-        except OSError: pass
+        try:
+            shutil.rmtree(testresdir)
+        except OSError:
+            pass
 
     # Make a TestResults directory named "TestResults.{platform}"
     if not os.path.isdir(testresdir):
@@ -486,15 +490,15 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
     str_date = datetime.datetime.today().strftime("%A, %d. %B %Y %I:%M%p")
 
     longtxtsummary = (
-         "=" * WIDTH_TERM + "\nLONG SUMMARY\n" +
-         "{0} benchmarks took {1:.2f}s.\n".format(len(conforming), t_run) +
-         "{0:^{1}}\n".format("{0:-^30}".format(" system information "),
-                             WIDTH_TERM) +
-         "   Date complete:    {0:<}\n".format(str_date) +
-         "   Username:         {0:<}\n".format(getpass.getuser()) +
-         "   Hostname:         {0:<}\n".format(os.uname()[1]) +
-         "   Platform:         {0:<}\n".format(cfg.OSTYPE) +
-         "   Python Version:   {0:<}\n".format(cfg.PYVER))
+        "=" * WIDTH_TERM + "\nLONG SUMMARY\n" +
+        "{0} benchmarks took {1:.2f}s.\n".format(len(conforming), t_run) +
+        "{0:^{1}}\n".format("{0:-^30}".format(" system information "),
+                            WIDTH_TERM) +
+        "   Date complete:    {0:<}\n".format(str_date) +
+        "   Username:         {0:<}\n".format(getpass.getuser()) +
+        "   Hostname:         {0:<}\n".format(os.uname()[1]) +
+        "   Platform:         {0:<}\n".format(cfg.OSTYPE) +
+        "   Python Version:   {0:<}\n".format(cfg.PYVER))
 
     # List each category (diff, fail, notrun, and pass) and the tests
     test_result_statuses = test_res.keys()
@@ -612,7 +616,8 @@ def _run_test(args):
     benchdir = os.path.join(testresdir, testbase, test.name)
 
     # check if benchmark has been run
-    ran = [(y, x) for y in old_results for x in old_results[y] if x == test.name]
+    ran = [(y, x) for y in old_results for x in old_results[y]
+           if x == test.name]
 
     if not (forcererun or testfile) and ran and os.path.isdir(benchdir):
         pu.log_message(
@@ -659,11 +664,11 @@ def _run_test(args):
             if not os.path.isfile(source):
                 pu.report_error(
                     "cannot symlink to non-existant file\n" +
-                    "os.symlink({0},{1})".format(repr(source),repr(link_name)))
+                    "os.symlink({0},{1})".format(repr(source), repr(link_name)))
             if os.path.isfile(link_name):
                 pu.report_error(
-                    "cannot create symlink when link destination exists\n"+
-                    "os.symlink({0},{1})".format(repr(source),repr(link_name)))
+                    "cannot create symlink when link destination exists\n" +
+                    "os.symlink({0},{1})".format(repr(source), repr(link_name)))
             os.symlink(
                 base_f,
                 os.path.join(benchdir, os.path.basename(base_f)))
@@ -680,7 +685,7 @@ def _run_test(args):
     # check for switching
     if (test.material is not None and
         switch is not None and
-        test.material.lower() == switch[0]):
+            test.material.lower() == switch[0]):
             # switch the material
             _switch_materials(files=test_files, switch=switch)
 
@@ -711,7 +716,7 @@ def write_html_summary(fname, results):
     #                               "keywords":keywords } } } }
     resd = os.path.dirname(fname)
     npass, nfail, ndiff, nskip = [len(results[x]) for x in
-                               ["pass", "fail", "diff", "notrun"]]
+                                  ["pass", "fail", "diff", "notrun"]]
     with open(fname, "w") as fobj:
         # write header
         fobj.write("<html>\n<head>\n<title>Test Results</title>\n</head>\n")
@@ -809,7 +814,7 @@ def _copy_mathematica_nbs(mathnbs, destdir):
 def _switch_materials(files, switch):
     """switch materials"""
     pat = re.compile(r"\bconstitutive\s*model\s*{0}"
-                     .format(switch[0]), re.I|re.M)
+                     .format(switch[0]), re.I | re.M)
     repl = "constitutive model {0}".format(switch[1])
     for fname in files:
         lines = open(fname, "r").read()
@@ -832,8 +837,10 @@ def rebaseline_tests(args):
     if not args:
         args = list(set([os.path.splitext(os.path.basename(x))[0]
                          for x in os.listdir(os.getcwd())]))
-        try: args.remove(".test")
-        except: pass
+        try:
+            args.remove(".test")
+        except:
+            pass
         if len(args) > 1:
             print args
             sys.stdout.write("Could not determine which test to rebaseline\n")

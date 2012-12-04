@@ -30,7 +30,8 @@ variables from a known Payette result and a simulated result. Using "versus"
 time computes error of slope.
 
 """
-import os, sys
+import os
+import sys
 import numpy as np
 import Source.Payette_utils as pu
 import Source.Payette_extract as pe

@@ -47,6 +47,7 @@ ACCLIM = .0001 / 100.
 EPSILON = np.finfo(np.float).eps
 TOL = 1.E-09
 
+
 def eos_driver(the_model, **kwargs):
     """
     NAME
@@ -106,12 +107,12 @@ def eos_driver(the_model, **kwargs):
 
     if not UnitManager.is_valid_unit_system(input_unit_system):
         pu.report_and_raise_error(
-              "Input unit system '{0}' is not a valid unit system"
-              .format(input_unit_system))
+            "Input unit system '{0}' is not a valid unit system"
+            .format(input_unit_system))
     if not UnitManager.is_valid_unit_system(output_unit_system):
         pu.report_and_raise_error(
-              "Output unit system '{0}' is not a valid unit system"
-              .format(output_unit_system))
+            "Output unit system '{0}' is not a valid unit system"
+            .format(output_unit_system))
 
     pu.log_message("Input unit system: {0}".format(input_unit_system))
     pu.log_message("Output unit system: {0}".format(output_unit_system))
@@ -155,7 +156,8 @@ def eos_driver(the_model, **kwargs):
                                        rho=rho, temp=temp)
                 matdat.advance()
                 simdat.advance()
-                the_model.write_state(iu=input_unit_system, ou=output_unit_system)
+                the_model.write_state(
+                    iu=input_unit_system, ou=output_unit_system)
                 ro.ISTEP += 1
 
         pu.log_message("End surface")
@@ -228,7 +230,7 @@ def eos_driver(the_model, **kwargs):
         init_temperature = init_temperature_MKSK
 
         eos_model.evaluate_eos(simdat, matdat, input_unit_system,
-                               rho = init_density, temp = init_temperature)
+                               rho=init_density, temp=init_temperature)
 
         init_energy = matdat.get("energy")
         init_pressure = matdat.get("pressure")
@@ -260,28 +262,29 @@ def eos_driver(the_model, **kwargs):
             # x_n+1 = x_n - f(E)/(df(E)/dE)
 
             r = rho
-            a = (1./init_density - 1./r)/2.
+            a = (1. / init_density - 1. / r) / 2.
 
             converged_idx = 0
             CONVERGED = False
             while not CONVERGED:
                 converged_idx += 1
                 eos_model.evaluate_eos(simdat, matdat, input_unit_system,
-                                       rho = r, enrg = e)
+                                       rho=r, enrg=e)
 
-                f = (matdat.get("pressure") + init_pressure)*a - e + init_energy
-                df = matdat.get("dpdt")/matdat.get("dedt")*a - 1.0
-                e = e - f/df
-                errval = abs(f/init_energy)
+                f = (matdat.get(
+                    "pressure") + init_pressure) * a - e + init_energy
+                df = matdat.get("dpdt") / matdat.get("dedt") * a - 1.0
+                e = e - f / df
+                errval = abs(f / init_energy)
                 if errval < TOL:
                     CONVERGED = True
                     if converged_idx > 100:
                         pu.log_message(
-                         "Max iterations reached (tol={0:14.10e}).\n".format(TOL) +
-                         "rel error   = {0:14.10e}\n".format(float(errval)) +
-                         "abs error   = {0:14.10e}\n".format(float(f)) +
-                         "func val    = {0:14.10e}\n".format(float(f)) +
-                         "init_energy = {0:14.10e}\n".format(float(init_energy)))
+                            "Max iterations reached (tol={0:14.10e}).\n".format(TOL) +
+                            "rel error   = {0:14.10e}\n".format(float(errval)) +
+                            "abs error   = {0:14.10e}\n".format(float(f)) +
+                            "func val    = {0:14.10e}\n".format(float(f)) +
+                            "init_energy = {0:14.10e}\n".format(float(init_energy)))
                         break
 
             matdat.advance()
@@ -366,7 +369,8 @@ def solid_driver(the_model, **kwargs):
         if ro.WRITERESTART:
             pu.log_message("restart file will be generated")
         if ro.WRITE_VANDD_TABLE:
-            pu.log_message("velocity and displacement tables will be generated")
+            pu.log_message(
+                "velocity and displacement tables will be generated")
 
     # --- call the material model with zero state
     if ileg == 0:
@@ -420,7 +424,8 @@ def solid_driver(the_model, **kwargs):
         E0 = matdat.get("strain", copy=True)
         P0 = matdat.get("stress", copy=True)
         F0 = matdat.get("deformation gradient", copy=True)
-        if ro.EFIELD_SIM: EF0 = matdat.get("electric field", copy=True)
+        if ro.EFIELD_SIM:
+            EF0 = matdat.get("electric field", copy=True)
 
         if verbose:
             pu.log_message(cons_msg.format(lnum, lnl, 1, lns, t_beg, dt))
@@ -509,7 +514,7 @@ def solid_driver(the_model, **kwargs):
 
             if len(V):
                 # prescribed stress components given
-                Pt = a1 * PS0 + a2 * PSf # target stress
+                Pt = a1 * PS0 + a2 * PSf  # target stress
 
             # advance known values to end of step
             simdat.store("time", t)
@@ -561,7 +566,6 @@ def solid_driver(the_model, **kwargs):
                 "equivalent strain",
                 np.sqrt(2. / 3. * (sum(Ec[:3] ** 2) + 2. * sum(Ec[3:] ** 2))))
 
-
             # udpate density
             dev = pt.trace(matdat.get("rate of deformation")) * dt
             rho_old = simdat.get("payette density")
@@ -577,7 +581,7 @@ def solid_driver(the_model, **kwargs):
             matdat.store("pressure", -np.sum(Pc[:3]) / 3.)
 
             # --- write state to file
-            if (nsteps-n) % print_interval == 0:
+            if (nsteps - n) % print_interval == 0:
                 the_model.write_state()
 
             if simdat.SCREENOUT or (verbose and (2 * n - nsteps) == 0):
@@ -627,7 +631,7 @@ def solid_driver(the_model, **kwargs):
             # -------------------------------------------- end{end of step SQA}
             simdat.store("istep", ro.ISTEP)
 
-            continue # continue to next step
+            continue  # continue to next step
         # ------------------------------------------------ end{processing step}
 
         # --- pass quantities from end of leg to beginning of new leg
@@ -688,7 +692,7 @@ def solid_driver(the_model, **kwargs):
 
         # ------------------------------------------------- end{end of leg SQA}
 
-        continue # continue to next leg
+        continue  # continue to next leg
     # ----------------------------------------------------- end{processing leg}
 
     return 0

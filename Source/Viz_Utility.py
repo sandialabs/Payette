@@ -34,6 +34,7 @@ import Payette_xml_parser as px
 
 from Viz_ModelData import PayetteModel, PayetteModelParameter, PayetteMaterial, PayetteMaterialParameter
 
+
 class MessageBox(HasTraits):
     """
     Similar to the traits ui dialog box, this one has slightly better
@@ -46,6 +47,7 @@ class MessageBox(HasTraits):
     button_ = Button
     result = String
 
+
 class MessageBoxHandler(Handler):
     def setattr(self, info, object, name, value):
         if 'button' in name:
@@ -55,7 +57,8 @@ class MessageBoxHandler(Handler):
     def close(self, info, is_ok):
         return
 
-def message_box(message, title='Message', buttons = ['OK']):
+
+def message_box(message, title='Message', buttons=['OK']):
     button_group = HGroup(padding=10, springy=True)
     view = View(
         VGroup(
@@ -67,7 +70,7 @@ def message_box(message, title='Message', buttons = ['OK']):
         width=480,
         kind='livemodal',
         buttons=NoButtons,
-        handler = MessageBoxHandler()
+        handler=MessageBoxHandler()
     )
 
     button_return_values = {}
@@ -85,9 +88,10 @@ def message_box(message, title='Message', buttons = ['OK']):
 
     button_group.content.append(Spring())
 
-    box.configure_traits(view = view)
+    box.configure_traits(view=view)
 
     return box.result
+
 
 def loadModelMaterials(model_index, model_name):
     if model_name not in model_index.constitutive_models():
@@ -106,10 +110,13 @@ def loadModelMaterials(model_index, model_name):
                 key, default = param
                 if key == "Units":
                     continue
-                parameters.append(PayetteMaterialParameter(name = key, default = default))
-            materials.append(PayetteMaterial(name = name, aliases = aliases, defaults = parameters))
+                parameters.append(
+                    PayetteMaterialParameter(name=key, default=default))
+            materials.append(PayetteMaterial(
+                name=name, aliases=aliases, defaults=parameters))
 
     return materials
+
 
 def loadModels(model_type='any'):
     models = []
@@ -125,12 +132,15 @@ def loadModels(model_type='any'):
         params = []
         for param in cmod_obj.get_parameter_names_and_values():
             params.append(
-                PayetteModelParameter(name = param[0], description = param[1], distribution = 'Specified',
-                                      specified = param[2])
+                PayetteModelParameter(
+                    name=param[0], description=param[1],
+                    distribution='Specified', specified=param[2])
             )
 
-        model = PayetteModel(model_name = model_name, parameters = params, model_type = [cmod_obj.material_type],
-                            materials=loadModelMaterials(model_index, model_name))
+        model = PayetteModel(
+            model_name=model_name, parameters=params, model_type=[
+                cmod_obj.material_type],
+            materials=loadModelMaterials(model_index, model_name))
         models.append(model)
 
     return models

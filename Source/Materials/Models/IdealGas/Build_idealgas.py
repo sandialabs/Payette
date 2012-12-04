@@ -25,10 +25,12 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import os, sys
+import os
+import sys
 
 from Source.Payette_material_builder import MaterialBuilder
 from Source.Payette_build import BuildError as BuildError
+
 
 class Build(MaterialBuilder):
 
@@ -42,5 +44,6 @@ class Build(MaterialBuilder):
             self, name, libname, srcd, libdir, compiler_info)
 
         pass
+
     def build_extension_module(self, *args, **kwargs):
         pass

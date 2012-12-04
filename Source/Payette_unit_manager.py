@@ -28,6 +28,7 @@
 import sys
 import Source.Payette_utils as pu
 
+
 class UnitManager:
     """
     CLASS NAME
@@ -54,78 +55,78 @@ class UnitManager:
     # Meters, Kilograms, Seconds, Kelvin, Mole, ampere, candella
     # Please see "Model Interface Guidelines" SAND96-2000, August 1996
     # Appendix C for more information (available from www.osti.gov/bridge/).
-    valid_systems = {\
-             "SI": [1,    1,     1,      1,           1, 1, 1],
-           "MKSK": [1,    1,     1,      1,           1, 1, 1],
-           "CGSK": [0.01, 0.001, 1,      1,           1, 1, 1],
-          "CGSEV": [0.01, 0.001, 1,   1.0 / 8.617343e-5, 1, 1, 1],
-         "SESAME": [0.01, 0.001, 1.0e-5, 1,           1, 1, 1],
-          "SHOCK": [0.01, 0.001, 1.0e-6, 8.617343e-5, 1, 1, 1]}
+    valid_systems = {
+        "SI": [1, 1, 1, 1, 1, 1, 1],
+        "MKSK": [1, 1, 1, 1, 1, 1, 1],
+        "CGSK": [0.01, 0.001, 1, 1, 1, 1, 1],
+        "CGSEV": [0.01, 0.001, 1, 1.0 / 8.617343e-5, 1, 1, 1],
+        "SESAME": [0.01, 0.001, 1.0e-5, 1, 1, 1, 1],
+        "SHOCK": [0.01, 0.001, 1.0e-6, 8.617343e-5, 1, 1, 1]}
 
     # The following are aliases to define dimensions for given quantities.
     # Feel free to define your own or use "Model Interface Guidelines"
     # SAND96-2000, August 1996 Appendix B for more information (available
     # from www.osti.gov/bridge/).
-    valid_dim_aliases = {\
-                     "UNITLESS":  [0,  0,  0,  0,  0,  0,  0],
-                       "LENGTH":  [1,  0,  0,  0,  0,  0,  0],
-                         "MASS":  [0,  1,  0,  0,  0,  0,  0],
-                         "TIME":  [0,  0,  1,  0,  0,  0,  0],
-                  "TEMPERATURE":  [0,  0,  0,  1,  0,  0,  0],
-              "DISCRETE_AMOUNT":  [0,  0,  0,  0,  1,  0,  0],
-             "ELECTRIC_CURRENT":  [0,  0,  0,  0,  0,  1,  0],
-           "LUMINOUS_INTENSITY":  [0,  0,  0,  0,  0,  0,  1],
-                     # Common Lambda and Alegra units
-                "DENSITY_UNITS": [-3,  1,  0,  0,  0,  0,  0],
-            "TEMPERATURE_UNITS":  [0,  0,  0,  1,  0,  0,  0],
-               "VELOCITY_UNITS":  [1,  0, -1,  0,  0,  0,  0],
-          "SPECIFIC_HEAT_UNITS":  [2,  0, -2, -1,  0,  0,  0],
-        "SPECIFIC_ENERGY_UNITS":  [2,  0, -2,  0,  0,  0,  0],
-               "PRESSURE_UNITS": [-1,  1, -2,  0,  0,  0,  0],
-              "VISCOSITY_UNITS": [-1,  1, -1,  0,  0,  0,  0],
-                 "VOLUME_UNITS":  [3,  0,  0,  0,  0,  0,  0],
-                     # Lambda units
-                     "NO_UNITS":  [0,  0,  0,  0,  0,  0,  0],
-           "INV_PRESSURE_UNITS":  [1, -1,  2,  0,  0,  0,  0],
-        "INV_TEMPERATURE_UNITS":  [0,  0,  0, -1,  0,  0,  0],
-               "INV_TIME_UNITS":  [0,  0, -1,  0,  0,  0,  0],
-                     # Alegra units
-         "NONDIMENSIONAL_UNTIS":  [0,  0,  0,  0,  0,  0,  0],
-           "PRESSURE_INV_UNITS":  [1, -1,  2,  0,  0,  0,  0],
-   "PRESSURE_OVER_LENGTH_UNITS": [-2,  1, -2,  0,  0,  0,  0],
-        "PRESSURE_INV_UNITS_SQ":  [2, -2, -4,  0,  0,  0,  0],
-               "TIME_INV_UNITS":  [0,  0, -1,  0,  0,  0,  0],
-                     # Suggested Lambda Units
-                 "LENGTH_UNITS":  [1,  0,  0,  0,  0,  0,  0],
-                   "MASS_UNITS":  [0,  1,  0,  0,  0,  0,  0],
-                   "TIME_UNITS":  [0,  0,  1,  0,  0,  0,  0],
-                   "RATE_UNITS":  [0,  0, -1,  0,  0,  0,  0],
-   "SQUARED_INV_PRESSURE_UNITS":  [2, -2, -4,  0,  0,  0,  0],
-              "STIFFNESS_UNITS": [-2,  1, -2,  0,  0,  0,  0],
-              "VORTICITY_UNITS":  [0,  0, -1,  0,  0,  0,  0],
-                     # Not specified
-                "NOT_SPECIFIED":  [0,  0,  0,  0,  0,  0,  0],
-                     # non-base    m   kg  s   K   n   A   lu
-                     "POSITION":  [1,  0,  0,  0,  0,  0,  0],
-                     "VELOCITY":  [1,  0, -1,  0,  0,  0,  0],
-                 "ACCELERATION":  [1,  0, -2,  0,  0,  0,  0],
-                        "FORCE":  [1,  1, -2,  0,  0,  0,  0],
-                       "STRESS": [-1,  1, -2,  0,  0,  0,  0],
-                       "STRAIN":  [0,  0,  0,  0,  0,  0,  0],
-                      "DENSITY": [-3,  1,  0,  0,  0,  0,  0],
-       "SPECIFIC HEAT CAPACITY":  [2,  0, -2, -1,  0,  0,  0],
-                       "VOLUME":  [3,  0,  0,  0,  0,  0,  0],
-                 "ENERGY_UNITS":  [2,  1, -2,  0,  0,  0,  0],
-           "GAS_CONSTANT_UNITS":  [2,  1, -2, -1, -1,  0,  0],  # energy / temp / mole
-            "CAPACITANCE_UNITS": [-2, -1,  4,  0,  0,  2,  0],
-           "PERMITTIVITY_UNITS": [-3, -1,  4,  0,  0,  2,  0],
-           "INV_PERMITTIVITY_UNITS": [3, 1,  -4,  0,  0,  -2,  0],
-             "RESISTANCE_UNITS":  [2,  1, -3,  0,  0, -2,  0],  # Ohm
-     "ELECTRIC_POTENTIAL_UNITS":  [2,  1, -3,  0,  0, -1,  0],  # Volt
-         "ELECTRIC_FIELD_UNITS":  [1,  1, -3,  0,  0, -1,  0],  # Volt / meter
-         "POLARIZATION_UNITS": [0,  0,  0,  0,  0,  0,  0],  #
-         "INV_POLARIZATION_UNITS_SQ": [0,  0,  0,  0,  0,  0,  0],  #
-                               }
+    valid_dim_aliases = {
+        "UNITLESS": [0, 0, 0, 0, 0, 0, 0],
+        "LENGTH": [1, 0, 0, 0, 0, 0, 0],
+        "MASS": [0, 1, 0, 0, 0, 0, 0],
+        "TIME": [0, 0, 1, 0, 0, 0, 0],
+        "TEMPERATURE": [0, 0, 0, 1, 0, 0, 0],
+        "DISCRETE_AMOUNT": [0, 0, 0, 0, 1, 0, 0],
+        "ELECTRIC_CURRENT": [0, 0, 0, 0, 0, 1, 0],
+        "LUMINOUS_INTENSITY": [0, 0, 0, 0, 0, 0, 1],
+        # Common Lambda and Alegra units
+        "DENSITY_UNITS": [-3, 1, 0, 0, 0, 0, 0],
+        "TEMPERATURE_UNITS": [0, 0, 0, 1, 0, 0, 0],
+        "VELOCITY_UNITS": [1, 0, -1, 0, 0, 0, 0],
+        "SPECIFIC_HEAT_UNITS": [2, 0, -2, -1, 0, 0, 0],
+        "SPECIFIC_ENERGY_UNITS": [2, 0, -2, 0, 0, 0, 0],
+        "PRESSURE_UNITS": [-1, 1, -2, 0, 0, 0, 0],
+        "VISCOSITY_UNITS": [-1, 1, -1, 0, 0, 0, 0],
+        "VOLUME_UNITS": [3, 0, 0, 0, 0, 0, 0],
+        # Lambda units
+        "NO_UNITS": [0, 0, 0, 0, 0, 0, 0],
+        "INV_PRESSURE_UNITS": [1, -1, 2, 0, 0, 0, 0],
+        "INV_TEMPERATURE_UNITS": [0, 0, 0, -1, 0, 0, 0],
+        "INV_TIME_UNITS": [0, 0, -1, 0, 0, 0, 0],
+        # Alegra units
+        "NONDIMENSIONAL_UNTIS": [0, 0, 0, 0, 0, 0, 0],
+        "PRESSURE_INV_UNITS": [1, -1, 2, 0, 0, 0, 0],
+        "PRESSURE_OVER_LENGTH_UNITS": [-2, 1, -2, 0, 0, 0, 0],
+        "PRESSURE_INV_UNITS_SQ": [2, -2, -4, 0, 0, 0, 0],
+        "TIME_INV_UNITS": [0, 0, -1, 0, 0, 0, 0],
+        # Suggested Lambda Units
+        "LENGTH_UNITS": [1, 0, 0, 0, 0, 0, 0],
+        "MASS_UNITS": [0, 1, 0, 0, 0, 0, 0],
+        "TIME_UNITS": [0, 0, 1, 0, 0, 0, 0],
+        "RATE_UNITS": [0, 0, -1, 0, 0, 0, 0],
+        "SQUARED_INV_PRESSURE_UNITS": [2, -2, -4, 0, 0, 0, 0],
+        "STIFFNESS_UNITS": [-2, 1, -2, 0, 0, 0, 0],
+        "VORTICITY_UNITS": [0, 0, -1, 0, 0, 0, 0],
+        # Not specified
+        "NOT_SPECIFIED": [0, 0, 0, 0, 0, 0, 0],
+        # non-base    m   kg  s   K   n   A   lu
+        "POSITION": [1, 0, 0, 0, 0, 0, 0],
+        "VELOCITY": [1, 0, -1, 0, 0, 0, 0],
+        "ACCELERATION": [1, 0, -2, 0, 0, 0, 0],
+        "FORCE": [1, 1, -2, 0, 0, 0, 0],
+        "STRESS": [-1, 1, -2, 0, 0, 0, 0],
+        "STRAIN": [0, 0, 0, 0, 0, 0, 0],
+        "DENSITY": [-3, 1, 0, 0, 0, 0, 0],
+        "SPECIFIC HEAT CAPACITY": [2, 0, -2, -1, 0, 0, 0],
+        "VOLUME": [3, 0, 0, 0, 0, 0, 0],
+        "ENERGY_UNITS": [2, 1, -2, 0, 0, 0, 0],
+        "GAS_CONSTANT_UNITS": [2, 1, -2, -1, -1, 0, 0],  # energy / temp / mole
+        "CAPACITANCE_UNITS": [-2, -1, 4, 0, 0, 2, 0],
+        "PERMITTIVITY_UNITS": [-3, -1, 4, 0, 0, 2, 0],
+        "INV_PERMITTIVITY_UNITS": [3, 1, -4, 0, 0, -2, 0],
+        "RESISTANCE_UNITS": [2, 1, -3, 0, 0, -2, 0],  # Ohm
+        "ELECTRIC_POTENTIAL_UNITS": [2, 1, -3, 0, 0, -1, 0],  # Volt
+        "ELECTRIC_FIELD_UNITS": [1, 1, -3, 0, 0, -1, 0],  # Volt / meter
+        "POLARIZATION_UNITS": [0, 0, 0, 0, 0, 0, 0],
+        "INV_POLARIZATION_UNITS_SQ": [0, 0, 0, 0, 0, 0, 0],
+    }
 
     @classmethod
     def is_valid_unit_system(cls, unit_system):
@@ -165,7 +166,7 @@ class UnitManager:
             for dum in units[1:]:
                 if dum not in cls.valid_dim_aliases.keys():
                     return []
-                for i in range(0,7):
+                for i in range(0, 7):
                     retunits[i] -= cls.valid_dim_aliases[dum][i]
             return [x for x in retunits]
         else:
@@ -183,11 +184,11 @@ class UnitManager:
         # the class (particularly the valid unit systems and dimension
         # aliases).
         class_info = ("{0:=^50}".format(" Unit Manager Class Information ") +
-               "\n\nList of valid unit systems:\n" +
-               "\n".join(["    " + x for x in cls.valid_systems.keys()]) +
-               "\n\nList of valid dimension aliases:\n" +
-               "\n".join(["    " + x for x in cls.valid_dim_aliases.keys()]) +
-               "\n")
+                      "\n\nList of valid unit systems:\n" +
+                      "\n".join(["    " + x for x in cls.valid_systems.keys()]) +
+                      "\n\nList of valid dimension aliases:\n" +
+                      "\n".join(["    " + x for x in cls.valid_dim_aliases.keys()]) +
+                      "\n")
         return class_info
 
     def __init__(self, value, unit_system, base_dim):
@@ -208,7 +209,6 @@ class UnitManager:
         if not self.dimensions:
             pu.report_and_raise_error(
                 "Cannot process units '{0}'".format(repr(base_dim)))
-
 
     def get(self, system=None):
         """ Return the stored value (in a different unit system, if given) """
@@ -234,10 +234,12 @@ class UnitManager:
             except:
                 sys.stderr.write("{0:^79}".format(" DEBUG INFORMATION "))
                 sys.stderr.write("original val = {0:.14e}".format(self.val))
-                sys.stderr.write("tmp *= (curr_sys_fac / new_sys_fac) ** dim_exp")
+                sys.stderr.write(
+                    "tmp *= (curr_sys_fac / new_sys_fac) ** dim_exp")
                 sys.stderr.write("dimensions   = {0}".format(self.dimensions))
                 sys.stderr.write("tmp          = {0:.14e}".format(tmp))
-                sys.stderr.write("curr_sys_fac = {0:.14e}".format(curr_sys_fac))
+                sys.stderr.write(
+                    "curr_sys_fac = {0:.14e}".format(curr_sys_fac))
                 sys.stderr.write("new_sys_fac  = {0:.14e}".format(new_sys_fac))
                 sys.stderr.write("dim_exp      = {0:.14e}".format(dim_exp))
                 sys.exit()
@@ -261,7 +263,7 @@ class UnitManager:
                "              amount {6}\n"
                "    electric current {7}\n"
                "  luminous intensity {8}\n".
-              format(self.val, self.system, *self.dimensions))
+               format(self.val, self.system, *self.dimensions))
         return msg
 
     def update(self, newval):
@@ -329,7 +331,7 @@ class UnitManager:
 
     def __floordiv__(self, y):
         raise TypeError("'UnitManager.__floordiv__' not implemented.")
-        #return self.clone(self.get() // y.get())
+        # return self.clone(self.get() // y.get())
 
     def __format__(self, format_sped):
         raise TypeError("'UnitManager.__format__' not implemented.")
@@ -390,7 +392,7 @@ class UnitManager:
                         " opens a giant can of worms that really shouldn't" +
                         " be forced on anyone. Please, just say x*x or" +
                         " 1.0/(x*x) etc. for your powers.")
-        #return self.clone(pow(self.get(), args))
+        # return self.clone(pow(self.get(), args))
 
     def __radd__(self, y):
         if self.dimensions != y.dimensions:
@@ -408,14 +410,14 @@ class UnitManager:
 
     def __rdivmod__(self, y):
         raise TypeError("'UnitManager.__rdivmod__' not implemented.")
-        #return self.clone(divmod(y.get(), self.get()))
+        # return self.clone(divmod(y.get(), self.get()))
 
     def __repr__(self):
         return self.value_info()
 
     def __rfloordiv__(self, y):
         raise TypeError("'UnitManager.__rfloordiv__' not implemented.")
-        #return self.clone(y.get() // self.get())
+        # return self.clone(y.get() // self.get())
 
     def __rmod__(self, y):
         if self.dimensions != y.dimensions:
@@ -468,6 +470,7 @@ class UnitManager:
     def __trunc__(self, y):
         return self.clone(self.get().__trunc__())
 
+
 def unit_tests():
     def unit_test(val, input_units, val_good, output_units, dim):
         msg = ("\nUnit test: {0}".format(dim) +
@@ -485,10 +488,10 @@ def unit_tests():
         return msg + "\n"
 
     out = ""
-    out += unit_test(1.0,    "SI", 100.0, "CGSK",   "length")
-    out += unit_test(1.0,  "CGSK", 0.01,  "SI",     "length")
-    out += unit_test(1.0e9,  "SI", 1.0,   "SESAME", "stress")
-    out += unit_test(1.0e9,  "SI", 0.01,  "SHOCK",  "stress")
+    out += unit_test(1.0, "SI", 100.0, "CGSK", "length")
+    out += unit_test(1.0, "CGSK", 0.01, "SI", "length")
+    out += unit_test(1.0e9, "SI", 1.0, "SESAME", "stress")
+    out += unit_test(1.0e9, "SI", 0.01, "SHOCK", "stress")
     if "FAIL" in out:
         sys.exit(out)
     return
@@ -514,6 +517,6 @@ if __name__ == "__main__":
         sys.stderr.write("ERROR: Must give a valid float value")
         usage()
 
-    #def convert(cls, value, units, input_unit_system, output_unit_system):
+    # def convert(cls, value, units, input_unit_system, output_unit_system):
     sys.stderr.write("Converted: {0}".format(
-            UnitManager.transform(val, sys.argv[4], sys.argv[2], sys.argv[3])))
+        UnitManager.transform(val, sys.argv[4], sys.argv[2], sys.argv[3])))

@@ -33,6 +33,7 @@ import Payette_utils as pu
 
 import random
 
+
 class TraitPositiveInteger(BaseInt):
 
     default_value = 1
@@ -46,10 +47,12 @@ class TraitPositiveInteger(BaseInt):
     def info(self):
         return 'a positive integer'
 
+
 class PayetteModelParameter(HasStrictTraits):
     name = String
     description = String
-    distribution = Enum('Specified', '+/-', 'Range', 'Uniform', 'Normal', 'AbsGaussian', 'Weibull')
+    distribution = Enum('Specified', '+/-', 'Range', 'Uniform',
+                        'Normal', 'AbsGaussian', 'Weibull')
     value = Property
     default = Property
     specified = String("0")
@@ -142,20 +145,25 @@ class PayetteModelParameter(HasStrictTraits):
             ),
             layout='tabbed'
         ),
-        buttons=['OK','Cancel']
+        buttons=['OK', 'Cancel']
     )
+
 
 class PayetteMaterialParameter(HasStrictTraits):
     name = String
     default = String
+
 
 class PayetteMaterial(HasStrictTraits):
     name = String
     aliases = String
     defaults = List(Instance(PayetteMaterialParameter))
 
+
 class PayetteMaterialAdapter(TabularAdapter):
-    columns = [('Materials Available for Selected Model', 'name'), ('Description/Aliases', 'aliases')]
+    columns = [('Materials Available for Selected Model', 'name'), (
+        'Description/Aliases', 'aliases')]
+
 
 class PayetteEOSBoundary(HasStrictTraits):
     path_increments = TraitPositiveInteger(10000)
@@ -175,6 +183,7 @@ class PayetteEOSBoundary(HasStrictTraits):
     def _max_density_changed(self, info):
         self.auto_density = False
 
+
 class PayetteLeg(HasStrictTraits):
     time = Float(0.0)
     nsteps = Int(0)
@@ -189,6 +198,7 @@ class PayetteLeg(HasStrictTraits):
             Item('components')
         )
     )
+
 
 class PayetteModel(HasStrictTraits):
     model_name = String
@@ -221,7 +231,7 @@ class PayetteModel(HasStrictTraits):
                              'Time': 'time',
                              'Delta Time': 'dtime'
                          }
-                        )
+                         )
     leg_data_time_names = Property(String, depends_on='leg_data_time')
     selected_leg_data_time = String
     leg_data_type = Dict(String, Tuple(String, Int),
@@ -236,7 +246,7 @@ class PayetteModel(HasStrictTraits):
                              'VStrain': ('vstrain', 1),
                              'Pressure': ('pressure', 1),
                          }
-                        )
+                         )
     leg_data_type_names = Property(String, depends_on='leg_data_type')
     selected_leg_data_type = String
     leg_data_columns = List(String)
@@ -315,33 +325,45 @@ class PayetteModel(HasStrictTraits):
     def _leg_defaults_changed(self, info):
         if info == 'Uniaxial Strain':
             self.legs = [
-                PayetteLeg(time=0, nsteps=0, types='222222', components='0 0 0 0 0 0'),
-                PayetteLeg(time=1, nsteps=100, types='222222', components='1 0 0 0 0 0'),
+                PayetteLeg(time=0, nsteps=0,
+                           types='222222', components='0 0 0 0 0 0'),
+                PayetteLeg(time=1, nsteps=100,
+                           types='222222', components='1 0 0 0 0 0'),
             ]
         elif info == 'Biaxial Strain':
             self.legs = [
-                PayetteLeg(time=0, nsteps=0, types='222222', components='0 0 0 0 0 0'),
-                PayetteLeg(time=1, nsteps=100, types='222222', components='1 1 0 0 0 0'),
+                PayetteLeg(time=0, nsteps=0,
+                           types='222222', components='0 0 0 0 0 0'),
+                PayetteLeg(time=1, nsteps=100,
+                           types='222222', components='1 1 0 0 0 0'),
             ]
         elif info == 'Spherical Strain':
             self.legs = [
-                PayetteLeg(time=0, nsteps=0, types='222222', components='0 0 0 0 0 0'),
-                PayetteLeg(time=1, nsteps=100, types='222222', components='1 1 1 0 0 0'),
+                PayetteLeg(time=0, nsteps=0,
+                           types='222222', components='0 0 0 0 0 0'),
+                PayetteLeg(time=1, nsteps=100,
+                           types='222222', components='1 1 1 0 0 0'),
             ]
         elif info == 'Uniaxial Stress':
             self.legs = [
-                PayetteLeg(time=0, nsteps=0, types='444444', components='0 0 0 0 0 0'),
-                PayetteLeg(time=1, nsteps=100, types='444444', components='1 0 0 0 0 0'),
+                PayetteLeg(time=0, nsteps=0,
+                           types='444444', components='0 0 0 0 0 0'),
+                PayetteLeg(time=1, nsteps=100,
+                           types='444444', components='1 0 0 0 0 0'),
             ]
         elif info == 'Biaxial Stress':
             self.legs = [
-                PayetteLeg(time=0, nsteps=0, types='444444', components='0 0 0 0 0 0'),
-                PayetteLeg(time=1, nsteps=100, types='444444', components='1 1 0 0 0 0'),
+                PayetteLeg(time=0, nsteps=0,
+                           types='444444', components='0 0 0 0 0 0'),
+                PayetteLeg(time=1, nsteps=100,
+                           types='444444', components='1 1 0 0 0 0'),
             ]
         elif info == 'Spherical Stress':
             self.legs = [
-                PayetteLeg(time=0, nsteps=0, types='444444', components='0 0 0 0 0 0'),
-                PayetteLeg(time=1, nsteps=100, types='444444', components='1 1 1 0 0 0'),
+                PayetteLeg(time=0, nsteps=0,
+                           types='444444', components='0 0 0 0 0 0'),
+                PayetteLeg(time=1, nsteps=100,
+                           types='444444', components='1 1 1 0 0 0'),
             ]
 
     def _legs_changed(self, info):
@@ -351,29 +373,30 @@ class PayetteModel(HasStrictTraits):
 
     param_view = View(
         UItem('parameters',
-            editor      = TableEditor (
-                auto_size   = False,
-                reorderable = False,
-                sortable    = True,
-                click       = 'cell',
-                columns     = [
+              editor=TableEditor(
+              auto_size=False,
+              reorderable=False,
+              sortable=True,
+              click='cell',
+              columns=[
                     ObjectColumn(name='name', editable=False, width=0.3),
-                    ObjectColumn(name='value', editable=False, width=0.7, horizontal_alignment='right')
-                ],
-            )
-        ),
+                    ObjectColumn(name='value', editable=False,
+                                 width=0.7, horizontal_alignment='right')
+              ],
+              )
+              ),
         Label('Permutation Method'),
         UItem('permutation_method', style='custom')
     )
 
     material_view = View(
         UItem('materials',
-            editor      = TabularEditor(
-                show_titles = True,
-                selected    = 'selected_material',
-                editable    = False,
-                adapter     = PayetteMaterialAdapter()),
-        )
+              editor=TabularEditor(
+              show_titles=True,
+              selected='selected_material',
+              editable=False,
+              adapter=PayetteMaterialAdapter()),
+              )
     )
 
     eos_boundary_view = View(
@@ -387,52 +410,52 @@ class PayetteModel(HasStrictTraits):
                  editor=EnumEditor(name='leg_default_types'),
                  style='simple'),
             VGroup(
-                Item('TSTAR',label='TSTAR'),
-                Item('FSTAR',label='FSTAR')
+                Item('TSTAR', label='TSTAR'),
+                Item('FSTAR', label='FSTAR')
             ),
             VGroup(
-                Item('SSTAR',label='SSTAR'),
-                Item('DSTAR',label='DSTAR')
+                Item('SSTAR', label='SSTAR'),
+                Item('DSTAR', label='DSTAR')
             ),
             VGroup(
-                Item('ESTAR',label='ESTAR'),
-                Item('EFSTAR',label='EFSTAR')
+                Item('ESTAR', label='ESTAR'),
+                Item('EFSTAR', label='EFSTAR')
             ),
             VGroup(
-                Item('AMPL',label='AMPL'),
-                Item('RATFAC',label='RATFAC')
+                Item('AMPL', label='AMPL'),
+                Item('RATFAC', label='RATFAC')
             ),
             style='simple'
         ),
         UItem('legs',
-            editor = ListEditor(
-                style='custom'
-            ),
-            visible_when='leg_defaults != "Data"',
-        ),
+              editor=ListEditor(
+              style='custom'
+              ),
+              visible_when='leg_defaults != "Data"',
+              ),
         VGroup(
             Item('leg_data_name',
                  editor=EnumEditor(name='supplied_data_names'),
                  label='Data to use',
                  style='simple',
-                ),
+                 ),
             HGroup(
                 Item('selected_leg_data_time',
                      editor=EnumEditor(name='leg_data_time_names'),
                      label='Time',
                      style='simple'
-                    ),
+                     ),
                 Item('selected_leg_data_type',
                      editor=EnumEditor(name='leg_data_type_names'),
                      label='Deformation Type',
                      style='simple'
-                    ),
+                     ),
             ),
             Item('selected_leg_data_columns',
                  editor=CheckListEditor(name='leg_data_columns', cols=10),
                  label='Columns to use',
                  style='custom',
-                ),
+                 ),
             visible_when='leg_defaults == "Data"',
         ),
         style='custom',

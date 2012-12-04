@@ -46,6 +46,7 @@ import Source.__runopts__ as ro
 
 DN, MN, DP = 10, 100, 10.
 
+
 class Permutate(object):
     r"""docstring -> needs to be completed """
 
@@ -55,7 +56,7 @@ class Permutate(object):
         ui = pip.InputParser(ilines)
         self.name = ui.name
 
-        regex = re.compile(r"simdir", re.I|re.M)
+        regex = re.compile(r"simdir", re.I | re.M)
         if regex.search("\n".join(ui.options())) or ro.SIMDIR is not None:
             pu.report_and_raise_error(
                 "cannot specify simdir for permutation jobs")
@@ -215,7 +216,7 @@ class Permutate(object):
             "combine": {"method": "Combination"},
             "combination": {"method": "Combination"},
             "shotgun": {"method": "Shotgun"},
-            "zip": {"method": "Zip"},}
+            "zip": {"method": "Zip"}, }
         perm_method = allowed_methods["zip"]
         param_ranges = []
 
@@ -376,7 +377,8 @@ class Permutate(object):
                 continue
 
             if N > MN:
-                pu.report_error("Size N[{0}] exceeds maximum[{1}]".format(N, MN))
+                pu.report_error(
+                    "Size N[{0}] exceeds maximum[{1}]".format(N, MN))
             prange = _get_psequence(a, b, N, method, seed)
 
             # check that a range was given

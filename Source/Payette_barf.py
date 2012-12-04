@@ -55,7 +55,8 @@ Barf files are dumps from a material model of the form:
 """
 import sys
 import numpy as np
-import pickle, re
+import pickle
+import re
 
 import Source.Payette_utils as pu
 import Source.Payette_driver as pdrvr
@@ -135,7 +136,8 @@ class PayetteBarf(object):
 
         except PayetteError as e:
             # the code bombed, let's see if we reproduced the original
-            msg = re.sub(r"ERROR|BOMBED|:", "", e.message).split("[")[0].strip()
+            msg = re.sub(
+                r"ERROR|BOMBED|:", "", e.message).split("[")[0].strip()
             if msg == self.barf["barf message"]:
                 self.message = (
                     "INFO: Kayenta bombed and barf message '{0}' "
@@ -257,7 +259,6 @@ end simulation
 """.format(name, dtime,
            rod[0], rod[1], rod[2], rod[3], rod[4], rod[5],
            cmod, params))[0]
-
 
     def get_block(self, name, block_delim="#####", place=None):
         """ Find the strain rate in the barf file """

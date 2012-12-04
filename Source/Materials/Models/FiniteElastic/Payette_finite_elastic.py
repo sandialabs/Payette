@@ -42,6 +42,7 @@ except:
 
 PAYETTE_VERSION = (1, 1)
 
+
 class FiniteElastic(ConstitutiveModelPrototype):
     """ Finite elasticity model.
 
@@ -92,17 +93,17 @@ class FiniteElastic(ConstitutiveModelPrototype):
         self.ui[-3:] = self.mui
 
         # register the green lagrange strain and second Piola-Kirchhoff stress
-        matdat.register("green strain","SymTensor",
-                             iv = zeros(6),
-                             plot_key = "GREEN_STRAIN")
-        matdat.register("pk2 stress","SymTensor",
-                             iv = zeros(6),
-                             plot_key = "PK2")
+        matdat.register("green strain", "SymTensor",
+                        iv=zeros(6),
+                        plot_key="GREEN_STRAIN")
+        matdat.register("pk2 stress", "SymTensor",
+                        iv=zeros(6),
+                        plot_key="PK2")
 
         return
 
     def jacobian(self, simdat, matdat, v):
-        return self.J0[[[x] for x in v],v]
+        return self.J0[[[x] for x in v], v]
 
     def update_state(self, simdat, matdat):
         """

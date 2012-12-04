@@ -30,7 +30,9 @@ parameters using Payette.
 
 """
 
-import os, sys, re
+import os
+import sys
+import re
 import numpy as np
 import scipy
 import scipy.optimize
@@ -46,12 +48,15 @@ IOPT = 0
 EPS = np.finfo(np.float).eps
 PDAT = np.array([-7.15e8, 1.2231e-10, 1.28e-18, .084])
 
+
 class ParameterizeError(Exception):
     def __init__(self, message):
         super(ParameterizeError, self).__init__(message)
 
+
 class ParameterizeLogger(object):
     loggers = {"root": None, }
+
     def __init__(self, name, fpath, mode="w"):
         self.name = name
         self.fpath = fpath
@@ -105,6 +110,7 @@ class ParameterizeLogger(object):
                 logger["file object"].close()
             except ValueError:
                 pass
+
 
 def get_logger(name, fpath=None):
     if fpath is not None:
@@ -168,6 +174,7 @@ class Parameterize(object):
 
         """
         self.b = block
+
         def find_option(option, default=None):
             option = ".*".join(option.split())
             pat = r"(?i)\b{0}\s".format(option)
@@ -209,7 +216,7 @@ class Parameterize(object):
             if "bounds" in vals:
                 try:
                     idx = vals.index("bounds") + 1
-                    bounds = [float(x) for x in vals[idx:idx+2]]
+                    bounds = [float(x) for x in vals[idx:idx + 2]]
                 except ValueError:
                     bounds = [None, None]
                     pu.report_error("Bounds requires 2 arguments")
@@ -224,7 +231,7 @@ class Parameterize(object):
                 idx = vals.index("initial")
                 if vals[idx + 1] == "value":
                     idx = idx + 1
-                    ival = float(vals[idx+1])
+                    ival = float(vals[idx + 1])
                 else:
                     ival = None
                 optimize[key]["initial value"] = ival

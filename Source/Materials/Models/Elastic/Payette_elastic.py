@@ -43,6 +43,7 @@ except:
 
 PAYETTE_VERSION = (1, 1)
 
+
 class Elastic(ConstitutiveModelPrototype):
     """ Elasticity model. """
 
@@ -88,7 +89,7 @@ class Elastic(ConstitutiveModelPrototype):
         return
 
     def jacobian(self, simdat, matdat, v):
-        return self.J0[[[x] for x in v],v]
+        return self.J0[[[x] for x in v], v]
 
     def update_state(self, simdat, matdat):
         """

@@ -29,7 +29,8 @@
 optimization simulations
 
 """
-import os, sys
+import os
+import sys
 
 try:
     import cPickle as pickle

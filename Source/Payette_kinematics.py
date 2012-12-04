@@ -216,14 +216,16 @@ def velgrad_from_stress(material, simdat, matdat, dt, Ec, Et, Pc, Pt, V):
     nV = len(V)
     W = np.zeros(9)
     if not ro.PROPORTIONAL:
-        converged, dEdt = piter.newton(material, simdat, matdat, dt, Pt, V, dEdt)
+        converged, dEdt = piter.newton(
+            material, simdat, matdat, dt, Pt, V, dEdt)
         if converged:
             return dEdt, W
 
         # --- didn't converge, try Newton's method with initial
         # --- d[V]=0.
         dEdt[V] = np.zeros(nV)
-        converged, dEdt = piter.newton(material, simdat, matdat, dt, Pt, V, dEdt)
+        converged, dEdt = piter.newton(
+            material, simdat, matdat, dt, Pt, V, dEdt)
         if converged:
             return dEdt, W
 

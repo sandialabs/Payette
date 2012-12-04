@@ -40,15 +40,16 @@ from enthought.traits.ui.menu import OKButton, CancelButton
 from Viz_MetaData import VizMetaData
 from Viz_HSCTHReader import read_hscth_file
 
+
 class DataImportDialog(HasStrictTraits):
-    destination = Directory        
+    destination = Directory
     import_file = File
     file_type = Enum('Whitespace Delimited',
                      'Comma Separated Values',
                      'Tab Delimited',
                      'Custom Delimiter',
                      'HSCTH'
-                    )
+                     )
     delimiter = String('<WS>')
     load_header = Bool(True)
 
@@ -109,13 +110,13 @@ class DataImportDialog(HasStrictTraits):
         now = datetime.datetime.now()
 
         metadata = VizMetaData(
-            name = name,
-            base_directory = self.destination,
-            out_file = new_name,
-            data_type = 'Imported',
-            created_date = now.date(),
-            created_time = now.time(),
-            successful = True
+            name=name,
+            base_directory=self.destination,
+            out_file=new_name,
+            data_type='Imported',
+            created_date=now.date(),
+            created_time=now.time(),
+            successful=True
         )
         return metadata
 
@@ -156,18 +157,17 @@ class DataImportDialog(HasStrictTraits):
         now = datetime.datetime.now()
 
         metadata = VizMetaData(
-            name = name,
-            base_directory = self.destination,
-            out_file = new_name,
-            path_files = tracer_files,
-            data_type = 'Imported',
-            created_date = now.date(),
-            created_time = now.time(),
-            successful = True
+            name=name,
+            base_directory=self.destination,
+            out_file=new_name,
+            path_files=tracer_files,
+            data_type='Imported',
+            created_date=now.date(),
+            created_time=now.time(),
+            successful=True
         )
         return metadata
 
-    
     trait_view = View(
         VGroup(
             Item('import_file', label='File'),
@@ -177,7 +177,7 @@ class DataImportDialog(HasStrictTraits):
             padding=2,
         ),
         kind='livemodal',
-        buttons = [CancelButton, OKButton]
+        buttons=[CancelButton, OKButton]
     )
 
 if __name__ == '__main__':

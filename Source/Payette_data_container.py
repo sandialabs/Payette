@@ -53,9 +53,10 @@ class DataContainer:
        data container class
     """
     _tensors = ["Tensor", "SymTensor", "Vector", "Matrix"]
-    _dtypes = _tensors + ["Scalar", "Boolean", "Array", "Integer Array", "List"]
+    _dtypes = _tensors + ["Scalar", "Boolean", "Array",
+                          "Integer Array", "List"]
 
-    def __init__(self,name):
+    def __init__(self, name):
 
         self.name = "_".join(name.split())
         self._setup = False
@@ -127,7 +128,7 @@ class DataContainer:
         if dtype in self._tensors:
             if (iv is not None
                 and iv != "Identity"
-                and not isinstance(iv, (list, tuple, np.ndarray))):
+                    and not isinstance(iv, (list, tuple, np.ndarray))):
                 pu.report_and_raise_error(
                     "{0} must be of array-like type".format(name))
 
@@ -249,7 +250,7 @@ class DataContainer:
         if name == "all":
             N = ro.ISTEP if not len(args) else args[0]
             if not isinstance(N, int):
-                N = {"+": ro.ISTEP+1, "-": ro.ISTEP-1}[N]
+                N = {"+": ro.ISTEP + 1, "-": ro.ISTEP - 1}[N]
             return self._get_all(N)
 
         if "plot key" in args:
@@ -269,7 +270,7 @@ class DataContainer:
         # get the value
         N = ro.ISTEP if not len(args) or ro.ISTEP == 0 else args[0]
         if not isinstance(N, int):
-            N = {"+": ro.ISTEP+1, "-": ro.ISTEP-1}[N]
+            N = {"+": ro.ISTEP + 1, "-": ro.ISTEP - 1}[N]
         copy = kwargs.get("copy", False)
         form = kwargs.get("form", "Array").lower()
         return self._get_value(name, N, copy, form)
@@ -320,7 +321,7 @@ class DataContainer:
 
         N = ro.ISTEP if not len(args) else args[0]
         if not isinstance(N, int):
-            N = {"+": ro.ISTEP+1, "-": ro.ISTEP-1}.get(N)
+            N = {"+": ro.ISTEP + 1, "-": ro.ISTEP - 1}.get(N)
             if N is None:
                 pu.report_and_raise_error("Bad arg '{0}'".format(N))
 

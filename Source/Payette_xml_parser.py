@@ -33,8 +33,10 @@ from textwrap import fill as textfill
 
 import Payette_utils as pu
 
+
 class NotTextNodeError:
     pass
+
 
 class XMLParserError(Exception):
     def __init__(self, message):
@@ -203,7 +205,6 @@ class XMLParser:
             mtldat.append([mat["name"], (descr + " " + aliases).strip()])
         return mtldat
 
-
     def get_material_parameterization(self, mat_name):
         """return the material parameterization for a given material name
 
@@ -234,7 +235,7 @@ class XMLParser:
                 "Material '{0}' not in '{1}', available materials are:\n{2}"
                 .format(mat_name, os.path.basename(self.file),
                         textfill(", ".join([x["name"] for x in self.materials])))
-                )
+            )
 
         for param in self.parameters:
             param_name = param["name"]
@@ -276,7 +277,7 @@ class XMLParser:
         if not Files:
             raise XMLParserError(
                 "Expected 'Files' for the 'MaterialModel'.")
-        Interface =  Files[0].getElementsByTagName("Interface")
+        Interface = Files[0].getElementsByTagName("Interface")
         for idx, item in enumerate(Interface):
             if item.attributes.item(0).value.lower() == "payette":
                 payette_interface = Interface[idx]
