@@ -27,31 +27,33 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-import os, sys
+import os
+import sys
 
 from Payette_config import *
 from Source.Payette_test import PayetteTest
+
 
 class Test(PayetteTest):
 
     def __init__(self, check=True):
         super(Test, self).__init__(check)
 
-        self.enabled = False # change to True
+        self.enabled = False  # change to True
 
         self.name = os.path.splitext(os.path.basename(__file__))[0]
         self.tdir = os.path.dirname(os.path.realpath(__file__))
 
-        self.infile = "{0}.inp".format(os.path.join(self.tdir,self.name))
+        self.infile = "{0}.inp".format(os.path.join(self.tdir, self.name))
         self.outfile = "{0}.out".format(self.name)
-        self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
-        self.keywords = ["a","list","of","keywords"]
-        self.runcommand = ["payette","--no-writeprops","--no-restart",self.infile]
+        self.baseline = "{0}.gold".format(os.path.join(self.tdir, self.name))
+        self.keywords = ["a", "list", "of", "keywords"]
+        self.runcommand = ["payette", "--no-writeprops",
+                           "--no-restart", self.infile]
 
         self.owner = "Your Name"
         self.date = "Month Day, Year"
         self.description = """ A good description """
-
 
         if check:
             self.check_setup()

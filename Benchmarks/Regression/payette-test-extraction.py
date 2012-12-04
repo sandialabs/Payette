@@ -27,11 +27,13 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-import os, sys
+import os
+import sys
 import subprocess
 
 import Source.__config__ as cfg
 from Source.Payette_test import PayetteTest
+
 
 class Test(PayetteTest):
 
@@ -46,7 +48,8 @@ class Test(PayetteTest):
         self.infile = "{0}.gold".format(os.path.join(self.tdir, self.name))
         self.outfile = "{0}.xout".format(self.name)
         self.baseline = "{0}.xgold".format(os.path.join(self.tdir, self.name))
-        self.keywords = ["payette", "regression", "fast", "extraction", "builtin"]
+        self.keywords = ["payette", "regression", "fast",
+                         "extraction", "builtin"]
         self.runcommand = ["extractPayette", self.infile, r"@time",
                            r"@strain11", r"@sig11", r"2*@strain11",
                            r"2*@sig11", r"2*%2"]
@@ -54,7 +57,6 @@ class Test(PayetteTest):
         self.owner = "Tim Fuller"
         self.date = "February 28, 2012"
         self.description = """ Test of extractPayette.py """
-
 
         if check:
             self.check_setup()
@@ -80,17 +82,19 @@ if __name__ == "__main__":
     test = Test()
     if "--cleanup" in sys.argv:
         for ext in ["xout", "diff", "pyc", "echo"]:
-            try: os.remove("%s.%s"%(test.name, ext))
-            except: pass
+            try:
+                os.remove("%s.%s" % (test.name, ext))
+            except:
+                pass
             continue
         pass
 
     else:
         t0 = time.time()
-        print("%s RUNNING"%test.name)
+        print("%s RUNNING" % test.name)
         run_test = test.runTest()
-        dtp = time.time()-t0
+        dtp = time.time() - t0
         if run_test == test.passcode:
-            print("%s PASSED(%fs)"%(test.name, dtp))
+            print("%s PASSED(%fs)" % (test.name, dtp))
         else:
-            print("%s DATA EXTRACTION DIFFED(%fs)"%(test.name, dtp))
+            print("%s DATA EXTRACTION DIFFED(%fs)" % (test.name, dtp))

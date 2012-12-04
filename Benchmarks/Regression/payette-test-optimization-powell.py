@@ -27,10 +27,12 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-import os, sys
+import os
+import sys
 
 import Source.__config__ as cfg
 from Source.Payette_test import PayetteTest
+
 
 class Test(PayetteTest):
 

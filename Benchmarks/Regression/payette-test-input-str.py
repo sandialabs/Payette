@@ -27,11 +27,13 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-import os, sys
+import os
+import sys
 
 import Source.__config__ as cfg
 from Source.Payette_test import PayetteTest
 from Source.Payette_run import run_payette
+
 
 class Test(PayetteTest):
 
@@ -44,7 +46,7 @@ class Test(PayetteTest):
         self.tdir = os.path.dirname(os.path.realpath(__file__))
 
         self.outfile = "{0}.out".format(self.name)
-        self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
+        self.baseline = "{0}.gold".format(os.path.join(self.tdir, self.name))
         self.input_string = self.get_input_string()
         self.siminp = self.input_string.split("\n")
         self.material = "elastic"
@@ -54,7 +56,6 @@ class Test(PayetteTest):
         self.owner = "Tim Fuller"
         self.date = "February 25, 2012"
         self.description = """ Test of input string capabilities """
-
 
         if check:
             self.check_setup()
