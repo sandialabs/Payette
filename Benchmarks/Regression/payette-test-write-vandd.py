@@ -27,10 +27,12 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-import os, sys
+import os
+import sys
 
 import Source.__config__ as cfg
 from Source.Payette_test import PayetteTest
+
 
 class Test(PayetteTest):
 
@@ -42,10 +44,10 @@ class Test(PayetteTest):
         self.name = os.path.splitext(os.path.basename(__file__))[0]
         self.tdir = os.path.dirname(os.path.realpath(__file__))
 
-        self.infile = "{0}.inp".format(os.path.join(self.tdir,self.name))
+        self.infile = "{0}.inp".format(os.path.join(self.tdir, self.name))
         self.outfile = "{0}.out".format(self.name)
-        self.baseline = ["{0:s}.dgold".format(os.path.join(self.tdir,self.name)),
-                         "{0:s}.vgold".format(os.path.join(self.tdir,self.name))]
+        self.baseline = ["{0:s}.dgold".format(os.path.join(self.tdir, self.name)),
+                         "{0:s}.vgold".format(os.path.join(self.tdir, self.name))]
         self.tables = [self.name + ".dtable", self.name + ".vtable"]
         self.keywords = ["builtin", "payette", "regression",
                          "fast", "vtable", "dtable"]
@@ -70,7 +72,7 @@ class Test(PayetteTest):
         if perform_calcs != 0:
             return self.failcode
 
-        diff = self.diff_files(self.baseline,self.tables)
+        diff = self.diff_files(self.baseline, self.tables)
 
         if diff:
             return self.failcode
@@ -83,11 +85,11 @@ if __name__ == "__main__":
     test = Test()
 
     t0 = time.time()
-    print("%s RUNNING"%test.name)
+    print("%s RUNNING" % test.name)
     run_test = test.run_command(test.runcommand)
-    dtp = time.time()-t0
+    dtp = time.time() - t0
 
     if run_test == test.passcode:
-        print("%s PASSED(%fs)"%(test.name,dtp))
+        print("%s PASSED(%fs)" % (test.name, dtp))
     else:
-        print("%s FAILED(%fs)"%(test.name,dtp))
+        print("%s FAILED(%fs)" % (test.name, dtp))

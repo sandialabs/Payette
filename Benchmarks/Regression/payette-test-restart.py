@@ -27,10 +27,12 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-import os, sys
+import os
+import sys
 
 import Source.__config__ as cfg
 from Source.Payette_test import PayetteTest
+
 
 class Test(PayetteTest):
 
@@ -42,9 +44,9 @@ class Test(PayetteTest):
         self.name = os.path.splitext(os.path.basename(__file__))[0]
         self.tdir = os.path.dirname(os.path.realpath(__file__))
 
-        self.infile = "{0}.inp".format(os.path.join(self.tdir,self.name))
+        self.infile = "{0}.inp".format(os.path.join(self.tdir, self.name))
         self.outfile = "{0}.out".format(self.name)
-        self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
+        self.baseline = "{0}.gold".format(os.path.join(self.tdir, self.name))
         self.restartfile = self.name + ".prf"
         self.runcommand = ["payette", "--no-writeprops", "--write-restart",
                            "--test-restart", self.infile]
@@ -89,7 +91,7 @@ if __name__ == "__main__":
     t0 = time.time()
     print("{0} RUNNING".format(test.name))
     run_test = test.run_command(test.runcommand)
-    dtp = time.time()-t0
+    dtp = time.time() - t0
     if run_test != 76:
         print("{0} FAILED TO RUN TO COMPLETION ON FIRST LEG".format(test.name))
         sys.exit()
@@ -97,10 +99,10 @@ if __name__ == "__main__":
     # now run the restart file
     run_test = test.run_command(test.restartcommand)
     t1 = time.time()
-    dta = time.time()-t1
+    dta = time.time() - t1
     if run_test == test.passcode:
-        print("%s PASSED(%fs)".format(test.name,dtp+dta))
+        print("%s PASSED(%fs)".format(test.name, dtp + dta))
     elif run_test == test.diffcode:
-        print("{0} DIFFED({1}s)".format(test.name,dtp+dta))
+        print("{0} DIFFED({1}s)".format(test.name, dtp + dta))
     else:
-        print("{0} FAILED({1}s)".format(test.name,dtp+dta))
+        print("{0} FAILED({1}s)".format(test.name, dtp + dta))

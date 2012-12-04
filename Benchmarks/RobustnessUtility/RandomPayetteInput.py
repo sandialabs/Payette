@@ -33,12 +33,11 @@ import optparse
 import tempfile
 
 
-
 ###############################################################################
 #                               TESTS_COMMON.PY                               #
 ###############################################################################
 tests_common = (
-"""
+    """
 import os,sys
 
 payette_home = os.getenv("PAYETTE_HOME")
@@ -65,7 +64,7 @@ sys.path.append(tests_d)
 #                                BENCHMARK.PY                                 #
 ###############################################################################
 benchmark_py = (
-"""
+    """
 #!/usr/bin/env python
 import os
 import subprocess
@@ -108,12 +107,13 @@ if __name__=="__main__":
 ###############################################################################
 # What's shown here in the next 50 lines or so was originally a stand-alone
 # file (just uncomment the "if __name__..." part).
-def FormatPayetteLeg(i,t,n,e11,e22,e33,e12,e23,e13):
+def FormatPayetteLeg(i, t, n, e11, e22, e33, e12, e23, e13):
     fmt = lambda x: "{0:.6e}".format(x)
-    msg = ("      {0}, {1}, {2}, 222222, ".format(i,fmt(t),n)+
-           " {0}, {1}, {2},".format(fmt(e11),fmt(e22),fmt(e33))+
-           " {0}, {1}, {2}\n".format(fmt(e12),fmt(e23),fmt(e13)))
+    msg = ("      {0}, {1}, {2}, 222222, ".format(i, fmt(t), n) +
+           " {0}, {1}, {2},".format(fmt(e11), fmt(e22), fmt(e33)) +
+           " {0}, {1}, {2}\n".format(fmt(e12), fmt(e23), fmt(e13)))
     return msg
+
 
 def RandomPayetteBoundary():
     import math
@@ -127,45 +127,39 @@ def RandomPayetteBoundary():
     n = 200
     # Set the range (small,large) for the timestep size and
     # strain component size as a log10 value.
-    log10_timestep_range = [-6,0]
-    log10_strain_range   = [-6,0]
+    log10_timestep_range = [-6, 0]
+    log10_strain_range = [-6, 0]
 
     # Begin boundary header
-    msg = ("  begin boundary\n"+
-           "    kappa = {0}\n".format(kappa)+
-           "    tfac  = 1\n"+
-           "    amplitude = 1\n"+
+    msg = ("  begin boundary\n" +
+           "    kappa = {0}\n".format(kappa) +
+           "    tfac  = 1\n" +
+           "    amplitude = 1\n" +
            "    begin legs\n")
 
     # Leg setup.
     t, i = 0.0, 0
-    randstrain = lambda: 10**random.uniform(*log10_strain_range)
-    randtimestep = lambda: 10**random.uniform(*log10_timestep_range)
+    randstrain = lambda: 10 ** random.uniform(*log10_strain_range)
+    randtimestep = lambda: 10 ** random.uniform(*log10_timestep_range)
 
     # Create the legs
-    msg += FormatPayetteLeg(i,t,0,0,0,0,0,0,0)
-    for idx in range(0,numlegs):
+    msg += FormatPayetteLeg(i, t, 0, 0, 0, 0, 0, 0, 0)
+    for idx in range(0, numlegs):
         i += 1
         t += randtimestep()
-        msg += FormatPayetteLeg(i,t,n,randstrain(),randstrain(),randstrain(),
-                                      randstrain(),randstrain(),randstrain())
+        msg += FormatPayetteLeg(
+            i, t, n, randstrain(), randstrain(), randstrain(),
+            randstrain(), randstrain(), randstrain())
 
     # Finish the boudary section
     msg += "    end legs\n  end boundary\n"
     return msg
 
-#if __name__=="__main__":
+# if __name__=="__main__":
 #    print(RandomPayetteBoundary())
 ###############################################################################
 #                        END RandomPayetteBoundary.py                         #
 ###############################################################################
-
-
-
-
-
-
-
 
 
 class ModelSet:
@@ -176,38 +170,40 @@ class ModelSet:
         self.materials = []
 
         if not os.path.isdir(self.input_d):
-            sys.exit("Cannot create ModelSet() type.\n"+
-                     "Input directory does not exist:\n"+
+            sys.exit("Cannot create ModelSet() type.\n" +
+                     "Input directory does not exist:\n" +
                      "({0})".format(self.input_d))
-         
+
         if not os.path.isdir(self.output_d):
             os.makedirs(self.output_d)
 
         if not os.path.isdir(self.output_d):
-            sys.exit("Cannot create ModelSet() type.\n"+
-                     "Output directory does not exist:\n"+
+            sys.exit("Cannot create ModelSet() type.\n" +
+                     "Output directory does not exist:\n" +
                      "({0})".format(self.output_d))
- 
+
         # Get all the files (complete path) in the input_d
-        mat_files = [os.path.join(self.input_d,x) for x in os.listdir(self.input_d)]
+        mat_files = [os.path.join(self.input_d, x)
+                     for x in os.listdir(self.input_d)]
         mat_files = [x for x in mat_files if os.path.isfile(x)]
         # Remove files bigger than 100 KB (why would an input file be larger?)
-        mat_files = [x for x in mat_files if os.path.getsize(x) < 1024*100]
+        mat_files = [x for x in mat_files if os.path.getsize(x) < 1024 * 100]
         # Remove files that don't end in '.dat'
         mat_files = [x for x in mat_files if x.upper().endswith(".DAT")]
         self.materials = mat_files
 
+
 def run(input_opts):
     # This will be the default material directory.
     file_d = os.path.dirname(os.path.realpath(__file__))
-    material_d = os.path.join(file_d,"TestMaterials")
-    output_d = os.path.join(file_d,"BatchOutput")
+    material_d = os.path.join(file_d, "TestMaterials")
+    output_d = os.path.join(file_d, "BatchOutput")
 
     # A bunch of Parser stuff
     usage = "usage: %prog [options]"
     parser = optparse.OptionParser(usage=usage, version="%prog 1.0")
 
-    parser.add_option('-n','--num-realizations',
+    parser.add_option('-n', '--num-realizations',
                       dest="NUM_REALIZATIONS",
                       action='store',
                       type=int,
@@ -215,43 +211,43 @@ def run(input_opts):
                       help="Set the number of realizations per "
                            "material input file [default: %default].")
 
-    parser.add_option('-d','--input-directory',
+    parser.add_option('-d', '--input-directory',
                       dest="MATERIAL_DIRECTORY",
                       action='store',
                       default=material_d,
                       help="Change the directory in which to look for "
                            "material input files [default: %default].")
 
-    parser.add_option('-o','--output-directory',
+    parser.add_option('-o', '--output-directory',
                       dest="OUTPUT_DIRECTORY",
                       action='store',
                       default=output_d,
                       help="Change the output directory where the random inputs"
                            "will be put [default: %default].")
 
-    (opts,args) = parser.parse_args(input_opts)
+    (opts, args) = parser.parse_args(input_opts)
 
     ###########################################################################
     #                 MAKE SURE THE USER INPUTS ARE SANE                      #
     ###########################################################################
     if opts.NUM_REALIZATIONS < 0:
-        sys.exit("Cannot create a negative number of realizations.\n"+
+        sys.exit("Cannot create a negative number of realizations.\n" +
                  "Given: {0}".format(opts.NUM_REALIZATIONS))
 
     opts.MATERIAL_DIRECTORY = os.path.realpath(opts.MATERIAL_DIRECTORY)
     if not os.path.isdir(opts.MATERIAL_DIRECTORY):
-        sys.exit("The material directory cannot be found at:\n"+
+        sys.exit("The material directory cannot be found at:\n" +
                  "{0}".format(opts.MATERIAL_DIRECTORY))
 
     opts.OUTPUT_DIRECTORY = os.path.realpath(opts.OUTPUT_DIRECTORY)
     if not os.path.isdir(opts.OUTPUT_DIRECTORY):
-        print("\nOutput directory not found.\n"+
-              "({0})\n".format(opts.OUTPUT_DIRECTORY)+
+        print("\nOutput directory not found.\n" +
+              "({0})\n".format(opts.OUTPUT_DIRECTORY) +
               "Creating it...\n")
         os.mkdir(opts.OUTPUT_DIRECTORY)
 
     if not os.path.isdir(opts.OUTPUT_DIRECTORY):
-        sys.exit("\nOutput directory could not be created."+
+        sys.exit("\nOutput directory could not be created." +
                  "\n({0})".format(opts.OUTPUT_DIRECTORY))
 
     ###########################################################################
@@ -261,42 +257,45 @@ def run(input_opts):
     # The models to be used are whatever the names of the directories in
     # the material directory.
     material_models = [x for x in os.listdir(opts.MATERIAL_DIRECTORY)
-                   if os.path.isdir(os.path.join(opts.MATERIAL_DIRECTORY,x))]
+                       if os.path.isdir(os.path.join(opts.MATERIAL_DIRECTORY, x))]
 
     material_model_db = []
-    for model_name in material_models: 
+    for model_name in material_models:
         material_model_db.append(
-                   ModelSet(model_name,
-                            os.path.join(opts.MATERIAL_DIRECTORY,model_name),
-                            os.path.join(opts.OUTPUT_DIRECTORY,model_name)))
-    
+            ModelSet(model_name,
+                     os.path.join(
+                     opts.MATERIAL_DIRECTORY, model_name),
+                     os.path.join(opts.OUTPUT_DIRECTORY, model_name)))
+
     ###########################################################################
     #                      GENERATE THE REALIZATIONS                          #
     ###########################################################################
 
     for mat_model in material_model_db:
-        TESTSCOMMON = open(os.path.join(mat_model.output_d,"tests_common.py"),"w")
+        TESTSCOMMON = open(
+            os.path.join(mat_model.output_d, "tests_common.py"), "w")
         TESTSCOMMON.write(tests_common)
         TESTSCOMMON.close()
         for material in mat_model.materials:
             # The simulation prefix is just the model and the material file
             # name put together with an underscore.
-            sim_prefix = mat_model.name+"_"+os.path.splitext(os.path.basename(material))[0]
-            materialtxt = open(material,"r").read()
+            sim_prefix = mat_model.name + "_" + \
+                os.path.splitext(os.path.basename(material))[0]
+            materialtxt = open(material, "r").read()
 
-            for incr in range(0,opts.NUM_REALIZATIONS):
+            for incr in range(0, opts.NUM_REALIZATIONS):
                 # Create the temporary file and open it
                 SIM_FNO, SIM_N = tempfile.mkstemp(suffix=".inp",
-                                                  prefix=sim_prefix+"_",
+                                                  prefix=sim_prefix + "_",
                                                   dir=mat_model.output_d)
-                SIM_F = os.fdopen(SIM_FNO,"w")
+                SIM_F = os.fdopen(SIM_FNO, "w")
 
                 sim_name = os.path.splitext(os.path.basename(SIM_N))[0]
-                inp = ("begin simulation {0}\n".format(sim_name)+
-                       "  title {0}\n".format(sim_name)+
-                       "  begin material\n"+
-                       "    constitutive model {0}\n".format(mat_model.name)+
-                       materialtxt+"\n"+
+                inp = ("begin simulation {0}\n".format(sim_name) +
+                       "  title {0}\n".format(sim_name) +
+                       "  begin material\n" +
+                       "    constitutive model {0}\n".format(mat_model.name) +
+                       materialtxt + "\n" +
                        "  end material\n")
 
                 inp += RandomPayetteBoundary()
@@ -305,7 +304,7 @@ def run(input_opts):
                 print("Test written: {0}".format(SIM_N))
                 SIM_F.write(inp)
                 SIM_F.close()
-                BENCHMARK_F = open(os.path.splitext(SIM_N)[0]+".py","w")
+                BENCHMARK_F = open(os.path.splitext(SIM_N)[0] + ".py", "w")
                 BENCHMARK_F.write(benchmark_py)
                 BENCHMARK_F.close()
 

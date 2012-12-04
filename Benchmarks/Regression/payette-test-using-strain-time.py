@@ -27,10 +27,12 @@
 # DEALINGS IN THE SOFTWARE.
 
 
-import os, sys
+import os
+import sys
 
 import Source.__config__ as cfg
 from Source.Payette_test import PayetteTest
+
 
 class Test(PayetteTest):
 
@@ -42,9 +44,9 @@ class Test(PayetteTest):
         self.name = os.path.splitext(os.path.basename(__file__))[0]
         self.tdir = os.path.dirname(os.path.realpath(__file__))
 
-        self.infile = "{0}.inp".format(os.path.join(self.tdir,self.name))
+        self.infile = "{0}.inp".format(os.path.join(self.tdir, self.name))
         self.outfile = "{0}.out".format(self.name)
-        self.baseline = "{0}.gold".format(os.path.join(self.tdir,self.name))
+        self.baseline = "{0}.gold".format(os.path.join(self.tdir, self.name))
         self.keywords = ["builtin", "fast", "verification", "elastic", "using"]
         self.runcommand = ["payette", "--no-writeprops",
                            self.infile]
@@ -53,7 +55,6 @@ class Test(PayetteTest):
         self.owner = 'Tim Fuller'
         self.date = 'March 30, 2012'
         self.description = """Test of the "using time strain" input method """
-
 
         if check:
             self.check_setup()
