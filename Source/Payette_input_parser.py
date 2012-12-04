@@ -448,8 +448,6 @@ def preprocess(lines, preprocessor=None):
     name_len = max([len(dum) for dum, dumdum in preprocessor])
     for pat, repl in preprocessor:
         pu.log_message("    {0:<{1}s} {2}".format(pat + ':', name_len + 2, repl))
-
-    for pat, repl in preprocessor:
         full = re.compile(r"{{.*?\b{0:s}\b.*?}}".format(pat), re.I | re.M)
         while True:
             found = full.search(lines)
