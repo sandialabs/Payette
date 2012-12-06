@@ -41,7 +41,7 @@ except:
     imported = False
     pass
 
-PAYETTE_VERSION = (1, 1)
+PAYETTE_VERSION = (1, 2)
 
 
 class Elastic(ConstitutiveModelPrototype):

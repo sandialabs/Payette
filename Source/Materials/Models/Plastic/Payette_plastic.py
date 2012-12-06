@@ -41,7 +41,7 @@ try:
 except:
     imported = False
 
-PAYETTE_VERSION = (1, 1)
+PAYETTE_VERSION = (1, 2)
 
 
 class Plastic(ConstitutiveModelPrototype):

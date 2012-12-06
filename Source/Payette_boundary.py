@@ -43,15 +43,6 @@ DTYPES = {"strain rate": (1, 6), "strain": (2, 6), "stress rate": (3, 6),
           "pressure": (4, 1), "efield": (6, 3), }
 
 
-class BoundaryError(Exception):
-    """Boundar exception class"""
-    def __init__(self, message):
-        from Source.Payette_utils import who_is_calling
-        caller = who_is_calling()
-        self.message = message + " [reported by {0}]".format(caller)
-        super(BoundaryError, self).__init__(self.message)
-
-
 class Boundary(object):
 
     def __init__(self, bblock, lblock):

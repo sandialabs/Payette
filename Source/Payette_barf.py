@@ -63,7 +63,7 @@ import Source.Payette_driver as pdrvr
 import Source.Payette_container as pcntnr
 import Source.Payette_model_index as pmi
 import Source.Payette_input_parser as pip
-from Source.Payette_container import PayetteError as PayetteError
+from Source.Payette_utils import PayetteError as PayetteError
 
 
 class PayetteBarf(object):

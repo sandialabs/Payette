@@ -94,7 +94,7 @@ end simulation
 
         perform_calcs = run_payette(siminp=self.siminp, verbosity=0, disp=0)
 
-        if perform_calcs != 0:
+        if max(perform_calcs) != 0:
             return self.failtoruncode
 
         compare = self.compare_method()

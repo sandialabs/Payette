@@ -53,7 +53,7 @@ import Source.Payette_utils as pu
 import Source.Payette_notify as pn
 from Source.Payette_test import find_tests
 import Toolset.postprocess as pp
-from Source.Payette_container import PayetteError as PayetteError
+from Source.Payette_utils import PayetteError as PayetteError
 
 # --- module level variables
 CWD = os.getcwd()

@@ -40,24 +40,11 @@ I_EQ = r"[:,=]"
 I_SEP = r"[:,;]"
 
 
-class InputParserError(Exception):
-    def __init__(self, message):
-        if not ro.DEBUG:
-            sys.tracebacklimit = 0
-        caller = pu.who_is_calling()
-        self.message = message + " [reported by {0}]".format(caller)
-        super(InputParserError, self).__init__(message)
-        pass
-
-
 class InputParser(object):
     """Payette user input class
 
     Reads and sets up blocks from user input
 
-    Raises
-    ------
-    InputParserError
 
     """
 
@@ -77,19 +64,19 @@ class InputParser(object):
         """
 
         if ilines is None:
-            raise InputParserError("No user input sent to InputParser")
+            pu.report_and_raise_error("No user input sent to InputParser")
 
         # --- required information ------------------------------------------ #
         self.inp = find_block("input", ilines)
         if self.inp is None:
-            raise InputParserError("User input not found")
+            pu.report_and_raise_error("User input not found")
 
         # find the contents of the input block, popping found content along
         # the way
         content = get_content(self.inp)
         self.name, content = find_item_name(content, "name", pop=True)
         if self.name is None:
-            raise InputParserError("Simulation name not found")
+            pu.report_and_raise_error("Simulation name not found")
         self.stype, content = find_item_name(content, "type", pop=True)
         self._options = parse_options(content)
         pass
@@ -314,7 +301,7 @@ def check_incompatibilities(lines):
             incompatibilites.append(1)
             continue
         if len(incompatibilites) > 1:
-            raise InputParserError(
+            pu.report_and_raise_error(
                 "Blocks: '{0}' incompatible in same input"
                 .format(", ".join(blocks)))
         continue
@@ -502,7 +489,7 @@ def find_nested_blocks(major, nested, lines, default=None):
         start = bexp.search(blocks[0])
         stop = eexp.search(blocks[0])
         if start and not stop:
-            raise InputParserError("End of block {0} not found".format(name))
+            pu.report_and_raise_error("End of block {0} not found".format(name))
         if not start:
             blocks.append(default)
             continue
@@ -552,7 +539,8 @@ def find_block(name, lines, default=None, findall=False, named=False):
             return blocks
 
         if start and not stop:
-            raise InputParserError("End of block '{0}' not found".format(name))
+            pu.report_and_raise_error(
+                "End of block '{0}' not found".format(name))
 
         if not start:
             bname, block = None, default
@@ -637,7 +625,7 @@ def fill_in_inserts(lines):
             try:
                 insert = open(fpath, "r").read()
             except IOError:
-                raise InputParserError(
+                pu.report_and_raise_error(
                     "Cannot find insert: {0}".format(repr(name)))
 
         # substitute the contents of the insert
@@ -695,7 +683,7 @@ def parse_output(oblock):
         oformat = "ascii"
 
     if oformat not in oformats:
-        raise InputParserError(
+        pu.report_and_raise_error(
             "Output format '{0}' not supported, choose from {1}"
             .format(oformat, ", ".join(oformats)))
 

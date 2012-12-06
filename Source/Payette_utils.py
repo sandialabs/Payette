@@ -59,12 +59,31 @@ AUTHORS
 
 
 class DummyHolder:
-    def __init__(self):
-        self.outfile = None
-        self.name = None
-        self.simdir = None
-    def finish(self):
-        pass
+    pass
+
+
+class PayetteError(Exception):
+    def __init__(self, message, caller=None, retcode=None, errno=0):
+
+        if caller is None:
+            caller = pu.who_is_calling()
+
+        # do not report who is calling. Sometimes other functions act as
+        # intermediaries to PayetteError and it is nice to leave them out of
+        # the "reported by" section
+        if re.search("(?i)anonymous", caller):
+            caller = ""
+        else:
+            caller = "[reported by: {0}]".format(caller)
+
+        self.retcode = retcode if retcode is not None else 1
+        self.errno = errno
+        # message
+        message = " ".join([x for x in message.split() if x])
+        self.message = "ERROR: {0} {1}".format(message, caller)
+        super(PayetteError, self).__init__(self.message)
+
+
 
 
 def whoami():
@@ -133,7 +152,6 @@ def report_and_raise_error(message, tracebacklimit=None, caller=None,
     """Report and raise an error"""
     if caller is None:
         caller = who_is_calling()
-    from Source.Payette_container import PayetteError as PayetteError
     raise PayetteError(message, caller=caller, retcode=retcode)
 
 

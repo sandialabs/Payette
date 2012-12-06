@@ -53,7 +53,7 @@ import Source.Payette_barf as pb
 import Source.Payette_parameterize as pparam
 import Source.Payette_input_parser as pip
 import Source.__runopts__ as ro
-from Source.Payette_container import PayetteError as PayetteError
+from Source.Payette_utils import PayetteError as PayetteError
 
 
 class DummyPayette:
@@ -73,6 +73,33 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
     """Main function for running a Payette job.
     Read the user inputs from argv, parse options, read user input, and run
     the jobs.
+
+    Parameters
+    ----------
+    siminp : str
+        all simulation input
+    restart : bool, [restart file]
+        If restart is not false, it is expected to be the name of a restart
+        file
+    timing : bool
+        perform timing, or not
+    barf : bool, [barf file]
+        If barf is not false, it is expected to be the name of a barf file
+    nproc : int
+        Number of simultaneous jobs
+    disp : int
+        Set to not zero to return dictionary
+    verbosity : int
+        Level of verbosity. 0=quiet, 3=noisy
+    torun : list
+        List of simulations to run from siminp
+
+    Returns
+    -------
+    result : list or dict
+       If disp = 0: returns a list of return codes for each simulation
+       If disp != 0: returns a dict for each simulation
+
 
     """
 
@@ -224,8 +251,6 @@ def _run_job(args):
     if error:
         # the simulation failed. Trap the error and print out useful info to
         # the screen
-        the_model.finish()
-
         if ro.DEBUG:
             # raise the error to give the traceback
             raise error

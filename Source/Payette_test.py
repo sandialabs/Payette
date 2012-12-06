@@ -75,15 +75,6 @@ class TestLogger(object):
         pass
 
 
-class PayetteTestError(Exception):
-    """ModelIndex exception class"""
-    def __init__(self, message):
-        sys.tracebacklimit = 0
-        caller = pu.who_is_calling()
-        self.message = message + " [reported by {0}]".format(caller)
-        super(PayetteTestError, self).__init__(self.message)
-
-
 class PayetteTest(object):
 
     TOL = 1.e-6

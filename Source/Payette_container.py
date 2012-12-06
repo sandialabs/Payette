@@ -47,28 +47,6 @@ import Source.Payette_input_parser as pip
 import Source.Payette_unit_manager as um
 from Source.Payette_material import Material
 from Source.Payette_data_container import DataContainer
-from Source.Payette_boundary import BoundaryError as BoundaryError
-
-
-class PayetteError(Exception):
-    def __init__(self, message, caller=None, retcode=None):
-
-        if caller is None:
-            caller = pu.who_is_calling()
-
-        # do not report who is calling. Sometimes other functions act as
-        # intermediaries to PayetteError and it is nice to leave them out of
-        # the "reported by" section
-        if re.search("(?i)anonymous", caller):
-            caller = ""
-        else:
-            caller = "[reported by: {0}]".format(caller)
-
-        self.retcode = retcode if retcode is not None else 1
-        # message
-        message = " ".join([x for x in message.split() if x])
-        self.message = "ERROR: {0} {1}".format(message, caller)
-        super(PayetteError, self).__init__(self.message)
 
 
 class Payette(object):
@@ -105,7 +83,7 @@ class Payette(object):
             try:
                 os.makedirs(self.simdir)
             except OSError:
-                raise PayetteError(
+                raise pu.report_and_raise_error(
                     "cannot create simulation directory: {0}"
                     .format(self.simdir))
 
@@ -129,7 +107,7 @@ class Payette(object):
                 if os.path.isfile(tmpnam):
                     i += 1
                     if i > 100:
-                        raise PayetteError(
+                        pu.report_and_raise_error(
                             "max number of output files exceeded")
 
                     else:

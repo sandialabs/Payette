@@ -53,6 +53,7 @@ import Source.__runopts__ as ro
 import Source.Payette_xml_parser as px
 import Source.Payette_model_index as pmi
 from Source.Payette_xml_parser import XMLParserError as XMLParserError
+from Payette_utils import PayetteError as PayetteError
 
 # --- module level constants
 SPACE = "      "  # spacing used for logs to console
@@ -228,28 +229,6 @@ def build_payette(argv):
     return build.errors
 
 
-class BuildError(Exception):
-    def __init__(self, message, errno=0):
-        # errno:
-        # 1: bad input files
-        # 2: f2py failed
-        #  5 = environmental variable not found (not error)
-        # 10 = source files/directories not found
-        # 35 = Extension module not imported
-        # 40 = Bad/no sigfile
-        # 66 = No build attribute
-        caller = pu.who_is_calling()
-        self.message = message + " [reported by {0}]".format(caller)
-        self.errno = errno
-        super(BuildError, self).__init__(self.message)
-
-    def __repr__(self):
-        return self.__name__
-
-    def __str__(self):
-        return self.message
-
-
 class BuildPayette(object):
 
     def __init__(self, search_directories=None, requested_materials=None,
@@ -257,7 +236,7 @@ class BuildPayette(object):
 
         # verify each search directory exists
         if not search_directories:
-            raise BuildError("No search directories given.")
+            pu.report_and_raise_error("No search directories given.")
 
         for directory in search_directories:
             if not os.path.isdir(directory):
@@ -265,12 +244,12 @@ class BuildPayette(object):
                                 .format(directory))
             continue
         if pu.error_count():
-            raise BuildError("Stopping due to previous errors.")
+            pu.report_and_raise_error("Stopping due to previous errors.")
         self.search_directories = search_directories
 
         # verify that materials were requested
         if requested_materials is None:
-            raise BuildError("No materials requested to be built.")
+            pu.report_and_raise_error("No materials requested to be built.")
         self.requested_materials = requested_materials
 
         # compiler info needed to build
@@ -573,7 +552,7 @@ def _build_lib(args):
         build = build_module.Build(material, libname, libdir, compiler_info)
         build_error = build.build_extension_module()
 
-    except BuildError as error:
+    except PayetteError as error:
         pu.log_message(error.message)
         build_error = error.errno
 

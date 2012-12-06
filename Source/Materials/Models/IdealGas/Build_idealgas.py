@@ -29,7 +29,6 @@ import os
 import sys
 
 from Source.Payette_material_builder import MaterialBuilder
-from Source.Payette_build import BuildError as BuildError
 
 
 class Build(MaterialBuilder):

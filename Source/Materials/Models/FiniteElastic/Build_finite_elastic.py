@@ -30,7 +30,7 @@ import sys
 
 import Source.__config__ as cfg
 from Source.Payette_material_builder import MaterialBuilder
-from Source.Payette_build import BuildError as BuildError
+from Source.Payette_utils import PayetteError as PayetteError
 
 
 class Build(MaterialBuilder):
@@ -58,7 +58,7 @@ class Build(MaterialBuilder):
 
         try:
             retval = self.build_extension_module_with_f2py()
-        except BuildError as error:
+        except PayetteError as error:
             sys.stderr.write("ERROR: {0}".format(error.message))
             retval = error.errno
 

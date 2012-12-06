@@ -41,16 +41,6 @@ from Source.Payette_utils import who_is_calling
 import Source.__runopts__ as ro
 
 
-class SimulationIndexError(Exception):
-    """SimulationIndex exception class"""
-    def __init__(self, message):
-        if not ro.DEBUG:
-            sys.tracebacklimit = 0
-        caller = who_is_calling()
-        self.message = message + " [reported by {0}]".format(caller)
-        super(SimulationIndexError, self).__init__(self.message)
-
-
 class SimulationIndex(object):
     """Class for indexing simulatons run for permutation and optimization jobs
 
@@ -71,24 +61,24 @@ class SimulationIndex(object):
         """
 
         if index_file is not None and base_dir is not None:
-            raise SimulationIndexError(
+            pu.report_and_raise_error(
                 "Specify one of base_dir or index_file, not both")
 
         # check existence of base directory
         elif base_dir is not None:
             if not os.path.isdir(base_dir):
-                raise SimulationIndexError("base_dir not found")
+                pu.report_and_raise_error("base_dir not found")
             else:
                 # default index file name
                 self._index_file = os.path.join(base_dir, "index.pkl")
         elif index_file is not None:
             if not os.path.isfile(index_file):
-                raise SimulationIndexError("index_file not found")
+                pu.report_and_raise_error("index_file not found")
             else:
                 # default index file name
                 self._index_file = index_file
         else:
-            raise SimulationIndexError(
+            pu.report_and_raise_error(
                 "One of base_dir or index_file must be specified")
 
         # initialize class data
@@ -117,8 +107,8 @@ class SimulationIndex(object):
         """Load the index file"""
         # check existence of file
         if not os.path.isfile(self._index_file):
-            raise SimulationIndexError("index file {0} not found"
-                                       .format(self._index_file))
+            pu.report_and_raise_error("index file {0} not found"
+                                      .format(self._index_file))
         # load it in
         self.loaded_index = pickle.load(open(self._index_file, "rb"))
         return self.loaded_index

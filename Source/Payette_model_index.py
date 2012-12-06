@@ -43,16 +43,6 @@ import Source.Payette_utils as pu
 import Source.__runopts__ as ro
 
 
-class ModelIndexError(Exception):
-    """ModelIndex exception class"""
-    def __init__(self, message):
-        if not ro.DEBUG:
-            sys.tracebacklimit = 0
-        caller = pu.who_is_calling()
-        self.message = message + " [reported by {0}]".format(caller)
-        super(ModelIndexError, self).__init__(self.message)
-
-
 class ModelIndex(object):
     """Class for indexing installed materials
 
@@ -72,7 +62,7 @@ class ModelIndex(object):
 
         index_dir = os.path.dirname(index_file)
         if not os.path.isdir(index_dir):
-            raise ModelIndexError(
+            pu.report_and_raise_error(
                 "Directory {0} must first be created".format(index_dir))
         self.index_file = index_file
 
@@ -145,7 +135,7 @@ class ModelIndex(object):
         """Load the index file"""
         # check existence of file
         if not os.path.isfile(self.index_file):
-            raise ModelIndexError(
+            pu.report_and_raise_error(
                 "buildPayette must be executed to generate {0}"
                 .format(self.index_file))
         # load it in
@@ -203,8 +193,8 @@ class ModelIndex(object):
         M, m = cfg.VERSION_INFO[:2]
         if (major, minor) < (M, m):
             pu.report_and_raise_error(
-                "Material model requires Payette version {0}.{1}"
-                .format(major, minor))
+                "Material model '{0}' requires Payette version {1}.{2}"
+                .format(model_name, major, minor))
         cmod = getattr(py_module, cls_nam)
         del py_module
         return cmod

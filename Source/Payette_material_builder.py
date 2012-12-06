@@ -37,7 +37,6 @@ from numpy.f2py import main as f2py
 
 import Source.__config__ as cfg
 import Source.Payette_utils as pu
-from Source.Payette_build import BuildError as BuildError
 
 
 class MaterialBuilder(object):
@@ -80,7 +79,8 @@ class MaterialBuilder(object):
 
         # directory to copy libraries
         if not os.path.isdir(libdir):
-            raise BuildError("library directory {0} not found".format(libdir))
+            pu.report_and_raise_error(
+                "library directory {0} not found".format(libdir))
         self.payette_libdir = libdir
 
         # signature file and migutils
@@ -97,8 +97,8 @@ class MaterialBuilder(object):
                 self.pre_directives.append("-DNOPYCALLBACK")
 
             if not os.path.isfile(self.signature_file):
-                raise BuildError(
-                    "{0} signature file not found".format(self.name), 40)
+                pu.report_and_raise_error(
+                    "{0} signature file not found".format(self.name), errno=40)
 
         # include directories
         self.incdirs = [".", "{0}".format(self.source_directory),
@@ -108,8 +108,8 @@ class MaterialBuilder(object):
                 incdirs = [incdirs]
             for incdir in incdirs:
                 if not os.path.isdir(incdir):
-                    msg = "incdir {0} not found".format(incdir)
-                    raise BuildError(msg, 60)
+                    pu.report_and_raise_error(
+                        "incdir {0} not found".format(incdir), errno=60)
                 self.incdirs.append(incdir)
         self.libdirs = []
         if libdirs is not None:
@@ -117,8 +117,8 @@ class MaterialBuilder(object):
                 libdirs = [libdirs]
             for libdir in libdirs:
                 if not os.path.isdir(libdir):
-                    msg = "libdir {0} not found".format(libdir)
-                    raise BuildError(msg, 60)
+                    pu.report_and_raise_error(
+                        "libdir {0} not found".format(libdir), errno=60)
                 self.libdirs.append(libdir)
         self.libs = []
         if libs is not None:
@@ -132,13 +132,15 @@ class MaterialBuilder(object):
         pass
 
     def build_extension_module(self):
-        raise BuildError("fortran build script must provide this function", 1)
+        pu.report_and_raise_error(
+            "fortran build script must provide this function", errno=1)
 
     def build_extension_module_with_f2py(self):
         fcn = "build_extension_module_with_f2py"
 
         if not self.source_files:
-            raise BuildError("no source files sent to {0}".format(fcn), 1)
+            pu.report_and_raise_error(
+                "no source files sent to {0}".format(fcn), errno=1)
 
         elif not isinstance(self.source_files, list):
             self.source_files = [self.source_files]
@@ -149,7 +151,8 @@ class MaterialBuilder(object):
             continue
 
         if pu.error_count():
-            raise BuildError("Stopping due to previous errors.", 10)
+            pu.report_and_raise_error(
+                "Stopping due to previous errors.", errno=10)
 
         # remove extension module files if they exist
         for d in [self.source_directory, self.payette_libdir]:
@@ -214,8 +217,9 @@ class MaterialBuilder(object):
             continue
 
         if not built:
-            raise BuildError("failed to build {0} with f2py, see {1}"
-                             .format(self.libname, echo), 2)
+            pu.report_and_raise_error(
+                "failed to build {0} with f2py, see {1}"
+                .format(self.libname, echo), errno=2)
 
         # make sure the module is loadable
         try:
@@ -226,10 +230,11 @@ class MaterialBuilder(object):
         except ImportError:
             new_name = os.path.join(cfg.AUX, self.libname)
             shutil.move(self.libname, new_name)
-            msg = ("\n\tWARNING: {0} failed to import.  ".format(self.libname) +
-                   "\n\tTo diagnose, go to: {0}".format(new_name) +
-                   "\n\tand manually import the file in a python interpreter")
-            raise BuildError(msg, 20)
+            pu.report_and_raise_error(
+                "\n\tWARNING: {0} failed to import.  ".format(self.libname) +
+                "\n\tTo diagnose, go to: {0}".format(new_name) +
+                "\n\tand manually import the file in a python interpreter",
+                errno=20)
 
         # copy the extension module file to the library directory
         shutil.move(self.libname,

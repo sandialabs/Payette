@@ -49,11 +49,6 @@ EPS = np.finfo(np.float).eps
 PDAT = np.array([-7.15e8, 1.2231e-10, 1.28e-18, .084])
 
 
-class ParameterizeError(Exception):
-    def __init__(self, message):
-        super(ParameterizeError, self).__init__(message)
-
-
 class ParameterizeLogger(object):
     loggers = {"root": None, }
 
@@ -132,7 +127,7 @@ def parameterizer(ilines):
     model_index = pmi.ModelIndex()
     parameterizer = model_index.parameterizer(constitutive_model)
     if parameterizer is None:
-        raise ParameterizeError(
+        pu.report_and_raise_error(
             "Constitutive model {0} does not have a parameterizing "
             "module defined".format(constitutive_model))
 
@@ -141,7 +136,7 @@ def parameterizer(ilines):
     job_directives = ui.options()
     for directive in req_directives:
         if directive not in job_directives:
-            raise ParameterizeError(
+            pu.report_and_raise_error(
                 "Required directive {0} not found".format(directive))
 
     ilines = ui.user_input()

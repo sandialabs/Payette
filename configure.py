@@ -40,7 +40,7 @@ HEAD = os.path.join(
     GIT, open(os.path.join(GIT, "HEAD")).readlines()[0].split()[1])
 __hash__ = open(HEAD).read().strip()
 
-__version_info__ = (1, 1, 0, __hash__[:7])
+__version_info__ = (1, 2, 0, __hash__[:7])
 __version__ = ".".join(str(x) for x in __version_info__)
 __author__ = ("Tim Fuller, tjfulle@sandia.gov", "Scot Swan, mswan@sandia.gov")
 __intro__ = """
