@@ -125,14 +125,22 @@ def main(argv):
 
     # directory to run tonights tests
     nightly = os.path.join(opts.SCRATCH, "Payette_Nightly/{0}".format(date))
+    current = os.path.join(opts.SCRATCH, "Payette_Nightly/Current")
 
     # remove old stuff, create new
-    if os.path.isdir(nightly):
+    try:
         shutil.rmtree(nightly)
+    except OSError:
+        pass
+    try:
+        os.remove(current)
+    except OSError:
+        pass
     os.makedirs(nightly, 0750)
-    pdir = os.path.join(nightly, "Payette")
+    os.symlink(nightly, current)
 
-    # log file
+    # payette directory and log file
+    pdir = os.path.join(nightly, "Payette")
     log = os.path.join(nightly, "payette_testing.log")
 
     # number of processes that can be run
