@@ -42,6 +42,7 @@ import time
 import multiprocessing as mp
 import logging
 import re
+from textwrap import fill as textfill
 
 import Source.__config__ as cfg
 import Source.Payette_utils as pu
@@ -53,6 +54,17 @@ import Source.Payette_parameterize as pparam
 import Source.Payette_input_parser as pip
 import Source.__runopts__ as ro
 from Source.Payette_container import PayetteError as PayetteError
+
+
+class DummyPayette:
+    def __init__(self):
+        self.outfile = None
+        self.name = None
+        self.simdir = None
+    def run_job(self):
+        pass
+    def finish(self):
+        pass
 
 
 def run_payette(siminp=None, restart=False, timing=False, barf=False,
@@ -128,7 +140,7 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
 
     # loop through simulations and run them
     if timing:
-        tim0 = time.time()
+        t0 = time.time()
 
     if nproc > 1 and len(user_input_sets) > 1:
         pool = mp.Pool(processes=nproc)
@@ -143,7 +155,7 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
             continue
 
     if timing:
-        write_final_timing_info(tim0)
+        write_final_timing_info(t0)
 
     if not disp:
         # just return retcode
@@ -158,55 +170,97 @@ def _run_job(args):
     # pass passed args to local arguments
     user_input, restart, barf, timing, last = args
 
+    if pu.error_count():
+        sys.exit("ERROR: Stopping due to previous errors")
+
     if timing:
-        tim0 = time.time()
+        t0 = time.time()
 
     # instantiate Payette object
-    if restart:
-        the_model = user_input
-        the_model.setup_restart()
+    error, the_model = False, None
+    try:
+        if restart:
+            the_model = user_input
+            the_model.setup_restart()
 
-    elif barf:
-        the_model = pb.PayetteBarf(user_input)
+        elif barf:
+            the_model = pb.PayetteBarf(user_input)
 
-    elif re.search(r"(?i)\boptimization\b.*", user_input):
-        # intantiate the Optimize object
-        the_model = po.Optimize(user_input)
+        elif re.search(r"(?i)\boptimization\b.*", user_input):
+            # intantiate the Optimize object
+            the_model = po.Optimize(user_input)
 
-    elif re.search(r"(?i)\bpermutation\b.*", user_input):
-        # intantiate the Optimize object
-        the_model = pp.Permutate(user_input)
+        elif re.search(r"(?i)\bpermutation\b.*", user_input):
+            # intantiate the Optimize object
+            the_model = pp.Permutate(user_input)
 
-    elif re.search(r"(?i)\bparameterization\b.*", user_input):
-        # intantiate the Optimize object
-        the_model = pparam.parameterizer(user_input)
+        elif re.search(r"(?i)\bparameterization\b.*", user_input):
+            # intantiate the Optimize object
+            the_model = pparam.parameterizer(user_input)
 
-    else:
-        the_model = pcntnr.Payette(user_input)
+        else:
+            the_model = pcntnr.Payette(user_input)
+
+    except PayetteError as error:
+        # pass on the error for now.
+        the_model = DummyPayette()
+        the_model.name = pip.get("name", user_input)
+        pass
 
     # run the job
     if timing:
-        tim1 = time.time()
+        t1 = time.time()
 
-    siminfo = the_model.run_job()
+    try:
+        siminfo = the_model.run_job()
 
-    if barf:
-        retcode = siminfo
-    else:
-        retcode = siminfo["retcode"]
+    except PayetteError as error:
+        pass
 
-    if retcode != 0:
-        sys.stderr.write("ERROR: simulation failed\n")
+    except KeyboardInterrupt:
+        the_model.finish()
+        sys.exit(0)
+
+    if error:
+        # the simulation failed. Trap the error and print out useful info to
+        # the screen
+        the_model.finish()
+
+        if ro.DEBUG:
+            # raise the error to give the traceback
+            raise error
+
+        # write out the error message
+        retcode = error.retcode
+        l = 86
+        psf = "Payette simulation {0} failed".format(the_model.name)
+        char, eee = "*", " ERROR " * 12
+        em = textfill(error.message, l-6)
+        em = "\n".join(["{0} {1:{pad}}{0}".format(char, x, pad=l-3)
+                        for x in em.split("\n")])
+        pu.report_error("{0:{0}^{width}}\n{0}{2:^{pad2}}{0}\n{0}{0:>{pad}}\n"
+                        "{0}{1:^{pad2}}{0}\n{0}{0:>{pad}}\n{3}\n"
+                        "{0}{0:>{pad}}\n{0}{2:^{pad2}}{0}\n{0:{0}^{width}}"
+                        .format(char, psf, eee, em, width=l, pad=l-1, pad2=l-2),
+                        count=ro.ERROR.lower() != "ignore", anonymous=True,
+                        pre="")
+        # populate siminfo dict to return
+        siminfo = {"retcode": retcode,
+                   "output file": the_model.outfile,
+                   "extra files": {},
+                   "simulation name": the_model.name,
+                   "simulation directory": the_model.simdir, }
+    retcode = siminfo["retcode"]
 
     if ro.VERBOSITY and not last:
         sys.stderr.write("\n")
 
     if timing:
-        tim2 = time.time()
+        t2 = time.time()
 
     # write timing info
     if timing:
-        write_timing_info(tim0, tim1, tim2, the_model.name)
+        write_timing_info(t0, t1, t2, the_model.name)
 
     # finish up
     the_model.finish()
@@ -216,11 +270,11 @@ def _run_job(args):
     return siminfo
 
 
-def write_timing_info(tim0, tim1, tim2, name=None):
+def write_timing_info(t0, t1, t2, name=None):
     """ write timing info """
 
-    ttot = time.time() - tim0
-    texe = tim2 - tim1
+    ttot = time.time() - t0
+    texe = t2 - t1
     pu.log_message(
         "\n-------------- {0} timing info --------------".format(name),
         pre="")
@@ -230,10 +284,10 @@ def write_timing_info(tim0, tim1, tim2, name=None):
     return
 
 
-def write_final_timing_info(tim0):
+def write_final_timing_info(t0):
     """ writ timing info from end of run"""
 
-    ttot = time.time() - tim0
+    ttot = time.time() - t0
     pu.log_message(
         "\n-------------- simulation timing info --------------", pre="")
     pu.log_message("total simulation time:\t\t{0:f}".format(ttot), pre="")

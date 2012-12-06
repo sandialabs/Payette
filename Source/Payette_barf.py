@@ -150,7 +150,7 @@ class PayetteBarf(object):
                     "from '{1}'".format(msg, self.barf["barf message"]))
                 retcode = 1
         sys.stdout.write(self.message + "\n")
-        return retcode
+        return {"retcode": retcode}
 
     def finish(self):
         self.model.finish()

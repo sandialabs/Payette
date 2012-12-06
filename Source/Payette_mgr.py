@@ -41,7 +41,7 @@ EXENAM = "payette"
 try:
     import Source.__config__ as cfg
 except ImportError:
-    sys.exit("Payette must first be configured before execution")
+    sys.exit("ERROR: Payette must first be configured before execution")
 import Source.__runopts__ as ro
 import Source.Payette_utils as pu
 import Source.Payette_model_index as pmi
@@ -343,15 +343,14 @@ def main(argv):
         elif os.path.isfile(os.path.join(cfg.DOTPAYETTE, opts.AUXMTL + ".db")):
             material_db = os.path.join(cfg.DOTPAYETTE, opts.AUXMTL + ".db")
         else:
-            pu.report_and_raise_error("{0} not found".format(opts.AUXMTL))
+            sys.exit("ERROR: {0} not found".format(opts.AUXMTL))
         sys.path.insert(0, os.path.dirname(material_db))
     else:
         material_db = cfg.MTLDB
 
     if not os.path.isfile(material_db):
-        pu.report_and_raise_error(
-            "buildPayette must first be executed to create\n\t{0}"
-            .format(material_db))
+        sys.exit("ERROR: buildPayette must first be executed to create\n\t{0}"
+                 .format(material_db))
 
     if opts.MAN:
         # print the man page for this and other scripts
@@ -372,14 +371,16 @@ def main(argv):
 
     if opts.VIZCNTRL:
         if not cfg.VIZ_COMPATIBLE:
-            sys.exit("Visualization not supported by your Python distribution")
+            sys.exit("ERROR: Visualization not supported by your "
+                     "Python distribution")
         import Source.Viz_Control as vc
         window = vc.ControlWindow()
         sys.exit(window.configure_traits())
 
     if not argv:
         if not cfg.VIZ_COMPATIBLE:
-            sys.exit("Visualization not supported by your Python distribution")
+            sys.exit("ERROR: Visualization not supported by your "
+                     "Python distribution")
         # Launch the Gui and exit
         import Source.Viz_ModelSelector as vms
         window = vms.PayetteMaterialModelSelector(model_type="any")
@@ -427,7 +428,7 @@ def main(argv):
         continue
 
     if pu.warn_count():
-        pu.report_and_raise_error("Stopping due to previous errors")
+        sys.exit("ERROR: Stopping due to previous errors")
 
     # check for incompatibilities
     if uargs:
@@ -435,13 +436,11 @@ def main(argv):
             if os.path.isdir(uarg) and "index.pkl" in os.listdir(uarg):
                 oargs.append(os.path.join(uarg, "index.pkl"))
                 continue
-            pu.report_and_raise_error(
-                "Files with unkown file extension[s] passed to Payette [{0}]"
-                .format(os.path.splitext(x)[1] for x in uargs))
+            sys.exit("ERROR: Unkown file extension[s] passed to Payette [{0}]"
+                     .format(os.path.splitext(x)[1] for x in uargs))
 
     if len([x for x in (oargs, iargs, bargs, rargs) if x]) > 1:
-        pu.report_and_raise_error(
-            "Payette can only process one file type request at a time")
+        sys.exit("ERROR: Payette can only process one file type at a time")
 
     if oargs:
         # output files given, launch visualizer
@@ -463,20 +462,15 @@ def main(argv):
     restart, barf = False, False
     if rargs:
         if len(rargs) > 1:
-            pu.report_and_raise_error(
-                "{0:d} restart files given, but only 1 restart file "
-                "can be processed at a time".format(len(rargs)))
+            sys.exit("ERROR: Only 1 restart file can be processed at a time")
         elif siminp is not None:
-            pu.report_and_raise_error(
-                "Restart files cannot be run with additional input")
+            sys.exit("ERROR: Restart files cannot be run with additional input")
         restart = rargs[0]
 
     elif bargs:
         # user passed in a barf file
         if len(bargs) > 1:
-            pu.report_and_raise_error(
-                "{0:d} barf files given, but only 1 barf file "
-                "can be processed at a time".format(len(bargs)))
+            sys.exit("ERROR: Only 1 barf file can be processed at a time")
         barf = bargs[0]
 
     elif iargs:
@@ -502,10 +496,8 @@ def main(argv):
         simulation_info = [x for x in siminfo if x["retcode"] == 0]
         sys.exit(_visualize_results(simulation_info=siminfo))
 
-    retcodes = [x["retcode"] for x in siminfo]
-    if len(retcodes) == 1:
-        return retcodes[0]
-    return retcodes
+    retcode = max([x["retcode"] for x in siminfo])
+    return retcode
 
 
 def _visualize_results(simulation_info=None, outfiles=None):

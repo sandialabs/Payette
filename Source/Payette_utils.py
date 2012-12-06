@@ -59,7 +59,12 @@ AUTHORS
 
 
 class DummyHolder:
-    pass
+    def __init__(self):
+        self.outfile = None
+        self.name = None
+        self.simdir = None
+    def finish(self):
+        pass
 
 
 def whoami():
@@ -107,17 +112,19 @@ def __count_error(ecount=[0], inquire=False, reset=False):
     return
 
 
-def report_error(message, count=True):
+def report_error(message, count=True, anonymous=False, pre="ERROR: "):
     """Report error to screen and write to log file if open"""
     if count:
         __count_error()
-    stack = inspect.stack()[1]
-    message = "ERROR: {0} [reported by: {1}]\n".format(message,
-                                                       who_is_calling())
+    message = "{0}{1}".format(pre, message)
+    if not anonymous:
+        message = message + "[reported by: {0}]".format(who_is_calling())
+
     if SIMLOG is not None:
-        SIMLOG.write(message)
+        SIMLOG.write(message + "\n")
+
     sys.stdout.flush()
-    sys.stderr.write(message)
+    sys.stderr.write(message + "\n")
     return
 
 
