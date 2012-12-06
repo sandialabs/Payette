@@ -140,7 +140,8 @@ def main(argv):
 
     # git repositories
     sandiagit = "software.sandia.gov:/space/sandiagit/"
-    git_repos = [(sandiagit + "Payette", nightly)]
+    payette = "git@github.com:Payette/Payette.git"
+    git_repos = [(payette, nightly)]
 
     # set up environment
     os.environ["PAYETTE_ROOT"] = pdir
@@ -315,5 +316,3 @@ def write(fobj, text, fill, align, width):
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-
-

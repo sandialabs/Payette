@@ -329,7 +329,7 @@ class BuildPayette(object):
             libname = name + cfg.EXT_MOD_FEXT
 
             if (self.requested_materials and
-                    name.lower() not in [x.lower() for x in self.requested_materials]):
+                name.lower() not in [x.lower() for x in self.requested_materials]):
                 continue
 
             # check for interface file
@@ -419,8 +419,8 @@ class BuildPayette(object):
 
             continue
 
-        # the user may have requested to build a material that does not exist, let
-        # them know
+        # the user may have requested to build a material that does not exist,
+        # let them know
         non_existent = [x for x in self.requested_materials
                         if x not in self.materials_to_build]
         if non_existent:

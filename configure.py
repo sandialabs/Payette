@@ -67,8 +67,6 @@ rights in this software.
 USER_ENV = {"DOTPAYETTE": os.getenv("DOTPAYETTE"),
             "BENCHDIR": os.getenv("PAYETTE_BENCHDIR"),
             "MTLDIR": os.getenv("PAYETTE_MTLDIR"),
-            "LAMBDA": os.getenv("LAMBDA_ROOT"),
-            "ALEGRA": None, #os.getenv("ALEGRANEVADA"),
             }
 
 # supported fortran vendors
@@ -108,23 +106,11 @@ def configure(argv):
         default=[],
         help="Additional directories to scan for benchmarks [default: %default]")
     parser.add_option(
-        "--mtldirs",
+        "-M", "--mtldirs",
         dest="MTLDIRS",
         action="append",
         default=[],
         help="Additional directories to scan for materials [default: %default]")
-    parser.add_option(
-        "--lambda",
-        dest="LAMBDA",
-        action="store",
-        default=None,
-        help="Location of Lambda [default: %default]")
-    parser.add_option(
-        "--alegra",
-        dest="ALEGRA",
-        action="store",
-        default=None,
-        help="Location of alegranevada [default: %default]")
     parser.add_option(
         "-B",
         dest="DONTWRITEBYTECODE",
@@ -176,26 +162,6 @@ def configure(argv):
     # add to materials
     _user_mtls = [os.path.expanduser(x) for x in opts.MTLDIRS]
     cfg.add_user_mtls(_user_mtls)
-
-    # check for Lambda
-    if opts.LAMBDA is not None:
-        _lambda = os.path.expanduser(opts.LAMBDA)
-        if cfg._lambda is not None:
-            logerr("Environment variable {0} already specified".format(LAMBDA))
-        else:
-            if "library/models" not in _lambda:
-                _lambda = os.path.join(_lambda, "library/models")
-            cfg.add_user_mtls(_lambda)
-
-    if opts.ALEGRA is not None:
-        _alegra = os.path.expanduser(opts.ALEGRA)
-        if cfg.alegra is not None:
-            logerr("Environment variable {0} already specified".format(ALEGRA))
-        else:
-            if "alegra/material_libs/utils/payette" not in _alegra:
-                _alegra = os.path.join(_alegra,
-                                       "alegra/material_libs/utils/payette")
-            cfg.add_user_mtls(_alegra)
 
     # ------ Report on environmental variables --------------------------------
     if use_env:
@@ -443,20 +409,6 @@ class PayetteConfig:
             _user_mtls = [x for x in _user_mtls.split(os.pathsep)]
             self.add_user_mtls(_user_mtls)
 
-        # lambda models
-        _lambda = USER_ENV["LAMBDA"]
-        if _lambda is not None:
-            if "library/models" not in _lambda:
-                _lambda = os.path.join(_lambda, "library/models")
-            self.add_user_mtls(_lambda)
-
-        # alegra models
-        _alegra = USER_ENV["ALEGRA"]
-        if _alegra is not None:
-            if "alegra/material_libs/utils/payette" not in _alegra:
-                _alegra = os.path.join(_alegra,
-                                       "alegra/material_libs/utils/payette")
-            self.add_user_mtls(_alegra)
         return
 
     def add_user_tests(self, user_tests):
