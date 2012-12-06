@@ -148,11 +148,11 @@ def report_error(message, count=True, anonymous=False, pre="ERROR: "):
 
 
 def report_and_raise_error(message, tracebacklimit=None, caller=None,
-                           retcode=None):
+                           retcode=None, errno=0):
     """Report and raise an error"""
     if caller is None:
         caller = who_is_calling()
-    raise PayetteError(message, caller=caller, retcode=retcode)
+    raise PayetteError(message, caller=caller, retcode=retcode, errno=errno)
 
 
 # the following methods define warning logging, counting
