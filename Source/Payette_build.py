@@ -95,8 +95,8 @@ def build_payette(argv):
 
     # the following options are shortcuts for building specific materials
     parser.add_option(
-        "--dsc",
-        dest="DSC",
+        "--dsf",
+        dest="DSF",
         action="store_true",
         default=False,
         help="Build domain_switching_ceramic [default: %default]")
@@ -158,8 +158,8 @@ def build_payette(argv):
 
     # determine if we build all materials, or just a selection
     requested_materials = opts.MTLLIB
-    if opts.DSC:
-        requested_materials.append("domain_switching_ceramic")
+    if opts.DSF:
+        requested_materials.append("domain_switching_ferroelectric")
     if opts.KMM:
         requested_materials.append("kayenta")
     if opts.LPC:

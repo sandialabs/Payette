@@ -1380,4 +1380,93 @@ contains
     return
   end subroutine affinity
 
+  function randvec(aa)
+    ! Generate a random 3 vector
+    ! If the optional argument aa is given, a random vector is generated about
+    ! the axis contained in aa(1:3) in the cone given by the angle theta in
+    ! aa(4)
+    implicit none
+    !......................................................................passed
+    real(kind=fp) :: randvec(3)
+    real(kind=fp), optional, intent(in) :: aa(4)
+    !.......................................................................local
+    real(kind=fp) :: r, s, phi, sinT, theta, h, tc, v(3), L(3, 3), A(3), ea(3)
+    real(kind=fp), dimension(3), parameter :: Ez=(/0., 0., 1./)
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ randvec
+    if(present(aa)) then
+       A = aa(1:3); tc = aa(4)
+    else
+       A = Ez; tc = pi
+    end if
+    h = cos(tc)
+
+    ! random vector in cone
+    r = rand()
+    s = rand()
+    phi = 2. * pi * r
+    v(3) = h + (1. - h) * s
+    sinT = sqrt(one - v(3) ** 2)
+    v(1) = cos(phi) * sinT
+    v(2) = sin(phi) * sinT
+    v = v / sqrt(sum(v * v))
+
+    ! Change of basis to reorient around the prefered axis
+    ea = cross(Ez, A, 1)
+    theta = acos(sum(Ez * A))
+    L = aa2dc(ea, theta)
+    randvec = matmul(L, v)
+    randvec = randvec / sqrt(sum(randvec * randvec))
+    return
+  end function randvec
+
+  function aa2dc(a, t)
+    implicit none
+    !......................................................................passed
+    real(kind=fp) :: aa2dc(3, 3)
+    real(kind=fp), intent(in) :: a(3), t
+    !.......................................................................local
+    real(kind=fp) :: c, s, omc
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aa2dc
+    c = cos(t); s = sin(t); omc = 1. - cos(t)
+    aa2dc(1, 1) = omc * a(1) * a(1) + c
+    aa2dc(2, 2) = omc * a(2) * a(2) + c
+    aa2dc(3, 3) = omc * a(3) * a(3) + c
+    aa2dc(1, 2) = omc * a(1) * a(2) - s * a(3)
+    aa2dc(2, 3) = omc * a(2) * a(3) - s * a(1)
+    aa2dc(3, 1) = omc * a(3) * a(1) - s * a(2)
+    aa2dc(2, 1) = omc * a(2) * a(1) + s * a(3)
+    aa2dc(3, 2) = omc * a(3) * a(2) + s * a(1)
+    aa2dc(1, 3) = omc * a(1) * a(3) + s * a(2)
+    return
+  end function aa2dc
+
+  function cross(a, b, normalize)
+    implicit none
+    real(kind=fp) :: cross(3)
+    real(kind=fp), intent(in) :: a(3), b(3)
+    integer, optional, intent(in) :: normalize
+    cross(1) = a(2) * b(3) - a(3) * b(2)
+    cross(2) = a(3) * b(1) - a(1) * b(3)
+    cross(3) = a(1) * b(2) - a(2) * b(1)
+    if(present(normalize)) cross = cross / sqrt(sum(cross * cross))
+    return
+  end function cross
+
+  subroutine seed_rng
+    implicit none
+    integer :: k
+    integer, dimension(:), allocatable :: seed
+    call random_seed(size=k)
+    allocate(seed(1:k))
+    seed(:) = 17
+    call random_seed(put=seed)
+  end subroutine seed_rng
+
+  function rand()
+    implicit none
+    real(kind=fp) :: rand
+    call random_number(rand)
+    return
+  end function rand
+
 end module tensor_toolkit
