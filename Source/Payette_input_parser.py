@@ -383,13 +383,20 @@ def preprocess(lines, preprocessor=None):
                     for x in re.sub(I_EQ, " ", preprocessor).split("\n") if x]
 
     # Check for incompatible names (like "_r" and "_root3")
-    for idx in range(0, len(preprocessor)):
-        for jdx in range(0, len(preprocessor)):
-            if idx == jdx:
-                continue
-            if preprocessor[idx][0] in preprocessor[jdx][0]:
-                pu.report_and_raise_error("Incompatible variable names:\n" +
-             "'{0}'\n'{1}'".format(preprocessor[idx][0], preprocessor[jdx][0]))
+# @mswan: why is the below code necessary? I have several input sets with
+# @mswan: parameters like A1, A11, A12, ..., and preprocessing through them
+# @mswan: seems to work just fine?
+#    for idx in range(0, len(preprocessor)):
+#        for jdx in range(0, len(preprocessor)):
+#            if idx == jdx:
+#                continue
+#            if preprocessor[idx][0] in preprocessor[jdx][0]:
+#                pu.report_error("Incompatible variable names:\n" +
+#                                "'{0}', '{1}'".format(preprocessor[idx][0],
+#                                                      preprocessor[jdx][0]))
+#                continue
+#    if pu.error_count():
+#        pu.report_and_raise_error("Stopping due to previous errors")
 
     # Add the preprocessor values into the safe_eval_dict
     gdict, ldict, I = {"__builtins__": None}, safe_eval_dict, 0

@@ -63,7 +63,8 @@ class DummyHolder:
 
 
 class PayetteError(Exception):
-    def __init__(self, message, caller=None, retcode=None, errno=0):
+    def __init__(self, message, caller=None, retcode=None, errno=0,
+                 stop=False):
 
         if caller is None:
             caller = pu.who_is_calling()
@@ -81,9 +82,9 @@ class PayetteError(Exception):
         # message
         message = " ".join([x for x in message.split() if x])
         self.message = "ERROR: {0} {1}".format(message, caller)
+        if stop:
+            raise SystemExit(self.message)
         super(PayetteError, self).__init__(self.message)
-
-
 
 
 def whoami():
@@ -137,7 +138,7 @@ def report_error(message, count=True, anonymous=False, pre="ERROR: "):
         __count_error()
     message = "{0}{1}".format(pre, message)
     if not anonymous:
-        message = message + "[reported by: {0}]".format(who_is_calling())
+        message = message + " [reported by: {0}]".format(who_is_calling())
 
     if SIMLOG is not None:
         SIMLOG.write(message + "\n")

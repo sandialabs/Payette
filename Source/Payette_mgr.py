@@ -334,13 +334,18 @@ def main(argv):
 
     # ----------------------------------------------- start: get the user input
     if opts.AUXMTL is not None:
+        # User specified alternative material db file
         if os.path.isfile(opts.AUXMTL):
+            # absolute path to material db file specified
             material_db = opts.AUXMTL
         elif os.path.isfile(os.path.join(opts.AUXMTL, cfg.AUXDB)):
+            # directory specified with a 'auxilary.db' material db file
             material_db = os.path.join(opts.AUXMTL, cfg.AUXDB)
         elif os.path.isfile(os.path.join(cfg.DOTPAYETTE, opts.AUXMTL)):
+            # material db file name specified that resides in $DOTPAYETTE
             material_db = os.path.join(cfg.DOTPAYETTE, opts.AUXMTL)
         elif os.path.isfile(os.path.join(cfg.DOTPAYETTE, opts.AUXMTL + ".db")):
+            # material db file name specified (no ext) that resides in $DOTPAYETTE
             material_db = os.path.join(cfg.DOTPAYETTE, opts.AUXMTL + ".db")
         else:
             sys.exit("ERROR: {0} not found".format(opts.AUXMTL))

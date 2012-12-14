@@ -29,6 +29,7 @@ import os
 import linecache
 import math
 import random
+import numpy as np
 import Source.Payette_utils as pu
 import Source.Payette_sim_index as psi
 from Viz_Plot2D import Viz_Plot2D
@@ -202,7 +203,15 @@ class Viz_ModelPlot(HasStrictTraits):
                 mheader = pu.get_header(file_path)
             fnam = os.path.basename(file_path)
             self.plot_info[idx] = {fnam: pu.get_header(file_path)}
-            data.append(pu.read_data(file_path))
+            fdata = pu.read_data(file_path)
+            if not np.any(fdata):
+                pu.report_error("No data found in {0}".format(file_path))
+                continue
+            data.append(fdata)
+            continue
+        if pu.error_count():
+            pu.report_and_raise_error("Stopping due to previous errors",
+                                      stop=True)
         self.Plot_Data = Viz_Plot2D(
             plot_data=data, variables=self.file_variables,
             x_idx=0, plot_info=self.plot_info)
@@ -383,10 +392,10 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
 
     if output_file is None and index_file is None:
         pu.report_and_raise_error(
-            "no output or index file given")
+            "no output or index file given", stop=True)
     elif output_file is not None and index_file is not None:
         pu.report_and_raise_error(
-            "specify either an output or index file, not both")
+            "specify either an output or index file, not both", stop=True)
 
     if index_file is not None:
         sim_index = psi.SimulationIndex(index_file=index_file)
@@ -406,7 +415,7 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
         if not_found:
             pu.report_and_raise_error(
                 "The following output files were not found:\n{0}"
-                .format(", ".join(not_found)))
+                .format(", ".join(not_found)), stop=True)
 
     elif output_file is not None:
         output_files = [output_file]
