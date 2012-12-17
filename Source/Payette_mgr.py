@@ -28,8 +28,6 @@
 """ Top level interface to the Payette material model driver. """
 import sys
 import os
-import optparse
-from optparse import OptionParser, BadOptionError, AmbiguousOptionError
 from textwrap import fill as textfill
 
 FILE = os.path.realpath(__file__)
@@ -46,6 +44,7 @@ import Source.__runopts__ as ro
 import Source.Payette_utils as pu
 import Source.Payette_model_index as pmi
 from Source.Payette_run import run_payette
+from Source.Payette_utils import PassThroughOptionParser
 
 USAGE = "" if "-H" in sys.argv or "--man" in sys.argv else """\
 {0}: top level interface to the Payette material model driver
@@ -81,28 +80,6 @@ OPTIONS
 """.format(cfg.PYINT)
 
 
-class PassThroughOptionParser(OptionParser):
-    """
-    An unknown option pass-through implementation of OptionParser.
-
-    When unknown arguments are encountered, bundle with largs and try again,
-    until rargs is depleted.
-
-    sys.exit(status) will still be called if a known argument is passed
-    incorrectly (e.g. missing arguments or bad argument types, etc.)
-
-    Copied from
-    http://stackoverflow.com/questions/1885161/
-          how-can-i-get-optparses-optionparser-to-ignore-invalid-arguments
-    """
-    def _process_args(self, largs, rargs, values):
-        while rargs:
-            try:
-                OptionParser._process_args(self, largs, rargs, values)
-            except (BadOptionError, AmbiguousOptionError), e:
-                largs.append(e.opt_str)
-
-
 def main(argv):
     """
     The main gateway to the Payette driver and associated tools
@@ -130,6 +107,12 @@ def main(argv):
         action="store_true",
         default=False,
         help="Print man page and exit [default: %default]")
+    parser.add_option(
+        "-B",
+        dest="BUILD",
+        action="store_true",
+        default=False,
+        help="Build Payette [default: %default]")
     parser.add_option(
         "--clean",
         dest="CLEAN",
@@ -319,6 +302,22 @@ def main(argv):
 
     # parse the command line arguments
     (opts, args) = parser.parse_args(argv)
+
+
+    if opts.BUILD:
+        # bad first attempt to strip out an buildPayette options
+        tmp = [x for x in args]
+        rem = []
+        for i, arg in enumerate(tmp):
+            if arg.startswith("-"):
+                rem.append(arg)
+                try:
+                    if (not tmp[i+1].startswith("-") and
+                        not tmp[i+1].endswith(".inp")):
+                        rem.append(tmp[i+1])
+                except IndexError:
+                    continue
+        args = [x for x in tmp if x not in rem]
     # ----------------------------------------- end command line option parsing
 
     if opts.SUMMARY:
@@ -348,7 +347,12 @@ def main(argv):
             # material db file name specified (no ext) that resides in $DOTPAYETTE
             material_db = os.path.join(cfg.DOTPAYETTE, opts.AUXMTL + ".db")
         else:
-            sys.exit("ERROR: {0} not found".format(opts.AUXMTL))
+            auxmtl = opts.AUXMTL
+            if os.path.isdir(auxmtl):
+                auxmtl = os.path.join(auxmtl, cfg.AUXDB)
+            if not auxmtl.endswith(".db"):
+                auxmtl = auxmtl + ".db"
+            sys.exit("ERROR: Material database {0} not found".format(auxmtl))
         sys.path.insert(0, os.path.dirname(material_db))
     else:
         material_db = cfg.MTLDB
@@ -665,8 +669,36 @@ def _clean_file_exts(files, cleanall):
     return
 
 
+def build(argv):
+    from Payette_build import build_payette
+    built = build_payette(argv)
+    warn, error = 0, 0
+    if built == 0:
+        sys.stderr.write("\nINFO: buildPayette succeeded\n")
+
+    elif built < 0:
+        warn += 1
+        sys.stderr.write("\nWARNING: buildPayette failed to build one or "
+                         "more material libraries\n")
+
+    elif built > 0:
+        error += 1
+        sys.stderr.write("\nERROR: buildPayette failed\n")
+
+    return built
+
+
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    argv = sys.argv[1:]
+    if "-B" in argv:
+        argb = [x for x in argv if "-B" not in x]
+        built = build(argb)
+        if built > 0:
+            sys.exit("Payette failed to build")
+        if not argv:
+            sys.exit(0)
+
+    sys.exit(main(argv))
 
 # if __name__ == "__main__":
 

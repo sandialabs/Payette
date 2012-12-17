@@ -37,7 +37,6 @@ M. Scot Swan, Sandia National Laboratories, mswan@sandia.gov
 import os
 import sys
 import imp
-import optparse
 import subprocess as sbp
 import multiprocessing as mp
 import pyclbr
@@ -54,6 +53,7 @@ import Source.Payette_xml_parser as px
 import Source.Payette_model_index as pmi
 from Source.Payette_xml_parser import XMLParserError as XMLParserError
 from Payette_utils import PayetteError as PayetteError
+from Source.Payette_utils import PassThroughOptionParser
 
 # --- module level constants
 SPACE = "      "  # spacing used for logs to console
@@ -72,7 +72,7 @@ def build_payette(argv):
     # *************************************************************************
     # -- command line option parsing
     usage = ("usage: buildPayette  [options]")
-    parser = optparse.OptionParser(usage=usage, version="buildPayette 1.0")
+    parser = PassThroughOptionParser(usage=usage, version="buildPayette 1.0")
     parser.add_option(
         "-m",
         dest="MTLLIB",
@@ -148,9 +148,9 @@ def build_payette(argv):
 
     (opts, args) = parser.parse_args(argv)
 
-    if len(args) > 0:
-        parser.print_help()
-        parser.error("buildPayette does not require arguments, only options")
+#    if len(args) > 0:
+#       parser.print_help()
+#       parser.error("buildPayette does not require arguments, only options")
 
     ro.set_global_option("VERBOSITY", opts.VERBOSITY, default=True)
 
