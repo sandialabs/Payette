@@ -211,7 +211,7 @@ class Viz_ModelPlot(HasStrictTraits):
             continue
         if pu.error_count():
             pu.report_and_raise_error("Stopping due to previous errors",
-                                      stop=True)
+                                      sysexit=True, caller="anonymous")
         self.Plot_Data = Viz_Plot2D(
             plot_data=data, variables=self.file_variables,
             x_idx=0, plot_info=self.plot_info)
@@ -392,10 +392,10 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
 
     if output_file is None and index_file is None:
         pu.report_and_raise_error(
-            "no output or index file given", stop=True)
+            "no output or index file given", sysexit=True)
     elif output_file is not None and index_file is not None:
         pu.report_and_raise_error(
-            "specify either an output or index file, not both", stop=True)
+            "specify either an output or index file, not both", sysexit=True)
 
     if index_file is not None:
         sim_index = psi.SimulationIndex(index_file=index_file)
@@ -415,7 +415,7 @@ def create_Viz_ModelPlot(window_name, handler=None, metadata=None, **kwargs):
         if not_found:
             pu.report_and_raise_error(
                 "The following output files were not found:\n{0}"
-                .format(", ".join(not_found)), stop=True)
+                .format(", ".join(not_found)), sysexit=True)
 
     elif output_file is not None:
         output_files = [output_file]
