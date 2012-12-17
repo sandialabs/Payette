@@ -104,12 +104,16 @@ def to_matrix(a):
         return
 
 
-def to_array(a, sym=True):
+def to_array(a, sym=True, order="C"):
     """convert a to an array"""
     shape = np.shape(a)
     if shape[0] != shape[1] or shape[0] != 3:
         pu.report_and_raise_error('wrong shape [{0}]'.format(str(shape)))
         return 1
+
+    if order.upper() == "F":
+        a = a.T
+
     if not sym:
         return np.array([a[0, 0], a[0, 1], a[0, 2],
                          a[1, 0], a[1, 1], a[1, 2],

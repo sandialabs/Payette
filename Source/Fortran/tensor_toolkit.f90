@@ -27,16 +27,16 @@
 
 module tensor_toolkit
 
-  private :: w, diag9, sk, dk, fp
-  private :: zero, one, two, three, four, half, third, root2, root3, root6
-  private :: toor2, toor3, toor6, root23, root32, pi, piover6, six
-  private :: proj2evec, affinity
+  private
   public :: ata, symleaf, dd66x6, push, pull, dp, ddp, mag, dev, tr, iso
-  public :: matinv, eigen3x3, zerot, zerov, delta, I9
+  public :: matinv, eigen3x3, zerot, zerov, I6, I9, seed_rng, dyad, rot
+  public :: unrot, randvec, dp9x6, pullv, pushv, sym_inv, dp6x3, I3x3
+  public :: cross, aa2dc, m9t6, rotv, unrotv
 
   ! kind specifiers
   integer, parameter :: sk=selected_real_kind(6), dk=selected_real_kind(14)
   integer, parameter :: fp=dk
+  integer, parameter :: ik=selected_int_kind(6)
 
   ! numbers
   real(kind=fp), parameter :: zero= 0._dk, one=1._dk, two=2._dk, three=3._dk
@@ -53,11 +53,17 @@ module tensor_toolkit
 
   integer, parameter :: diag9(3) = (/1, 5, 9/)
   real(kind=fp), parameter :: &
-       delta(6) = (/one, one, one, zero, zero, zero/), &
+       I6(6) = (/one, one, one, zero, zero, zero/), &
        zerot(6) = (/zero, zero, zero, zero, zero, zero/), &
        zerov(3) = (/zero, zero, zero/), &
        I9(9) = (/one, zero, zero, zero, one, zero, zero, zero, one/), &
        w(6) = (/one, one, one, two, two, two/)
+  real(kind=fp), parameter :: I3x3(3,3) = reshape(I9, shape(I3x3))
+
+  ! mapping from 3x3 to 6x1
+  integer(kind=ik), parameter, dimension(3, 3) :: &
+       m9t6=reshape((/1, 4, 6, 4, 2, 5, 6, 5, 3/), shape(m9t6))
+
 
 
 contains
@@ -222,7 +228,7 @@ contains
     return
   end function dd66x6
 
-  function push(a, f)
+  function push(a, f, order)
     !---------------------------------------------------------------------------!
     ! Performs the "push" transformation
     !
@@ -250,20 +256,27 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=fp) :: a(6), push(6)
-    real(kind=fp) :: f(9)
+    real(kind=fp) :: push(6)
+    real(kind=fp), intent(in) :: a(6), f(9)
+    character*1, intent(in), optional :: order
     !.......................................................................local
-    real(kind=fp) :: detf
-    real(kind=fp) :: ff(3, 3)
+    real(kind=fp) :: detf, ff(3,3)
+    character*1 :: ord
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~push
+    if (present(order)) then
+       ord = order
+    else
+       ord = "F"
+    end if
     detf = f(1) * f(5) * f(9) + f(2) * f(6) * f(7) + f(3) * f(4) * f(8) &
          -(f(1) * f(6) * f(8) + f(2) * f(4) * f(9) + f(3) * f(5) * f(7))
     ff = reshape(f, shape(ff))
+    if (ord == "C" .or. ord == "c") ff = transpose(ff)
     push = one / detf * dd66x6(1, symleaf(ff), a)
     return
   end function push
 
-  function pull(a, f)
+  function pull(a, f, order)
     !---------------------------------------------------------------------------!
     ! Performs the "pull" transformation
     !
@@ -289,15 +302,22 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=fp) :: a(6), pull(6)
-    real(kind=fp) :: f(9)
+    real(kind=fp) :: pull(6)
+    real(kind=fp), intent(in) :: f(9), a(6)
+    character*1, intent(in), optional :: order
     !.......................................................................local
-    real(kind=fp) :: detf
-    real(kind=fp) :: ff(3, 3)
+    real(kind=fp) :: detf, ff(3,3)
+    character*1 :: ord
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~pull
+    if (present(order)) then
+       ord = order
+    else
+       ord = "F"
+    end if
     detf = f(1) * f(5) * f(9) + f(2) * f(6) * f(7) + f(3) * f(4) * f(8) &
          -(f(1) * f(6) * f(8) + f(2) * f(4) * f(9) + f(3) * f(5) * f(7))
     ff = reshape(f, shape(ff))
+    if (ord == "C" .or. ord == "c") ff = transpose(ff)
     pull = detf * dd66x6(1, matinv(symleaf(ff), 6), a)
     return
   end function pull
@@ -317,8 +337,7 @@ contains
     implicit none
     !......................................................................passed
     integer, intent(in) :: flg
-    real(kind=fp), intent(in) :: a(3)
-    real(kind=fp), intent(in) :: f(9)
+    real(kind=fp), intent(in) :: a(3), f(9)
     real(kind=fp) :: pushv(3)
     !.......................................................................local
     real(kind=fp) :: detf, dnom
@@ -362,7 +381,7 @@ contains
     real(kind=fp), intent(in) :: a(3)
     real(kind=fp), intent(in) :: f(9)
     real(kind=fp) :: pullv(3)
-    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~pushv
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~pullv
     if(flg == 0) then
        pullv = (/a(1) * f(1) + a(2) * f(4) + a(3) * f(7), &
                  a(1) * f(2) + a(2) * f(5) + a(3) * f(8), &
@@ -382,31 +401,93 @@ contains
     end if
   end function pullv
 
-  function unrot(a, r)
+  function unrot(a, r, order)
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=fp) :: a(6), unrot(6)
-    real(kind=fp) :: r(9)
-    real(kind=fp) :: rt(3, 3)
+    real(kind=fp) :: unrot(6)
+    real(kind=fp), intent(in) :: a(6), r(9)
+    character*1, intent(in), optional :: order
+    !.......................................................................local
+    real(kind=fp) :: rr(3,3)
+    character*1 :: ord
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~unrot
-    rt = transpose(reshape(r, shape(rt)))
-    unrot = dd66x6(1, symleaf(rt), a)
+    if (present(order)) then
+       ord = order
+    else
+       ord = "F"
+    end if
+    rr = reshape(r, shape(rr))
+    if (ord == "C" .or. ord == "c") rr = transpose(rr)
+    unrot = dd66x6(1, symleaf(transpose(rr)), a)
     return
   end function unrot
 
-  function rot(a, r)
+  function rot(a, r, order)
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
-    real(kind=fp) :: a(6), rot(6)
-    real(kind=fp) :: r(9)
+    real(kind=fp) :: rot(6)
+    real(kind=fp), intent(in) :: a(6), r(9)
+    character*1, intent(in), optional :: order
+    !.......................................................................local
     real(kind=fp) :: rr(3, 3)
+    character*1 :: ord
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~rot
+    if (present(order)) then
+       ord = order
+    else
+       ord = "F"
+    end if
     rr = reshape(r, shape(rr))
+    if (ord == "C" .or. ord == "c") rr = transpose(rr)
     rot = dd66x6(1, symleaf(rr), a)
     return
   end function rot
+
+  function rotv(v, r, order)
+    !---------------------------------------------------------------------------!
+    implicit none
+    !......................................................................passed
+    real(kind=fp) :: rotv(3)
+    real(kind=fp), intent(in) :: v(3), r(9)
+    character*1, intent(in), optional :: order
+    !.......................................................................local
+    real(kind=fp) :: rr(3, 3)
+    character*1 :: ord
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ rotv
+    if (present(order)) then
+       ord = order
+    else
+       ord = "F"
+    end if
+    rr = reshape(r, shape(rr))
+    if (ord == "C" .or. ord == "c") rr = transpose(rr)
+    rotv = matmul(rr, v)
+    return
+  end function rotv
+
+  function unrotv(v, r, order)
+    !---------------------------------------------------------------------------!
+    implicit none
+    !......................................................................passed
+    real(kind=fp) :: unrotv(3)
+    real(kind=fp), intent(in) :: v(3), r(9)
+    character*1, intent(in), optional :: order
+    !.......................................................................local
+    real(kind=fp) :: rr(3, 3)
+    character*1 :: ord
+    ! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ unrotv
+    if (present(order)) then
+       ord = order
+    else
+       ord = "F"
+    end if
+    rr = reshape(r, shape(rr))
+    if (ord == "C" .or. ord == "c") rr = transpose(rr)
+    unrotv = matmul(transpose(rr), v)
+    return
+  end function unrotv
 
   function inv(a)
     !---------------------------------------------------------------------------!
@@ -422,11 +503,13 @@ contains
     !---------------------------------------------------------------------------!
     implicit none
     !......................................................................passed
+    real(kind=fp) :: inv(9)
+    real(kind=fp), intent(in) :: a(9)
     real(kind=fp) :: det
-    real(kind=fp) :: a(9), inv(9)
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~rot
     det = a(1) * a(5) * a(9) + a(2) * a(6) * a(7) + a(3) * a(4) * a(8) &
         -(a(1) * a(6) * a(8) + a(2) * a(4) * a(9) + a(3) * a(5) * a(7))
+    if (abs(det) < epsilon(det)) call bombed('det == 0')
     inv = (/a(5) * a(9) - a(8) * a(6), &
             a(8) * a(3) - a(2) * a(9), &
             a(2) * a(6) - a(5) * a(3), &
@@ -662,7 +745,7 @@ contains
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~iso
     tra = sum(a(1:3))
     if(abs(tra) < epsilon(tra)) tra = zero
-    iso = tra / three * delta
+    iso = tra / three * I6
     return
   end function iso
 
@@ -1428,32 +1511,32 @@ contains
     ! Change of basis to reorient around the prefered axis
     ea = cross(Ez, A, 1)
     theta = acos(sum(Ez * A))
-    L = aa2dc(ea, theta)
+    call aa2dc(ea, theta, L)
     randvec = matmul(L, v)
     randvec = randvec / sqrt(sum(randvec * randvec))
     return
   end function randvec
 
-  function aa2dc(a, t)
+  subroutine aa2dc(a, t, L)
     implicit none
     !......................................................................passed
-    real(kind=fp) :: aa2dc(3, 3)
     real(kind=fp), intent(in) :: a(3), t
+    real(kind=fp), intent(out) :: L(3, 3)
     !.......................................................................local
     real(kind=fp) :: c, s, omc
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ aa2dc
     c = cos(t); s = sin(t); omc = 1. - cos(t)
-    aa2dc(1, 1) = omc * a(1) * a(1) + c
-    aa2dc(2, 2) = omc * a(2) * a(2) + c
-    aa2dc(3, 3) = omc * a(3) * a(3) + c
-    aa2dc(1, 2) = omc * a(1) * a(2) - s * a(3)
-    aa2dc(2, 3) = omc * a(2) * a(3) - s * a(1)
-    aa2dc(3, 1) = omc * a(3) * a(1) - s * a(2)
-    aa2dc(2, 1) = omc * a(2) * a(1) + s * a(3)
-    aa2dc(3, 2) = omc * a(3) * a(2) + s * a(1)
-    aa2dc(1, 3) = omc * a(1) * a(3) + s * a(2)
+    L(1, 1) = omc * a(1) * a(1) + c
+    L(2, 2) = omc * a(2) * a(2) + c
+    L(3, 3) = omc * a(3) * a(3) + c
+    L(1, 2) = omc * a(1) * a(2) - s * a(3)
+    L(2, 3) = omc * a(2) * a(3) - s * a(1)
+    L(3, 1) = omc * a(3) * a(1) - s * a(2)
+    L(2, 1) = omc * a(2) * a(1) + s * a(3)
+    L(3, 2) = omc * a(3) * a(2) + s * a(1)
+    L(1, 3) = omc * a(1) * a(3) + s * a(2)
     return
-  end function aa2dc
+  end subroutine aa2dc
 
   function cross(a, b, normalize)
     implicit none
