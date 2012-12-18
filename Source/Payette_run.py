@@ -260,7 +260,14 @@ def _run_job(args):
         l = 86
         psf = "Payette simulation {0} failed".format(the_model.name)
         char, eee = "*", " ERROR " * 12
-        em = textfill(error.message, l-6)
+        emsg = error.message.replace("ERROR: ", "")
+        sp = ""
+        if emsg.split() and ":" in emsg.split()[0]:
+            try:
+                sp = " " * (emsg.index(" ") + 1)
+            except ValueError:
+                pass
+        em = textfill(emsg, l-6, subsequent_indent=sp)
         em = "\n".join(["{0} {1:{pad}}{0}".format(char, x, pad=l-3)
                         for x in em.split("\n")])
         pu.report_error("{0:{0}^{width}}\n{0}{2:^{pad2}}{0}\n{0}{0:>{pad}}\n"
