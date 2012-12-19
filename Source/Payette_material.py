@@ -135,6 +135,9 @@ Payette developers.""".format(self.constitutive_model.name, cfg.LIBRARY)
                              iv=np.zeros(6),
                              plot_key="strain",
                              units="NO_UNITS")
+        self.matdat.register("vstrain", "Scalar",
+                             plot_key="vstrain",
+                             units="NO_UNITS")
         self.matdat.register("deformation gradient", "Tensor",
                              iv="Identity",
                              plot_key="F",

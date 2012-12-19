@@ -561,10 +561,11 @@ def solid_driver(the_model, **kwargs):
             matdat.store("vorticity", Wc)
             matdat.store("deformation gradient", Fc)
             matdat.store("strain", Ec)
+            matdat.store("vstrain", np.sum(Ec[:3]))
             # compute the equivalent strain
             matdat.store(
                 "equivalent strain",
-                np.sqrt(2. / 3. * (sum(Ec[:3] ** 2) + 2. * sum(Ec[3:] ** 2))))
+                np.sqrt(2. / 3. * (np.sum(Ec[:3] ** 2) + 2. * np.sum(Ec[3:] ** 2))))
 
             # udpate density
             dev = pt.trace(matdat.get("rate of deformation")) * dt
@@ -576,7 +577,6 @@ def solid_driver(the_model, **kwargs):
 
             # advance all data after updating state
             Pc = matdat.get("stress")
-            dsig = (Pc - matdat.get("stress", "-")) / dt
             matdat.store("stress rate", (Pc - matdat.get("stress", "-")) / dt)
             matdat.store("pressure", -np.sum(Pc[:3]) / 3.)
 
