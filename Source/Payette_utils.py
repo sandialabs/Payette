@@ -66,7 +66,7 @@ class DummyHolder:
 
 class PayetteError(Exception):
     def __init__(self, message, caller=None, retcode=None, errno=0,
-                 sysexit=False):
+                 sysexit=not ro.DEBUG):
 
         if caller is None:
             caller = pu.who_is_calling()
@@ -85,7 +85,7 @@ class PayetteError(Exception):
         message = " ".join([x for x in message.split() if x])
         self.message = "ERROR: {0} {1}".format(message, caller)
         if sysexit:
-            raise SystemExit(self.message)
+            raise SystemExit("\n" + self.message)
         super(PayetteError, self).__init__(self.message)
 
 
@@ -173,7 +173,7 @@ def report_error(message, count=True, anonymous=False, pre="ERROR: "):
 
 
 def report_and_raise_error(message, tracebacklimit=None, caller=None,
-                           retcode=None, errno=0, sysexit=False):
+                           retcode=None, errno=0, sysexit=not ro.DEBUG):
     """Report and raise an error"""
     if caller is None:
         caller = who_is_calling()

@@ -28,6 +28,7 @@
 """ Top level interface to the Payette material model driver. """
 import sys
 import os
+import re
 from textwrap import fill as textfill
 
 FILE = os.path.realpath(__file__)
@@ -225,7 +226,7 @@ def main(argv):
         default=ro.SIMDIR,
         help="Directory to run simulation [default: {0}]".format(os.getcwd()))
     parser.add_option(
-        "-T", "--use-table",
+        "--use-table",
         dest="use_table",
         action="store_true",
         default=ro.USE_TABLE,
@@ -305,19 +306,12 @@ def main(argv):
 
 
     if opts.BUILD:
-        # bad first attempt to strip out an buildPayette options
-        tmp = [x for x in args]
-        rem = []
-        for i, arg in enumerate(tmp):
-            if arg.startswith("-"):
-                rem.append(arg)
-                try:
-                    if (not tmp[i+1].startswith("-") and
-                        not tmp[i+1].endswith(".inp")):
-                        rem.append(tmp[i+1])
-                except IndexError:
-                    continue
-        args = [x for x in tmp if x not in rem]
+        # user built first, here we remove from args any arguments that were
+        # meant only for the build
+        args = [x for x in args if os.path.isfile(x) or
+                (not re.search(r"^([-]+).*", x) and os.path.splitext(x) in
+                 [os.path.splitext(f) for f in os.listdir(os.getcwd())])]
+
     # ----------------------------------------- end command line option parsing
 
     if opts.SUMMARY:
@@ -689,16 +683,20 @@ def build(argv):
 
 
 if __name__ == "__main__":
-    argv = sys.argv[1:]
-    if "-B" in argv:
-        argb = [x for x in argv if "-B" not in x]
+    ARGV = sys.argv[1:]
+    if "-B" in ARGV:
+        argb = [x for x in ARGV if x != "-B"]
         built = build(argb)
         if built > 0:
             sys.exit("Payette failed to build")
-        if not argv:
+        if not argb:
             sys.exit(0)
+    elif "-T" in ARGV:
+        import Source.Payette_runtest as Pr
+        ARGV.remove("-T")
+        sys.exit(Pr.main(ARGV))
 
-    sys.exit(main(argv))
+    sys.exit(main(ARGV))
 
 # if __name__ == "__main__":
 

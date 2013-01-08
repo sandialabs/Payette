@@ -148,10 +148,6 @@ def build_payette(argv):
 
     (opts, args) = parser.parse_args(argv)
 
-#    if len(args) > 0:
-#       parser.print_help()
-#       parser.error("buildPayette does not require arguments, only options")
-
     ro.set_global_option("VERBOSITY", opts.VERBOSITY, default=True)
 
     pu.log_message(cfg.INTRO, pre="")
