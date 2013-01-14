@@ -85,7 +85,8 @@ class PayetteError(Exception):
         message = " ".join([x for x in message.split() if x])
         self.message = "ERROR: {0} {1}".format(message, caller)
         if sysexit:
-            raise SystemExit("\n" + self.message)
+            sys.stderr.write("\n" + self.message)
+            sys.exit(retcode)
         super(PayetteError, self).__init__(self.message)
 
 

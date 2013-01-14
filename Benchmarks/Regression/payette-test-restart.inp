@@ -1,3 +1,7 @@
+begin control
+  testrestart
+  writerestart
+end control
 begin simulation payette-test-restart
 begin boundary
 begin legs
