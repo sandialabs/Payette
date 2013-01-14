@@ -110,10 +110,14 @@ def main(argv):
         help="Print man page and exit [default: %default]")
     parser.add_option(
         "-B",
-        dest="BUILD",
         action="store_true",
         default=False,
         help="Build Payette [default: %default]")
+    parser.add_option(
+        "-T",
+        action="store_true",
+        default=False,
+        help="Run the Payette tests [default: %default]")
     parser.add_option(
         "--clean",
         dest="CLEAN",
@@ -220,7 +224,7 @@ def main(argv):
         default=ro.NOWRITEPROPS,
         help="Do not write checked parameters [default: %default]")
     parser.add_option(
-        "-d", "--simdir",
+        "-D", "--simdir",
         dest="simdir",
         action="store",
         default=ro.SIMDIR,
@@ -303,15 +307,6 @@ def main(argv):
 
     # parse the command line arguments
     (opts, args) = parser.parse_args(argv)
-
-
-    if opts.BUILD:
-        # user built first, here we remove from args any arguments that were
-        # meant only for the build
-        args = [x for x in args if os.path.isfile(x) or
-                (not re.search(r"^([-]+).*", x) and os.path.splitext(x) in
-                 [os.path.splitext(f) for f in os.listdir(os.getcwd())])]
-
     # ----------------------------------------- end command line option parsing
 
     if opts.SUMMARY:
@@ -682,19 +677,47 @@ def build(argv):
     return built
 
 
+def run_test(argv):
+    import Source.Payette_runtest as Pr
+    return Pr.main(argv)
+
+
 if __name__ == "__main__":
     ARGV = sys.argv[1:]
-    if "-B" in ARGV:
-        argb = [x for x in ARGV if x != "-B"]
-        built = build(argb)
-        if built > 0:
+    jargv = " ".join(ARGV)
+
+    # check if user requests to build before execution, or if the user
+    # requested to run tests
+
+    # The regex used to determine uses a negative lookbehind (?<!...) to
+    # determine if -B or -T appears in ARGV, but not --...B... or --...T...
+    # (double --). If -B, we build before execution. If -T, the tests are run
+    PAT = r"(?<!-)-\w*{0}\w*\s"
+    B = re.search(PAT.format("B"), jargv)
+    if B:
+        repl = re.sub("B", "", B.group()).strip()
+        repl = "" if repl == "-" else repl
+        jargv = jargv.replace(B.group(), repl).strip()
+        if build(jargv.split()) > 0:
             sys.exit("Payette failed to build")
-        if not argb:
+
+        # remove from ARGV any arguments that were meant only for the build -
+        # or at least try too...
+        regex = r"(?<!-)-[mAd] \w*\s|--kmm|--dsf|--lpc|-w"
+        for group in re.findall(regex, jargv):
+            jargv = re.sub(group, "", jargv)
+        jargv = jargv.strip()
+        ARGV = jargv.split()
+        if not ARGV:
             sys.exit(0)
-    elif "-T" in ARGV:
-        import Source.Payette_runtest as Pr
-        ARGV.remove("-T")
-        sys.exit(Pr.main(ARGV))
+
+    T = re.search(PAT.format("T"), jargv)
+    if T:
+        repl = re.sub("T", "", T.group()).strip()
+        repl = "" if repl == "-" else repl
+        jargv = jargv.replace(T.group(), repl).strip()
+        ARGV = jargv.split()
+        sys.exit(run_test(ARGV))
 
     sys.exit(main(ARGV))
 

@@ -38,7 +38,6 @@ M. Scot Swan, Sandia National Laboratories, mswan@sandia.gov
 import sys
 import imp
 import os
-import optparse
 import time
 import shutil
 import multiprocessing as mp
@@ -54,6 +53,7 @@ import Source.Payette_notify as pn
 from Source.Payette_test import find_tests
 import Toolset.postprocess as pp
 from Source.Payette_utils import PayetteError as PayetteError
+from Source.Payette_utils import PassThroughOptionParser
 
 # --- module level variables
 CWD = os.getcwd()
@@ -68,7 +68,7 @@ def main(argv, print_help=False):
     # *************************************************************************
     # -- command line option parsing
     usage = "usage: testPayette [options]"
-    parser = optparse.OptionParser(usage=usage, version="testPayette 1.0")
+    parser = PassThroughOptionParser(usage=usage, version="testPayette 1.0")
     parser.add_option(
         "--builtin",
         dest="BUILTIN",
