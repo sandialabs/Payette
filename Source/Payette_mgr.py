@@ -682,18 +682,21 @@ def run_test(argv):
     return Pr.main(argv)
 
 
-if __name__ == "__main__":
-    ARGV = sys.argv[1:]
-    jargv = " ".join(ARGV)
+def _pre(argv):
+    """Check if user requests to build before execution, or if the user
+    requested to run tests
 
-    # check if user requests to build before execution, or if the user
-    # requested to run tests
+    """
+    run = True
+
+    # join argv for regex processing
+    jargv = " ".join(argv)
 
     # The regex used to determine uses a negative lookbehind (?<!...) to
-    # determine if -B or -T appears in ARGV, but not --...B... or --...T...
+    # determine if -B or -T appears in argv, but not --...B... or --...T...
     # (double --). If -B, we build before execution. If -T, the tests are run
-    PAT = r"(?<!-)-\w*{0}\w*\s"
-    B = re.search(PAT.format("B"), jargv)
+    pat = r"(?<!-)-\w*{0}\w*\s*"
+    B = re.search(pat.format("B"), jargv)
     if B:
         repl = re.sub("B", "", B.group()).strip()
         repl = "" if repl == "-" else repl
@@ -701,25 +704,38 @@ if __name__ == "__main__":
         if build(jargv.split()) > 0:
             sys.exit("Payette failed to build")
 
-        # remove from ARGV any arguments that were meant only for the build -
-        # or at least try too...
+        # remove from argv any arguments that were meant only for the build -
+        # or at least try too... The regexs were copied from 'buildPayette -h'
+        # because there is no way of dynamically determining which options are
+        # unique to buildPayette
         regex = r"(?<!-)-[mAd] \w*\s|--kmm|--dsf|--lpc|-w"
         for group in re.findall(regex, jargv):
             jargv = re.sub(group, "", jargv)
         jargv = jargv.strip()
-        ARGV = jargv.split()
-        if not ARGV:
-            sys.exit(0)
+        if not jargv.split():
+            # assume that if the user did not send additional arguments to
+            # payette that they only wanted to build
+            run = False
 
-    T = re.search(PAT.format("T"), jargv)
+    T = re.search(pat.format("T"), jargv)
     if T:
         repl = re.sub("T", "", T.group()).strip()
         repl = "" if repl == "-" else repl
         jargv = jargv.replace(T.group(), repl).strip()
-        ARGV = jargv.split()
-        sys.exit(run_test(ARGV))
+        run_test(jargv.split())
+        # Assume that if the user wanted to run the tests, no further work
+        # should be done
+        run = False
 
-    sys.exit(main(ARGV))
+    return run, jargv.strip().split()
+
+
+if __name__ == "__main__":
+    run, argv = _pre(sys.argv[1:])
+    if run:
+        sys.exit(main(argv))
+    sys.exit(0)
+
 
 # if __name__ == "__main__":
 
