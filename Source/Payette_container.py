@@ -137,7 +137,7 @@ class Payette(object):
         pu.write_to_simlog("Python interpreter: {0}".format(cfg.PYINT))
         pu.write_to_simlog("Description:")
 
-        desc = self.ui.find_block("description", "  None")
+        desc = self.ui.find_block("description", "  None", co=True)
         desc = textfill(desc, initial_indent="  ", subsequent_indent="  ")
         pu.write_to_simlog(desc)
 
@@ -157,7 +157,7 @@ class Payette(object):
         self.is_restart = 0
 
         # instantiate the material object
-        material = self.ui.find_block("material")
+        material = self.ui.find_block("material", co=True)
         if material is None:
             pu.report_and_raise_error(
                 "Material block not found for {0}".format(self.name))
@@ -225,7 +225,7 @@ class Payette(object):
 
         # --- optional information ------------------------------------------ #
         # list of plot keys for all plotable data
-        output = self.ui.find_block("output")
+        output = self.ui.find_block("output", co=True)
         output, oformat = pip.parse_output(output)
         self.plot_keys = [x for x in self.simdat.plot_keys()]
         self.plot_keys.extend(self.matdat.plot_keys())
@@ -235,13 +235,13 @@ class Payette(object):
         else:
             self.out_vars = [x for x in output if x.upper() in self.plot_keys]
 
-        mathplot = self.ui.find_block("mathplot", [])
+        mathplot = self.ui.find_block("mathplot", [], co=True)
         if mathplot:
             mathplot = pip.parse_mathplot(mathplot)
         self.mathplot_vars = mathplot
 
         # get extraction
-        extraction, eopts = self.ui.find_block("extraction", []), {}
+        extraction, eopts = self.ui.find_block("extraction", [], co=True), {}
         if extraction:
             extraction, eopts = pip.parse_extraction(extraction)
             extraction = [x for x in extraction

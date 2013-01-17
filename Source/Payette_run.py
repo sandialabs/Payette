@@ -120,7 +120,9 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
 
         # look for the "control" block from the input file
         control = []
-        for item in pip.find_block("control", siminp,"").split("\n"):
+        cblock = pip.find_block("control", siminp, "", co=True)
+        siminp = pip.pop_block("control", siminp)
+        for item in cblock.split("\n"):
             item = re.sub(r"[=:\,]", " ", item).split()
             if not item:
                 continue

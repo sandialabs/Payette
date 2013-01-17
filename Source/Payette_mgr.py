@@ -29,12 +29,14 @@
 import sys
 import os
 import re
+import glob
 from textwrap import fill as textfill
 
 FILE = os.path.realpath(__file__)
 ROOTDIR = os.path.realpath(os.path.join(os.path.dirname(FILE), "../"))
 SRCDIR = os.path.join(ROOTDIR, "Source")
 EXENAM = "payette"
+CWD = os.getcwd()
 
 # import Payette specific files
 try:
@@ -228,7 +230,7 @@ def main(argv):
         dest="simdir",
         action="store",
         default=ro.SIMDIR,
-        help="Directory to run simulation [default: {0}]".format(os.getcwd()))
+        help="Directory to run simulation [default: {0}]".format(CWD))
     parser.add_option(
         "--use-table",
         dest="use_table",
@@ -549,7 +551,7 @@ def _visualize_results(simulation_info=None, outfiles=None):
 
     else:
         # multiple simulations, create an index file
-        index = psi.SimulationIndex(os.getcwd())
+        index = psi.SimulationIndex(CWD)
         simname = "Payette"
         for idx, info in enumerate(simulation_info):
             name = info["simulation name"]
@@ -631,31 +633,32 @@ def _clean_file_exts(files, cleanall):
     """
 
     pu.log_message("Cleaning Payette output for {0}".format(", ".join(files)))
-    payette_exts = [".log", ".math1", ".math2", ".props", ".echo", ".prf"]
+    exts = [".log", ".math1", ".math2", ".props", ".echo", ".prf", ".pyc"]
+
     if cleanall:
-        payette_exts.extend([".out"])
+        exts.extend([".out", ".diff"])
 
     # clean all the payette output and exit
     if not files:
-        pu.log_warning("No base file name given to clean")
-        return
+        files = [x for x in os.listdir(CWD) if x.endswith(".inp")]
 
     for fpath in files:
-        fpath = os.path.realpath(os.path.expanduser(fpath))
-        fdir = os.path.dirname(fpath)
-        fnam, fext = os.path.splitext(fpath)
-        faux = [os.path.join(fdir, x) for x in os.listdir(fdir) if
-                os.path.splitext(x)[1] in payette_exts and
-                os.path.splitext(x)[0] == os.path.basename(fnam)]
-        for fff in faux:
+        fnam, fext = os.path.splitext(os.path.realpath(os.path.expanduser(fpath)))
+        pu.log_message("Cleaning {0}".format(os.path.basename(fnam)))
+        for f in _glob(fnam, *exts):
             try:
-                os.remove(fff)
+                os.remove(f)
             except OSError:
                 pass
             continue
         continue
     pu.log_message("Output cleaned")
     return
+
+
+def _glob(path, *exts):
+    path = os.path.join(path, "*") if os.path.isdir(path) else path + "*"
+    return [f for files in [glob.glob(path + ext) for ext in exts] for f in files]
 
 
 def build(argv):
@@ -695,7 +698,7 @@ def _pre(argv):
     # The regex used to determine uses a negative lookbehind (?<!...) to
     # determine if -B or -T appears in argv, but not --...B... or --...T...
     # (double --). If -B, we build before execution. If -T, the tests are run
-    pat = r"(?<!-)-\w*{0}\w*\s*"
+    pat = r"(?<!-)-\w*{0}\w*\s*?"
     B = re.search(pat.format("B"), jargv)
     if B:
         repl = re.sub("B", "", B.group()).strip()

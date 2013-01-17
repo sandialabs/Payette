@@ -28,6 +28,7 @@
 """Main Payette class """
 
 import re
+import sys
 import numpy as np
 
 import Source.__config__ as cfg
@@ -235,49 +236,39 @@ def _parse_material(mblock):
     """
 
     # get the constitutive model name
-    pat = r"(?i)\bconstitutive\s.*\bmodel"
-    fpat = pat + r".*"
-    cmod = re.search(fpat, mblock)
-    if cmod:
-        s, e = cmod.start(), cmod.end()
-        name = re.sub(r"\s", "_", re.sub(pat, "", mblock[s:e]).strip())
-        mblock = (mblock[:s] + mblock[e:]).strip()
-    else:
+    regex = r"(?i)\bconstitutive\s*model(?P<cmod>[a-z0-9_\- ]+)\W*"
+    cmod = re.search(regex, mblock)
+    if cmod is None:
         pu.report_and_raise_error("Constitutive model not found")
+    mblock = re.sub(cmod.group(), "", mblock)
+    cmod = re.sub(r"[^\S\n]+", "_", cmod.group("cmod").strip()).lower()
 
     # --- get user options -------------------------------------------------- #
     options = {}
-    pat = r"(?i)\boptions\b"
-    fpat = pat + r".*"
-    opts = re.search(fpat, mblock)
-    if opts:
-        s, e = opts.start(), opts.end()
-        opts = re.sub(pat, "", mblock[s:e].lower().strip()).split()
-        mblock = (mblock[:s] + mblock[e:]).strip()
+    regex = r"(?i)\boption[s]?\s(?P<opts>.*)\W*"
+    while True:
+        opts = re.search(regex, mblock)
+        if opts is None:
+            break
+        mblock = re.sub(opts.group(), "", mblock)
+        opts = opts.group("opts")
 
-        # only Fortran option recognized
-        if "fortran" in opts:
-            options["code"] = "fortran"
+        for opt in opts.split(","):
+            # for now, only boolean options are allowed
+            opt = re.sub(r"(?m)[^\S\n]+", " ", opt).lower().strip()
+            options[opt.strip()] = True
+
+        continue
+    if "fortran" in options:
+        options["code"] = "fortran"
 
     # get the strength model name
-    pat = r"(?i)strength.*model"
-    fpat = pat + r".*"
-    smod = re.search(fpat, mblock)
-    if smod:
-        s, e = smod.start(), smod.end()
-        smod = re.sub(r"\s", "_", re.sub(pat, "", mblock[s:e]).strip())
-        options["strength model"] = smod
-        mblock = (mblock[:s] + mblock[e:]).strip()
-
-    # element tracking
-    pat = r"(?i)element.*tracking"
-    fpat = pat + r".*"
-    etrack = re.search(fpat, mblock)
-    if etrack:
-        options["strength model"] = True
-        s, e = etrack.start(), etrack.end()
-        mblock = (mblock[:s] + mblock[e:]).strip()
+    regex = r"(?i)\bstrength\s*model(?P<smod>[a-z0-9_\- ]+)\W*"
+    smod = re.search(regex, mblock)
+    if smod is not None:
+        options["strength model"] = smod.group("smod").strip()
+        mblock = re.sub(smod.group(), "", mblock)
 
     # Only parameters are now left over in mblock
 
-    return name, mblock, options
+    return cmod, mblock, options

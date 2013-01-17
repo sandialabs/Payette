@@ -38,6 +38,11 @@ import Payette_utils as pu
 # --- module leve constants
 I_EQ = r"[:,=]"
 I_SEP = r"[:,;]"
+SP = " "
+RSEP = r":"
+
+
+RAND = np.random.RandomState(17)
 
 
 class InputParser(object):
@@ -67,7 +72,7 @@ class InputParser(object):
             pu.report_and_raise_error("No user input sent to InputParser")
 
         # --- required information ------------------------------------------ #
-        self.inp = find_block("input", ilines)
+        self.inp = find_block("input", ilines, co=True)
         if self.inp is None:
             pu.report_and_raise_error("User input not found")
 
@@ -81,9 +86,9 @@ class InputParser(object):
         self._options = parse_options(content)
         pass
 
-    def find_block(self, name, default=None):
+    def find_block(self, name, default=None, co=False):
         """Class method to the public find_block method """
-        return find_block(name, self.inp, default=default)
+        return find_block(name, self.inp, default=default, co=co)
 
     def find_nested_blocks(self, major, nested, default=None):
         """Class method to the public find_nested_blocks """
@@ -187,45 +192,39 @@ def find_item_name(lines, item, pop=False):
         lines with item line popped off
 
     """
-    name = re.search(r"(?i)\b{0}\s.*".format(item), lines)
-    if name:
-        s, e = name.start(), name.end()
-        name = re.sub(r"\s", "_",
-                      re.sub(r"(?i)\b{0}\s".format(item),
-                             "", lines[s:e].strip()))
+    regex = r"(?i)\b{0}(\W*)(?P<w0>[a-z0-9\-\._]+)(\W*?)".format(item)
+    match = re.search(regex, lines)
+    if not match:
         if pop:
-            lines = (lines[:s] + lines[e:]).strip()
+            return None, lines
+        return None
 
+    name = match.group("w0")
     if pop:
-        return name, lines
+        return name, re.sub(match.group(), "", lines).strip()
     return name
 
 
 def get_content(lines, pop=False):
-    block = []
-    rlines, content = [], []
-    bexp = re.compile(r"\bbegin\s*", re.I | re.M)
-    eexp = re.compile(r"\bend\s.*", re.I | re.M)
-    for iline, line in enumerate(lines.split("\n")):
-        if bexp.search(line):
-            block.append(1)
-        if eexp.search(line):
-            block.pop()
-            rlines.append(line)
-            continue
+    """Return everything in lines that is not between
+    begin keyword
+    ...
+    end keyword
 
-        if not block:
-            content.append(line)
-            if pop:
-                continue
+    sections
 
-        rlines.append(line)
-        continue
+    """
+    content = lines
+    regex = r"(?i)(?<=\bbegin).*[a-z0-9_\-\.]+.*"
+    regex_1 = r"(?is)\bbegin\W*{0}.*\bend\W*{0}.*?"
+    sections = re.findall(regex, content)
+    for section in sections:
+        section = re.search(regex_1.format(section.strip()), content)
+        if section:
+            content = re.sub(section.group(), "", content).strip()
 
-    content = "\n".join([x for x in content if x])
-    rlines = "\n".join(rlines)
     if pop:
-        return content, lines
+        return content, re.sub(content, "", lines).strip()
     return content
 
 
@@ -253,33 +252,33 @@ def parse_user_input(lines):
     lines = preprocess(lines)
     lines = strip_cruft(lines)
 
-    simulations = find_block("simulation", lines, findall=True)
-    opt = re.compile(r"\bbegin\s*optimization\b.*", re.I | re.M)
-    prm = re.compile(r"\bbegin\s*permutation\b.*", re.I | re.M)
+    allsims = find_block("simulation", lines, findall=True, co=True)
+
     post = "\nend input"
-    for name, content in simulations.items():
+    simulations = []
+    for name, content in allsims:
         check_incompatibilities(content)
-        if opt.search(content):
-            stype = "optimization"
-        elif prm.search(content):
-            stype = "permutation"
+        for item in ("optimization", "permutation", ):
+            if find_block(item, content):
+                stype = item
+                break
         else:
             stype = "simulation"
         preamble = "begin input\nname {0}\ntype {1}\n".format(name, stype)
         content = preamble + content.strip() + post
-        simulations[name] = content
+        simulations.append(content)
         continue
 
-    parameterizations = find_block("parameterization", lines, findall=True)
+    allparams = find_block("parameterization", lines, findall=True, co=True)
     stype = "parameterization"
-    for name, content in parameterizations.items():
+    for name, content in allparams:
         check_incompatibilities(content)
         preamble = "begin input\nname {0}\ntype {1}\n".format(name, stype)
         content = preamble + content.strip() + post
-        simulations[name] = content
+        simulations.append(content)
         continue
 
-    return simulations.values()
+    return simulations
 
 
 def check_incompatibilities(lines):
@@ -291,20 +290,18 @@ def check_incompatibilities(lines):
         User input
 
     """
+    if lines is None:
+        return
     incompatible_blocks = (("optimization", "permutation",),)
     for blocks in incompatible_blocks:
-        incompatibilites = []
+        present = 0
         for block in blocks:
-            content = find_block(block, lines)
-            if content is None:
-                continue
-            incompatibilites.append(1)
-            continue
-        if len(incompatibilites) > 1:
+            if re.search(r"(?is)\bbegin\W*{0}.*?".format(block), lines):
+                present += 1
+        if present > 1:
             pu.report_and_raise_error(
                 "Blocks: '{0}' incompatible in same input"
                 .format(", ".join(blocks)))
-        continue
     return
 
 
@@ -365,66 +362,91 @@ def preprocess(lines, preprocessor=None):
     block in lines
 
     """
-    import random
-    safe_eval_dict = {
-        'sqrt': math.sqrt, 'sin': math.sin, 'cos': math.cos, 'tan': math.tan,
-        'asin': math.asin, 'acos': math.acos, 'atan': math.atan, 'atan2': math.atan2,
-        'pi': math.pi, 'log': math.log, 'exp': math.exp, 'floor': math.floor,
-        'ceil': math.ceil, 'abs': math.fabs, 'random': random.random, }
+    # safe values to be used in eval
+    GDICT = {"__builtins__": None}
+    SAFE = {"sqrt": math.sqrt, "sin": math.sin, "cos": math.cos,
+            "tan": math.tan, "asin": math.asin, "acos": math.acos,
+            "atan": math.atan, "atan2": math.atan2, "pi": math.pi,
+            "log": math.log, "exp": math.exp, "floor": math.floor,
+            "ceil": math.ceil, "abs": math.fabs, "random": RAND.random_sample, }
+
+    # some private functions
+    def _split(s):
+        _strip = lambda v: [x.strip() for x in v]
+        return [_strip(re.split(I_EQ, x, 1)) for x in s.split("\n") if x]
+
+
+    def _make_subs(inp, subs):
+        # make substitutions
+        R = r"{{.*\b{0}\b.*}}"
+        for pat, repl in subs:
+            repl = "(" + re.sub(r"[\{\}]", " ", repl).strip() + ")"
+            matches = re.findall(R.format(pat.strip()), inp)
+            for match in matches:
+                mrepl = re.sub(r"\b{0}\b".format(pat), repl, match)
+                inp = re.sub(re.escape(match), mrepl, inp)
+                continue
+            continue
+        return inp
+
+
+    def _eval_subs(inp):
+        # evaluate everything in { }
+        regex = r"(?i){.*?}"
+        for line in inp.split("\n"):
+            matches = re.findall(regex, line)
+            for match in matches:
+                repl = re.sub(r"[\{\}]", " ", match)
+                try:
+                    repl = "{0:12.6E}".format(eval(repl, GDICT, SAFE))
+                except NameError:
+                    pu.report_error(
+                        "Don't know what to do with {0}".format(repl))
+                    continue
+                nl = re.sub(re.escape(match), repl, line)
+                inp = re.sub(re.escape(line), nl, inp)
+                line = nl
+            continue
+        if pu.error_count():
+            pu.report_and_raise_error("Stopping due to previous errors")
+        return inp
 
     if preprocessor is None:
-        preprocessor = find_block("preprocessing", lines)
+        preprocessor = find_block("preprocessing", lines, co=True)
 
     if preprocessor is None:
         return lines
 
-    # split the preprocessor into a list of (pattern, repl) pairs
-    preprocessor = [x.split(None, 1)
-                    for x in re.sub(I_EQ, " ", preprocessor).split("\n") if x]
+    # pop the preprocessing block
+    lines = pop_block("preprocessing", lines)
 
-    # Check for incompatible names (like "_r" and "_root3")
-# @mswan: why is the below code necessary? I have several input sets with
-# @mswan: parameters like A1, A11, A12, ..., and preprocessing through them
-# @mswan: seems to work just fine?
-#    for idx in range(0, len(preprocessor)):
-#        for jdx in range(0, len(preprocessor)):
-#            if idx == jdx:
-#                continue
-#            if preprocessor[idx][0] in preprocessor[jdx][0]:
-#                pu.report_error("Incompatible variable names:\n" +
-#                                "'{0}', '{1}'".format(preprocessor[idx][0],
-#                                                      preprocessor[jdx][0]))
-#                continue
-#    if pu.error_count():
-#        pu.report_and_raise_error("Stopping due to previous errors")
-
-    # Add the preprocessor values into the safe_eval_dict
-    gdict, ldict, I = {"__builtins__": None}, safe_eval_dict, 0
-    while True:
-        errors = 0
-        for idx, [pat, repl] in enumerate(preprocessor):
-            tmp = repl.lstrip('{').rstrip('}')
-            try:
-                tmpval = eval(tmp, gdict, ldict)
-            except NameError:
-                errors += 1
-                continue
-            safe_eval_dict[pat] = tmpval
-            preprocessor[idx][1] = "{0:12.6E}".format(tmpval)
-            continue
-        if not errors or I > 10:
+    # preprocess the preprocessor and split it into "pat = repl" pairs
+    I = 0
+    while I < 25:
+        hold = preprocessor
+        preprocessor = _make_subs(preprocessor, _split(preprocessor))
+        if hold == preprocessor:
             break
         I += 1
         continue
+    else:
+        pu.report_and_raise_error(
+            "Exceeded maximum levels of nesting in preprocessing block")
+    preprocessor = _eval_subs(preprocessor)
+    preprocessor = _split(preprocessor)
 
-    if errors or I > 10:
-        pu.report_and_raise_error("Unresolvable preprocessing block")
+    # Add the preprocessor values into the SAFE dict
+    for pat, repl in preprocessor:
+        SAFE[pat] = eval(repl, GDICT, SAFE)
+
+    # the regular expression that defines the preprocessing
+    pregex = r"(?i){{.*\b{0:s}\b.*}}"
 
     for pat, repl in preprocessor:
         # Check that each preprocessor variable is used somewhere else in the
         # file. Issue a warning if not. It is done here outside of the
         # replacement loop to be sure that we can check all variables. Because
-        # variables in the preprocessor block were put in the safe_eval_dict
+        # variables in the preprocessor block were put in the SAFE
         # it is possible for, say, var_2 to be replaced when replacing var_1
         # if the user specified something like
         #          param = {var_1 * var_2}
@@ -432,38 +454,22 @@ def preprocess(lines, preprocessor=None):
         # we do it here. Checking is important for permutate and optimization
         # jobs to make sure that all permutated and optimized variables are
         # used properly in the file before the job actually begins.
-        if not re.search(r"(?i){{.*?\b{0:s}\b.*?}}".format(pat), lines):
+        if not re.search(pregex.format(pat), lines):
             pu.log_warning(
                 "Preprocessing key '{0}' not found in input".format(pat))
         continue
 
     # Print out preprocessed values for debugging
-    pu.log_message("Preprocessor values:")
-    name_len = max([len(dum) for dum, dumdum in preprocessor])
-    for pat, repl in preprocessor:
-        pu.log_message("    {0:<{1}s} {2}".format(pat + ':', name_len + 2, repl))
-        full = re.compile(r"{{.*?\b{0:s}\b.*?}}".format(pat), re.I | re.M)
-        while True:
-            found = full.search(lines)
-            if not found:
-                break
-            bn, en = found.start(), found.end()
-            npat = re.compile(
-                re.escape(r"{0}".format(lines[bn:en])), re.I | re.M)
-            # tmprepl is used because I (Scot) was having issues with
-            # persistence of just 'repl' when it was used in multiple {} sets.
-            tmprepl = re.sub(
-                r"(?i){0}".format(pat), repl, lines[bn + 1:en - 1])
-            try:
-                tmprepl = "{0:12.6E}".format(eval(tmprepl, gdict, ldict))
-            except:
-                pu.report_and_raise_error(
-                    "failure evaluating '{0}' in preprocessor.".format(tmprepl))
+    if ro.DEBUG:
+        pu.log_message("Preprocessor values:")
+        name_len = max([len(x[0]) for x in preprocessor])
+        for pat, repl in preprocessor:
+            pu.log_message("    {0:<{1}s} {2}"
+                           .format(pat + ':', name_len + 2, repl))
 
-            lines = npat.sub(tmprepl, lines)
-            continue
-        continue
-
+    # do the replacement
+    lines = _make_subs(lines, preprocessor)
+    lines = _eval_subs(lines)
     return lines
 
 
@@ -488,27 +494,36 @@ def find_nested_blocks(major, nested, lines, default=None):
         blocks[1:n] are the nested blocks (in order requested)
 
     """
-    blocks = []
-    blocks.append(find_block(major, lines))
+    major = find_block(major, lines, " ", co=True)
+    minor = []
     for name in nested:
-        bexp = re.compile(r"\bbegin\s*{0}\b.*".format(name), re.I | re.M)
-        eexp = re.compile(r"\bend\s*{0}\b.*".format(name), re.I | re.M)
-        start = bexp.search(blocks[0])
-        stop = eexp.search(blocks[0])
-        if start and not stop:
-            pu.report_and_raise_error("End of block {0} not found".format(name))
-        if not start:
-            blocks.append(default)
-            continue
-
-        s, e = start.end(), stop.start()
-        blocks.append(blocks[0][start.end():stop.start()])
-        blocks[0] = blocks[0][:start.start()] + blocks[0][stop.end():]
+        block = find_block(name, major)
+        if block is not None:
+            # remove block from major
+            major = major.replace(block, "")
+#            try:
+#                major = re.sub(re.escape(block), "", major)
+#            except OverflowError:
+#                major = major.replace(block, "")
+            block = block_contents(name, block)
+        minor.append(block)
         continue
-    return blocks
+    return [major] + minor
 
 
-def find_block(name, lines, default=None, findall=False, named=False):
+def block_contents(bname, block):
+    """Given an input block, return only its contents
+
+    """
+    sregex = r"(?i)\bbegin\s*({0}).*".format(bname)
+    eregex = r"(?i)\bend\s*({0})\W*".format(bname)
+    s = re.search(sregex, block)
+    e = re.search(eregex, block)
+    return re.sub(block[e.start():], "", block[s.end():]).strip()
+
+
+def find_block(name, lines, default=None, findall=False, named=False, co=False,
+               _k=[0]):
     """Find the input block of form
         begin block [name]
         ...
@@ -519,6 +534,9 @@ def find_block(name, lines, default=None, findall=False, named=False):
     lines : str
     name : str
         the block name
+    co : bool
+        If true, return only the contents of the block, stripping the
+        begin <name> and end <name> tags
 
     Returns
     -------
@@ -527,52 +545,46 @@ def find_block(name, lines, default=None, findall=False, named=False):
     block : str
         the block of input
     """
-    blocks = {}
-    pat = r"\bbegin\s*{0}\b".format(name)
-    fpat = pat + r".*"
-    namexp = re.compile(pat, re.I)
-    bexp = re.compile(fpat, re.I | re.M)
-    eexp = re.compile(r"\bend\s*{0}\b.*".format(name), re.I | re.M)
-    k = 0
+    # regex to find a line of the form: begin <section> [name]
+    sregex = r"(?i)(?<=\bbegin)\W*{0}.*[a-z0-9_\-\. ]*\W*"
+    # regex to find contents of block
+    bregex = r"(?is)\bbegin\W*{0}.*\bend\W*{0}.*?"
 
-    named = True if findall else named
+    sections = re.findall(sregex.format(name), lines)
+    if not sections:
+        if named:
+            bname = "default_{0}".format(_k[0])
+            _k[0] += 1
+            return (None, default)
+        if findall:
+            return []
+        return default
 
-    while True:
-        # get the block
-        start = bexp.search(lines)
-        stop = eexp.search(lines)
+    blocks = []
+    for section in sections:
+        section = section.split(None, 1)
+        try:
+            sname, bname = section
+        except ValueError:
+            sname, bname = section[0], "default_{0}".format(_k[0])
+            _k[0] += 1
+        bname = re.sub(r"[ ]+", "_", bname).strip()
 
-        if findall and not start:
-            return blocks
-
-        if start and not stop:
+        block = re.search(bregex.format(sname), lines)
+        if not block:
             pu.report_and_raise_error(
-                "End of block '{0}' not found".format(name))
-
-        if not start:
-            bname, block = None, default
-
-        else:
-            if named:
-                # block name is everything from "begin block" to end of line
-                s, e = start.start(), start.end()
-                bname = re.sub(r"\s", "_", namexp.sub("", lines[s:e]).strip())
-                if not bname:
-                    bname = "default_{0}".format(k)
-
-            block = lines[start.end():stop.start()].strip()
-
+                "End of block {0} not found".format(sname))
+        block = block.group()
+        if co:
+            block = block_contents(name, block)
+        blocks.append((bname, block))
         if not findall:
-            if named:
-                return bname, block
-            return block
+            break
 
-        k += 1
-        lines = lines[:start.start()] + lines[stop.end():]
-        blocks[bname] = block
-        continue
+    if named or findall:
+        return blocks
 
-    return blocks
+    return blocks[0][1]
 
 
 def pop_block(name, lines):
@@ -590,12 +602,9 @@ def pop_block(name, lines):
         lines with name popped
 
     """
-    bexp = re.compile(r"\bbegin\s*{0}\b.*".format(name), re.I | re.M)
-    eexp = re.compile(r"\bend\s*{0}\b.*".format(name), re.I | re.M)
-    bexp, eexp = bexp.search(lines), eexp.search(lines)
-    if bexp and eexp:
-        s, e = bexp.start(), eexp.end()
-        lines = lines[:s].strip() + lines[e:]
+    block = find_block(name, lines)
+    if block is not None:
+        lines = re.sub(re.escape(block), "", lines).strip()
     return lines
 
 
@@ -613,31 +622,32 @@ def fill_in_inserts(lines):
         User input, modified in place, with inserts inserted
 
     """
-    pat = r"^.*\binsert\b\s"
-    namexp = re.compile(pat, re.I)
-    fpat = pat + r".*"
-    regexp = re.compile(fpat, re.I | re.M)
+    regex = r"(?i).*\binsert\b\s*(?P<insert>[a-z0-9_\-\. ]+)\W*"
+    blx = []
     while True:
         lines = strip_cruft(lines)
-        found = regexp.search(lines)
-        if not found:
-            break
-
-        # insert command found, find name
-        s, e = found.start(), found.end()
-        name = namexp.sub("", lines[s:e])
-        insert = find_block(name, lines)
+        insert = re.search(regex, lines)
         if insert is None:
+            break
+        name = insert.group("insert").strip()
+        fill = find_block(name, lines, co=True)
+        if fill is not None:
+            blx.append(name)
+
+        else:
             fpath = os.path.realpath(os.path.expanduser(name))
             try:
-                insert = open(fpath, "r").read()
+                fill = open(fpath, "r").read()
             except IOError:
                 pu.report_and_raise_error(
                     "Cannot find insert: {0}".format(repr(name)))
 
         # substitute the contents of the insert
-        lines = regexp.sub(insert, lines, 1)
+        lines = re.sub(re.escape(insert.group()), "\n" + fill + "\n", lines, 1)
         continue
+
+    for blk in blx:
+        lines = pop_block(blk, lines)
 
     return lines
 
@@ -777,16 +787,11 @@ def flatten(x):
 def get(option, lines, default=None):
     """ Find the option in lines
     """
-    option = ".*".join(option.split())
-    pat = r"(?i)\b{0}\s".format(option)
-    fpat = pat + r".*"
-    option = re.search(fpat, lines)
+    option = r".*".join(re.split(r"[ _]", option))
+    regex = r"(?i)(?P<opt>\b{0})\s+(?P<val>[a-z0-9_\- ]*)\W*".format(option)
+    option = re.search(regex, lines)
     if option:
-        s, e = option.start(), option.end()
-        option = lines[s:e]
-        lines = (lines[:s] + lines[e:]).strip()
-        option = re.sub(pat, "", option)
-        option = re.sub(r"[\,=]", " ", option).strip()
+        option = re.sub(r"[^\S\n]+", "_", option.group("val"))
     else:
         option = default
     return option

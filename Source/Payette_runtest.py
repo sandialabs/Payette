@@ -74,7 +74,12 @@ def main(argv, print_help=False):
         dest="BUILTIN",
         action="store_true",
         default=False,
-        help=": Run only 'builtin' tests [default: %default]")
+        help="Run only 'builtin' tests [default: %default]")
+    parser.add_option(
+        "-c",
+        action="store_true",
+        default=False,
+        help="Run tests found in current directory [default: %default]")
     parser.add_option(
         "-k",
         dest="KEYWORDS",
@@ -115,8 +120,7 @@ def main(argv, print_help=False):
     parser.add_option(
         "-j", "--nproc",
         dest="NPROC",
-        type=int,
-        default=1,
+        default="1",
         action="store")
     parser.add_option(
         "-p", "--postprocess",
@@ -179,22 +183,23 @@ def main(argv, print_help=False):
         parser.print_help()
         return
     (opts, args) = parser.parse_args(argv)
+    nproc = int(opts.NPROC) if opts.NPROC.upper() != "M" else mp.cpu_count()
     sys.exit(test_payette(
         opts.TESTRESDIR, args, builtin=opts.BUILTIN, keywords=opts.KEYWORDS,
         nokeywords=opts.NOKEYWORDS, spectests=opts.SPECTESTS,
         benchdirs=opts.BENCHDIRS, forcererun=opts.FORCERERUN,
-        nproc=opts.NPROC, postprocess=opts.POSTPROCESS,
+        nproc=nproc, postprocess=opts.POSTPROCESS,
         notify=opts.NOTIFY, ignoreerror=opts.IGNOREERROR,
         testfile=opts.TESTFILE, switch=opts.SWITCH,
         rebaseline=opts.REBASELINE, index=opts.INDEX,
-        index_name=opts.INDEX_NAME, wipe=opts.WIPE))
+        index_name=opts.INDEX_NAME, wipe=opts.WIPE, runcwd=opts.c))
 
 
 def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
                  spectests=[], benchdirs=[], forcererun=False, nproc=1,
                  postprocess=False, notify=False, ignoreerror=False,
                  testfile=False, switch=None, rebaseline=False, index=False,
-                 index_name=False, wipe=False):
+                 index_name=False, wipe=False, runcwd=False):
     """Run the Payette benchmarks.
 
     Walk through and run the Payette test simulations, compare results
@@ -265,17 +270,28 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
         else:
             pu.report_and_raise_error(
                 "FILE not found in {0}".format(TEST_INFO))
-        _run_the_test(pyfile, postprocess=postprocess)
+        _run_the_test((pyfile, postprocess))
         return
 
     # if the user passed in python test files, just run those tests
+    if runcwd:
+        args.extend([x for x in os.listdir(CWD) if x.endswith(".py")])
+
     pyargs = [x for x in args if x.endswith(".py")]
     if pyargs:
+        args = ((x, postprocess) for x in pyargs if os.path.isfile(x))
         for pyarg in pyargs:
-            if not os.path.isfile(pyarg):
-                pu.report_error("{0} not found".format(pyarg))
-            _run_the_test(pyarg, postprocess=postprocess)
-            continue
+            if pyarg not in pyargs:
+                pu.log_warning("{0} not found".format(pyarg))
+
+        if args:
+            if nproc == 1:
+                all_results = [_run_the_test(x) for x in args]
+            else:
+                pool = mp.Pool(processes=nproc)
+                all_results = pool.map(_run_the_test, args)
+                pool.close()
+                pool.join()
         return
 
     test_dirs = cfg.TESTS
@@ -700,7 +716,7 @@ def _run_test(args):
     # just copied. Move to the new directory and run the test
     del py_module, test
     os.chdir(benchdir)
-    result = _run_the_test(test_py_file, postprocess=postprocess)
+    result = _run_the_test((test_py_file, postprocess))
     os.chdir(CWD)
 
     return result
@@ -868,38 +884,51 @@ def rebaseline_tests(args):
     return
 
 
-def _run_the_test(the_test, postprocess=False):
+def _run_the_test(args):
     """Run the test in the_test
 
     """
+    the_test, postprocess = args
     py_module = _get_test_module(the_test)
-    test = py_module.Test()
-    starttime = time.time()
+
     try:
-        retcode = test.runTest()
-    except PayetteError as error:
-        retcode = 66
-        pu.log_warning(error.message)
+        test = py_module.Test()
+        istest = True
+    except AttributeError:
+        istest = False
 
-    retcode = ("bad input" if retcode == test.badincode else
-               "pass" if retcode == test.passcode else
-               "diff" if retcode == test.diffcode else
-               "fail" if retcode == test.failcode else
-               "failed to run" if retcode == test.failtoruncode else
-               "unkown")
+    if not istest:
+        name = os.path.basename(os.path.splitext(the_test))
+        sys.stdout.write("{0} not a test".format(name))
+        keywords = []
+        tcompletion = 0.
+        retcode = "not a test"
 
-    # Print output at completion
-    tcompletion = time.time() - starttime
-    info_string = "{0} ({1:6.02f}s)".format(retcode.upper(), tcompletion)
-    pu.log_message(
-        "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
-        "{0:>{1}s}".format(info_string, WIDTH_INFO), pre="", noisy=True)
+    else:
+        name = test.name
+        keywords = test.keywords
+        starttime = time.time()
+        try:
+            retcode = test.runTest()
+        except PayetteError as error:
+            retcode = 66
+            pu.log_warning(error.message)
+
+        retcode = {test.badincode: "bad input", test.passcode: "pass",
+                   test.diffcode: "diff", test.failcode: "fail",
+                   test.failtoruncode: "failed to run"}.get(retcode, "unkown")
+
+        # Print output at completion
+        tcompletion = time.time() - starttime
+        info_string = "{0} ({1:6.02f}s)".format(retcode.upper(), tcompletion)
+        pu.log_message(
+            "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
+            "{0:>{1}s}".format(info_string, WIDTH_INFO), pre="", noisy=True)
 
     # return to the directory we came from
-    result = {test.name: {"status": retcode,
-                          "keywords": test.keywords,
-                          "completion time": tcompletion,
-                          "benchmark directory": os.getcwd()}}
+    result = {name: {"status": retcode, "keywords": keywords,
+                     "completion time": tcompletion,
+                     "benchmark directory": os.getcwd()}}
 
     if postprocess and os.path.isfile(test.outfile):
         pp.postprocess(test.outfile, verbosity=0)

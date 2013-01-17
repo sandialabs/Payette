@@ -29,9 +29,9 @@ module tensor_toolkit
 
   private
   public :: ata, symleaf, dd66x6, push, pull, dp, ddp, mag, dev, tr, iso
-  public :: matinv, eigen3x3, zerot, zerov, I6, I9, seed_rng, dyad, rot
+  public :: matinv, eigen3x3, zerot, zerov, I6, I9, seedrand, dyad, rot
   public :: unrot, randvec, dp9x6, pullv, pushv, sym_inv, dp6x3, I3x3
-  public :: cross, aa2dc, m9t6, rotv, unrotv
+  public :: cross, aa2dc, m9t6, rotv, unrotv, reducefac
 
   ! kind specifiers
   integer, parameter :: sk=selected_real_kind(6), dk=selected_real_kind(14)
@@ -39,16 +39,16 @@ module tensor_toolkit
   integer, parameter :: ik=selected_int_kind(6)
 
   ! numbers
-  real(kind=fp), parameter :: zero= 0._dk, one=1._dk, two=2._dk, three=3._dk
-  real(kind=fp), parameter :: four=4._dk, five=5._dk, six= 6._dk
+  real(kind=fp), parameter :: zero= 0._fp, one=1._fp, two=2._fp, three=3._fp
+  real(kind=fp), parameter :: four=4._fp, five=5._fp, six= 6._fp, thirty=30._fp
   real(kind=fp), parameter :: third=one/three, half=one/two
-  real(kind=fp), parameter :: root2=1.41421356237309504880168872420969807856967_dk
-  real(kind=fp), parameter :: root3=1.73205080756887729352744634150587236694280_dk
-  real(kind=fp), parameter :: root6=2.44948974278317809819728407470589139196595_dk
+  real(kind=fp), parameter :: root2=1.41421356237309504880168872420969807856967_fp
+  real(kind=fp), parameter :: root3=1.73205080756887729352744634150587236694280_fp
+  real(kind=fp), parameter :: root6=2.44948974278317809819728407470589139196595_fp
   real(kind=fp), parameter :: toor2=one/root2,toor3=one/root3,toor6=one/root6
-  real(kind=fp), parameter :: root23=0.816496580927726032732428024901963797322_dk
-  real(kind=fp), parameter :: root32=1.224744871391589049098642037352945695983_dk
-  real(kind=fp), parameter :: pi=3.1415926535897932384626433832795028841971694_dk
+  real(kind=fp), parameter :: root23=0.816496580927726032732428024901963797322_fp
+  real(kind=fp), parameter :: root32=1.224744871391589049098642037352945695983_fp
+  real(kind=fp), parameter :: pi=3.1415926535897932384626433832795028841971694_fp
   real(kind=fp), parameter :: piover6=pi/six
 
   integer, parameter :: diag9(3) = (/1, 5, 9/)
@@ -61,7 +61,7 @@ module tensor_toolkit
   real(kind=fp), parameter :: I3x3(3,3) = reshape(I9, shape(I3x3))
 
   ! mapping from 3x3 to 6x1
-  integer(kind=ik), parameter, dimension(3, 3) :: &
+  integer, parameter, dimension(3, 3) :: &
        m9t6=reshape((/1, 4, 6, 4, 2, 5, 6, 5, 3/), shape(m9t6))
 
 
@@ -342,7 +342,7 @@ contains
     !.......................................................................local
     real(kind=fp) :: detf, dnom
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~pushv
-    if(flg == 0) then
+    if (flg == 0) then
        dnom = f(3) * f(5) * f(7) - f(2) * f(6) * f(7) - f(3) * f(4) * f(8) +  &
               f(1) * f(6) * f(8) + f(2) * f(4) * f(9) - f(1) * f(5) * f(9)
        pushv = (/&
@@ -382,7 +382,7 @@ contains
     real(kind=fp), intent(in) :: f(9)
     real(kind=fp) :: pullv(3)
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~pullv
-    if(flg == 0) then
+    if (flg == 0) then
        pullv = (/a(1) * f(1) + a(2) * f(4) + a(3) * f(7), &
                  a(1) * f(2) + a(2) * f(5) + a(3) * f(8), &
                  a(1) * f(3) + a(2) * f(6) + a(3) * f(9)/)
@@ -744,7 +744,7 @@ contains
     real(kind=fp) :: tra
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~iso
     tra = sum(a(1:3))
-    if(abs(tra) < epsilon(tra)) tra = zero
+    if (abs(tra) < epsilon(tra)) tra = zero
     iso = tra / three * I6
     return
   end function iso
@@ -767,7 +767,7 @@ contains
     real(kind=fp) :: tr
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~iso
     tr = sum(a(1:3))
-    if(abs(tr) < epsilon(tr)) tr = zero
+    if (abs(tr) < epsilon(tr)) tr = zero
     return
   end function tr
 
@@ -837,7 +837,7 @@ contains
        matinv(col, :) = matinv(row, :)
        matinv(row, :) = dum(:)
        wmax = w(col, col)
-       if(abs(wmax) < wcond) then
+       if (abs(wmax) < wcond) then
           icond = 1
           return
        end if
@@ -845,7 +845,7 @@ contains
        w(row,col:) = w(row, col:) / wmax
        matinv(row, :) = matinv(row, :) / wmax
        do row = 1, n
-          if(row == col) cycle
+          if (row == col) cycle
           fac = w(row, col)
           w(row, col:) = w(row, col:) - fac * w(col, col:)
           matinv(row, :) = matinv(row, :) - fac * matinv(col, :)
@@ -1036,7 +1036,7 @@ contains
     amag=sqrt(r*r+z*z)
 
     !******************************************************************* MMM
-    if(amag.eq.zero.or.zerro(r/amag))then
+    if (amag.eq.zero.or.zerro(r/amag)) then
        ! The matrix is isotropic
        n=1                  !number of distinct eigenvalues
        eval(2)=toor3*z      !the eigenvalue
@@ -1053,13 +1053,13 @@ contains
           u(i)=zero
        enddo
 
-       if(job.eq.0)return
+       if (job.eq.0) return
        proj(1,2)=one        !Eigenprojector is just the identity
        proj(2,2)=one
        proj(3,2)=one
        go to 999
 
-    endif
+    end if
 
     ! To reach this point, the matrix is not isotropic (R.ne.0).
 
@@ -1090,7 +1090,7 @@ contains
     sin3t=min(max(three*root6*dum,-one),one)
 
     !******************************************************************* MMH
-    if(zerro(one-sin3t))then
+    if (zerro(one-sin3t)) then
        ! To get inside this if-block, the middle eigenvalue must equal the
        ! low eigenvalue, and the high eigenvalue is distinct.
        n=2                              ! number of distinct eigenvalues
@@ -1102,7 +1102,7 @@ contains
        eval(2)=p+uval(2)*r              ! middle eigenvalue
        eval(1)=eval(2)                  ! "low" eval = middle eval
 
-       if(job.eq.0)return
+       if (job.eq.0) return
        proj(1,3) = (one+root6*u(1))*third   ! 11 component of PH
        proj(2,3) = (one+root6*u(2))*third   ! 22 component of PH
        proj(3,3) = (one+root6*u(3))*third   ! 33 component of PH
@@ -1119,7 +1119,7 @@ contains
        go to 999
 
        !******************************************************************* LMM
-    elseif(zerro(one+sin3t))then         ! LMM
+    else if (zerro(one+sin3t)) then         ! LMM
        ! To get inside this if-block, the middle eigenvalue must equal the
        ! high eigenvalue, and the low eigenvalue is distinct.
        n=-2                              !-number of distinct eigenvalue
@@ -1130,7 +1130,7 @@ contains
        eval(1)=p+uval(1)*r               ! low eigenvalue
        eval(2)=p+uval(2)*r               ! middle eigenvalue
        eval(3)=eval(2)                   ! "high" eval = middle eval
-       if(job.eq.0)return
+       if (job.eq.0) return
        proj(1,1) = (one-root6*u(1))*third   ! 11 component of PH
        proj(2,1) = (one-root6*u(2))*third   ! 22 component of PH
        proj(3,1) = (one-root6*u(3))*third   ! 33 component of PH
@@ -1145,7 +1145,7 @@ contains
        proj(5,2) =    -proj(5,1)            ! 23 component of PM
        proj(6,2) =    -proj(6,1)            ! 31 component of PM
        go to 999
-    endif
+    end if
 
     !******************************************************************* LMH
     ! To reach this point, there must be three distinct eigenvalues
@@ -1178,8 +1178,8 @@ contains
     eval(2)=p+uval(2)*r              ! middle eigenvalue
     eval(3)=p+uval(3)*r              ! high eigenvalue
 
-    if(job.eq.0)return
-    if(job.eq.1)then
+    if (job.eq.0) return
+    if (job.eq.1) then
        ! get eigenprojectors using method 1
        i=1
        j=2
@@ -1288,7 +1288,7 @@ contains
        ! PROJ(4,1)=   -PROJ(4,3)-PROJ(4,2)     ! 12 component of PL
        ! PROJ(5,1)=   -PROJ(5,3)-PROJ(5,2)     ! 23 component of PL
        ! PROJ(6,1)=   -PROJ(6,3)-PROJ(6,2)     ! 31 component of PL
-    endif
+    end if
 
 999 continue
     return
@@ -1324,19 +1324,19 @@ contains
     !.......................................................................local
     real(kind=fp) :: duma(3)
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~proj2evec
-    if(n.eq.1)then     ! MMM
+    if (n.eq.1) then     ! MMM
        call affinity(3,proj(1,2),evec(1,1),evec(1,2),evec(1,3))
-    elseif(n.eq.2)then  ! MMH
+    else if (n.eq.2) then  ! MMH
        call affinity(2,proj(1,2),evec(1,1),evec(1,2),duma)
        call affinity(1,proj(1,3),evec(1,3),duma,duma)
-    elseif(n.eq.-2)then ! LMM
+    else if (n.eq.-2) then ! LMM
        call affinity(1,proj(1,1),evec(1,1),duma,duma)
        call affinity(2,proj(1,2),evec(1,2),evec(1,3),duma)
-    elseif(n.eq.3)then  ! LMH
+    else if (n.eq.3) then  ! LMH
        call affinity(1,proj(1,1),evec(1,1),duma,duma)
        call affinity(1,proj(1,2),evec(1,2),duma,duma)
        call affinity(1,proj(1,3),evec(1,3),duma,duma)
-    endif
+    end if
 
     ! The columns of the evec matrix contain the eigenvectors corresponding to
     ! the low, middle, and high eigenvalues, respectively. These evecs have
@@ -1392,17 +1392,17 @@ contains
     integer, parameter :: map(3, 3) = reshape((/1,4,6,4,2,5,6,5,3/), shape(map))
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~proj2evec
 
-    if(m.eq.0)then
+    if (m.eq.0) then
        m=nint(p(1)+p(2)+p(3))
-       if(m.eq.0)return
-    endif
+       if (m.eq.0) return
+    end if
 
-    if(m.eq.1)then
+    if (m.eq.1) then
        ! Find column with largest magnitude at beginning. For a projector [P],
        ! the square magnitude of column i simply equals P(i,i).
        i=1
-       if(p(2).gt.p(i)) i=2
-       if(p(3).gt.p(i)) i=3
+       if (p(2).gt.p(i)) i=2
+       if (p(3).gt.p(i)) i=3
 
        ! At this point, index i is the column number of the largest column.
        dum=one/sqrt(p(i))
@@ -1410,30 +1410,30 @@ contains
        evec1(2)=p(map(2,i))*dum
        evec1(3)=p(map(3,i))*dum
 
-    elseif(m.eq.2)then
+    else if (m.eq.2) then
        ! Put column with smallest magnitude at end.
        ! Preserve cyclic order.
        i=1
        j=2
        k=3
-       if(p(j).lt.p(k))then
+       if (p(j).lt.p(k)) then
           n=k
           k=j
           j=i
           i=n
-          if(p(j).lt.p(k))then
+          if (p(j).lt.p(k)) then
              n=k
              k=j
              j=i
              i=n
-          endif
-       endif
-       if(p(i).lt.p(k))then
+          end if
+       end if
+       if (p(i).lt.p(k)) then
           n=i
           i=j
           j=k
           k=n
-       endif
+       end if
        dum=one/sqrt(p(i))
        evec1(1)=p(map(1,i))*dum
        evec1(2)=p(map(2,i))*dum
@@ -1444,12 +1444,12 @@ contains
        evec2(1)=dum*p(map(1,j))-fac*p(map(1,i))
        evec2(2)=dum*p(map(2,j))-fac*p(map(2,i))
        evec2(3)=dum*p(map(3,j))-fac*p(map(3,i))
-       if(m.eq.2)return
+       if (m.eq.2) return
        evec3(1)=evec1(2)*evec2(3)-evec1(3)*evec2(2)
        evec3(2)=evec1(3)*evec2(1)-evec1(1)*evec2(3)
        evec3(3)=evec1(1)*evec2(2)-evec1(2)*evec2(1)
 
-    elseif(m.eq.3)then
+    else if (m.eq.3) then
        ! For m=3, the projector is the identity, so simply send back the lab
        ! base vectors.
        evec1(1)=one
@@ -1461,7 +1461,7 @@ contains
        evec3(1)=zero
        evec3(2)=zero
        evec3(3)=one
-    endif
+    end if
     return
   end subroutine affinity
 
@@ -1478,10 +1478,10 @@ contains
     real(kind=fp) :: r, s, phi, sinT, theta, h, tc, v(3), L(3, 3), A(3), ea(3)
     real(kind=fp), parameter :: Ez(3)=(/0., 0., 1./)
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ randvec
-    if(present(aa)) then
+    if (present(aa)) then
        ! get the preferred axis and normalize it
        A = aa(1:3) / sqrt(sum(aa(1:3) * aa(1:3))); tc = aa(4)
-       if(any(A /= A)) then
+       if (any(A /= A)) then
           ! check for divide by zero
           randvec = zero
        end if
@@ -1491,8 +1491,8 @@ contains
     h = cos(tc)
 
     ! random vector in cone
-    r = rand()
-    s = rand()
+    r = randnum()
+    s = randnum()
     phi = 2. * pi * r
     v(3) = h + (1. - h) * s
     sinT = sqrt(one - v(3) ** 2)
@@ -1503,7 +1503,7 @@ contains
     ! return if
     !   1) The random vector v is the same as the preferred vector A
     !   2) The preferred axis is lined up with Ez
-    if(all(abs(v - A) < 1.e-10) .or. all(abs(Ez - A) < 1.e-10)) then
+    if (all(abs(v - A) < 1.e-10) .or. all(abs(Ez - A) < 1.e-10)) then
        randvec = v
        return
     end if
@@ -1546,25 +1546,79 @@ contains
     cross(1) = a(2) * b(3) - a(3) * b(2)
     cross(2) = a(3) * b(1) - a(1) * b(3)
     cross(3) = a(1) * b(2) - a(2) * b(1)
-    if(present(normalize)) cross = cross / sqrt(sum(cross * cross))
+    if (present(normalize)) cross = cross / sqrt(sum(cross * cross))
     return
   end function cross
 
-  subroutine seed_rng
+  subroutine seedrand(N)
     implicit none
-    integer :: k
+    integer, optional, intent(in) :: N
+    integer :: k, M
     integer, allocatable :: seed(:)
+    if (present(N)) then
+       M = N
+    else
+       M = 17
+    end if
     call random_seed(size=k)
     allocate(seed(1:k))
     seed(:) = 17
     call random_seed(put=seed)
-  end subroutine seed_rng
+  end subroutine seedrand
 
-  function rand()
+  function randnum()
     implicit none
-    real(kind=fp) :: rand
-    call random_number(rand)
+    real(kind=fp) :: randnum
+    call random_number(randnum)
     return
-  end function rand
+  end function randnum
+
+  function reducefac(val, critval, shape)
+    !---------------------------------------------------------------------------!
+    ! Determine a factor between 0 and 1 such that
+    !       if val << critval -> reducefac ~ 1
+    !       if val >> critval -> reducefac ~ 0
+    ! reducefac starts at 1 and gradually reduces to 0 as val increases. The
+    ! manner in which reducefac is decreased is governed by the shape
+    ! parameter. when shape = 1 the reduction is roughly linear, when it is 30
+    ! or higher it will approximate a heavy-side function.
+    !---------------------------------------------------------------------------!
+    implicit none
+    !......................................................................passed
+    real(kind=fp) :: reducefac
+    real(kind=fp), intent(in) :: val, critval
+    real(kind=fp), intent(in), optional :: shape
+    !.......................................................................local
+    real(kind=fp) :: dshape
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ reducefac
+    if (present(shape)) then
+       dshape = shape
+    else
+       dshape = thirty
+    end if
+    if (dshape == zero) dshape = thirty
+    reducefac = (one + exps(-two * dshape)) &
+              / (one + exps(-two * dshape * (one - val / critval)))
+    return
+  end function reducefac
+
+  function exps(arg)
+    !---------------------------------------------------------------------------!
+    ! Specialized version of exponential to prevent underflow replacement of
+    ! EXP(ARG) by zero when ARG is an extraordinarily large negative number.
+    ! For all practical purposes, EXPS may be regarded as equivalent to EXP.
+    !---------------------------------------------------------------------------!
+    implicit none
+    !..................................................................parameters
+    real(kind=fp), parameter :: eunderflow=-34.53877639491 * one
+    real(kind=fp), parameter :: eoverflow=92.1034037 * one
+    !......................................................................passed
+    real(kind=fp) :: exps
+    real(kind=fp), intent(in) :: arg
+    !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ exps
+    ! exps(arg) = exp(arg)
+    exps = exp(min(max(arg, eunderflow), eoverflow))
+    return
+  end function exps
 
 end module tensor_toolkit

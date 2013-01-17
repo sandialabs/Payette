@@ -235,26 +235,25 @@ class Boundary(object):
 
         """
 
-        # determine if the user specified legs as a table
+        # determine if the user specified legs as a table by searching for the
+        # using [dt,time] [prdef type]
+        # block
         stress_control = False
         using = re.search(r"(?i)\busing\b.*", lblock)
-        table = bool(using)
 
         num, time = 0, 0.
-        if table:
-            s, e = using.start(), using.end()
-            line = re.sub(r"(?i)\busing\b", " ", lblock[s:e])
-            lblock = (lblock[:s] + lblock[e:]).strip()
-            ttype, cidxs, gcontrol = self._parse_leg_table_header(line)
+        if using:
+            lblock = (lblock[:using.start()] + lblock[using.end():]).strip()
+            ttype, cidxs, gcontrol = self._parse_leg_table_header(using.group())
 
         # --- first leg parsed, now go through rest
         for iline, line in enumerate(lblock.split("\n")):
-            line = re.sub(pip.I_SEP, " ", line)
+            line = re.sub(pip.I_SEP, pip.SP, line)
             line = line.split()
             if not line:
                 continue
 
-            if table:
+            if using:
                 control = gcontrol
                 if re.search(r"(?i)\btime\b", " ".join(line)):
                     # skip header row
@@ -506,7 +505,7 @@ class Boundary(object):
 
             self._legs.append([num, ltime, steps, control, cij])
 
-            if table:
+            if using:
                 # increment
                 num += 1
             continue
@@ -597,97 +596,88 @@ class Boundary(object):
 
         """
 
-        # determine the time specifier
+        # set some defaults
         ttypes = ("time", "dt")
         NT = 1
-        for item in ttypes:
-            T = re.search(r"(?i)\b{0}\b".format(item), header)
-            if T:
-                s, e = T.start(), T.end()
-                T = header[s:e].lower()
-                break
-            continue
-        if T is None:
+        C, NC, EFC, NEFC = (0,) * 4
+
+        # determine the time and prescribed deformation specifier
+        regex = r"(?i)\busing(\W*)(?P<w0>\w+)(\W*)(?P<w1>\w+)(\W*)(?P<w2>\w*)(\W*?)"
+        spec = re.search(regex, header)
+        if spec is None:
             pu.report_and_raise_error(
-                "time specifier '{0}' not found.  Choose from {1}"
+                "Error parsing table specification line of input file")
+
+        # check the specifiers
+        T, W1, W2 = spec.group("w0"), spec.group("w1"), spec.group("w2")
+        WW = (W1.lower(), W2.lower())
+        if T not in ttypes:
+            pu.report_and_raise_error(
+                "time specifier '{0}' not recognized, choose from {1}"
                 .format(T, ", ".join(ttypes)))
-        header = re.sub(r"(?i)\b{0}\b".format(T), "", header).strip()
 
-        # determine the deformation specifier
-        dtype = re.sub(r"[^\S\n]+", " ", re.sub(r"[\,]", " ", header)).strip()
-        efield, first = re.search(r"(?i)\befield\b", dtype), False
-        C, NC, EFC, NEFC = (0, ) * 4
-
-        pat = r"(?i)\bfrom.*columns\b"
-        cspec = re.search(pat, dtype)
-        if cspec is not None:
-            # user specified something like
-            # using strain, from columns ...
-            s, e = cspec.start(), cspec.end()
-            cspec = re.sub(pat, "", dtype[s:]).strip()
-
-            # cspec MUST be specified last
-            if cspec[-1] != dtype[-1]:
-                pu.report_and_raise_error(
-                    "'from columns ...' directive must come "
-                    "after the 'using ...' directive")
-            dtype = dtype[:s]
-
-        dtype = dtype.strip()
-        if efield:
-            # we need to know if the efield was specified first or second
-            efield = re.search(r"(?i)\befield\b", dtype)
-            s, e = efield.start(), efield.end()
-            first = e != len(dtype)
-            dtype = dtype[:s] + dtype[e:]
+        # determine if an efield was specified and the deformation type
+        if "efield" in WW:
             EFC, NEFC = dtypes("efield")
+            c = [x for x in WW if x != "efield"][0]
+        else:
+            c = WW[0]
 
-        try:
-            C, NC = dtypes(dtype)
-        except TypeError:
+        # determine the deformation type
+        C, NC = dtypes(c)
+        if C is None:
             pu.report_and_raise_error(
-                "control type {0} not recognized".format(dtype))
+                "control type '{0}' not recognized".format(c))
 
-        if cspec is None:
+        # determine which columns to use
+        cols = re.search(r"(?i)\bfrom\W*(columns)*\W*", header)
+        if cols is None:
             # use default column indices
             cols = range(NT + NC + NEFC)
 
         else:
-            # user could have specified something like 4 - 6 to indicate
-            # columns 4 - 6, we replace - with :
-            RSEP = r":"
-            cspec = re.sub(r"-", RSEP, cspec).split()
+            # user specified something like
+            # using strain, from columns ...
+            cols = header[cols.end():]
 
-            # loop through cspec and pair range specifications from column
-            # specifications
-            cols, skip = [], -1
-            for idx, item in enumerate(cspec):
-                if idx == skip:
-                    continue
+            # cols MUST be specified last
+            if cols.strip()[-1] != header.strip()[-1]:
+                pu.report_and_raise_error(
+                    "'from columns ...' directive must come "
+                    "after the 'using ...' directive")
+
+            # replace - with :
+            cols = re.sub(r"-", pip.RSEP, cols)
+            # remove any spaces around :
+            cols = re.sub(r"\W*[{0}]\W*".format(pip.RSEP), pip.RSEP, cols)
+            # split on spaces and commas
+            hold, cols = re.split(r"[, ]+", cols), []
+
+            for item in hold:
                 try:
-                    s, e = item.split(RSEP)
+                    item = [int(i) - 1 for i in re.split(pip.RSEP, item, 1)]
                 except ValueError:
-                    cols.append(int(item) - 1)
-                    continue
-                # range sepecified, get start and end and store as tuple
-                s = int(s) - 1 if s else cols.pop()
-                if not e:
-                    e = cspec[idx + 1]
-                    skip = idx + 1
-                cols.extend(range(int(s), int(e)))
-                continue
+                    pu.report_and_raise_error(
+                        "Bad column specifier in {0}".format(header))
+
+                if len(item) == 1:
+                    cols.append(item[0])
+                else:
+                    cols.extend(range(item[0], item[1] + 1))
 
         if len(cols) > NC + NEFC + NT:
             pu.report_and_raise_error("Too many columns specified")
         if len(cols) < NC + NEFC + NT:
             pu.report_and_raise_error("Too few columns specified")
 
-        control = "{0}".format(C) * NC
-        if efield:
-            efc = "{0}".format(EFC) * NEFC
-            control = efc + control if first else control + efc
+        ctl, efc = "{0}".format(C) * NC, "{0}".format(EFC) * NEFC
+        # determine where in control efield must lie
+        try:
+            ctl = efc + ctl if WW.index("efield") == 0 else ctl + efc
+        except ValueError:
+            pass
 
-        return T, cols, control
+        return T, cols, ctl
 
 
 def dtypes(dtype=None):
@@ -707,7 +697,7 @@ def dtypes(dtype=None):
     """
     if dtype is None:
         return DTYPES.keys()
-    return DTYPES.get(dtype.strip().lower())
+    return DTYPES.get(dtype.strip().lower(), (None, None))
 
 
 class EOSBoundary(object):

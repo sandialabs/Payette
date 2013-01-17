@@ -37,8 +37,7 @@ PAYETTE_VERSION = (1, 2)
 
 class IdealGas(ConstitutiveModelPrototype):
     def __init__(self, control_file, *args, **kwargs):
-        super(IdealGas, self).__init__(
-            control_file, *args, **kwargs)
+        super(IdealGas, self).__init__(control_file, *args, **kwargs)
         self.eos_model = True
         # self.code = "python"
         self.imported = True
