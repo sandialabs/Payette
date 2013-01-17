@@ -751,20 +751,19 @@ def parse_extraction(eblock):
     and we return
         ['@SIG11', '@SIG22', '@SIG33', '%1', '%ROOTJ2']
     """
-    prefix = {True: "%", False: "@"}
     extraction_vars = []
     opts = {"step": "1"}
     for opt in opts:
-        pat = r"\b{0}\s".format(opt)
+        pat = r"(?P<name>\b{0}\s).*(?P<val>[a-z0-9_]+)\W*".format(opt)
         found = re.search(pat, eblock)
         if found is not None:
-            s = found.end()
-            e = re.search(pat + r".*\n", eblock).end()
-            opts[opt] = re.sub(I_EQ, " ", eblock[s:e]).strip()
-            eblock = eblock[:found.start()] + eblock[e:]
+            opts[opt] = re.sub(I_EQ, " ", found.group("val")).strip()
+            eblock = re.sub(re.escape(found.group()), "", eblock)
         continue
 
-    eblock = re.sub(r"[\.\,\n]", " ", eblock).split()
+    _strip = lambda v: [x.strip() for x in v if x]
+    eblock = _strip(re.split(r"[\,\,\n]", eblock))
+    prefix = {True: "%", False: "@"}
     for item in eblock:
         if not re.search(r"^[%@]", item):
             # user did not specify a prefix to the extraction var, add it here

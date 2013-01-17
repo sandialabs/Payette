@@ -127,4 +127,9 @@ begin simulation exmpl_0
 
   end material
 
+  begin extraction
+    time
+    sig11, sig22, sig33
+  end extraction
+
 end simulation
