@@ -733,6 +733,7 @@ def write_html_summary(fname, results):
     resd = os.path.dirname(fname)
     npass, nfail, ndiff, nskip = [len(results[x]) for x in
                                   ["pass", "fail", "diff", "notrun"]]
+    rdir = os.path.dirname(fname)
     with open(fname, "w") as fobj:
         # write header
         fobj.write("<html>\n<head>\n<title>Test Results</title>\n</head>\n")
@@ -755,7 +756,7 @@ def write_html_summary(fname, results):
                 fobj.write("<li>Files: \n")
                 files = os.listdir(tresd)
                 for fnam in files:
-                    fpath = os.path.join(tresd, fnam)
+                    fpath = os.path.join(tresd, fnam).replace(rdir, ".")
                     fobj.write("<a href='{0}' type='text/plain'>{1}</a> \n"
                                .format(fpath, fnam))
                     continue
