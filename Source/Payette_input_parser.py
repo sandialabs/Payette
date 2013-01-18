@@ -35,11 +35,18 @@ import numpy as np
 import Source.__runopts__ as ro
 import Payette_utils as pu
 
-# --- module leve constants
+# --- module level regular expressions
 I_EQ = r"[:,=]"
 I_SEP = r"[:,;]"
 SP = " "
 RSEP = r":"
+# regex to find contents of block
+R_B = r"(?is)\bbegin\s*{0}\W*?(?P<c>.*?)\bend\s*{0}\W?"
+R_Bn = r"(?is)\bbegin\s*{0}\s*{1}\W*?(?P<c>.*?)\bend\s*{0}\W?"
+# regex to find a line of the form: begin <section> [name]
+R_S = r"(?i)(?<=\bbegin)\s*(?P<s>{0})(?P<n>.*\n?)"
+#R_S = r"(?i)(?<=\bbegin)\s*(?P<N>{0})\s*(?P<n>[a-z0-9_\-\. ]*)\W+"
+
 
 
 RAND = np.random.RandomState(17)
@@ -501,10 +508,6 @@ def find_nested_blocks(major, nested, lines, default=None):
         if block is not None:
             # remove block from major
             major = major.replace(block, "")
-#            try:
-#                major = re.sub(re.escape(block), "", major)
-#            except OverflowError:
-#                major = major.replace(block, "")
             block = block_contents(name, block)
         minor.append(block)
         continue
@@ -515,11 +518,7 @@ def block_contents(bname, block):
     """Given an input block, return only its contents
 
     """
-    sregex = r"(?i)\bbegin\s*({0}).*".format(bname)
-    eregex = r"(?i)\bend\s*({0})\W*".format(bname)
-    s = re.search(sregex, block)
-    e = re.search(eregex, block)
-    return re.sub(block[e.start():], "", block[s.end():]).strip()
+    return re.search(R_B.format(bname), block).group("c").strip()
 
 
 def find_block(name, lines, default=None, findall=False, named=False, co=False,
@@ -545,12 +544,8 @@ def find_block(name, lines, default=None, findall=False, named=False, co=False,
     block : str
         the block of input
     """
-    # regex to find a line of the form: begin <section> [name]
-    sregex = r"(?i)(?<=\bbegin)\W*{0}.*[a-z0-9_\-\. ]*\W*"
-    # regex to find contents of block
-    bregex = r"(?is)\bbegin\W*{0}.*\bend\W*{0}.*?"
-
-    sections = re.findall(sregex.format(name), lines)
+    # get all sections that match 'name'
+    sections = re.findall(R_S.format(name), lines)
     if not sections:
         if named:
             bname = "default_{0}".format(_k[0])
@@ -560,24 +555,19 @@ def find_block(name, lines, default=None, findall=False, named=False, co=False,
             return []
         return default
 
+    # loop over all of the sections and add their contents to 'blocks'
     blocks = []
     for section in sections:
-        section = section.split(None, 1)
-        try:
-            sname, bname = section
-        except ValueError:
-            sname, bname = section[0], "default_{0}".format(_k[0])
-            _k[0] += 1
-        bname = re.sub(r"[ ]+", "_", bname).strip()
-
-        block = re.search(bregex.format(sname), lines)
-        if not block:
+        sname, bname = section
+        _b = r"\W*".join("({0})".format(x.strip()) for x in bname.split())
+        blk = re.search(R_Bn.format(sname, _b), lines)
+        if not blk:
             pu.report_and_raise_error(
                 "End of block {0} not found".format(sname))
-        block = block.group()
+        block = blk.group()
         if co:
-            block = block_contents(name, block)
-        blocks.append((bname, block))
+            block = blk.group("c")
+        blocks.append(("_".join(bname.split()), block))
         if not findall:
             break
 

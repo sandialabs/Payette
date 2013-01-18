@@ -145,6 +145,8 @@ class Payette(object):
         pu.write_to_simlog("User input:\nbegin input")
         ns = 0
         for line in self.ui.inp.split("\n"):
+            if not line.split():
+                continue
             if "end" in line.split()[0]:
                 ns -= 2
             pu.write_to_simlog(" " * ns + line)
