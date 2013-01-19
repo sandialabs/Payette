@@ -130,30 +130,21 @@ class Payette(object):
 
         # write some info to the log file
         now = datetime.datetime.now()
-        pu.write_to_simlog("Date: {0}".format(now.strftime("%A %B %d, %Y")))
-        pu.write_to_simlog("Time: {0}".format(now.strftime("%H:%M:%S")))
-        pu.write_to_simlog("Platform: {0}".format(cfg.OSTYPE))
-        pu.write_to_simlog("Payette version: {0}".format(cfg.VERSION))
-        pu.write_to_simlog("Python interpreter: {0}".format(cfg.PYINT))
-        pu.write_to_simlog("Description:")
+        FMT = "{0:s}: {1}"
+        pu.write_to_simlog(FMT.format("DATE", now.strftime("%A %B %d, %Y")))
+        pu.write_to_simlog(FMT.format("TIME", now.strftime("%H:%M:%S")))
+        pu.write_to_simlog(FMT.format("PLATFORM", cfg.OSTYPE))
+        pu.write_to_simlog(FMT.format("PAYETTE VERSION", cfg.VERSION))
+        pu.write_to_simlog(FMT.format("PYTHON INTERPRETER", cfg.PYINT))
+        pu.write_to_simlog(FMT.format("DESCRIPTION", ""))
 
         desc = self.ui.find_block("description", "  None", co=True)
         desc = textfill(desc, initial_indent="  ", subsequent_indent="  ")
         pu.write_to_simlog(desc)
 
         # write input to log file
-        pu.write_to_simlog("User input:\nbegin input")
-        ns = 0
-        for line in self.ui.inp.split("\n"):
-            if not line.split():
-                continue
-            if "end" in line.split()[0]:
-                ns -= 2
-            pu.write_to_simlog(" " * ns + line)
-            if "begin" in line:
-                ns += 2
-            continue
-        pu.write_to_simlog("end input")
+        pu.write_to_simlog(FMT.format("USER INPUT", ""))
+        pu.write_to_simlog(self.ui.formatted_input(ii="  "))
 
         # file name for the Payette restart file
         self.is_restart = 0

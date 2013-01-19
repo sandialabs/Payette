@@ -44,7 +44,8 @@ RSEP = r":"
 R_B = r"(?is)\bbegin\s*{0}\W*?(?P<c>.*?)\bend\s*{0}\W?"
 R_Bn = r"(?is)\bbegin\s*{0}\s*{1}\W*?(?P<c>.*?)\bend\s*{0}\W?"
 # regex to find a line of the form: begin <section> [name]
-R_S = r"(?i)(?<=\bbegin)\s*(?P<s>{0})(?P<n>.*\n?)"
+R_S = r"(?i)\bbegin\s+(?P<s>\w+).*\n?"
+R_Sn = r"(?i)(?<=\bbegin)\s*(?P<s>{0})(?P<n>.*\n?)"
 #R_S = r"(?i)(?<=\bbegin)\s*(?P<N>{0})\s*(?P<n>[a-z0-9_\-\. ]*)\W+"
 
 
@@ -122,19 +123,32 @@ class InputParser(object):
             continue
         return lines
 
+    def formatted_input(self, ii="", sp="  "):
+        ui = "begin simulation {0}\n{1}\nend simulation".format(
+            self.name,
+            re.sub(r"(?i)\W*simdir.*\n|\W*write\s*input.*\n"
+                   "|\W*name\s.*\n|\W*type\s.*\n", "", self.inp))
+        _ui = ""
+        level = 0
+        for line in ui.split("\n"):
+            if not line.split():
+                continue
+            line = " ".join(line.split())
+            if re.search(r"\bend\s*[a-z0-9_]+\W*?", line):
+                level -= 1
+            _ui += "{0}{1}{2}\n".format(ii, sp * level, line)
+            if re.search(r"\bbegin\s*[a-z0-9_]+\s*[a-z0-9\-\.]*\W*?", line):
+                level += 1
+            continue
+        return _ui
+
     def write_input_file(self, fpath):
         """write the input to a formatted file"""
         if os.path.isfile(fpath):
             fnam, fext = os.path.splitext(fpath)
             shutil.copyfile(fpath, fnam + ".orig" + fext)
-
         # write the file
-        ns = 2
-        lines = "begin simulation {0}\n{1}\nend simulation".format(
-            self.name,
-            re.sub(r"(?i)simdir.*\n|write\s*input.*\n"
-                   "|name\s.*\n|[begin,end] input.*\n"
-                   "|\stype\s.*\n", "", self.inp))
+        lines = self.formatted_input()
         with open(fpath, "w") as fobj:
             fobj.write(lines)
         return
@@ -212,10 +226,10 @@ def find_item_name(lines, item, pop=False):
     return name
 
 
-def get_content(lines, pop=False):
+def get_content(lines):
     """Return everything in lines that is not between
     begin keyword
-    ...
+      ...
     end keyword
 
     sections
@@ -223,16 +237,13 @@ def get_content(lines, pop=False):
     """
     content = lines
     regex = r"(?i)(?<=\bbegin).*[a-z0-9_\-\.]+.*"
-    regex_1 = r"(?is)\bbegin\W*{0}.*\bend\W*{0}.*?"
+    regex_1 = r"(?is)\bbegin\s*{0}.*\bend\s*{0}.*?"
     sections = re.findall(regex, content)
     for section in sections:
         section = re.search(regex_1.format(section.strip()), content)
         if section:
-            content = re.sub(section.group(), "", content).strip()
-
-    if pop:
-        return content, re.sub(content, "", lines).strip()
-    return content
+            content = content.replace(section.group(), "")
+    return "\n".join(x.strip() for x in content.split("\n") if x.split())
 
 
 def parse_user_input(lines):
@@ -377,6 +388,11 @@ def preprocess(lines, preprocessor=None):
             "log": math.log, "exp": math.exp, "floor": math.floor,
             "ceil": math.ceil, "abs": math.fabs, "random": RAND.random_sample, }
 
+    P = find_block("permutation", lines, co=True)
+    if P is not None:
+        P = re.findall(r"(?i)\bpermutate\s*(?P<N>[a-z0-9_\-]+)\W*?", P)
+        P = r"(?i)\{.*[" + r"".join(r"({0})".format(x) for x in P) + "].*?\}"
+
     # some private functions
     def _split(s):
         _strip = lambda v: [x.strip() for x in v]
@@ -385,16 +401,17 @@ def preprocess(lines, preprocessor=None):
 
     def _make_subs(inp, subs):
         # make substitutions
-        R = r"{{.*\b{0}\b.*}}"
+        nsubs, R = 0, r"{{.*\b{0}\b.*}}"
         for pat, repl in subs:
             repl = "(" + re.sub(r"[\{\}]", " ", repl).strip() + ")"
             matches = re.findall(R.format(pat.strip()), inp)
             for match in matches:
                 mrepl = re.sub(r"\b{0}\b".format(pat), repl, match)
-                inp = re.sub(re.escape(match), mrepl, inp)
+                inp, _n = re.subn(re.escape(match), mrepl, inp)
+                nsubs += _n
                 continue
             continue
-        return inp
+        return inp, nsubs
 
 
     def _eval_subs(inp):
@@ -407,8 +424,11 @@ def preprocess(lines, preprocessor=None):
                 try:
                     repl = "{0:12.6E}".format(eval(repl, GDICT, SAFE))
                 except NameError:
+                    # Decide if this is due to a permutation block
+                    if P and re.search(P, line):
+                        continue
                     pu.report_error(
-                        "Don't know what to do with {0}".format(repl))
+                        "Don't know what to do with '{0}'".format(line))
                     continue
                 nl = re.sub(re.escape(match), repl, line)
                 inp = re.sub(re.escape(line), nl, inp)
@@ -425,17 +445,15 @@ def preprocess(lines, preprocessor=None):
         return lines
 
     # pop the preprocessing block
+    _lines = lines
     lines = pop_block("preprocessing", lines)
 
     # preprocess the preprocessor and split it into "pat = repl" pairs
     I = 0
     while I < 25:
-        hold = preprocessor
-        preprocessor = _make_subs(preprocessor, _split(preprocessor))
-        if hold == preprocessor:
+        preprocessor, nsubs = _make_subs(preprocessor, _split(preprocessor))
+        if nsubs == 0:
             break
-        I += 1
-        continue
     else:
         pu.report_and_raise_error(
             "Exceeded maximum levels of nesting in preprocessing block")
@@ -461,10 +479,11 @@ def preprocess(lines, preprocessor=None):
         # we do it here. Checking is important for permutate and optimization
         # jobs to make sure that all permutated and optimized variables are
         # used properly in the file before the job actually begins.
-        if not re.search(pregex.format(pat), lines):
+        if not re.search(pregex.format(pat), _lines):
             pu.log_warning(
                 "Preprocessing key '{0}' not found in input".format(pat))
         continue
+    del _lines
 
     # Print out preprocessed values for debugging
     if ro.DEBUG:
@@ -475,7 +494,7 @@ def preprocess(lines, preprocessor=None):
                            .format(pat + ':', name_len + 2, repl))
 
     # do the replacement
-    lines = _make_subs(lines, preprocessor)
+    lines, nsubs = _make_subs(lines, preprocessor)
     lines = _eval_subs(lines)
     return lines
 
@@ -545,7 +564,7 @@ def find_block(name, lines, default=None, findall=False, named=False, co=False,
         the block of input
     """
     # get all sections that match 'name'
-    sections = re.findall(R_S.format(name), lines)
+    sections = re.findall(R_Sn.format(name), lines)
     if not sections:
         if named:
             bname = "default_{0}".format(_k[0])
@@ -623,7 +642,6 @@ def fill_in_inserts(lines):
         fill = find_block(name, lines, co=True)
         if fill is not None:
             blx.append(name)
-
         else:
             fpath = os.path.realpath(os.path.expanduser(name))
             try:
@@ -784,3 +802,19 @@ def get(option, lines, default=None):
     else:
         option = default
     return option
+
+
+def _mynewone(lines):
+    _c = {}
+    sections = re.findall(R_S, lines)
+    for section in sections:
+        contents = find_block(section, lines, co=True)
+        for item in [x for x in sections if x != section]:
+            tr = find_block(item, contents)
+            if tr is not None:
+                contents = contents.replace(tr, "")
+            continue
+        _c[section] = [x.strip() for x in contents.split("\n") if x.split()]
+        continue
+    print _c
+    sys.exit()

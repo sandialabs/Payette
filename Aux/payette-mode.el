@@ -23,9 +23,8 @@
   "\\<\\(nowriteprops\\|use_table\\|write_\\(?:curves\\|\\(?:inpu\\|restar\\)t\\)\\)\\>")
 
 ; to generate the payette-directives execute:
-; (regexp-opt '("error" "disp" "constitutive model" "using" "ampl" "screenout" "emit" "kappa" "stepstar" "estar" "sstar" "ratfac" "fstar" "efstar" "dstar" "vstar" "tstar" "options" "maxiter" "method" "data file" "seed" "from" "obj_fn in" "obj_fn" "gold file" "tolerance" "matlabel" "input units" "output units" "density range" "temperature range" "surface increments" "path increments" "path isotherm" "path hugoniot") 'words)
-(defvar payette-keywords
-  "\\<\\(fstar\\|ampl\\|constitutive *model\\|d\\(?:ata *file\\|ensity *range\\|isp\\|star\\)\\|e\\(?:fstar\\|mit\\|\\(?:rro\\|sta\\)r\\)\\|gold *file\\|input *units\\|kappa\\|m\\(?:a\\(?:tlabel\\|xiter\\)\\|ethod\\)\\|o\\(?:bj_fn\\(?: *in\\)?\\|\\(?:ption\\|utput *unit\\)s\\)\\|path *\\(?:hugoniot\\|i\\(?:ncrements\\|sotherm\\)\\)\\|ratfac\\|s\\(?:creenout\\|eed\\|\\(?:tep\\)?star\\)\\|t\\(?:emperature *range\\|olerance\\|star\\)\\|vstar\\|surface *increments\\)\\>")
+; (regexp-opt '("error" "disp" "constitutive model" "using" "ampl" "screenout" "emit" "kappa" "stepstar" "estar" "sstar" "ratfac" "fstar" "efstar" "dstar" "vstar" "tstar" "options" "option" "maxiter" "method" "data file" "seed" "from" "obj_fn in" "obj_fn" "gold file" "tolerance" "matlabel" "input units" "output units" "density range" "temperature range" "surface increments" "path increments" "path isotherm" "path hugoniot") 'words)
+(defvar payette-keywords "\\<\\(ampl\\|constitutive model\\|d\\(?:ata file\\|ensity range\\|isp\\|star\\)\\|e\\(?:fstar\\|mit\\|\\(?:rro\\|sta\\)r\\)\\|f\\(?:rom\\|star\\)\\|gold file\\|input units\\|kappa\\|m\\(?:a\\(?:tlabel\\|xiter\\)\\|ethod\\)\\|o\\(?:bj_fn\\(?: in\\)?\\|ptions?\\|utput units\\)\\|path \\(?:hugoniot\\|i\\(?:ncrements\\|sotherm\\)\\)\\|ratfac\\|s\\(?:creenout\\|eed\\|star\\|tepstar\\|urface increments\\)\\|t\\(?:emperature range\\|olerance\\|star\\)\\|using\\|vstar\\)\\>")
 
 ; to generate the payette-directives execute:
 ; (regexp-opt '("optimize" "permutate" "fix" "insert" "from" "from columns") 'words)

@@ -604,6 +604,20 @@ class ConstitutiveModelPrototype(object):
     def parameter_indices(self):
         return self._pi
 
+    def parameter(self, _id, val=None):
+        if isinstance(_id, int):
+            idx = _id
+        else:
+            idx = self.parameter_index(_id)
+            if idx is None:
+                pu.report_and_raise_error("{0} not in user input".format(_id))
+        if idx > len(self.ui):
+            pu.report_and_raise_error(
+                "user input index {0} out of range".format(_id))
+        if val is not None:
+            self.ui[idx] = float(val)
+        return self.ui[idx]
+
     def xtra_indices(self):
         return self._xi
 

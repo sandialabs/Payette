@@ -169,11 +169,13 @@ end boundary
 
 begin material
   constitutive model kayenta
+  option control failure
   rho 2700
   free01 = 2
   a1 200.e6
   g0 26.e9
   b0 76.e9
+  failstat = 25
 end material
 
 end simulation
