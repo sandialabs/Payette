@@ -167,29 +167,29 @@ def parse_options(lines):
 
     """
     options = {}
-    known_options = (re.compile(r"\bwrite.*input\b", re.I | re.M),
-                     re.compile(r"\bnowriteprops\b", re.I | re.M),
-                     re.compile(r"\brestart\b", re.I | re.M),)
-    for option in known_options:
-        found = option.search(lines)
-        if found:
-            s, e = found.start(), found.end()
-            key = re.sub(r"\s", "_", " ".join(lines[s:e].split())).upper()
-            lines = (lines[:s] + lines[e:]).strip()
-            options[key] = True
-        continue
-
+    def _get_opt(x):
+        bool_map = {'false': False, 'true': True, 'on': True, 'off': False}
+        try:
+            return int(x)
+        except ValueError:
+            return bool_map.get(x.lower())
     for line in lines.split("\n"):
-        line = re.sub(I_EQ, " ", line).split()
+        line = [x for x in re.split(r"[:,= ]", line) if x]
         if not line:
             continue
-        if len(line) == 1:
-            key, val = line[0].upper(), True
+        val = _get_opt(line[-1])
+        if val is None:
+            key, val = "_".join(line), True
         else:
-            key, val = "_".join(line[:-1]).upper(), line[-1]
+            key, val = "_".join(line[:-1]), bool(val)
         options[key] = val
         continue
-
+    if options:
+        opts = "\n".join("  {0} = {1}".format(k, v) for k, v in options.items())
+        blk = "begin control\n{0}\nend control\n...".format(opts)
+        pu.log_warning("Simulations options should be moved to the root level "
+                       "'control' input block as:\n{0}\n"
+                       .format(blk), fmt=False)
     return options
 
 

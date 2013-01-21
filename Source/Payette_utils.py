@@ -198,7 +198,7 @@ def __count_warning(wcount=[0], inquire=False, reset=False):
 
 
 def log_warning(message, limit=False, caller=None, pre="WARNING: ",
-                beg="", end="\n"):
+                beg="", end="\n", stop=False, fmt=True):
     """Report warning to screen and write to log file if open"""
 
     if ro.WARNING == "error":
@@ -231,12 +231,14 @@ def log_warning(message, limit=False, caller=None, pre="WARNING: ",
     if caller:
         caller = " [reported by: {0}]".format(caller)
 
-    message = (textfill("{0}{1}{2}{3}".format(beg, pre, message, caller),
-                        subsequent_indent=" " * (len(beg) + len(pre))) + end)
+    message = "{0}{1}{2}{3}".format(beg, pre, message, caller)
+    if fmt:
+        ind = " " * (len(beg) + len(pre))
+        message = textfill(message, subsequent_indent=ind)
     if SIMLOG is not None:
-        SIMLOG.write(message)
+        SIMLOG.write(message + end)
     sys.stdout.flush()
-    sys.stderr.write(message)
+    sys.stderr.write(message + end)
     return
 
 
