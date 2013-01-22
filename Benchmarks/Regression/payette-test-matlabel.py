@@ -66,7 +66,9 @@ class Test(PayetteTest):
     def get_input_string(self):
 
         input_string = """begin simulation payette-test-matlabel
-  nowriteprops
+  begin control
+    nowriteprops
+  end control
   begin boundary
     estar = -1.
     kappa = 0.

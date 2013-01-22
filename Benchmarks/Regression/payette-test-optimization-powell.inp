@@ -1,5 +1,7 @@
 begin simulation payette-test-optimization-powell
+begin control
 nowriteprops
+end control
 begin boundary
 kappa = 0
 tstar = 1.

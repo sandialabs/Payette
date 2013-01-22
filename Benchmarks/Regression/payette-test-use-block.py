@@ -67,7 +67,9 @@ class Test(PayetteTest):
 
         input_string = """\
 begin simulation payette-test-use-block
-  nowriteprops
+  begin control
+    nowriteprops
+  end control
   insert boundary_001
   begin material
     constitutive model elastic
@@ -76,7 +78,9 @@ begin simulation payette-test-use-block
 end simulation
 
 begin simulation payette-test-use-block-1
-  nowriteprops
+  begin control
+    nowriteprops
+  end control
   insert boundary_001
   begin material
     constitutive model elastic

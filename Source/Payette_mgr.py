@@ -685,6 +685,13 @@ def run_test(argv):
     return Pr.main(argv)
 
 
+def _repl(s, l, L):
+    repl = re.sub(s, "", l).strip()
+    repl = "" if repl == "-" else repl
+    L = L.replace(l, repl).strip()
+    return L
+
+
 def _pre(argv):
     """Check if user requests to build before execution, or if the user
     requested to run tests
@@ -701,9 +708,7 @@ def _pre(argv):
     pat = r"(?<!-)-\w*{0}\w*\s*?"
     B = re.search(pat.format("B"), jargv)
     if B:
-        repl = re.sub("B", "", B.group()).strip()
-        repl = "" if repl == "-" else repl
-        jargv = jargv.replace(B.group(), repl).strip()
+        jargv = _repl("B", B.group(), jargv)
         if build(jargv.split()) > 0:
             sys.exit("Payette failed to build")
 
@@ -722,9 +727,7 @@ def _pre(argv):
 
     T = re.search(pat.format("T"), jargv)
     if T:
-        repl = re.sub("T", "", T.group()).strip()
-        repl = "" if repl == "-" else repl
-        jargv = jargv.replace(T.group(), repl).strip()
+        jargv = _repl("T", T.group(), jargv)
         run_test(jargv.split())
         # Assume that if the user wanted to run the tests, no further work
         # should be done

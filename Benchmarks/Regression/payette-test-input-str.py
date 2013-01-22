@@ -65,7 +65,9 @@ class Test(PayetteTest):
     def get_input_string(self):
 
         input_string = """begin simulation payette-test-input-str
-  nowriteprops
+  begin control
+    nowriteprops
+  end control
   begin material
     constitutive model elastic
     B0=11.634e9
@@ -85,7 +87,9 @@ class Test(PayetteTest):
 end simulation
 
 begin simulation payette-test-input-str-1
-  nowriteprops
+  begin control
+    nowriteprops
+  end control
   begin material
     constitutive model elastic
     B0=11.634e9
