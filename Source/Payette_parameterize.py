@@ -123,24 +123,23 @@ def parameterizer(ilines):
     ui = pip.InputParser(ilines)
 
     # check for compatible constitutive model
-    constitutive_model = ui.get_option("CONSTITUTIVE_MODEL")
+    mblock = ui.find_block("material")
+    if mblock is None:
+        pu.report_and_raise_error("Material block not found")
+    regex = r"(?i)\bconstitutive\s*model(?P<cmod>[a-z0-9_\- ]+)\W*"
+    constitutive_model = re.search(regex, mblock)
+    if constitutive_model is None:
+        pu.report_and_raise_error("Constitutive model not found")
+    constitutive_model = constitutive_model.group("cmod").strip().lower()
+    constitutive_model = re.sub(r"[^\S\n]+", "_", constitutive_model)
     model_index = pmi.ModelIndex()
-    parameterizer = model_index.parameterizer(constitutive_model)
-    if parameterizer is None:
+    _parameterizer = model_index.parameterizer(constitutive_model)
+    if _parameterizer is None:
         pu.report_and_raise_error(
             "Constitutive model {0} does not have a parameterizing "
             "module defined".format(constitutive_model))
 
-    # check for required directives
-    req_directives = ("CONSTITUTIVE_MODEL", )
-    job_directives = ui.options()
-    for directive in req_directives:
-        if directive not in job_directives:
-            pu.report_and_raise_error(
-                "Required directive {0} not found".format(directive))
-
-    ilines = ui.user_input()
-    return parameterizer(ui)
+    return _parameterizer(ui)
 
 
 class Parameterize(object):
