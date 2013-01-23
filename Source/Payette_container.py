@@ -246,7 +246,8 @@ class Payette(object):
         self.simdat.setup_data_container()
         self.matdat.setup_data_container()
         self.material.constitutive_model.initialize_state(
-            self.simdat, self.matdat, self.boundary.legs()[0])
+            self.simdat, self.matdat, self.boundary.legs()[0],
+            self.boundary.initial_stress())
 
         self._setup_files()
 

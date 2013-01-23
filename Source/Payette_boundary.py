@@ -63,7 +63,7 @@ class Boundary(object):
             "ampl": [float, 1., None], "ratfac": [float, 1., None],
             "emit": ["choice", "all", ("all", "sparse",)],
             "nprints": [int, 0, None], "screenout": [bool, False, None],
-            "initial stress": [bool, False, None]}
+            "initial stress": [np.array, None, None]}
 
         # intialize container for legs
         # -- _legs has form
@@ -99,6 +99,9 @@ class Boundary(object):
 
     def nsteps(self):
         return self._nsteps
+
+    def initial_stress(self):
+        return self.bcontrol("initial stress")[1]
 
     def _parse_boundary(self, bblock):
         """Parse the boundary block
@@ -495,13 +498,15 @@ class Boundary(object):
             # append to legs
             if ltime == 0.:
                 if re.search(r"3", control):
-                    import Source.Payette_utils as pu
                     pu.report_and_raise_error(
                         "initial stress rate ambiguous")
-                elif re.search(r"4", control):
+                elif re.search(r"4", control[:6]):
+                    if re.search(r"[^4]", control[:6]):
+                        pu.report_and_raise_error(
+                            "Mixed initial state not allowed")
                     # check if nonzero initial stress was given
-                    if np.any(np.abs(cij[:6]) > 0.):
-                        self.bcontrol("initial stress", True)
+                    elif np.any(np.abs(cij[:6]) > 0.):
+                        self.bcontrol("initial stress", cij[:6])
 
             self._legs.append([num, ltime, steps, control, cij])
 

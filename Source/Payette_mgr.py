@@ -716,8 +716,11 @@ def _pre(argv):
         # or at least try too... The regexs were copied from 'buildPayette -h'
         # because there is no way of dynamically determining which options are
         # unique to buildPayette
-        regex = r"(?<!-)-[mAd] \w*\s|--kmm|--dsf|--lpc|-w"
-        for group in re.findall(regex, jargv):
+        R = r"(?<![-\w])(-[mAd]\s*[\{0}a-z0-9_\-]+\s*)".format(os.sep)
+        for group in re.findall(R, jargv):
+            jargv = re.sub(group, "", jargv)
+        R = r"--[(kmm)(dsf)(lpc)]+|-w"
+        for group in re.findall(R, jargv):
             jargv = re.sub(group, "", jargv)
         jargv = jargv.strip()
         if not jargv.split():
