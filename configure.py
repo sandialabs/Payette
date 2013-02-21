@@ -28,11 +28,13 @@
 
 
 
-import os, sys
+import os
+import sys
 from distutils import sysconfig
 import subprocess
 import optparse
 import shutil
+import re
 
 # git hash
 GIT = os.path.join(os.path.dirname(os.path.realpath(__file__)), ".git")
@@ -361,11 +363,14 @@ class PayetteConfig:
             path = [path]
 
         mtldirs = []
+        R0 = re.compile(r"\.[(svn)(git)]+")
+        R1 = re.compile("Build_[0-9]{4}\.[0-9]{2}\.[0-9]{2}")
+        R2 = re.compile(r"(?i).*_control.xml")
         for mtldir in path:
             mtldirs.extend([dirnam for dirnam, dirs, files in os.walk(mtldir)
-                            if (".svn" not in dirnam and
-                                ".git" not in dirnam and
-                                any("_control.xml" in y for y in files))])
+                            if (not R0.search(dirnam) and
+                                not R1.search(dirnam) and
+                                R2.search(" ".join(files)))])
             continue
         return list(set(mtldirs))
 

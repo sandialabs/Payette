@@ -50,6 +50,7 @@ module tensor_toolkit
   real(kind=fp), parameter :: root32=1.224744871391589049098642037352945695983_fp
   real(kind=fp), parameter :: pi=3.1415926535897932384626433832795028841971694_fp
   real(kind=fp), parameter :: piover6=pi/six
+  real(kind=fp), parameter :: huge=1.e50_fp
 
   integer, parameter :: diag9(3) = (/1, 5, 9/)
   real(kind=fp), parameter :: &
@@ -1591,6 +1592,9 @@ contains
     !.......................................................................local
     real(kind=fp) :: dshape
     !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ reducefac
+    if (critval > huge) then
+       reducefac = one
+    end if
     if (present(shape)) then
        dshape = shape
     else
