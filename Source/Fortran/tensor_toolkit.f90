@@ -809,7 +809,7 @@ contains
 
     ! Initialize
 
-    icond = zero
+    icond = 0
     matinv  = zero
     do row = 1, n
        matinv(row, row) = one

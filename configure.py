@@ -345,6 +345,10 @@ class PayetteConfig:
         try: import scipy
         except ImportError: raise SystemExit("scipy not importable")
 
+        # --- argparse check
+        try: import argparse
+        except ImportError: raise SystemExit("argparse not importable")
+
     def expand_mtldirs(self):
         """Expand mtldirs to only include those with control files
 
