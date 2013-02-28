@@ -35,6 +35,7 @@ import subprocess
 import time
 import pickle
 import pyclbr
+import textwrap
 
 if __name__ == "__main__":
     thisd = os.path.dirname(os.path.realpath(__file__))
@@ -45,12 +46,14 @@ import Source.__config__ as cfg
 import Source.Payette_utils as pu
 import Source.Payette_model_index as pmi
 
-speed_kws = ["fast", "medium", "long"]
-type_kws = ["verification", "validation", "prototype", "regression"]
+SPEED_KWS = ["fast", "medium", "long"]
+TYPE_KWS = ["verification", "validation", "prototype", "regression"]
+SP = " " * 5
 
 
 class TestLogger(object):
     def __init__(self, name, mode="w"):
+        self.name = str(name)
         if name:
             self.file = open(name, mode)
         else:
@@ -66,11 +69,13 @@ class TestLogger(object):
         self.file.write(message + "\n")
         pass
 
-    def warn(self, caller, message):
+    def warn(self, message):
+        caller = pu.who_is_calling()
         self.write("WARNING: {0} [reported by {1}]".format(message, caller))
         pass
 
-    def error(self, caller, message):
+    def error(self, message):
+        caller = self.name + "." + pu.who_is_calling()
         self.write("ERROR: {0} [reported by {1}]".format(message, caller))
         pass
 
@@ -142,24 +147,24 @@ class PayetteTest(object):
             lkw = 0
             tkw = 0
             for kw in self.keywords:
-                if kw in speed_kws:
+                if kw in SPEED_KWS:
                     lkw += 1
-                if kw in type_kws:
+                if kw in TYPE_KWS:
                     tkw += 1
                 continue
             if not lkw:
                 pu.report_error("keywords must specify one of {0}"
-                                .format(", ".join(speed_kws)))
+                                .format(", ".join(SPEED_KWS)))
             elif lkw > 1:
                 pu.report_error("keywords must specify only one of {0}"
-                                .format(", ".join(speed_kws)))
+                                .format(", ".join(SPEED_KWS)))
 
             if not tkw:
                 pu.report_error("keywords must specify one of {0}"
-                                .format(", ".join(type_kws)))
+                                .format(", ".join(TYPE_KWS)))
             elif tkw > 1:
                 pu.log_warning("keywords must specify only one of {0}"
-                               .format(", ".join(type_kws)))
+                               .format(", ".join(TYPE_KWS)))
 
         if self.owner is None:
             pu.report_error("no owner specified")
@@ -244,8 +249,6 @@ class PayetteTest(object):
 
     def build_command(self, cmd):
 
-        iam = "{0}.build_command".format(self.name)
-
         if not isinstance(cmd, (list, tuple)):
             cmd = [cmd]
             pass
@@ -278,6 +281,13 @@ class PayetteTest(object):
 
         return [x for x in cmd], self.passcode
 
+    def get_retcode(self, failed, diffed):
+        if failed:
+            return self.failcode
+        if diffed:
+            return self.diffcode
+        return self.passcode
+
     def compare_out_to_baseline_rms_general(self):
         """
             Compute the RMS difference between 2D data sets. The difference
@@ -290,7 +300,6 @@ class PayetteTest(object):
                 2: diffed
                 3: failed
         """
-        iam = "{0}.compare_out_to_baseline_rms_general(self)".format(self.name)
 
         errors = 0
         # open the log file
@@ -301,10 +310,8 @@ class PayetteTest(object):
             pass
 
         if not os.path.isfile(baselinef):
-            log.error(
-                iam,
-                "baseline file {0} not found for {1}".format(baselinef,
-                                                             self.name))
+            log.error("baseline file {0} not found for {1}"
+                      .format(baselinef, self.name))
             errors += 1
             pass
 
@@ -313,9 +320,7 @@ class PayetteTest(object):
             pass
 
         if not os.path.isfile(outf):
-            log.error(
-                iam,
-                "output file {0} not found for {1}".format(outf, self.name))
+            log.error("output file {0} not found for {1}".format(outf, self.name))
             errors += 1
             pass
 
@@ -324,7 +329,7 @@ class PayetteTest(object):
 
         # Determine which columns will be analyzed
         if type(self.rms_sets) != list:
-            log.error(iam, "No proper RMS sets to analyze for this benchmark.\n" +
+            log.error("No proper RMS sets to analyze for this benchmark.\n" +
                       "Please set self.rms_sets in the input file. Here is an example:\n" +
                       "self.rms_sets=[ [\"VAR1\", \"VAR2\"], " +
                       "[\"VAR3\", \"VAR4\"] ... ]\n")
@@ -340,7 +345,7 @@ class PayetteTest(object):
                 iserror = True
 
             if iserror:
-                log.error(iam, "RMS set incorrectly defined.\n" +
+                log.error("RMS set incorrectly defined.\n" +
                           "Expected list '[\"VAR1\",\"VAR2\"]', got '{0}'".
                           format(repr(rms_set)))
                 return self.badincode
@@ -353,20 +358,20 @@ class PayetteTest(object):
         for rms_set in self.rms_sets:
             if rms_set[0] not in outheader:
                 errors += 1
-                log.error(iam, "'{0}' not in {1}\nValid headers: {2}".
-                          format(rms_set[0], outf, repr(outheader)))
+                log.error("'{0}' not in {1}\nValid headers: {2}"
+                          .format(rms_set[0], outf, repr(outheader)))
             if rms_set[1] not in outheader:
                 errors += 1
-                log.error(iam, "'{0}' not in {1}\nValid headers: {2}".
-                          format(rms_set[1], outf, repr(outheader)))
+                log.error("'{0}' not in {1}\nValid headers: {2}"
+                          .format(rms_set[1], outf, repr(outheader)))
             if rms_set[0] not in goldheader:
                 errors += 1
-                log.error(iam, "'{0}' not in {1}\nValid headers: {2}".
-                          format(rms_set[0], baselinef, repr(goldheader)))
+                log.error("'{0}' not in {1}\nValid headers: {2}"
+                          .format(rms_set[0], baselinef, repr(goldheader)))
             if rms_set[1] not in goldheader:
                 errors += 1
-                log.error(iam, "'{0}' not in {1}\nValid headers: {2}".
-                          format(rms_set[1], baselinef, repr(goldheader)))
+                log.error("'{0}' not in {1}\nValid headers: {2}"
+                          .format(rms_set[1], baselinef, repr(goldheader)))
         if errors:
             return self.badincode
 
@@ -378,15 +383,15 @@ class PayetteTest(object):
         # simulation file has at least one.
         if len(out[:, 0]) <= 0:
             errors += 1
-            log.error(iam, "Not enough points in {0} (must have at least one).".
-                      format(outf))
+            log.error("Not enough points in {0} (must have at least one)."
+                      .format(outf))
             log.write("\n{0:=^72s}".format(" FAIL "))
             pass
 
         if len(gold[:, 0]) <= 1:
             errors += 1
-            log.error(iam, "Not enough points in {0} (must have at least one).".
-                      format(baselinef))
+            log.error("Not enough points in {0} (must have at least one)."
+                      .format(baselinef))
             log.write("\n{0:=^72s}".format(" FAIL "))
             pass
 
@@ -401,8 +406,7 @@ class PayetteTest(object):
         log.write("  diff tol: {0:10e}".format(self.difftol))
         log.write("  fail tol: {0:10e}\n".format(self.failtol))
 
-        failed, diffed = False, False
-        ftol, dtol = self.failtol, self.difftol
+        failed, diffed = [], []
         for rms_set in self.rms_sets:
             gidx = goldheader.index(rms_set[0])
             oidx = outheader.index(rms_set[0])
@@ -416,11 +420,11 @@ class PayetteTest(object):
             # than the tolerances.
             minerror = min(rmsd, nrmsd)
             if minerror >= self.failtol:
-                failed = True
+                failed.append("{0}:{1}".format(rms_set[0], rms_set[1]))
                 stat = "FAIL"
 
             elif minerror >= self.difftol:
-                diffed = True
+                diffed.append("{0}:{1}".format(rms_set[0], rms_set[1]))
                 stat = "DIFF"
 
             else:
@@ -434,21 +438,26 @@ class PayetteTest(object):
             continue
 
         if failed:
+            msg = textwrap.fill(", ".join(failed), 72,
+                                initial_indent=SP, subsequent_indent=SP)
+            log.write("\nFAILED VARIABLES:\n{0}".format(msg))
+
+        if diffed:
+            msg = textwrap.fill(", ".join(diffed), 72,
+                                initial_indent=SP, subsequent_indent=SP)
+            log.write("\nDIFFED VARIABLES:\n{0}".format(msg))
+
+        if failed:
             log.write("\n{0:=^72s}".format(" FAIL "))
-            del log
-            return self.failcode
 
         elif diffed:
             log.write("\n{0:=^72s}".format(" DIFF "))
-            del log
-            return self.diffcode
 
         else:
             log.write("\n{0:=^72s}".format(" PASS "))
-            del log
-            return self.passcode
 
-        return
+        del log
+        return self.get_retcode(failed, diffed)
 
     def compare_out_to_baseline_rms(self, baselinef=None, outf=None):
         """
@@ -460,7 +469,6 @@ class PayetteTest(object):
                 2: diffed
                 3: failed
         """
-        iam = "{0}.compare_out_to_baseline_rms(self)".format(self.name)
         errors = 0
 
         # open the log file
@@ -471,9 +479,8 @@ class PayetteTest(object):
             pass
 
         if not os.path.isfile(baselinef):
-            log.error(
-                iam,
-                "baseline file {0} not found for {1}".format(baselinef, self.name))
+            log.error("baseline file {0} not found for {1}"
+                      .format(baselinef, self.name))
             errors += 1
             pass
 
@@ -482,9 +489,8 @@ class PayetteTest(object):
             pass
 
         if not os.path.isfile(outf):
-            log.error(
-                iam,
-                "output file {0} not found for {1}".format(outf, self.name))
+            log.error("output file {0} not found for {1}"
+                      .format(outf, self.name))
             errors += 1
             pass
 
@@ -497,13 +503,12 @@ class PayetteTest(object):
 
         if outheader[0] != "time":
             errors += 1
-            log.error(iam, "time not first column of {0} for {1}".format(outf,
-                                                                         self.name))
+            log.error("time not first column of {0} for {1}"
+                      .format(outf, self.name))
         if goldheader[0] != "time":
             errors += 1
-            log.error(
-                iam, "time not first column of {0} for {1}".format(baselinef,
-                     self.name))
+            log.error("time not first column of {0} for {1}"
+                      .format(baselinef, self.name))
 
         if errors:
             return self.badincode
@@ -521,10 +526,9 @@ class PayetteTest(object):
 
         if nrmsd > np.finfo(np.float).eps:
             errors += 1
-            log.error(iam, "time step error between {0} and {1}"
+            log.error("time step error between {0} and {1}"
                       .format(outf, baselinef))
             log.write("\n{0:=^72s}".format(" FAIL "))
-            pass
 
         if errors:
             del log
@@ -552,8 +556,7 @@ class PayetteTest(object):
         else:
             to_compare = [x.lower() for x in self.items_to_compare]
 
-        failed, diffed = False, False
-        ftol, dtol = self.failtol, self.difftol
+        failed, diffed = [], []
         for val in to_compare:
             gidx = goldheader.index(val)
             oidx = outheader.index(val)
@@ -562,11 +565,11 @@ class PayetteTest(object):
 
             # For good measure, write both the RMSD and normalized RMSD
             if nrmsd >= self.failtol:
-                failed = True
+                failed.append(val)
                 stat = "FAIL"
 
             elif nrmsd >= self.difftol:
-                diffed = True
+                diffed.append(val)
                 stat = "DIFF"
 
             else:
@@ -578,21 +581,26 @@ class PayetteTest(object):
             continue
 
         if failed:
+            msg = textwrap.fill(", ".join(failed), 72,
+                                initial_indent=SP, subsequent_indent=SP)
+            log.write("\nFAILED VARIABLES:\n{0}".format(msg))
+
+        if diffed:
+            msg = textwrap.fill(", ".join(diffed), 72,
+                                initial_indent=SP, subsequent_indent=SP)
+            log.write("\nDIFFED VARIABLES:\n{0}".format(msg))
+
+        if failed:
             log.write("\n{0:=^72s}".format(" FAIL "))
-            del log
-            return self.failcode
 
         elif diffed:
             log.write("\n{0:=^72s}".format(" DIFF "))
-            del log
-            return self.diffcode
 
         else:
             log.write("\n{0:=^72s}".format(" PASS "))
-            del log
-            return self.passcode
 
-        return
+        del log
+        return self.get_retcode(failed, diffed)
 
     def get_header(self, f):
         """ get the header of f """
@@ -611,7 +619,6 @@ class PayetteTest(object):
     def compare_constant_strain_at_failure(self, outf=None, epsfail=None):
         """ compare the constant strain at failure with expected """
 
-        iam = "{0}.compare_strain_at_failure(self)".format(self.name)
         errors = 0
 
         # open the log file
@@ -620,20 +627,20 @@ class PayetteTest(object):
         if outf:
             if not os.path.isfile(outf):
                 errors += 1
-                log.error(iam, "sent output file not found")
+                log.error("sent output file not found")
         else:
             outf = self.outfile
             pass
 
         if not outf:
             errors += 1
-            log.error(iam, "not out file given")
+            log.error("not out file given")
             pass
 
         propf = self.name + ".props"
         if not os.path.isfile(propf):
             errors += 1
-            log.error(iam, "{0} not found".format(propf))
+            log.error("{0} not found".format(propf))
             pass
 
         # get constant strain at failure
@@ -650,17 +657,17 @@ class PayetteTest(object):
             epsfail = float(epsfail)
         except TypeError:
             errors += 1
-            log.error(iam, "epsfail must be float, got {0}".format(epsfail))
+            log.error("epsfail must be float, got {0}".format(epsfail))
         except:
             errors += 1
-            log.error(iam, "bad epsfail [{0}]".format(epsfail))
+            log.error("bad epsfail [{0}]".format(epsfail))
 
         # read in header
         outheader = [x.lower() for x in self.get_header(outf)]
 
         if outheader[0] != "time":
             errors += 1
-            log.error(iam, "time not first column of {0}".format(outf))
+            log.error("time not first column of {0}".format(outf))
             pass
 
         if errors:
@@ -688,9 +695,8 @@ class PayetteTest(object):
             continue
 
         if fail_idx == -1:
-            log.error(iam, "COHER did not drop below 0.5.\n")
-            log.error(
-                iam, "Final value of COHER: {0}\n".format(out[-1, coher_idx]))
+            log.error("COHER did not drop below 0.5.\n")
+            log.error("Final value of COHER: {0}\n".format(out[-1, coher_idx]))
             return self.failcode
 
         # Perform an interpolation between COHER-ACCSTRAIN sets to find the
@@ -715,24 +721,18 @@ class PayetteTest(object):
             stat = "DIFF"
         else:
             stat = "PASS"
-            pass
 
         if failed:
             log.write("\n{0:=^72s}".format(" FAIL "))
-            del log
-            return self.failcode
 
         elif diffed:
             log.write("\n{0:=^72s}".format(" DIFF "))
-            del log
-            return self.diffcode
 
         else:
             log.write("\n{0:=^72s}".format(" PASS "))
-            del log
-            return self.passcode
 
-        return
+        del log
+        return self.get_retcode(failed, diffed)
 
     def runFromTerminal(self, argv, compare_method=None):
 
@@ -789,7 +789,6 @@ class PayetteTest(object):
 
         """ compare gold with out """
 
-        iam = self.name + "diff_files(self,gold,out)"
         import difflib
 
         if gold is None:
@@ -807,7 +806,7 @@ class PayetteTest(object):
 
         for goldf in gold:
             if not os.path.isfile(goldf):
-                log.error(iam, "{0} not found".format(goldf))
+                log.error("{0} not found".format(goldf))
                 errors += 1
             continue
 
@@ -816,13 +815,13 @@ class PayetteTest(object):
 
         for outf in out:
             if not os.path.isfile(outf):
-                log.error(iam, "{0} not found".format(outf))
+                log.error("{0} not found".format(outf))
                 errors += 1
             continue
 
         if len(gold) != len(out):
             errors += 1
-            log.error(iam, "len(gold) != len(out)")
+            log.error("len(gold) != len(out)")
             pass
 
         if errors:
@@ -856,7 +855,7 @@ class PayetteTest(object):
 
     def compare_opt_params(self, gold=None, out=None):
         """ compare gold with out """
-        iam = "compare_opt_params"
+
         if gold is None:
             gold = self.baseline
 
@@ -872,7 +871,7 @@ class PayetteTest(object):
 
         for goldf in gold:
             if not os.path.isfile(goldf):
-                log.error(iam, "{0} not found".format(goldf))
+                log.error("{0} not found".format(goldf))
                 errors += 1
             continue
 
@@ -881,13 +880,13 @@ class PayetteTest(object):
 
         for outf in out:
             if not os.path.isfile(outf):
-                log.error(iam, "{0} not found".format(outf))
+                log.error("{0} not found".format(outf))
                 errors += 1
             continue
 
         if len(gold) != len(out):
             errors += 1
-            log.error(iam, "len(gold) != len(out)")
+            log.error("len(gold) != len(out)")
             pass
 
         if errors:
@@ -971,8 +970,6 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
 
     model_index = pmi.ModelIndex(cfg.MTLDB)
 
-    iam = "find_tests"
-
     def get_module_name(py_file):
         return os.path.splitext(os.path.basename(py_file))[0]
 
@@ -1014,7 +1011,7 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
     unreqkws.sort()
 
     found_tests = {}
-    for speed_kw in speed_kws:
+    for speed_kw in SPEED_KWS:
         found_tests[speed_kw] = {}
         continue
 
@@ -1146,7 +1143,7 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
                     "not installed, test will be skipped")
                 continue
 
-        speed = [x for x in speed_kws if x in test.keywords][0]
+        speed = [x for x in SPEED_KWS if x in test.keywords][0]
         found_tests[speed][py_mod] = py_file
 
         continue

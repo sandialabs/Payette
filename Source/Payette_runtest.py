@@ -256,7 +256,7 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
         sys.exit(rebaseline_tests(args))
 
     # find tests
-    pu.log_message("Testing Payette", noisy=True)
+    pu.log_message("Finding Payette tests", noisy=True)
 
     # if we are running testPayette in a test result directory, just run that
     # test
