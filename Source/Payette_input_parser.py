@@ -343,7 +343,7 @@ def strip_cruft(lines):
     lines = re.sub(r"\n\s*\n*", "\n", lines)
     # remove all consectutive spaces, i.e. A    string -> A string
     lines = re.sub(r"(?m)[^\S\n]+", " ", lines)
-    return lines.strip() + "\n"
+    return lines
 
 
 def preprocess(lines, preprocessor=None):
@@ -630,7 +630,7 @@ def fill_in_inserts(lines):
         User input, modified in place, with inserts inserted
 
     """
-    regex = r"(?i).*\binsert\b\s*(?P<insert>[a-z0-9_\-\. ]+)\W*"
+    regex = r"(?i).*\binsert\b\s*(?P<insert>.*)"
     blx = []
     while True:
         lines = strip_cruft(lines)

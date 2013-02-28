@@ -29,6 +29,7 @@ import os
 import sys
 import shutil
 import imp
+import re
 import tempfile
 import subprocess as sbp
 from distutils import sysconfig
@@ -187,24 +188,30 @@ class MaterialBuilder(object):
 
         tmp = deepcopy(sys.argv)
         sys.argv = f2pycmd
+        sys.argv.append("--quiet")
 
         if os.access(self.source_directory, os.W_OK):
             echo = os.path.join(self.source_directory, "build.echo")
         else:
             echo = os.path.join(tempfile.gettempdir(), "build.echo")
 
-        with open(echo, "w") as sys.stdout:
-            with open(echo, "a") as sys.stderr:
-                # f2py returns none if successful, it is an exception if not
-                # successful
-                try:
-                    built = not f2py()
-                except:
-                    built = False
+        # f2py returns none if successful, it is an exception if not
+        # successful
+        try:
+            built = not f2py()
+        except BaseException as e:
+            msg = re.sub(r"error: ", "", e.message)
+            built = False
+        except:
+            msg = ("failed to build {0} with f2py, see {1}"
+                   .format(self.libname, echo))
+            built = False
 
         # restore sys.{argv, stdout, stderr}
         sys.argv = deepcopy(tmp)
         sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
+        sys.stdout.flush()
+        sys.stderr.flush()
 
         # remove nocallback_file, if it exists
         try:
@@ -221,9 +228,7 @@ class MaterialBuilder(object):
             continue
 
         if not built:
-            pu.report_and_raise_error(
-                "failed to build {0} with f2py, see {1}"
-                .format(self.libname, echo), errno=2)
+            pu.report_and_raise_error(msg, errno=2)
 
         # make sure the module is loadable
         try:

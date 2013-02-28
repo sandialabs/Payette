@@ -30,6 +30,7 @@ import sys
 import os
 import re
 import glob
+import argparse
 from textwrap import fill as textfill
 
 FILE = os.path.realpath(__file__)
@@ -82,6 +83,27 @@ OPTIONS
       passed through to the different Payette modules.
 """.format(cfg.PYINT)
 
+PP = argparse.ArgumentParser(add_help=False)
+PP.add_argument("-B", action="store_true", default=False,
+                help="Build Payette [default: %(default)s]")
+PP.add_argument("-T", action="store_true", default=False,
+                help="Run the Payette tests [default: %(default)s]")
+PP.add_argument("-A", action="store",
+                help=("Alternate directory to find material database "
+                      "file [default: %(default)s]"))
+PP.add_argument("-v", "--verbosity", type=int,
+                default=ro.VERBOSITY, action="store",
+                help="Verbosity default: %(default)s]")
+PP.add_argument("--dbg", "--debug", action="store_true", default=ro.DEBUG,
+              help="Global debug flag [default: %(default)s]")
+PP.add_argument("-j", "--nproc", type=int, default=ro.NPROC, action="store",
+                help="Number of simultaneous jobs [default: %(default)s]")
+PP.add_argument("-W", action="store", default=ro.WARNING,
+                choices=["ignore", "warn", "error", "all"],
+                help="warning level [default: %(default)s]")
+PP.add_argument("-E", action="store", default=ro.ERROR,
+                choices=["stop", "ignore"],
+                help="Error level [default: %(default)s]")
 
 def main(argv):
     """
@@ -348,10 +370,6 @@ def main(argv):
     else:
         material_db = cfg.MTLDB
 
-    if not os.path.isfile(material_db):
-        sys.exit("ERROR: buildPayette must first be executed to create\n\t{0}"
-                 .format(material_db))
-
     if opts.MAN:
         # print the man page for this and other scripts
         installed_models = pmi.ModelIndex(material_db).constitutive_models()
@@ -446,6 +464,11 @@ def main(argv):
         # output files given, launch visualizer
         pu.log_message(cfg.INTRO, pre="")
         sys.exit(_visualize_results(outfiles=oargs))
+
+    if not os.path.isfile(material_db):
+        pu.report_and_raise_error(
+            "ERROR: buildPayette must first be executed to create\n\t{0}"
+            .format(material_db))
 
     if opts.verbosity:
         pu.log_message(cfg.INTRO, pre="")
