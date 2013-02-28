@@ -92,6 +92,8 @@ def build_payette(argv):
         default=ro.VERBOSITY,
         type=int,
         help="Verbosity [default: %default]")
+    parser.add_option( "-D", action="append", default=[],
+                       help="Compiler directives [default: %default]")
 
     # the following options are shortcuts for building specific materials
     parser.add_option(
@@ -213,7 +215,8 @@ def build_payette(argv):
         requested_materials=requested_materials,
         compiler_info=compiler_info,
         libdir=payette_libdir,
-        verbosity=opts.VERBOSITY)
+        verbosity=opts.VERBOSITY,
+        compiler_directives=opts.D)
 
     build.collect_all_materials()
 
@@ -228,7 +231,8 @@ def build_payette(argv):
 class BuildPayette(object):
 
     def __init__(self, search_directories=None, requested_materials=None,
-                 compiler_info=None, libdir=None, verbosity=1):
+                 compiler_info=None, libdir=None, verbosity=1,
+                 compiler_directives=[]):
 
         # verify each search directory exists
         if not search_directories:
@@ -252,6 +256,7 @@ class BuildPayette(object):
         if compiler_info is None:
             compiler_info = {}
         self.compiler_info = compiler_info
+        self.compiler_directives = compiler_directives
         self.errors = 0
 
         if libdir is None:
@@ -438,7 +443,8 @@ class BuildPayette(object):
 
         # build the libraries
         nproc = min(nproc, len(self.materials_to_build))
-        requested_builds = [(key, val, self.compiler_info, self.libdir)
+        requested_builds = [(key, val, self.compiler_info,
+                             self.compiler_directives, self.libdir)
                             for key, val in self.materials_to_build.items()]
         if nproc > 1:
             ro.set_global_option("VERBOSITY", False)
@@ -527,7 +533,7 @@ def _build_lib(args):
 
     """ build the material library for payette_material """
 
-    material, material_data, compiler_info, libdir = args
+    material, material_data, compiler_info, compiler_directives, libdir = args
 
     # get attributes
     libname = material_data["libname"]
@@ -542,10 +548,11 @@ def _build_lib(args):
     py_mod, py_path = pu.get_module_name_and_path(build_script)
     fobj, pathname, description = imp.find_module(py_mod, py_path)
     build_module = imp.load_module(py_mod, fobj, pathname, description)
+    build = build_module.Build(material, libname, libdir, compiler_info)
+    build.add_compile_directives(compiler_directives)
     fobj.close()
 
     try:
-        build = build_module.Build(material, libname, libdir, compiler_info)
         build_error = build.build_extension_module()
 
     except PayetteError as error:

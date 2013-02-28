@@ -126,9 +126,8 @@ class InputParser(object):
     def formatted_input(self, ii="", sp="  "):
         ui = "begin simulation {0}\n{1}\nend simulation".format(
             self.name,
-            re.sub(r"(?i)\W*simdir.*\n|\W*write\s*input.*\n"
-                   "|\W*name\s.*\n|\W*type\s.*\n", "", self.inp))
-        _ui = ""
+            re.sub(r"(?i)\b(simdir|write\s*input|name|type)\s.*\n", "", self.inp))
+        _ui = []
         level = 0
         for line in ui.split("\n"):
             if not line.split():
@@ -136,11 +135,11 @@ class InputParser(object):
             line = " ".join(line.split())
             if re.search(r"\bend\s*[a-z0-9_]+\W*?", line):
                 level -= 1
-            _ui += "{0}{1}{2}\n".format(ii, sp * level, line)
+            _ui.append("{0}{1}{2}".format(ii, sp * level, line))
             if re.search(r"\bbegin\s*[a-z0-9_]+\s*[a-z0-9\-\.]*\W*?", line):
                 level += 1
             continue
-        return _ui
+        return "\n".join(_ui)
 
     def write_input_file(self, fpath):
         """write the input to a formatted file"""

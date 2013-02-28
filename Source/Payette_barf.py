@@ -64,6 +64,7 @@ import Source.Payette_container as pcntnr
 import Source.Payette_model_index as pmi
 import Source.Payette_input_parser as pip
 from Source.Payette_utils import PayetteError as PayetteError
+import Source.__runopts__ as ro
 
 
 class PayetteBarf(object):
@@ -77,6 +78,7 @@ class PayetteBarf(object):
         self.ipfailstat = 59
 
         pu.log_message("running barf file: {0}".format(barf_file))
+        ro.set_global_option("DEBUG", True)
 
         self.barf = {}
         self.barf["lines"] = []
@@ -92,8 +94,10 @@ class PayetteBarf(object):
         self.model_index = pmi.ModelIndex()
 
         # get the barf info
+        self.using_eos = False
         self.get_barf_info()
         self.read_barf_file()
+        self.name = self.barf["name"]
 
         # write message to screen
         pu.log_message("constitutive model: {0}"
@@ -108,17 +112,14 @@ class PayetteBarf(object):
         # convert the barf file to a payette input
         self.payette_input = self._convert_to_payette()
 
-        pass
-
-    def run_job(self, *args, **kwargs):
-        """Run the barf file"""
-
         self.model = pcntnr.Payette(self.payette_input)
         self.model.write_input = True
 
         # the model has been set up, now advance the stress and state variables
         # to where they need to be based on barf file
         simdat = self.model.simulation_data()
+        simdat.store("leg number", 1)
+        simdat.advance("leg number")
         material = self.model.material
         if self.test_barf:
             material.constitutive_model.ui[self.ipfailstat] = 25.
@@ -129,6 +130,12 @@ class PayetteBarf(object):
         matdat.store("__xtra__", self.barf["__xtra__"])
         matdat.advance()
 
+        self.modify_params()
+        pass
+
+    def run_job(self, *args, **kwargs):
+        """Run the barf file"""
+
         try:
             pdrvr.solid_driver(self.model)
             self.message = "WARNING: Kayenta did not bomb"
@@ -136,6 +143,9 @@ class PayetteBarf(object):
 
         except PayetteError as e:
             # the code bombed, let's see if we reproduced the original
+            print
+            print e.message
+            print
             msg = re.sub(
                 r"ERROR|BOMBED|:", "", e.message).split("[")[0].strip()
             if msg == self.barf["barf message"]:
@@ -189,23 +199,6 @@ class PayetteBarf(object):
         strain_rate = self.get_block("strain", place=0)
         extra_variables = self.get_block("state", place=1)
 
-        if self.barf["using eos"]:
-            # if the code used a host EOS, replace the bulk and shear moduli
-            # with current values
-            bmod = extra_variables[44]
-            smod = extra_variables[45]
-            for idx, param in enumerate(parameters):
-                param = param.split()
-                if "b0" in param[0].lower():
-                    parameters[idx] = "B0 = {0}".format(bmod)
-                    continue
-
-                if "g0" in param[0].lower():
-                    parameters[idx] = "G0 = {0}".format(smod)
-                    break
-
-                continue
-
         if len(strain_rate) != 6:
             pu.report_and_raise_error(
                 "len(strain_rate) = {0} != 6".format(len(strain_rate)))
@@ -232,6 +225,33 @@ class PayetteBarf(object):
         failstat = re.search("(?i)failstat.*", self.barf["parameters"])
         s, e = failstat.start(), failstat.end()
         self.test_barf = bool(re.search("\.25", self.barf["parameters"][s:e]))
+
+        return
+
+    def modify_params(self):
+
+        cmod = self.model.material.constitutive_model
+
+        # if FAILSTAT >= 40., Kayenta goes in to debug mode
+        cmod.parameter("FAILSTAT", 41.)
+
+        if not self.using_eos:
+            return
+
+        # if the code used a host EOS, replace the bulk and shear moduli
+        # with current values
+
+        # bulk modulus
+        cmod.parameter("B0", cmod.xtra("EOS1"))
+
+        # shear modulus
+        cmod.parameter("G0", cmod.xtra("EOS2"))
+
+        # set IEOSID to 0, change [BG][1-4] to 0.
+        cmod.parameter("IEOSID", 0.)
+        for i in range(1, 5):
+            cmod.parameter("G{0}".format(i), 0.)
+            cmod.parameter("B{0}".format(i), 0.)
 
         return
 
@@ -311,14 +331,11 @@ end simulation
         cmod = self.barf["constitutive model instance"]
         props = []
         for idx, val in params:
-
             idx = int(idx) - 1
             nam = cmod.parameter_table_idx_map[idx]
-
-            if idx == 60:
-                self.barf["using eos"] = val > 0
-                val = "0."
-
+            # check for EOS and use constant bulk modulus if using EOS
+            if nam == "IEOSID":
+                self.using_eos = val in (1., 3.)
             props.append("{0} = {1}".format(nam, val))
             continue
 

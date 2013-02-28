@@ -66,7 +66,7 @@ class DummyHolder:
 
 class PayetteError(Exception):
     def __init__(self, message, caller=None, retcode=None, errno=0,
-                 sysexit=not ro.DEBUG):
+                 sysexit=True):
 
         if caller is None:
             caller = pu.who_is_calling()
@@ -84,9 +84,14 @@ class PayetteError(Exception):
         # message
         message = " ".join([x for x in message.split() if x])
         self.message = "ERROR: {0} {1}".format(message, caller)
+
+        if ro.DEBUG:
+            sysexit = False
+
         if sysexit:
             sys.stderr.write("\n" + self.message + "\n")
             sys.exit(retcode)
+
         super(PayetteError, self).__init__(self.message)
 
 

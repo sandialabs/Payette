@@ -131,6 +131,10 @@ class MaterialBuilder(object):
         self.f2pyopts = ["f2py", "-c"] + f2py_opts
         pass
 
+    def add_compile_directives(self, D):
+        self.pre_directives.extend(["-D{0}".format(x) for x in D])
+        return
+
     def build_extension_module(self):
         pu.report_and_raise_error(
             "fortran build script must provide this function", errno=1)

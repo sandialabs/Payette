@@ -191,6 +191,8 @@ class ConstitutiveModelPrototype(object):
         if abs(rho) > pu.EPSILON:
             self._initial_density = rho
 
+        self.matdat = matdat
+
         return
 
     def register_parameters_from_control_file(self):
@@ -331,6 +333,9 @@ class ConstitutiveModelPrototype(object):
 
     def parameter_index(self, name):
         return getattr(self._pi, name.upper(), None)
+
+    def parameter_name(self, idx):
+        return self.parameter_table_idx_map.get(idx)
 
     def get_parameter_names(self, aliases=False):
         """Returns a list of parameter names, and optionally aliases"""
@@ -620,6 +625,20 @@ class ConstitutiveModelPrototype(object):
 
     def xtra_indices(self):
         return self._xi
+
+    def xtra_index(self, name):
+        return getattr(self._xi, name.upper(), None)
+
+    def xtra(self, _id=None):
+        if _id is None:
+            return self.matdat.get("__xtra__")
+        if isinstance(_id, int):
+            idx = _id
+        else:
+            idx = self.xtra_index(_id)
+            if idx is None:
+                pu.report_and_raise_error("{0} not an xtra var".format(_id))
+        return self.matdat.get("__xtra__")[idx]
 
     # The methods below are going to be depricated in favor of
     # under_score_separated names. We keep them here for compatibility.
