@@ -197,15 +197,17 @@ class MaterialBuilder(object):
 
         # f2py returns none if successful, it is an exception if not
         # successful
-        try:
-            built = not f2py()
-        except BaseException as e:
-            msg = re.sub(r"error: ", "", e.message)
-            built = False
-        except:
-            msg = ("failed to build {0} with f2py, see {1}"
-                   .format(self.libname, echo))
-            built = False
+        with open(echo, "w") as sys.stdout:
+            with open(echo, "a") as sys.stderr:
+                try:
+                    built = not f2py()
+                except BaseException as e:
+                    msg = re.sub(r"error: ", "", e.message)
+                    built = False
+                except:
+                    msg = ("failed to build {0} with f2py, see {1}"
+                           .format(self.libname, echo))
+                    built = False
 
         # restore sys.{argv, stdout, stderr}
         sys.argv = deepcopy(tmp)
