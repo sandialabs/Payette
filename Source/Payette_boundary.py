@@ -59,11 +59,12 @@ class Boundary(object):
             "kappa": [float, 0., None], "estar": [float, 1., None],
             "tstar": [float, 1., None], "sstar": [float, 1., None],
             "fstar": [float, 1., None], "dstar": [float, 1., None],
-            "efstar": [float, 1., None], "stepstar": [float, 1., 1.],
+            "efstar": [float, 1., None], "stepstar": [float, 1., 1e-6],
             "ampl": [float, 1., None], "ratfac": [float, 1., None],
             "emit": ["choice", "all", ("all", "sparse",)],
             "nprints": [int, 0, None], "screenout": [bool, False, None],
-            "initial stress": [np.array, None, None]}
+            "initial stress": [np.array, None, None],
+            "termination_time": [float, 1.e99, None]}
 
         # intialize container for legs
         # -- _legs has form
@@ -124,7 +125,7 @@ class Boundary(object):
 
             if len(line) != 2:
                 pu.report_and_raise_error(
-                    "Boundary control items must be key = val pairs, got (0}"
+                    "Boundary control items must be key = val pairs, got {0}"
                     .format(line))
 
             kwd, val = line
@@ -542,10 +543,16 @@ class Boundary(object):
                     "time must be monotonic from {0:d} to {1:d}"
                     .format(leg[0] - 1, leg[0]))
 
+            if time_f > self.bcontrol("termination_time")[1]:
+                self._legs = self._legs[:ileg+1]
+                break
+
             time_0 = time_f
+            continue
 
         if not ileg:
             pu.report_and_raise_error("Only one time step found.")
+
 
         return
 
@@ -656,7 +663,7 @@ class Boundary(object):
             # remove any spaces around :
             cols = re.sub(r"\W*[{0}]\W*".format(pip.RSEP), pip.RSEP, cols)
             # split on spaces and commas
-            hold, cols = re.split(r"[, ]+", cols), []
+            hold, cols = [x for x in re.split(r"[, ]+", cols) if x], []
 
             for item in hold:
                 try:

@@ -266,8 +266,8 @@ def parse_user_input(lines):
     if isinstance(lines, (list, tuple)):
         lines = "\n".join(lines)
     lines = fill_in_inserts(lines)
-    lines = preprocess(lines)
     lines = strip_cruft(lines)
+    lines = preprocess(lines)
 
     allsims = find_block("simulation", lines, findall=True, co=True)
 
@@ -336,14 +336,37 @@ def strip_cruft(lines):
         lines stripped of all comments and blank lines
 
     """
-    # return re.sub(r"\n\s*\n*", "\n", re.sub(r"[#$].*","", lines)) + "\n"
     # strip comments
-    lines = re.sub(r"[#$].*", "", lines)
-    # strip blank lines
-    lines = re.sub(r"\n\s*\n*", "\n", lines)
-    # remove all consectutive spaces, i.e. A    string -> A string
-    lines = re.sub(r"(?m)[^\S\n]+", " ", lines)
-    return lines
+    _lines = []
+    in_multi_line_comment = False
+    for line in lines.split("\n"):
+
+        if not line.split():
+            continue
+
+        # look for end of multi line comment
+        if re.search(r"[#$].*}}", line):
+            if not in_multi_line_comment:
+                pu.report_and_raise_error(
+                    "End of multiline comment encountered without begining")
+            in_multi_line_comment = False
+            continue
+
+        # look for begining of multi line comment
+        if re.search(r"[#$].*{{", line):
+            in_multi_line_comment = True
+
+        # skipe blank lines and lines in multi line comment block
+        if in_multi_line_comment:
+            continue
+
+        _lines.append(" ".join(seperate_comment(line)[0].split()))
+        continue
+
+    if in_multi_line_comment:
+        pu.report_and_raise_error("End of multiline comment not found")
+
+    return "\n".join(_lines)
 
 
 def preprocess(lines, preprocessor=None):
@@ -538,6 +561,22 @@ def block_contents(bname, block):
     """
     return re.search(R_B.format(bname), block).group("c").strip()
 
+def new_find_block(name, lines, default=None, co=False):
+    b = []
+    inblock = False
+    for line in lines.split("\n"):
+        if re.search(r"(?i)\bend\s*{0}".format(name), line):
+            if not inblock:
+                sys.exit("end of block {0} out of place".format(name))
+            break
+        if re.search(r"(?i)\bbegin\s*{0}".format(name), line):
+            inblock = True
+            continue
+        if inblock:
+            b.append(line)
+    if not b:
+        return default
+    return b
 
 def find_block(name, lines, default=None, findall=False, named=False, co=False,
                _k=[0]):
@@ -616,6 +655,15 @@ def pop_block(name, lines):
     return lines
 
 
+def seperate_comment(line):
+    line = re.split(r"[$#]", line, 1)
+    try:
+        command, comment = line
+    except ValueError:
+        command, comment = line[0], None
+    return " ".join(command.split()), comment
+
+
 def fill_in_inserts(lines):
     """Look for 'insert' commands in lines and insert then contents in place
 
@@ -632,14 +680,23 @@ def fill_in_inserts(lines):
     """
     regex = r"(?i).*\binsert\b\s*(?P<insert>.*)"
     blx = []
-    while True:
-        lines = strip_cruft(lines)
-        insert = re.search(regex, lines)
+    _lines = []
+    for line in lines.split("\n"):
+        command, comment = seperate_comment(line)
+        if not command.split():
+            _lines.append(line)
+            continue
+        insert = re.search(regex, command)
         if insert is None:
-            break
+            _lines.append(line)
+            continue
+
+        # insert directive found, now find it and put it in place
         name = insert.group("insert").strip()
         fill = find_block(name, lines, co=True)
+
         if fill is not None:
+            # insert referred to another block
             blx.append(name)
         else:
             fpath = os.path.realpath(os.path.expanduser(name))
@@ -648,15 +705,14 @@ def fill_in_inserts(lines):
             except IOError:
                 pu.report_and_raise_error(
                     "Cannot find insert: {0}".format(repr(name)))
-
-        # substitute the contents of the insert
-        lines = re.sub(re.escape(insert.group()), "\n" + fill + "\n", lines, 1)
+        _lines.extend(fill_in_inserts(fill).split("\n"))
         continue
+    _lines = "\n".join(_lines)
 
     for blk in blx:
-        lines = pop_block(blk, lines)
+        _lines = pop_block(blk, _lines)
 
-    return lines
+    return _lines
 
 
 def parse_mathplot(mblock):
