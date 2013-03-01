@@ -50,7 +50,7 @@ module tensor_toolkit
   real(kind=fp), parameter :: root32=1.224744871391589049098642037352945695983_fp
   real(kind=fp), parameter :: pi=3.1415926535897932384626433832795028841971694_fp
   real(kind=fp), parameter :: piover6=pi/six
-  real(kind=fp), parameter :: huge=1.e50_fp
+  real(kind=fp), parameter :: huge=1.e50_fp, tiny=1.e-10_fp
 
   integer, parameter :: diag9(3) = (/1, 5, 9/)
   real(kind=fp), parameter :: &
@@ -1504,8 +1504,16 @@ contains
     ! return if
     !   1) The random vector v is the same as the preferred vector A
     !   2) The preferred axis is lined up with Ez
-    if (all(abs(v - A) < 1.e-10) .or. all(abs(Ez - A) < 1.e-10)) then
+    !   3) The random vector v is parallel to the preferred vector A
+    if (all(abs(v - A) < tiny)) then
        randvec = v
+       return
+    else if (all(abs(Ez - A) < tiny)) then
+       randvec = v
+       return
+    else if (all(abs(Ez) - abs(A) < tiny)) then
+       randvec = v
+       randvec(3) = -randvec(3)
        return
     end if
 
@@ -1547,6 +1555,7 @@ contains
     cross(1) = a(2) * b(3) - a(3) * b(2)
     cross(2) = a(3) * b(1) - a(1) * b(3)
     cross(3) = a(1) * b(2) - a(2) * b(1)
+    if (all(abs(cross) < tiny)) return
     if (present(normalize)) cross = cross / sqrt(sum(cross * cross))
     return
   end function cross

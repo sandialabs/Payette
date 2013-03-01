@@ -123,12 +123,11 @@ class ModelIndex(object):
             stubf = "PAYETTE_ROOT" + self.index_file.split(cfg.ROOT)[1]
         else:
             stubf = self.index_file
-        sys.stdout.write(
-            "\nINFO: writing constitutive model information to: {0}\n"
-            .format(stubf))
+        pu.log_message("writing constitutive model information to: {0}"
+                       .format(stubf), beg="\n")
         with open(self.index_file, "wb") as fobj:
             pickle.dump(self._installed_constitutive_models, fobj)
-        sys.stdout.write("INFO: constitutive model information written\n")
+        pu.log_message("constitutive model information written\n")
         return
 
     def load(self):
