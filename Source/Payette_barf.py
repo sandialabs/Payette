@@ -232,8 +232,9 @@ class PayetteBarf(object):
 
         cmod = self.model.material.constitutive_model
 
-        # if FAILSTAT >= 40., Kayenta goes in to debug mode
-        cmod.parameter("FAILSTAT", 41.)
+        if cmod.parameter("FAILSTAT") == 0.:
+            # if FAILSTAT >= 40., Kayenta goes in to debug mode
+            cmod.parameter("FAILSTAT", 41.)
 
         if not self.using_eos:
             return
