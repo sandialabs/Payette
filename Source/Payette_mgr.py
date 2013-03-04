@@ -328,6 +328,11 @@ def main(argv):
         choices=["stop", "ignore"],
         default=ro.ERROR,
         help="Error level [default: %default]")
+    parser.add_option(
+        "--skip",
+        dest="SKIP_ALREADY_RUN",
+        action="store_true",
+        default=ro.SKIP_ALREADY_RUN)
 
     # parse the command line arguments
     (opts, args) = parser.parse_args(argv)
@@ -500,7 +505,7 @@ def main(argv):
         # go through input files and load contents
         siminp = "" if siminp is None else siminp
         for iarg in iargs:
-            siminp += open(iarg, "r").read()
+            siminp += "\n" + open(iarg, "r").read() + "\n"
             continue
     # ----------------------------------------------------- end: get user input
 

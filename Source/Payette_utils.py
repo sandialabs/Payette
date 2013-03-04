@@ -85,7 +85,7 @@ class PayetteError(Exception):
         message = " ".join([x for x in message.split() if x])
         self.message = "ERROR: {0} {1}".format(message, caller)
 
-        if ro.DEBUG:
+        if ro.DEBUG or ro.NPROC > 1:
             sysexit = False
 
         if sysexit:
@@ -133,7 +133,8 @@ def log_message(message, pre="INFO: ", end="\n", noisy=False, beg=""):
     """Report message to screen and write to log file if open"""
     message = "{0}{1}{2}{3}".format(beg, pre, message, end)
     if SIMLOG is not None:
-        SIMLOG.write(message)
+        with open(SIMLOG, "a") as fobj:
+            fobj.write(message)
     if noisy or ro.VERBOSITY > 0:
         sys.stdout.write(message)
     return
@@ -171,7 +172,8 @@ def report_error(message, count=True, anonymous=False, pre="ERROR: "):
         message = message + " [reported by: {0}]".format(who_is_calling())
 
     if SIMLOG is not None:
-        SIMLOG.write(message + "\n")
+        with open(SIMLOG, "a") as fobj:
+            fobj.write(message + "\n")
 
     sys.stdout.flush()
     sys.stderr.write(message + "\n")
@@ -241,7 +243,8 @@ def log_warning(message, limit=False, caller=None, pre="WARNING: ",
         ind = " " * (len(beg) + len(pre))
         message = textfill(message, subsequent_indent=ind)
     if SIMLOG is not None:
-        SIMLOG.write(message + end)
+        with open(SIMLOG, "a") as fobj:
+            fobj.write(message + end)
     sys.stdout.flush()
     sys.stderr.write(message + end)
     return
@@ -250,7 +253,8 @@ def log_warning(message, limit=False, caller=None, pre="WARNING: ",
 def write_to_simlog(msg):
     """ write message to simulation log """
     msg = "{0:s}\n".format(msg)
-    SIMLOG.write(msg)
+    with open(SIMLOG, "a") as fobj:
+        fobj.write(msg)
     return
 
 
@@ -292,9 +296,10 @@ def check_py_version():
 def setup_logger(logfile, mode="w"):
     """ set up the simulation logger """
     global SIMLOG
-    SIMLOG = open(logfile, mode)
+    SIMLOG = logfile
     if mode == "w":
-        SIMLOG.write(cfg.INTRO + "\n")
+        with open(SIMLOG, "w") as fobj:
+            fobj.write(cfg.INTRO + "\n")
     return
 
 
@@ -314,12 +319,6 @@ def textformat(var):
 
 def close_aux_files():
     """ close auxilary files """
-    global SIMLOG
-    try:
-        SIMLOG.close()
-    except OSError:
-        pass
-    SIMLOG = None
     return
 
 

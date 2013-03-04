@@ -34,7 +34,6 @@ import re
 import numpy as np
 import datetime
 import shutil
-from copy import deepcopy
 from textwrap import fill as textfill
 
 import Source.__config__ as cfg

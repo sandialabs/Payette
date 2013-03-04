@@ -141,9 +141,13 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
     # if the user requested to run only a subset of the inputs in an input
     # file, filter out the ones not requested. we have a list of user input.
     if torun:
-        names = [(j, pip.get("name", y)) for j, y in enumerate(
-            user_input_sets)]
+        names = [(j, pip.get("name", y)) for j, y in enumerate(user_input_sets)]
         user_input_sets = [user_input_sets[i] for i, x in names if x in torun]
+
+    if ro.SKIP_ALREADY_RUN:
+        names = [(j, pip.get("name", y)) for j, y in enumerate(user_input_sets)]
+        user_input_sets = [user_input_sets[i] for i, x in names if
+                           not os.path.isfile(x + ".out")]
 
     if not user_input_sets:
         pu.report_and_raise_error("No user input found in input files")
@@ -155,10 +159,10 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
     # number of processors
     nproc = min(min(mp.cpu_count(), nproc), len(user_input_sets))
     verbosity = verbosity if nproc == 1 else 0
-    ro.VERBOSITY = verbosity
+    ro.set_global_option("VERBOSITY", verbosity, default=True)
 
     # set disp to match user requested value
-    ro.set_global_option("DISP", disp)
+    ro.set_global_option("DISP", disp, default=True)
 
     if nproc > 1:
         pu.log_warning(
@@ -199,7 +203,7 @@ def _run_job(args):
     # pass passed args to local arguments
     user_input, restart, barf, timing, last = args
 
-    if pu.error_count():
+    if ro.DEBUG and pu.error_count():
         sys.exit("ERROR: Stopping due to previous errors")
 
     if timing:
@@ -234,7 +238,6 @@ def _run_job(args):
         # pass on the error for now.
         the_model = DummyPayette()
         the_model.name = pip.get("name", user_input)
-        pass
 
     # run the job
     if timing:

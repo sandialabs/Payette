@@ -464,7 +464,7 @@ def preprocess(lines, preprocessor=None):
         preprocessor = find_block("preprocessing", lines, co=True)
 
     if preprocessor is None:
-        return lines
+        return _eval_subs(lines)
 
     # pop the preprocessing block
     _lines = lines
@@ -681,7 +681,7 @@ def fill_in_inserts(lines):
     regex = r"(?i).*\binsert\b\s*(?P<insert>.*)"
     blx = []
     _lines = []
-    for line in lines.split("\n"):
+    for line in strip_cruft(lines).split("\n"):
         command, comment = seperate_comment(line)
         if not command.split():
             _lines.append(line)

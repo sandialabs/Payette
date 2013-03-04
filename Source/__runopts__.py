@@ -28,6 +28,7 @@ WARNING = "warn"
 ERROR = "stop"
 SIMDIR = None
 MTLDB = cfg.MTLDB
+SKIP_ALREADY_RUN = False
 CCHAR = ("#", "$")
 
 # not set through command line

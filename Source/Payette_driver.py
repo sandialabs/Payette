@@ -358,7 +358,8 @@ def solid_driver(the_model, **kwargs):
     # -------------------------------------------------------- initialize model
     # --- log information to user for this run
     pu.log_message(
-        "starting calculations for simulation {0}".format(the_model.name))
+        "Starting calculations for simulation {0}".format(the_model.name),
+        noisy=ro.NPROC > 1)
     if ro.VERBOSITY > 3:
         if ro.SQA:
             pu.log_message("performing additional SQA checks")
@@ -695,4 +696,7 @@ def solid_driver(the_model, **kwargs):
         continue  # continue to next leg
     # ----------------------------------------------------- end{processing leg}
 
+    pu.log_message(
+        "Finished calculations for simulation {0}".format(the_model.name),
+        noisy=ro.NPROC > 1)
     return 0
