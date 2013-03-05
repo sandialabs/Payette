@@ -15,6 +15,7 @@ SQA = False
 DEBUG = False
 STRICT = False
 WRITERESTART = False
+RESTART_TIME = 0.
 NOWRITEPROPS = False
 USE_TABLE = False
 KEEP = False
@@ -29,6 +30,7 @@ ERROR = "stop"
 SIMDIR = None
 MTLDB = cfg.MTLDB
 SKIP_ALREADY_RUN = False
+EMIT = None
 CCHAR = ("#", "$")
 
 # not set through command line

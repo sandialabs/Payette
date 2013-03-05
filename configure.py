@@ -540,7 +540,8 @@ import os
             # add all material directories to sys.path
             fobj.write("for PATH in MTLDIRS:\n"
                        "    if os.path.basename(PATH) != 'code': "
-                       "sys.path.append(PATH)\n")
+                       "sys.path.append(PATH)\n"
+                       "sys.path.append({0})\n".format(repr(self.libdir)))
         logmes("{0} written".format(os.path.basename(self.config_file)),
                pre="")
 

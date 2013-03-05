@@ -242,6 +242,10 @@ def main(argv):
         default=ro.WRITERESTART,
         help="Write restart files [default: %default]")
     parser.add_option(
+        "--restart-time", action="store", type="float",
+        default=ro.RESTART_TIME,
+        help="Write restart files [default: %default]")
+    parser.add_option(
         "--no-writeprops",
         dest="nowriteprops",
         action="store_true",
@@ -329,6 +333,14 @@ def main(argv):
         default=ro.ERROR,
         help="Error level [default: %default]")
     parser.add_option(
+        "--emit",
+        dest="EMIT",
+        type="choice",
+        action="store",
+        choices=["all", "sparse"],
+        default=ro.EMIT,
+        help="Emit [default: all]")
+    parser.add_option(
         "--skip",
         dest="SKIP_ALREADY_RUN",
         action="store_true",
@@ -337,6 +349,9 @@ def main(argv):
     # parse the command line arguments
     (opts, args) = parser.parse_args(argv)
     # ----------------------------------------- end command line option parsing
+
+    if opts.restart_time:
+        opts.writerestart = True
 
     if opts.SUMMARY:
         # write the summary
@@ -487,13 +502,9 @@ def main(argv):
         # user gave input directly
         siminp = opts.inputstr
 
-    restart, barf = False, False
-    if rargs:
-        if len(rargs) > 1:
-            sys.exit("ERROR: Only 1 restart file can be processed at a time")
-        elif siminp is not None:
-            sys.exit("ERROR: Restart files cannot be run with additional input")
-        restart = rargs[0]
+    barf = False
+    if rargs and siminp is not None:
+        sys.exit("ERROR: Restart files cannot be run with additional input")
 
     elif bargs:
         # user passed in a barf file
@@ -510,12 +521,12 @@ def main(argv):
     # ----------------------------------------------------- end: get user input
 
     # make sure input file is given and exists
-    if not siminp and not restart and not barf:
+    if not siminp and not rargs and not barf:
         parser.print_help()
         parser.error("No input given")
 
     # call the run_payette function
-    siminfo = run_payette(siminp=siminp, restart=restart, barf=barf,
+    siminfo = run_payette(siminp=siminp, restart=rargs, barf=barf,
                           timing=opts.timing, nproc=opts.nproc, disp=opts.disp,
                           verbosity=opts.verbosity, torun=opts.NAMES)
 

@@ -103,15 +103,16 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
 
     """
 
-    user_input_sets = []
+    user_input_sets = {}
     if restart:
-        with open(restart, "rb") as ftmp:
-            the_model = pickle.load(ftmp)
-            user_input_sets = (the_model, )
+        for item in restart:
+            with open(item, "rb") as ftmp:
+                the_model = pickle.load(ftmp)
+                user_input_sets[the_model.name] = the_model
         restart = True
 
     elif barf:
-        user_input_sets = (barf, )
+        user_input_sets["barf"] = barf
         barf = True
 
     else:
@@ -141,20 +142,22 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
     # if the user requested to run only a subset of the inputs in an input
     # file, filter out the ones not requested. we have a list of user input.
     if torun:
-        names = [(j, pip.get("name", y)) for j, y in enumerate(user_input_sets)]
-        user_input_sets = [user_input_sets[i] for i, x in names if x in torun]
+        regex = r"(?i)" + r"|".join(torun)
+        todel = [x for x in user_input_sets if not re.search(regex, x)]
+        for item in todel:
+            user_input_sets.pop(item)
 
     if ro.SKIP_ALREADY_RUN:
-        names = [(j, pip.get("name", y)) for j, y in enumerate(user_input_sets)]
-        user_input_sets = [user_input_sets[i] for i, x in names if
-                           not os.path.isfile(x + ".out")]
+        todel = [x for x in user_input_sets if os.path.isfile(x + ".out")]
+        for item in todel:
+            user_input_sets.pop(item)
 
     if not user_input_sets:
         pu.report_and_raise_error("No user input found in input files")
 
     # now create a generator to send to _run_job
-    job_inp = ((item, restart, barf, timing, idx == len(user_input_sets) - 1)
-               for idx, item in enumerate(user_input_sets))
+    job_inp = ((ui, restart, barf, timing, idx==len(user_input_sets)-1)
+               for idx, (key, ui) in enumerate(user_input_sets.items()))
 
     # number of processors
     nproc = min(min(mp.cpu_count(), nproc), len(user_input_sets))

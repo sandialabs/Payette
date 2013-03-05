@@ -350,6 +350,7 @@ def solid_driver(the_model, **kwargs):
     Vhld = np.zeros(6, dtype=int)
     Ph = np.zeros(6)
     K = simdat.KAPPA
+    timed_restart_file = None
 
     # --- material data
     material = the_model.material
@@ -632,6 +633,22 @@ def solid_driver(the_model, **kwargs):
             # -------------------------------------------- end{end of step SQA}
             simdat.store("istep", ro.ISTEP)
 
+            if ro.RESTART_TIME:
+                if (t - .001 * t <= ro.RESTART_TIME <= t + .001 * t or
+                    (timed_restart_file is None and t > ro.RESTART_TIME)):
+                    if timed_restart_file and t < ro.RESTART_TIME:
+                        os.remove(timed_restart_file)
+                        timed_restart_file = None
+                    if timed_restart_file is None:
+                        fnam, fext = os.path.splitext(the_model.restart_file)
+                        timed_restart_file = "{0}.{1:6.4E}{2}".format(
+                            fnam, t, fext)
+                        pu.log_message("Writing restart file {0}".format(
+                                os.path.basename(timed_restart_file)))
+                        with open(timed_restart_file, 'wb') as fobj:
+                            pickle.dump(the_model, fobj, 2)
+
+
             continue  # continue to next step
         # ------------------------------------------------ end{processing step}
 
@@ -645,7 +662,7 @@ def solid_driver(the_model, **kwargs):
         # advances time must come after writing the v & d tables above
         t_beg = t_end
 
-        if ro.WRITERESTART:
+        if ro.WRITERESTART and not ro.RESTART_TIME:
             with open(the_model.restart_file, 'wb') as fobj:
                 pickle.dump(the_model, fobj, 2)
 

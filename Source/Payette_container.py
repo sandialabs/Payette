@@ -207,7 +207,8 @@ class Payette(object):
                              units="NO_UNITS")
         if not self.material.eos_model:
             # register data not needed by the eos models
-            self.simdat.register("emit", "Scalar", self.boundary.emit(),
+            emit = {"all": 1, "sparse": 0}.get(ro.EMIT, self.boundary.emit())
+            self.simdat.register("emit", "Scalar", emit,
                                  constant=True, units="NO_UNITS")
             self.simdat.register("kappa", "Scalar", self.boundary.kappa(),
                                  constant=True, units="NO_UNITS")

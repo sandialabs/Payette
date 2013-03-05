@@ -272,7 +272,7 @@ def parse_user_input(lines):
     allsims = find_block("simulation", lines, findall=True, co=True)
 
     post = "\nend input"
-    simulations = []
+    simulations = {}
     for name, content in allsims:
         check_incompatibilities(content)
         for item in ("optimization", "permutation", ):
@@ -283,7 +283,7 @@ def parse_user_input(lines):
             stype = "simulation"
         preamble = "begin input\nname {0}\ntype {1}\n".format(name, stype)
         content = preamble + content.strip() + post
-        simulations.append(content)
+        simulations[name] = content
         continue
 
     allparams = find_block("parameterization", lines, findall=True, co=True)
@@ -292,7 +292,7 @@ def parse_user_input(lines):
         check_incompatibilities(content)
         preamble = "begin input\nname {0}\ntype {1}\n".format(name, stype)
         content = preamble + content.strip() + post
-        simulations.append(content)
+        simulations[name] = content
         continue
 
     return simulations
