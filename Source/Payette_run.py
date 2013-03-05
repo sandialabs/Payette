@@ -175,8 +175,7 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
             "in the background with [ctrl-z] and then kill it")
 
     # loop through simulations and run them
-    if timing:
-        t0 = time.time()
+    t0 = time.time()
 
     if nproc > 1 and len(user_input_sets) > 1:
         pool = mp.Pool(processes=nproc)
@@ -190,8 +189,7 @@ def run_payette(siminp=None, restart=False, timing=False, barf=False,
             return_info.append(_run_job(job))
             continue
 
-    if timing:
-        write_final_timing_info(t0)
+    write_final_timing_info(t0, timing)
 
     if not disp:
         # just return retcode
@@ -209,8 +207,7 @@ def _run_job(args):
     if ro.DEBUG and pu.error_count():
         sys.exit("ERROR: Stopping due to previous errors")
 
-    if timing:
-        t0 = time.time()
+    t0 = time.time()
 
     # instantiate Payette object
     error, the_model = False, None
@@ -243,8 +240,7 @@ def _run_job(args):
         the_model.name = pip.get("name", user_input)
 
     # run the job
-    if timing:
-        t1 = time.time()
+    t1 = time.time()
 
     try:
         siminfo = the_model.run_job()
@@ -295,12 +291,10 @@ def _run_job(args):
     if ro.VERBOSITY and not last:
         sys.stderr.write("\n")
 
-    if timing:
-        t2 = time.time()
+    t2 = time.time()
 
     # write timing info
-    if timing:
-        write_timing_info(t0, t1, t2, the_model.name)
+    write_timing_info(t0, t1, t2, the_model.name, timing)
 
     # finish up
     the_model.finish()
@@ -310,7 +304,7 @@ def _run_job(args):
     return siminfo
 
 
-def write_timing_info(t0, t1, t2, name=None):
+def write_timing_info(t0, t1, t2, name=None, cout=False):
     """ write timing info """
 
     ttot = time.time() - t0
@@ -319,16 +313,19 @@ def write_timing_info(t0, t1, t2, name=None):
         "\n-------------- {0} timing info --------------".format(name),
         pre="")
     pu.log_message("total problem execution time:\t{0:f}".format(texe),
-                   pre="")
-    pu.log_message("total simulation time:\t\t{0:f}\n".format(ttot), pre="")
+                   pre="", cout=cout)
+    pu.log_message("total simulation time:\t\t{0:f}\n".format(ttot), pre="",
+                   cout=cout)
     return
 
 
-def write_final_timing_info(t0):
+def write_final_timing_info(t0, cout=False):
     """ writ timing info from end of run"""
 
     ttot = time.time() - t0
     pu.log_message(
-        "\n-------------- simulation timing info --------------", pre="")
-    pu.log_message("total simulation time:\t\t{0:f}".format(ttot), pre="")
+        "\n-------------- simulation timing info --------------", pre="",
+        cout=cout)
+    pu.log_message("total simulation time:\t\t{0:f}".format(ttot), pre="",
+                   cout=cout)
     return

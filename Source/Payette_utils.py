@@ -129,12 +129,14 @@ def who_is_calling():
         os.path.splitext(os.path.basename(stack[1]))[0], stack[3])
 
 
-def log_message(message, pre="INFO: ", end="\n", noisy=False, beg=""):
+def log_message(message, pre="INFO: ", end="\n", noisy=False, cout=True, beg=""):
     """Report message to screen and write to log file if open"""
     message = "{0}{1}{2}{3}".format(beg, pre, message, end)
     if SIMLOG is not None:
         with open(SIMLOG, "a") as fobj:
             fobj.write(message)
+    if not cout:
+        return
     if noisy or ro.VERBOSITY > 0:
         sys.stdout.write(message)
     return
