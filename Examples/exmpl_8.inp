@@ -5,8 +5,11 @@
 # Comments: This input file demonstrates the parameter optimization
 #           functionality of Payette using time/stress.
 
+begin control
+  nowriteprops = true
+end control
+
 begin simulation exmpl_8
-  nowriteprops
 
   begin boundary
     kappa = 0

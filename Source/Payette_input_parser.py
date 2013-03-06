@@ -411,9 +411,13 @@ def preprocess(lines, preprocessor=None):
             "ceil": math.ceil, "abs": math.fabs, "random": RAND.random_sample, }
 
     P = find_block("permutation", lines, co=True)
+    O = find_block("optimization", lines, co=True)
     if P is not None:
         P = re.findall(r"(?i)\bpermutate\s*(?P<N>[a-z0-9_\-]+)\W*?", P)
         P = r"(?i)\{.*[" + r"".join(r"({0})".format(x) for x in P) + "].*?\}"
+    if O is not None:
+        O = re.findall(r"(?i)\boptimize\s*(?P<N>[a-z0-9_\-]+)\W*?", O)
+        O = r"(?i)\{.*[" + r"".join(r"({0})".format(x) for x in O) + "].*?\}"
 
     # some private functions
     def _split(s):
@@ -448,6 +452,9 @@ def preprocess(lines, preprocessor=None):
                 except NameError:
                     # Decide if this is due to a permutation block
                     if P and re.search(P, line):
+                        continue
+                    # Decide if this is due to an optimization block
+                    if O and re.search(O, line):
                         continue
                     pu.report_error(
                         "Don't know what to do with '{0}'".format(line))

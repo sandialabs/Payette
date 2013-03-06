@@ -264,7 +264,7 @@ class PayetteBarf(object):
         rod = self.barf["strain rate"]
         cmod = self.barf["constitutive model"]
         params = self.barf["parameters"]
-        return pip.parse_user_input("""\
+        input_dict = pip.parse_user_input("""\
 begin simulation {0}
 begin boundary
 begin legs
@@ -279,7 +279,9 @@ end material
 end simulation
 """.format(name, dtime,
            rod[0], rod[1], rod[2], rod[3], rod[4], rod[5],
-           cmod, params))[0]
+           cmod, params))
+        return input_dict[input_dict.keys()[0]]
+
 
     def get_block(self, name, block_delim="#####", place=None):
         """ Find the strain rate in the barf file """
