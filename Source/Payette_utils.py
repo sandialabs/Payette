@@ -399,7 +399,7 @@ def read_data(fpath):
         (rows) and n the number of data fields (columns)
 
     """
-    return np.loadtxt(fpath, skiprows=1)
+    return loadtxt(fpath, skiprows=1)
 
 
 def compute_rms_closest_point_residual(set1x, set1y, set2x, set2y):
@@ -766,3 +766,41 @@ def get_super_classes(data):
             super_class_names.append(super_class.name)
         continue
     return super_class_names
+
+
+def loadtxt(f, skiprows=0, comments="#"):
+    """Load text from output files
+
+    Parameters
+    ----------
+    f : str
+        File path
+    skiprows : int
+        skip first skiprows rows
+    comments : str
+        Comment character
+
+    Returns
+    -------
+    data : array_like
+        np array of data
+
+    Comments
+    --------
+
+    This function is similar to np.loadtxt, but with fewer options and we stop
+    reading the file if columns in a row are missing and return what we have
+    up until there. np.loadtxt returns an error.
+
+    """
+    lines = []
+    for line in open(f, "r").readlines()[skiprows:]:
+        line = [float(x) for x in line.split(comments, 1)[0].split()]
+        if not lines:
+            ncols = len(line)
+        if len(line) < ncols:
+            break
+        if len(line) > ncols:
+            sys.exit("inconsistent data")
+        lines.append(line)
+    return np.array(lines)

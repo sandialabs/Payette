@@ -337,9 +337,6 @@ def solid_driver(the_model, **kwargs):
     if ro.DEBUG:
         pdb = __import__('pdb')
 
-    # --- options
-    verbose = ro.VERBOSITY > 0
-
     # --- data
     ileg = int(simdat.get("leg number"))
     legs = the_model.boundary.legs(ileg)
@@ -429,8 +426,7 @@ def solid_driver(the_model, **kwargs):
         if ro.EFIELD_SIM:
             EF0 = matdat.get("electric field", copy=True)
 
-        if verbose:
-            pu.log_message(cons_msg.format(lnum, lnl, 1, lns, t_beg, dt))
+        pu.log_message(cons_msg.format(lnum, lnl, 1, lns, t_beg, dt))
 
         # --- loop through components of prdef and compute the values at the end
         #     of this leg:
@@ -586,7 +582,7 @@ def solid_driver(the_model, **kwargs):
             if (nsteps - n) % print_interval == 0:
                 the_model.write_state()
 
-            if simdat.SCREENOUT or (verbose and (2 * n - nsteps) == 0):
+            if simdat.SCREENOUT or (2 * n - nsteps) == 0:
                 pu.log_message(cons_msg.format(lnum, lnl, n, lns, t, dt))
 
             # ------------------------------------------ begin{end of step SQA}
@@ -667,7 +663,7 @@ def solid_driver(the_model, **kwargs):
                 pickle.dump(the_model, fobj, 2)
 
         # --- print message to screen
-        if verbose and nsteps > 1:
+        if nsteps > 1:
             pu.log_message(cons_msg.format(lnum, lnl, n + 1, lns, t, dt))
 
         # ----------------------------------------------- begin{end of leg SQA}
