@@ -313,7 +313,10 @@ class Payette(object):
                        .format(self.simdat.get("time", "plot key")))
 
             for item in self.mathplot_vars:
-                name = self.plot_keys[lowhead.index(item.lower())]
+                try:
+                    name = self.plot_keys[lowhead.index(item.lower())]
+                except ValueError:
+                    continue
                 fobj.write('grafhis[{0:s}, "{0:s}"]\n'.format(name))
                 continue
 

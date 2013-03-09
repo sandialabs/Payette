@@ -41,7 +41,6 @@ import os
 import time
 import shutil
 import multiprocessing as mp
-from shutil import copyfile, rmtree
 from pickle import dump, load
 import datetime
 import getpass
@@ -51,7 +50,6 @@ import Source.__config__ as cfg
 import Source.Payette_utils as pu
 import Source.Payette_notify as pn
 from Source.Payette_test import find_tests
-import Toolset.postprocess as pp
 from Source.Payette_utils import PayetteError as PayetteError
 from Source.Payette_utils import PassThroughOptionParser
 
@@ -475,11 +473,13 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
             tcompletion = summary["completion time"]
             benchdir = summary["benchmark directory"]
             keywords = summary["keywords"]
+            html_link = summary["html link"]
             old = summary.get("old status")
             test_res[status][name] = {"benchmark directory": benchdir,
                                       "completion time": tcompletion,
                                       "keywords": keywords,
-                                      "old status": old}
+                                      "old status": old,
+                                      "html link": html_link}
             continue
         continue
 
@@ -656,19 +656,19 @@ def _run_test(args):
     # Create benchmark directory and copy the input and baseline files into the
     # new directory
     if os.path.isdir(benchdir):
-        rmtree(benchdir)
+        shutil.rmtree(benchdir)
     os.makedirs(benchdir)
 
     # copy input file, if any
     test_files = []
     if test.infile:
         infile = os.path.join(benchdir, os.path.basename(test.infile))
-        copyfile(test.infile, infile)
+        shutil.copyfile(test.infile, infile)
         test_files.append(infile)
 
     # copy the python test file and make it executable
     test_py_file = os.path.join(benchdir, os.path.basename(py_file))
-    copyfile(py_file, test_py_file)
+    shutil.copyfile(py_file, test_py_file)
     test_files.append(test_py_file)
     os.chmod(test_py_file, 0o750)
 
@@ -761,6 +761,7 @@ def write_html_summary(fname, results):
                                .format(fpath, fnam))
                     continue
                 keywords = "  ".join(results[stat][test]["keywords"])
+                html_link = results[stat][test]["html link"]
 
                 try:
                     tcompletion = (
@@ -775,10 +776,12 @@ def write_html_summary(fname, results):
                 else:
                     status = stat
 
-                for myfile in files:
-                    if myfile.endswith(".out.html") and postprocess:
+                if html_link:
+                    if not os.path.isfile(html_link):
+                        html_link = os.path.join(tresd, html_link)
+                    if os.path.isfile(html_link):
                         fobj.write("<li><a href='{0}'>PostProcessing</a>\n"
-                                   .format(os.path.join(tresd, myfile)))
+                                   .format(os.path.join(html_link)))
                 fobj.write("<li>Keywords: {0}\n".format(keywords))
                 fobj.write("<li>Status: {0}\n".format(status))
                 fobj.write("<li>Completion time: {0}\n".format(tcompletion))
@@ -910,14 +913,14 @@ def _run_the_test(args):
         keywords = test.keywords
         starttime = time.time()
         try:
-            retcode = test.runTest()
+            testcode = test.runTest()
         except PayetteError as error:
-            retcode = 66
+            testcode = 66
             pu.log_warning(error.message)
 
         retcode = {test.badincode: "bad input", test.passcode: "pass",
                    test.diffcode: "diff", test.failcode: "fail",
-                   test.failtoruncode: "failed to run"}.get(retcode, "unkown")
+                   test.failtoruncode: "failed to run"}.get(testcode, "unkown")
 
         # Print output at completion
         tcompletion = time.time() - starttime
@@ -926,15 +929,108 @@ def _run_the_test(args):
             "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
             "{0:>{1}s}".format(info_string, WIDTH_INFO), pre="", noisy=True)
 
-    # return to the directory we came from
+        htmlf = None
+        if postprocess or testcode in (test.diffcode, test.failcode):
+            pu.log_message(
+                "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
+                "{0:>{1}s}".format("POSTPROCESSING", WIDTH_INFO),
+                pre="", noisy=True)
+            htmlf = postprocess_test_result(test)
+            pu.log_message(
+                "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
+                "{0:>{1}s}".format("POSTPROCESSED", WIDTH_INFO),
+                pre="", noisy=True)
+
     result = {name: {"status": retcode, "keywords": keywords,
                      "completion time": tcompletion,
-                     "benchmark directory": os.getcwd()}}
-
-    if postprocess and os.path.isfile(test.outfile):
-        pp.postprocess(test.outfile, verbosity=0)
+                     "benchmark directory": os.getcwd(),
+                     "html link": htmlf}}
 
     return result
+
+
+def postprocess_test_result(test):
+    import matplotlib.pyplot as plt
+    aspect_ratio = 4.0/3.0
+    try:
+        ohead = pu.get_header(test.outfile)
+        odat = pu.read_data(test.outfile)
+    except IOError:
+        pu.log_warning("{0}: no such file or directory".format(test.outfile))
+        return
+    try:
+        ghead = pu.get_header(test.baseline[0])
+        gdat = pu.read_data(test.baseline[0])
+    except IOError:
+        pu.log_warning("{0}: no such file or directory".format(test.outfile))
+        return
+
+    htmlf = os.path.splitext(test.outfile)[0] + ".html"
+    plotd = os.path.splitext(test.outfile)[0] + ".post"
+
+    # Make output directory for plots
+    try: shutil.rmtree(plotd)
+    except OSError: pass
+    os.mkdir(plotd)
+
+    xvar = "TIME"
+    ox = odat[:, ohead.index(xvar)]
+    gx = gdat[:, ghead.index(xvar)]
+
+    plots = []
+    for yvar in [x for x in sorted(ghead) if x not in test.items_to_skip]:
+
+        if yvar == xvar:
+            continue
+
+        name = yvar + ".png"
+        f = os.path.join(plotd, name)
+        gy = gdat[:, ghead.index(yvar)]
+        try:
+            oy = odat[:, ohead.index(yvar)]
+        except ValueError:
+            continue
+
+        plt.clf() # Clear the current figure
+        plt.cla() # Clear the current axes
+        plt.xlabel("TIME")
+        plt.ylabel(yvar)
+
+        plt.plot(gx, gy, ls="-", lw=4, c="orange", label="gold")
+        plt.plot(ox, oy, ls="-", lw=2, c="green", label="out")
+        plt.legend()
+        plt.gcf().set_size_inches(aspect_ratio * 5, 5.)
+        plt.savefig(f, dpi=100)
+        plots.append(f)
+
+    with open(htmlf, "w") as fobj:
+        fobj.write("""\
+<html>
+  <head>
+    <title>{0}</title>
+  </head>
+  <body>
+    <table>
+      <tr>
+""".format(test.name))
+
+        for i, plot in enumerate(plots):
+            name = os.path.basename(plot)
+            if i % 3 == 0 and i != 0:
+                fobj.write("      </tr>\n       <tr>\n")
+            width = str(int(aspect_ratio * 300))
+            height = str(int(300))
+            fobj.write("""\
+        <td>
+          {0}
+          <a href="{1}">
+            <img src="{1}" width="{2}" height="{3}">
+          </a>
+        </td>
+""".format(name, plot, width, height))
+
+        fobj.write("      </tr>\n    </table>\n  </body>\n</html>")
+    return htmlf
 
 
 if __name__ == "__main__":
