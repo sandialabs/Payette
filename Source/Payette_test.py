@@ -104,8 +104,8 @@ class PayetteTest(object):
         self.diffcode = 2
         self.failcode = 3
         self.failtoruncode = 4
-        self.compare_method = None
         self.compare_method = self.compare_out_to_baseline_rms
+        self.expect_constant = []
 
         self.checked = not check
 
@@ -545,8 +545,9 @@ class PayetteTest(object):
         if "kayenta" in self.keywords:
             self.items_to_skip.extend(
                 ["KAPPA", "EOS1", "EOS2", "EOS3", "EOS4",
-                 "PLROOTJ2", "SNDSP", "ENRGY", "RHO", "TMPR", "FDAMAGE"])
+                 "PLROOTJ2", "SNDSP", "ENRGY", "RHO", "TMPR"])
 
+        to_compare_average = [x.lower() for x in self.expect_constant]
         to_skip = [x.lower() for x in self.items_to_skip]
 
         if not self.items_to_compare:
@@ -560,25 +561,53 @@ class PayetteTest(object):
         for val in to_compare:
             gidx = goldheader.index(val)
             oidx = outheader.index(val)
-            rmsd, nrmsd = pu.compute_rms(gold[:, 0], gold[:, gidx],
-                                         out[:, 0], out[:, oidx])
 
-            # For good measure, write both the RMSD and normalized RMSD
-            if nrmsd >= self.failtol:
-                failed.append(val)
-                stat = "FAIL"
+            if val in to_compare_average:
+                # This is needed for comparing state variables that are
+                # expected to be constant but might have noise that would
+                # otherwise make it diff or fail (like noise in sig_n for
+                # plane stress problems).
+                val = val + " (expect const)"
+                g_avg = sum(gold[:, gidx]) / len(gold[:, gidx])
+                o_avg = sum(out[:, oidx]) / len(out[:, oidx])
+                avg_diff = abs(g_avg - o_avg)
+                g_stddev = sum([(x - g_avg) ** 2 for x in gold[:, gidx]])
+                g_stddev = math.sqrt(g_stddev / len(gold[:, gidx]))
 
-            elif nrmsd >= self.difftol:
-                diffed.append(val)
-                stat = "DIFF"
+                tmptol = max(self.failtol, self.failtol * abs(g_avg))
+                if avg_diff > 0.2 * g_stddev and avg_diff >= tmptol:
+                    diffed.append(val)
+                    stat = "FAIL"
+
+                else:
+                    stat = "PASS"
+                
+                log.write("{0}: {1}".format(val, stat))
+                log.write("    Average diff: {0:.10e}".format(avg_diff))
+                log.write("     Gold STDDEV: {0:.10e}".format(g_stddev))
+                log.write("       tolerance: {0:.10e}".format(tmptol))
+                continue
 
             else:
-                stat = "PASS"
+                rmsd, nrmsd = pu.compute_rms(gold[:, 0], gold[:, gidx],
+                                             out[:, 0], out[:, oidx])
 
-            log.write("{0}: {1}".format(val, stat))
-            log.write("  Unscaled error: {0:.10e}".format(rmsd))
-            log.write("    Scaled error: {0:.10e}".format(nrmsd))
-            continue
+                # For good measure, write both the RMSD and normalized RMSD
+                if nrmsd >= self.failtol:
+                    failed.append(val)
+                    stat = "FAIL"
+
+                elif nrmsd >= self.difftol:
+                    diffed.append(val)
+                    stat = "DIFF"
+
+                else:
+                    stat = "PASS"
+
+                log.write("{0}: {1}".format(val, stat))
+                log.write("  Unscaled error: {0:.10e}".format(rmsd))
+                log.write("    Scaled error: {0:.10e}".format(nrmsd))
+                continue
 
         if failed:
             msg = textwrap.fill(", ".join(failed), 72,
