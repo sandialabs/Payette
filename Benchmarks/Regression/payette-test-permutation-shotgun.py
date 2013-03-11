@@ -29,6 +29,7 @@
 
 import os
 import sys
+import time
 
 import Source.__config__ as cfg
 from Source.Payette_test import PayetteTest
@@ -46,8 +47,7 @@ class Test(PayetteTest):
         self.infile = "{0}.inp".format(os.path.join(self.tdir, self.name))
         self.keywords = ["builtin", "medium", "regression", "elastic",
                          "permutation", "shotgun"]
-        self.runcommand = ["payette", "--no-writeprops",
-                           self.infile]
+        self.runcommand = ["payette", "--no-writeprops", self.infile]
         self.material = "elastic"
         self.aux_files = [os.path.join(self.tdir, "regression_tests.tbl"), ]
 
@@ -59,16 +59,19 @@ class Test(PayetteTest):
 
         pass
 
-    def runTest(self):
+    def run_test(self):
         """ run the test """
-
+        d = os.getcwd()
+        os.chdir(self.results_directory())
+        t0 = time.time()
         perform_calcs = self.run_command(self.runcommand)
-
         # if the test ran to completion, that is good enough
-        if perform_calcs != 0:
-            return self.failcode
-
-        return self.passcode
+        self.retcode = {0: self.passcode}.get(perform_calcs, self.failcode)
+        self.status = self.get_status()
+        tc = time.time()
+        self.completion_time(tc - t0)
+        os.chdir(d)
+        return
 
 
 if __name__ == '__main__':

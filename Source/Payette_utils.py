@@ -35,6 +35,7 @@ import numpy as np
 import pickle
 import inspect
 import optparse
+import imp
 from optparse import OptionParser, BadOptionError, AmbiguousOptionError
 from textwrap import fill as textfill
 
@@ -69,7 +70,7 @@ class PayetteError(Exception):
                  sysexit=True):
 
         if caller is None:
-            caller = pu.who_is_calling()
+            caller = who_is_calling()
 
         # do not report who is calling. Sometimes other functions act as
         # intermediaries to PayetteError and it is nice to leave them out of
@@ -149,6 +150,10 @@ def reset_error_and_warnings():
     return
 
 
+def errors():
+    return __count_error(inquire=True)
+
+
 def error_count():
     """Return the current number of errors"""
     return __count_error(inquire=True)
@@ -165,13 +170,16 @@ def __count_error(ecount=[0], inquire=False, reset=False):
     return
 
 
-def report_error(message, count=True, anonymous=False, pre="ERROR: "):
+def report_error(message, count=True, anonymous=False, pre="ERROR: ",
+                 caller=None):
     """Report error to screen and write to log file if open"""
     if count:
         __count_error()
     message = "{0}{1}".format(pre, message)
     if not anonymous:
-        message = message + " [reported by: {0}]".format(who_is_calling())
+        if caller is None:
+            caller = who_is_calling()
+        message = message + " [reported by: {0}]".format(caller)
 
     if SIMLOG is not None:
         with open(SIMLOG, "a") as fobj:
@@ -179,6 +187,20 @@ def report_error(message, count=True, anonymous=False, pre="ERROR: "):
 
     sys.stdout.flush()
     sys.stderr.write(message + "\n")
+    return
+
+
+def file_not_found(f, count=True):
+    message = "{0}: no such file".format(f)
+    caller = who_is_calling()
+    report_error(message, caller=caller, count=count)
+    return
+
+
+def dir_not_found(d, count=True):
+    message = "{0}: no such directory".format(d)
+    caller = who_is_calling()
+    report_error(message, caller=caller, count=count)
     return
 
 
@@ -348,6 +370,15 @@ def flatten(x):
             result.append(el)
         continue
     return result
+
+
+def load_module(py_file):
+    py_mod = get_module_name(py_file)
+    py_path = [os.path.dirname(py_file)]
+    fp, pathname, description = imp.find_module(py_mod, py_path)
+    py_module = imp.load_module(py_mod, fp, pathname, description)
+    fp.close()
+    return py_module
 
 
 def get_module_name_and_path(py_file):

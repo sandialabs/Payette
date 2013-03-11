@@ -56,8 +56,6 @@ class Test(PayetteTest):
         self.aux_files = [os.path.join(self.tdir, "optimization_tests.tbl"),
                           os.path.join(self.tdir, "regression_tests.tbl")]
 
-        self.compare_method = self.compare_opt_params
-
         self.owner = 'Tim Fuller'
         self.date = 'March 30, 2012'
         self.description = """Test of the simplex optimization """
@@ -66,6 +64,9 @@ class Test(PayetteTest):
             self.check_setup()
 
         pass
+
+    def compare_method(self):
+        return self.compare_opt_params()
 
 
 if __name__ == '__main__':

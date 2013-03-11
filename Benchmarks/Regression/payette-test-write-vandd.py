@@ -29,6 +29,7 @@
 
 import os
 import sys
+import time
 
 import Source.__config__ as cfg
 from Source.Payette_test import PayetteTest
@@ -64,23 +65,29 @@ class Test(PayetteTest):
 
         pass
 
-    def runTest(self):
-
+    def run_test(self):
         """ run the test """
+        d = os.getcwd()
+        os.chdir(self.results_directory())
+        t0 = time.time()
         perform_calcs = self.run_command(self.runcommand)
-
         if perform_calcs != 0:
-            return self.failcode
+            retcode = self.failtoruncode
+        else:
+            diff = self.diff_files(self.baseline, self.tables)
+            if diff:
+                retcode = self.failcode
+            else:
+                retcode = self.passcode
+        self.retcode = retcode
+        self.status = self.get_status()
+        tc = time.time()
+        self.completion_time(tc - t0)
+        os.chdir(d)
+        return
 
-        diff = self.diff_files(self.baseline, self.tables)
-
-        if diff:
-            return self.failcode
-
-        return self.passcode
 
 if __name__ == "__main__":
-    import time
 
     test = Test()
 

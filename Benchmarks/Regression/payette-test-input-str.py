@@ -29,6 +29,7 @@
 
 import os
 import sys
+import time
 
 import Source.__config__ as cfg
 from Source.Payette_test import PayetteTest
@@ -110,29 +111,31 @@ end simulation
 """
         return input_string
 
-    def runTest(self):
+    def run_test(self):
 
         """ run the test """
-
+        d = os.getcwd()
+        os.chdir(self.results_directory())
+        t0 = time.time()
         # run the test directly through run_payette
-
         perform_calcs = run_payette(siminp=self.siminp, verbosity=0, disp=0)
-
         if max(perform_calcs) != 0:
-            return self.failtoruncode
-
-        compare = self.compare_method()
-
-        return compare
+            retcode = self.failtoruncode
+        else:
+            retcode = self.compare_method()
+        self.retcode = retcode
+        self.status = self.get_status()
+        tc = time.time()
+        self.completion_time(tc - t0)
+        os.chdir(d)
+        return
 
 
 if __name__ == "__main__":
-    import time
-
     test = Test()
 
     print("RUNNING: {0}".format(test.name))
-    run_test = test.runTest()
+    run_test = test.run_test()
 
     if run_test == test.passcode:
         print("PASSED")

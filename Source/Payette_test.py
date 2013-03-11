@@ -34,8 +34,10 @@ import math
 import subprocess
 import time
 import pickle
-import pyclbr
 import textwrap
+import shutil
+import re
+from inspect import getfile
 
 if __name__ == "__main__":
     thisd = os.path.dirname(os.path.realpath(__file__))
@@ -46,9 +48,15 @@ import Source.__config__ as cfg
 import Source.Payette_utils as pu
 import Source.Payette_model_index as pmi
 
-SPEED_KWS = ["fast", "medium", "long"]
+# --- module level variables
+CWD = os.getcwd()
+SPEED_KWS = {"fast": 0, "medium": 1, "long": 2}
 TYPE_KWS = ["verification", "validation", "prototype", "regression"]
 SP = " " * 5
+WIDTH_TERM = 80
+WIDTH_INFO = 25
+TEST_INFO = ".test.info"
+RESDIR = os.path.join(CWD, "TestResults.{0}".format(cfg.OSTYPE))
 
 
 class TestLogger(object):
@@ -83,10 +91,17 @@ class TestLogger(object):
 class PayetteTest(object):
 
     TOL = 1.e-6
+    passcode = 0
+    badincode = 1
+    diffcode = 2
+    failcode = 3
+    failtoruncode = 4
+    notruncode = 5
 
     def __init__(self, check=True):
         self.name = None
         self.tdir = None
+        self._results_directory = None
         self.keywords = []
         self.owner = None
         self.date = None
@@ -99,13 +114,13 @@ class PayetteTest(object):
         self.aux_files = []
         self.description = None
         self.enabled = False
-        self.passcode = 0
-        self.badincode = 1
-        self.diffcode = 2
-        self.failcode = 3
-        self.failtoruncode = 4
-        self.compare_method = self.compare_out_to_baseline_rms
         self.expect_constant = []
+        self._completion_time = None
+        self.status = "NOT RUN"
+        self.old_status = None
+        self.retcode = self.notruncode
+        self.postprocess = False
+        self.nbs = []
 
         self.checked = not check
 
@@ -118,8 +133,17 @@ class PayetteTest(object):
 
         # architecture used to create test
         self.arch = "darwin"
-
         pass
+
+    def completion_time(self, t=None, f=None):
+        if t is None:
+            if self._completion_time is not None and f is not None:
+                return f.format(self._completion_time)
+            return self._completion_time
+        self._completion_time = t
+
+    def compare_method(self):
+        return self.compare_out_to_baseline_rms()
 
     def get_keywords(self):
         return self.keywords
@@ -144,27 +168,22 @@ class PayetteTest(object):
 
         else:
             self.keywords = [x.lower() for x in self.keywords]
-            lkw = 0
-            tkw = 0
-            for kw in self.keywords:
-                if kw in SPEED_KWS:
-                    lkw += 1
-                if kw in TYPE_KWS:
-                    tkw += 1
-                continue
-            if not lkw:
+            speed = [x for x in SPEED_KWS if x in self.keywords]
+            typ = [x for x in TYPE_KWS if x in self.keywords]
+            if not speed:
                 pu.report_error("keywords must specify one of {0}"
                                 .format(", ".join(SPEED_KWS)))
-            elif lkw > 1:
+            elif len(speed) > 1:
                 pu.report_error("keywords must specify only one of {0}"
                                 .format(", ".join(SPEED_KWS)))
-
-            if not tkw:
+            if not typ:
                 pu.report_error("keywords must specify one of {0}"
                                 .format(", ".join(TYPE_KWS)))
-            elif tkw > 1:
+            elif len(typ) > 1:
                 pu.log_warning("keywords must specify only one of {0}"
                                .format(", ".join(TYPE_KWS)))
+            self.speed = speed[0]
+            self.type = typ[0]
 
         if self.owner is None:
             pu.report_error("no owner specified")
@@ -206,17 +225,29 @@ class PayetteTest(object):
             # file
             self.failtol = 3.e6 * self.TOL
 
+        self.test_file = os.path.realpath(getfile(self.__class__))
+        self.test_file_dir = os.path.dirname(self.test_file)
+        self.find_nbs()
         self.checked = True
 
-        return pu.error_count()
+        return pu.errors()
 
     def run_test(self):
         """ run the test """
+        t0 = time.time()
+        d = os.getcwd()
+        os.chdir(self.results_directory())
         perform_calcs = self.run_command(self.runcommand)
         if perform_calcs != 0:
-            return self.failtoruncode
-        compare = self.compare_method()
-        return compare
+            retcode = self.failtoruncode
+        else:
+            retcode = self.compare_method()
+        self.retcode = retcode
+        self.status = self.get_status()
+        tc = time.time()
+        self.completion_time(tc - t0)
+        os.chdir(d)
+        return
 
     def runTest(self):
         return self.run_test()
@@ -287,6 +318,240 @@ class PayetteTest(object):
         if diffed:
             return self.diffcode
         return self.passcode
+
+    def get_status(self):
+        return {self.passcode: "PASS",
+                self.failcode: "FAIL",
+                self.diffcode: "DIFF",
+                self.failtoruncode: "FAILED TO RUN",
+                self.badincode: "BAD INPUT",
+                self.notruncode: "NOT RUN"}[self.retcode]
+
+    def switch_materials(self, files, switch):
+        """switch materials"""
+        pat = re.compile(r"\bconstitutive\s*model\s*{0}"
+                         .format(switch[0]), re.I | re.M)
+        repl = "constitutive model {0}".format(switch[1])
+        for fname in files:
+            lines = open(fname, "r").read()
+            with open(fname, "w") as fobj:
+                fobj.write(pat.sub(repl, lines))
+            continue
+        return
+
+    def setup_test(self, *args):
+
+        test_base_dir, postprocess, switch = args[:3]
+        self.postprocess = postprocess
+
+        # check for switched materials
+        if switch is not None:
+            switch = [x.lower() for x in switch.split(":")]
+
+        # set up the results directory. If the test was taken from the
+        # PC_TESTS directory, we wish to keep the same directory structure in
+        # the TestResults.OSTYPE directory. e.g., if the test came from
+        # PC_TESTS/Regression, we want to run the test in
+        # TestResults.OSTYPE/Regression. But, if the test did not come from
+        # the PC_TESTS directory (user specified additional directories to
+        # look for tests), we try to keep the base directory name of that
+        # test. e.g., if the user asked to look for tests in
+        # /some/directory/to/special_tests, we run the tests in
+        # TestResults.OSTYP/special_tests.
+        if test_base_dir == self.test_file_dir:
+            results_directory = (test_file_dir,)
+
+        else:
+            f = os.path.join(self.test_file_dir, "__test_dir__.py")
+            py_module = pu.load_module(f)
+            try:
+                testbase = py_module.DIRECTORY
+            except AttributeError:
+                testbase = os.path.basename(self.test_file_dir)
+            results_directory = (RESDIR, testbase, self.name)
+
+        self.set_results_directory(*results_directory)
+        d = self.results_directory()
+        dd = self.test_file_dir
+        if d != dd:
+            # Create benchmark directory and copy the input and baseline files
+            # into the new directory
+            if os.path.isdir(d):
+                shutil.rmtree(d)
+            os.makedirs(d)
+
+            self.copy_files_to_results_directory()
+
+            if self.nbs:
+                self.copy_mathematica_nbs()
+
+            # check for switching
+            try:
+                if switch and self.material.lower() == switch[0]:
+                    self.switch_materials(files=self.test_files, switch=switch)
+            except AttributeError:
+                pass
+
+            # write out hidden test file with some relevant info
+            self.test_info = os.path.join(d, TEST_INFO)
+
+            with open(self.test_info, "w") as fobj:
+                fobj.write("NAME={0}\n".format(self.name))
+                fobj.write("PLATFORM={0}\n".format(cfg.OSTYPE))
+                fobj.write("KEYWORDS={0}\n".format(", ".join(self.keywords)))
+                fobj.write("FILE={0}\n".format(
+                        os.path.basename(self.test_file[:-1])))
+
+        # Let the user know which test is running
+        pu.log_message(
+            "{0:<{1}}".format(self.name, WIDTH_TERM - WIDTH_INFO) +
+            "{0:>{1}s}".format("RUNNING", WIDTH_INFO), pre="", noisy=True)
+
+        self.retdir = os.getcwd()
+        os.chdir(self.results_directory())
+        return
+
+    def copy_files_to_results_directory(self):
+        self.test_files = []
+        # copy input file, if any
+        d = self.results_directory()
+        if self.infile:
+            infile = os.path.join(d, os.path.basename(self.infile))
+            shutil.copyfile(self.infile, infile)
+            self.test_files.append(infile)
+
+        # copy the python test file and make it executable
+        test_py_file = os.path.join(d, os.path.basename(self.test_file))
+        shutil.copyfile(self.test_file, test_py_file)
+        self.test_files.append(test_py_file)
+        os.chmod(test_py_file, 0o750)
+
+        # symlink the baseline file
+        if self.baseline:
+            for base_f in self.baseline:
+                source = base_f
+                link_name = os.path.join(d, os.path.basename(base_f))
+                if not os.path.isfile(source):
+                    pu.file_not_found(source)
+                    continue
+                if os.path.isfile(link_name):
+                    pu.report_error(
+                        "symlink destination {0} exists".format(link_name))
+                    continue
+                os.symlink(source, link_name)
+                continue
+
+        # symlink and auxilary files
+        if self.aux_files:
+            for aux_f in self.aux_files:
+                os.symlink(aux_f, os.path.join(d, os.path.basename(aux_f)))
+                continue
+
+        return
+
+    def finish_test(self):
+        # Print output at completion
+        info_string = "{0} ({1}s)".format(
+            self.status.upper(), self.completion_time(f="{0:6.02f}"))
+        pu.log_message(
+            "{0:<{1}}".format(self.name, WIDTH_TERM - WIDTH_INFO) +
+            "{0:>{1}s}".format(info_string, WIDTH_INFO), pre="", noisy=True)
+
+        if self.postprocess or self.retcode in (self.diffcode, self.failcode):
+            pu.log_message(
+                "{0:<{1}}".format(self.name, WIDTH_TERM - WIDTH_INFO) +
+                "{0:>{1}s}".format("POSTPROCESSING", WIDTH_INFO),
+                pre="", noisy=True)
+            self.postprocess_test_result()
+            pu.log_message(
+                "{0:<{1}}".format(self.name, WIDTH_TERM - WIDTH_INFO) +
+                "{0:>{1}s}".format("POSTPROCESSED", WIDTH_INFO),
+                pre="", noisy=True)
+        os.chdir(self.retdir)
+        return
+
+    def postprocess_test_result(self):
+        import matplotlib.pyplot as plt
+        aspect_ratio = 4.0/3.0
+        try:
+            ohead = pu.get_header(self.outfile)
+            odat = pu.read_data(self.outfile)
+        except IOError:
+            pu.file_not_found(self.outfile, count=False)
+            return
+        try:
+            ghead = pu.get_header(self.baseline[0])
+            gdat = pu.read_data(self.baseline[0])
+        except IOError:
+            pu.file_not_found(self.baseline[0], count=False)
+            return
+
+        self.postprocess = os.path.splitext(self.outfile)[0] + ".html"
+        plotd = os.path.splitext(self.outfile)[0] + ".post"
+
+        # Make output directory for plots
+        try: shutil.rmtree(plotd)
+        except OSError: pass
+        os.mkdir(plotd)
+
+        xvar = "TIME"
+        ox = odat[:, ohead.index(xvar)]
+        gx = gdat[:, ghead.index(xvar)]
+
+        plots = []
+        for yvar in [x for x in sorted(ghead) if x not in self.items_to_skip]:
+
+            if yvar == xvar:
+                continue
+
+            name = yvar + ".png"
+            f = os.path.join(plotd, name)
+            gy = gdat[:, ghead.index(yvar)]
+            try:
+                oy = odat[:, ohead.index(yvar)]
+            except ValueError:
+                continue
+
+            plt.clf() # Clear the current figure
+            plt.cla() # Clear the current axes
+            plt.xlabel("TIME")
+            plt.ylabel(yvar)
+
+            plt.plot(gx, gy, ls="-", lw=4, c="orange", label="gold")
+            plt.plot(ox, oy, ls="-", lw=2, c="green", label="out")
+            plt.legend()
+            plt.gcf().set_size_inches(aspect_ratio * 5, 5.)
+            plt.savefig(f, dpi=100)
+            plots.append(f)
+
+        with open(self.postprocess, "w") as fobj:
+            fobj.write("""\
+    <html>
+      <head>
+        <title>{0}</title>
+      </head>
+      <body>
+        <table>
+          <tr>
+    """.format(self.name))
+
+            for i, plot in enumerate(plots):
+                name = os.path.basename(plot)
+                if i % 3 == 0 and i != 0:
+                    fobj.write("      </tr>\n       <tr>\n")
+                width = str(int(aspect_ratio * 300))
+                height = str(int(300))
+                fobj.write("""\
+            <td>
+              {0}
+              <a href="{1}">
+                <img src="{1}" width="{2}" height="{3}">
+              </a>
+            </td>
+    """.format(name, plot, width, height))
+
+            fobj.write("      </tr>\n    </table>\n  </body>\n</html>")
+        return
 
     def compare_out_to_baseline_rms_general(self):
         """
@@ -581,7 +846,7 @@ class PayetteTest(object):
 
                 else:
                     stat = "PASS"
-                
+
                 log.write("{0}: {1}".format(val, stat))
                 log.write("    Average diff: {0:.10e}".format(avg_diff))
                 log.write("     Gold STDDEV: {0:.10e}".format(g_stddev))
@@ -763,55 +1028,14 @@ class PayetteTest(object):
         del log
         return self.get_retcode(failed, diffed)
 
-    def runFromTerminal(self, argv, compare_method=None):
+    def runFromTerminal(self, argv):
 
         if "--cleanup" in argv or "-c" in argv:
-            self.clean_tracks()
-            return
+            sys.exit(self.clean_tracks())
 
-        t0 = time.time()
-
-        if "--full" in argv:
-            print("{0:s} RUNNING FULL TEST".format(self.name))
-            result = self.run_test()
-            dta = time.time() - t0
-            dtp = dta
-
-        else:
-            print("{0:s} RUNNING".format(self.name))
-
-            perform_calcs = self.run_command(self.runcommand)
-            dtp = time.time() - t0
-
-            if perform_calcs != 0:
-                print("{0:s} FAILED TO RUN TO COMPLETION".format(self.name))
-                sys.exit()
-                pass
-
-            print("{0:s} FINISHED".format(self.name))
-            print("{0:s} ANALYZING".format(self.name))
-
-            t1 = time.time()
-            compare = self.compare_method()
-            dta = time.time() - t1
-            pass
-
-        if compare == self.passcode:
-            print("{0:s} PASSED({1:f}s)".format(self.name, dtp + dta))
-
-        elif compare == self.badincode:
-            print("{0:s} BAD INPUT({1:f}s)".format(self.name, dtp + dta))
-
-        elif compare == self.diffcode:
-            print("{0:s} DIFFED({1:f}s)".format(self.name, dtp + dta))
-
-        elif compare == self.failcode:
-            print("{0:s} FAILED({1:f}s)".format(self.name, dtp + dta))
-
-        else:
-            print("{0:s} UNKOWN STAT({1:f}s)".format(self.name, dtp + dta))
-            pass
-
+        self.setup_test(os.getcwd(), False, None)
+        self.run_test()
+        self.finish_test()
         return
 
     def diff_files(self, gold=None, out=None):
@@ -978,17 +1202,67 @@ class PayetteTest(object):
 
         return self.passcode
 
+    def set_results_directory(self, *args):
+        if not args:
+            self._results_directory = os.getcwd()
+            return
+        self._results_directory = os.path.join(*args)
+        return
 
-def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
+    def results_directory(self):
+        if self._results_directory is None:
+            self._results_directory = os.getcwd()
+        return self._results_directory
+
+    def copy_mathematica_nbs(self):
+        """copy the mathematica notebooks to the destination directory"""
+        d, dd = os.path.split(self.results_directory())
+        if dd != self.name:
+            d = dd
+        d = d + os.sep
+        destnbs = [os.path.join(d, os.path.basename(x)) for x in self.nbs]
+        if all(os.path.isfile(x) for x in destnbs):
+            return
+        for nb, destnb in zip(self.nbs, destnbs):
+            try: os.remove(destnb)
+            except OSError: pass
+            if destnb.endswith(".m"):
+                # don't copy the .m file, but write it, replacing rundir and
+                # demodir with destdir
+                with open(destnb, "w") as fobj:
+                    for line in open(nb, "r").readlines():
+                        if r"$DEMODIR" in line:
+                            line = 'demodir="{0:s}"\n'.format(d)
+                        elif r"$RUNDIR" in line:
+                            line = 'rundir="{0:s}"\n'.format(d)
+                        fobj.write(line)
+                        continue
+                continue
+
+            # copy the notebook files
+            shutil.copyfile(nb, destnb)
+            continue
+        return
+
+    def find_nbs(self):
+        """Find mathematica notebooks for this test"""
+        d = self.test_file_dir
+        def isnb(f):
+            return {".nb": True, ".m": True}.get(os.path.splitext(f)[1], False)
+        self.nbs = [os.path.join(d, x) for x in os.listdir(d) if isnb(x)]
+        return
+
+
+def find_tests(kws, skip, reqtests, test_dirs=None):
     """ find the Payette tests
 
     Parameters
     ----------
-    reqkws : list
+    kws : list
        list of requested keywords
-    unreqkws : list
-       list of unrequested keywords
-    spectests : list
+    skip : list
+       list of keywords to skip
+    reqtests : list
        list of specific tests to find
 
     Returns
@@ -997,24 +1271,6 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
 
     """
 
-    model_index = pmi.ModelIndex(cfg.MTLDB)
-
-    def get_module_name(py_file):
-        return os.path.splitext(os.path.basename(py_file))[0]
-
-    def get_super_classes(name, data):
-        super_class_names = []
-        for super_class in data.super:
-            if super_class == "object":
-                continue
-            if isinstance(super_class, basestring):
-                super_class_names.append(super_class)
-            else:
-                super_class_names.append(super_class.name)
-                pass
-            continue
-        return super_class_names
-
     if test_dirs is not None:
         errors = 0
         for test_dir in test_dirs:
@@ -1022,170 +1278,115 @@ def find_tests(reqkws, unreqkws, spectests, test_dirs=None):
                 pu.report_error(
                     "test directory {0} not found".format(test_dir))
             continue
-        if errors:
+        if pu.error_count():
             pu.report_and_raise_error("stopping due to previous errors")
     else:
         test_dirs = [cfg.TESTS]
 
-    # reqkws are user specified keywords
-    errors = 0
-    if reqkws:
-        reqkws = [x.lower() for x in reqkws]
-    if unreqkws:
-        unreqkws = [x.lower() for x in unreqkws]
-    if spectests:
-        spectests = [x.lower() for x in spectests]
-
-    reqkws.sort()
-    unreqkws.sort()
-
-    found_tests = {}
-    for speed_kw in SPEED_KWS:
-        found_tests[speed_kw] = {}
-        continue
-
-    py_modules = {}
+    # get all potential test files
+    py_files  = []
     for test_dir in test_dirs:
-        for dirname, dirs, files in os.walk(test_dir):
-
-            if ".svn" in dirname or "__test_dir__.py" not in files:
+        for d, dirs, files in os.walk(test_dir):
+            if ".svn" in d or "__test_dir__.py" not in files:
                 continue
-
-            for fname in files:
-                fpath = os.path.join(dirname, fname)
-                fbase, fext = os.path.splitext(fname)
-
-                # filter out all files we know cannot be test files
-                if (fext != ".py" or
-                    fbase[0] == "." or
-                    fbase == "__init__" or
-                    fbase == "__test_dir__" or
-                    fbase == "config" or
-                        fbase == "template"):
-                    continue
-
-                py_mod = get_module_name(fpath)
-                if py_mod in py_modules:
-                    errors += 1
-                    msg = ("removing duplicate python module {0} in tests"
-                           .format(py_mod))
-                    pu.log_warning(msg)
-                    del py_modules[py_mod]
-
-                else:
-                    py_modules[py_mod] = fpath
-
-                continue
+            py_files.extend([os.path.join(d, x) for x in files if ispyfile(x)])
             continue
-
         continue
 
-    for py_mod, py_file in py_modules.items():
+    # weed out only those that are tests
+    kws = [x.lower() for x in kws]
+    skip = [x.lower() for x in skip]
+    reqtests = [x.lower() for x in reqtests]
+    tests = []
+    for py_file in py_files:
 
-        # load module
-        py_path = [os.path.dirname(py_file)]
-        fp, pathname, description = imp.find_module(py_mod, py_path)
-        py_module = imp.load_module(py_mod, fp, pathname, description)
-        fp.close()
+        test = get_test(py_file)
 
-        # check if a payette test class is defined
-        class_data = pyclbr.readmodule(py_mod, path=py_path)
-
-        if not class_data:
+        if test is None:
             continue
 
-        test, payette_test = False, False
-        for name, data in sorted(class_data.items(), key=lambda x: x[1].lineno):
-            class_name = data.name
-            test = class_name == "Test"
-            payette_test = "PayetteTest" in get_super_classes(name, data)
-            if payette_test:
-                break
+        if test in tests:
+            pu.log_warning("{0}: duplicate test.  skipping".format(test.name))
             continue
-
-        if not payette_test:
-            continue
-
-        if payette_test and not test:
-            errors += 1
-            msg = ("{0} test class name must be 'Test', got {1}"
-                   .format(class_name, py_mod))
-            pu.report_error(msg)
-            continue
-
-        include = False
-
-        # instantiate the test object, but don't check it. we just want to
-        # know if the test is requested, or not.
-        test = py_module.Test(check=False)
 
         if not test.enabled:
-            pu.log_warning("disabled test: {0} encountered".format(py_mod))
+            pu.log_warning("disabled test: {0} encountered".format(test.name))
             continue
 
-        if not isinstance(test.keywords, (list, tuple)):
-            test.keywords = [test.keywords]
-
-        if spectests:
-            if test.name not in spectests:
-                # test not in user requested tests
-                continue
-            else:
-                include = True
-
-        elif not reqkws and not unreqkws:
-            # if user has not specified any kw or kw negations
-            # append to conform
-            include = True
-
-        else:
-            # user specified a kw or kw negation
-            kws = test.keywords
-
-            if [x for x in unreqkws if x in kws]:
-                # negation takes precidence
-                continue
-
-            if not reqkws:
-                # wasn't negated and no other kws
-                include = True
-
-            else:
-                # specified kw, make sure that all kws match
-                reqkeyl = [x for x in reqkws if x in kws]
-                reqkeyl.sort()
-                if reqkeyl == reqkws:
-                    include = True
-                else:
-                    continue
-
-        if not include:
+        if reqtests:
+            # only requested tests will be collected
+            if test.name.lower() in reqtests:
+                tests.append(test)
             continue
 
-        # we've gotten this far, so the test was requested, now check if the
-        # material model used in the test is installed
+        tkws = [x.lower() for x in test.keywords]
+
+        # check that all requested keywords match
+        if kws and not all(x in tkws for x in kws):
+            continue
+
+        # check if any keywords to skip match
+        if skip and any(x in tkws for x in skip):
+            continue
+
+        tests.append(test)
+        continue
+
+    model_index = pmi.ModelIndex()
+    for test in tests:
+        # check if the material model used in the test is installed
         if test.material is not None:
             if test.material not in model_index.constitutive_models():
                 pu.log_warning(
                     "material model" + " '" + test.material + "' " +
                     "required by" + " '" + test.name + "' " +
                     "not installed, test will be skipped")
-                continue
+                tests.remove(test)
 
-        speed = [x for x in SPEED_KWS if x in test.keywords][0]
-        found_tests[speed][py_mod] = py_file
+    # return tests sorted according to speed (fastest first)
+    return sorted(tests, key=lambda x: SPEED_KWS[x.speed])
 
-        continue
 
-    return errors, found_tests
+def get_test(py_file):
+    if not py_file.endswith(".py"):
+        return
+    # get and load module
+    py_module = pu.load_module(py_file)
+    # check if a payette test class is defined
+    fnam = os.path.basename(py_file)
+    try:
+        cls = py_module.Test
+    except AttributeError:
+        pu.log_warning("{0}: Test class not found".format(fnam))
+        return
+    if PayetteTest not in cls.__bases__:
+        pu.report_error("{0}: Test not a subclass of PayetteTest".format(fnam))
+        return
+    # instantiate and return the test object
+    test = cls()
+    return test
+
+
+def ispyfile(fpath):
+    fbase, fext = os.path.splitext(os.path.basename(fpath))
+    # filter out all files we know cannot be test files
+    if fext != ".py":
+        return False
+    if fbase[0] == ".":
+        return False
+    regex = r"(__init__|__test_dir__|config|template)"
+    if re.search(regex, fbase):
+        return False
+    return True
+
 
 if __name__ == "__main__":
 
-    errors, found_tests = find_tests(["elastic", "fast"], [], [])
+    found_tests = find_tests(["elastic", "fast"], [], [])
 
-    fast_tests = [val for key, val in found_tests["fast"].items()]
-    medium_tests = [val for key, val in found_tests["medium"].items()]
-    long_tests = [val for key, val in found_tests["long"].items()]
+    fast_tests = [x.name for x in found_tests if "fast" in x.keywords]
+    medium_tests = [x.name for x in found_tests if "medium" in x.keywords]
+    long_tests = [x.name for x in found_tests if "long" in x.keywords]
     print(fast_tests)
     print(medium_tests)
     print(long_tests)

@@ -29,6 +29,7 @@
 
 import os
 import sys
+import time
 
 import Source.__config__ as cfg
 from Source.Payette_test import PayetteTest
@@ -55,7 +56,6 @@ class Test(PayetteTest):
         self.material = "elastic"
 
         self.keywords = ["builtin", "payette", "restart", "regression", "fast"]
-        self.compare_method = self.compare_out_to_baseline_rms
         self.owner = "Tim Fuller"
         self.date = "February 25, 2012"
         self.description = """ Test of restart capabilities """
@@ -65,21 +65,31 @@ class Test(PayetteTest):
 
         pass
 
-    def runTest(self):
+    def run_test(self):
         """ run the test """
+        d = os.getcwd()
+        os.chdir(self.results_directory())
+        t0 = time.time()
         perform_calcs = self.run_command(self.runcommand)
         if perform_calcs != 76:
-            return self.failcode
+            retcode = self.failcode
+        else:
+            # now run the restart file
+            perform_calcs = self.run_command(self.restartcommand)
+            if perform_calcs != 0:
+                retcode = self.failcode
+            else:
+                # now check the output
+                retcode = self.compare_method()
+        tc = time.time()
+        self.completion_time(tc - t0)
+        self.retcode = retcode
+        self.status = self.get_status()
+        os.chdir(d)
+        return
 
-        # now run the restart file
-        perform_calcs = self.run_command(self.restartcommand)
-        if perform_calcs != 0:
-            return self.failcode
-
-        # now check the output
-        compare = self.compare_method()
-
-        return compare
+    def compare_method(self):
+        return self.compare_out_to_baseline_rms()
 
 
 if __name__ == "__main__":

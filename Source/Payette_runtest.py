@@ -45,20 +45,16 @@ from pickle import dump, load
 import datetime
 import getpass
 import re
+from inspect import getfile
+import optparse
 
 import Source.__config__ as cfg
 import Source.Payette_utils as pu
 import Source.Payette_notify as pn
-from Source.Payette_test import find_tests
+from Source.Payette_test import (find_tests, WIDTH_TERM, WIDTH_INFO,
+                                 TEST_INFO, RESDIR, CWD, get_test)
 from Source.Payette_utils import PayetteError as PayetteError
 from Source.Payette_utils import PassThroughOptionParser
-
-# --- module level variables
-CWD = os.getcwd()
-WIDTH_TERM = 80
-WIDTH_INFO = 25
-TEST_INFO = ".test.info"
-RESDIR = os.path.join(CWD, "TestResults.{0}".format(cfg.OSTYPE))
 
 
 def main(argv, print_help=False):
@@ -66,7 +62,7 @@ def main(argv, print_help=False):
     # *************************************************************************
     # -- command line option parsing
     usage = "usage: testPayette [options]"
-    parser = PassThroughOptionParser(usage=usage, version="testPayette 1.0")
+    parser = optparse.OptionParser(usage=usage, version="testPayette 1.0")
     parser.add_option(
         "--builtin",
         dest="BUILTIN",
@@ -102,19 +98,19 @@ def main(argv, print_help=False):
         action="append",
         default=[],
         help=("Additional directories to scan for benchmarks, accumulated "
-              "[default: %default]."))
+              "[default: %default]"))
     parser.add_option(
         "-D",
-        dest="TESTRESDIR",
+        dest="TESTBASEDIR",
         action="store",
         default=RESDIR,
-        help="Directory to run tests [default: %default].")
+        help="Directory to run tests [default: %default]")
     parser.add_option(
         "-F",
         dest="FORCERERUN",
         action="store_true",
         default=False,
-        help="Force benchmarks to be run again [default: %default].")
+        help="Force benchmarks to be run again [default: %default]")
     parser.add_option(
         "-j", "--nproc",
         dest="NPROC",
@@ -131,20 +127,13 @@ def main(argv, print_help=False):
         dest="NOTIFY",
         action="store_true",
         default=False,
-        help="email test results to mailing list [default: %default].")
+        help="email test results to mailing list [default: %default]")
     parser.add_option(
         "-I",
         dest="IGNOREERROR",
         action="store_true",
         default=False,
         help="Ignore noncomforming tests [default: %default]")
-    parser.add_option(
-        "-u",
-        dest="TESTFILE",
-        action="store_true",
-        default=False,
-        help=("Use previously generated test file, -F is implied "
-              "[default: %default]"))
     parser.add_option(
         "-S",
         dest="SWITCH",
@@ -162,7 +151,7 @@ def main(argv, print_help=False):
         dest="WIPE",
         action="store_true",
         default=False,
-        help="Wipe results directory first [default: %default].")
+        help="Wipe results directory first [default: %default]")
 
     # indexing
     parser.add_option(
@@ -170,33 +159,32 @@ def main(argv, print_help=False):
         dest="INDEX",
         action="store_true",
         default=False,
-        help="Print benchmarks index [default: %default].")
+        help="Print benchmarks index [default: %default]")
     parser.add_option(
         "--name",
         dest="INDEX_NAME",
         action="store_true",
         default=False,
-        help="Print benchmark names, -i is implied [default: %default].")
+        help="Print benchmark names, -i is implied [default: %default]")
     if print_help:
         parser.print_help()
         return
     (opts, args) = parser.parse_args(argv)
     nproc = int(opts.NPROC) if opts.NPROC.upper() != "M" else mp.cpu_count()
     sys.exit(test_payette(
-        opts.TESTRESDIR, args, builtin=opts.BUILTIN, keywords=opts.KEYWORDS,
-        nokeywords=opts.NOKEYWORDS, spectests=opts.SPECTESTS,
-        benchdirs=opts.BENCHDIRS, forcererun=opts.FORCERERUN,
-        nproc=nproc, postprocess=opts.POSTPROCESS,
-        notify=opts.NOTIFY, ignoreerror=opts.IGNOREERROR,
-        testfile=opts.TESTFILE, switch=opts.SWITCH,
+        args, testbase=opts.TESTBASEDIR, builtin=opts.BUILTIN,
+        keywords=opts.KEYWORDS, nokeywords=opts.NOKEYWORDS,
+        spectests=opts.SPECTESTS, benchdirs=opts.BENCHDIRS,
+        forcererun=opts.FORCERERUN, nproc=nproc, postprocess=opts.POSTPROCESS,
+        notify=opts.NOTIFY, ignoreerror=opts.IGNOREERROR, switch=opts.SWITCH,
         rebaseline=opts.REBASELINE, index=opts.INDEX,
         index_name=opts.INDEX_NAME, wipe=opts.WIPE, runcwd=opts.c))
 
 
-def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
+def test_payette(args, testbase=None, builtin=False, keywords=[], nokeywords=[],
                  spectests=[], benchdirs=[], forcererun=False, nproc=1,
                  postprocess=False, notify=False, ignoreerror=False,
-                 testfile=False, switch=None, rebaseline=False, index=False,
+                 switch=None, rebaseline=False, index=False,
                  index_name=False, wipe=False, runcwd=False):
     """Run the Payette benchmarks.
 
@@ -205,7 +193,7 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
 
     Parameters
     ----------
-    testresdir : str
+    testbase : str
         path to directory where tests are to be run
     args : list
         list of args
@@ -229,8 +217,6 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
         send notification email of results
     ignoreerror : bool {False}
         ignore errors and continue running tests
-    testfile : bool {False}
-        do not look for tests but use test previously logged
     switch : str {None}
         switch materials
     rebaseline : bool {False}
@@ -268,178 +254,132 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
         else:
             pu.report_and_raise_error(
                 "FILE not found in {0}".format(TEST_INFO))
-        _run_the_test((pyfile, postprocess))
-        return
+        args.append(pyfile)
 
     # if the user passed in python test files, just run those tests
     if runcwd:
         args.extend([x for x in os.listdir(CWD) if x.endswith(".py")])
 
+    t_start = time.time()
+    tests = []
+    no_write = False
     pyargs = [x for x in args if x.endswith(".py")]
     if pyargs:
-        args = ((x, postprocess) for x in pyargs if os.path.isfile(x))
-        for pyarg in pyargs:
-            if pyarg not in pyargs:
-                pu.log_warning("{0} not found".format(pyarg))
-
-        if args:
-            if nproc == 1:
-                all_results = [_run_the_test(x) for x in args]
-            else:
-                pool = mp.Pool(processes=nproc)
-                all_results = pool.map(_run_the_test, args)
-                pool.close()
-                pool.join()
-        return
-
-    test_dirs = cfg.TESTS
-    for dirnam in benchdirs:
-        dirnam = os.path.expanduser(dirnam)
-        if not os.path.isdir(dirnam):
-            pu.report_error("benchmark directory {0} not found".format(dirnam))
-        elif "__test_dir__.py" not in os.listdir(dirnam):
-            pu.report_error("__test_dir__.py not found in {0}".format(dirnam))
-        else:
-            test_dirs.append(dirnam)
-        continue
-    if pu.error_count():
-        pu.report_and_raise_error("stopping due to previous errors")
-
-    if builtin:
-        keywords = ["builtin"]
-
-    t_start = time.time()
-    conforming = None
-    if testfile:
-        try:
-            pu.log_message("Using Payette tests from\n{0}"
-                           .format(" " * 6 + cfg.PREV_TESTS), noisy=True)
-            conforming = load(open(cfg.PREV_TESTS, "r"))
-            errors = 0
-        except IOError:
-            pu.log_warning(
-                "test file {0} not imported".format(cfg.PREV_TESTS))
-
-    if conforming is None:
-        pu.log_message("Gathering Payette tests from\n{0}"
-                       .format("\n".join([" " * 6 + x for x in test_dirs])),
-                       noisy=True)
-        errors, found_tests = find_tests(keywords, nokeywords,
-                                         spectests, test_dirs)
-
-        # sort conforming tests from long to fast
-        fast_tests = [val for key, val in found_tests["fast"].items()]
-        medium_tests = [val for key, val in found_tests["medium"].items()]
-        long_tests = [val for key, val in found_tests["long"].items()]
-        conforming = long_tests + medium_tests + fast_tests
-        dump(conforming, open(cfg.PREV_TESTS, "w"))
-
-    # find mathematica notebooks
-    mathnbs = {}
-    for test_dir in test_dirs:
-        for item in os.walk(test_dir):
-            dirnam, files = item[0], item[2]
-            root, base = os.path.split(dirnam)
-            if base == "nb":
-                # a notebook directory has been found, see if there are any
-                # conforming tests that use it
-                if [x for x in conforming if root in x]:
-                    __test_dir__ = _get_test_module(
-                        os.path.join(root, "__test_dir__.py"))
-                    try:
-                        base_nb_dir = __test_dir__.DIRECTORY
-                    except AttributeError:
-                        base_nb_dir = root.split(os.sep)[-1]
-                    mathnbs[base_nb_dir] = [
-                        os.path.join(dirnam, x) for x in files
-                        if x.endswith(".nb") or x.endswith(".m")]
+        dd = []
+        for f in pyargs:
+            if not os.path.isfile(f):
+                pu.file_not_found(f, count=False)
+                continue
+            test = get_test(f)
+            if test is None:
+                continue
+            test.set_results_directory(os.getcwd())
+            d = os.path.dirname(test.test_file)
+            if d != os.getcwd():
+                pu.report_error("Run testPayette from {0}"
+                                .format(os.path.dirname(test.test_file)))
+                continue
+            if dd and d not in dd:
+                pu.report_error("Can only run files from same dir")
+            dd.append(d)
+            tests.append(test)
             continue
-        continue
-    t_find = time.time() - t_start
+        if not tests:
+            sys.exit("No tests found")
+        testbase = os.getcwd()
+        wipe = False
+        no_write = True
 
-    if errors and not ignoreerror:
+    if not tests:
+        test_dirs = cfg.TESTS
+        for dirnam in benchdirs:
+            dirnam = os.path.expanduser(dirnam)
+            if not os.path.isdir(dirnam):
+                pu.report_error("benchmark directory {0} not found".format(dirnam))
+            elif "__test_dir__.py" not in os.listdir(dirnam):
+                pu.report_error("__test_dir__.py not found in {0}".format(dirnam))
+            else:
+                test_dirs.append(dirnam)
+            continue
+        if pu.errors():
+            pu.report_and_raise_error("stopping due to previous errors")
+
+        if builtin:
+            keywords.append("builtin")
+
+        pu.log_message(
+            "Gathering Payette tests from\n{0}".format(
+                "\n".join([" " * 6 + x for x in test_dirs])), noisy=True)
+        tests = find_tests(keywords, nokeywords, spectests, test_dirs)
+
+    if ignoreerror:
+        pu.reset_error_and_warnings()
+
+    if pu.errors():
         pu.report_and_raise_error(
             "fix nonconforming benchmarks before continuing")
 
+    t_find = time.time() - t_start
+
     pu.log_message("Found {0} Payette tests in {1:.2f}s."
-                   .format(len(conforming), t_find),
-                   noisy=True)
+                   .format(len(tests), t_find), noisy=True)
 
     if index_name:
         index = True
+
     if index:
         out = sys.stderr
         out.write("\nBENCHMARK INDEX\n\n")
-        for key in found_tests:
-            tests = found_tests[key]
-            for py_mod, py_file in tests.items():
-                # load module
-                py_path = [os.path.dirname(py_file)]
-                fobj, pathname, description = imp.find_module(py_mod, py_path)
-                py_module = imp.load_module(
-                    py_mod, fobj, pathname, description)
-                fobj.close()
-                test = py_module.Test()
+        for test in tests:
+            # write out the information
+            pre = WIDTH_TERM * "=" + "\n" if not index_name else ""
+            out.write("{0}Name:  {1}\n".format(pre, test.name))
 
-                # write out the information
-                pre = WIDTH_TERM * "=" + "\n" if not index_name else ""
-                out.write("{0}Name:  {1}\n".format(pre, test.name))
-
-                if index_name:
-                    # Only write out name
-                    continue
-                out.write("Owner: {0}\n\n".format(test.owner))
-                out.write("Description:\n{0}".format(test.description))
-                out.write("\nKeywords:\n")
-                for key in test.keywords:
-                    out.write("    {0}\n".format(key))
+            if index_name:
+                # Only write out name
+                continue
+            out.write("Owner: {0}\n\n".format(test.owner))
+            out.write("Description:\n{0}".format(test.description))
+            out.write("\nKeywords:\n")
+            for key in test.keywords:
+                out.write("    {0}\n".format(key))
                 continue
             continue
+        return
 
-        return 0
-
-    if not conforming:
+    if not tests:
         pu.report_and_raise_error("No tests found")
 
     # start the timer
     t_start = time.time()
 
     # wipe directory if requested
-    if wipe:
+    if wipe and testbase != os.getcwd():
         try:
-            shutil.rmtree(testresdir)
+            shutil.rmtree(RESDIR)
         except OSError:
             pass
+    if not os.path.isdir(testbase):
+        os.makedirs(testbase)
 
-    # Make a TestResults directory named "TestResults.{platform}"
-    if not os.path.isdir(testresdir):
-        os.mkdir(testresdir)
 
-    summhtml = os.path.join(testresdir, "summary.html")
-    respkl = os.path.join(testresdir, "Previous_Results.pkl")
+    summhtml = os.path.join(testbase, "summary.html")
+    respkl = os.path.join(testbase, "Previous_Results.pkl")
     try:
-        old_results = load(open(respkl, "r"))
+        prev_tests = load(open(respkl, "r"))
     except IOError:
-        old_results = {}
-
-    # initialize the test results dictionary
-    test_statuses = ["pass", "diff", "fail", "notrun",
-                     "bad input", "failed to run"]
-    test_res = {}
-    for test_status in test_statuses:
-        test_res[test_status] = {}
-        continue
+        prev_tests = []
 
     pu.log_message("=" * WIDTH_TERM, pre="", noisy=True)
-    pu.log_message("Running {0} benchmarks:".format(len(conforming)),
+    pu.log_message("Running {0} benchmarks:".format(len(tests)),
                    pre="", noisy=True)
     pu.log_message("=" * WIDTH_TERM, pre="", noisy=True)
 
     # run the tests on multiple processors using the multiprocessor map ONLY f
     # nprocs > 1. For debug purposes, when nprocs=1, run without using the
     # multiprocessor map because it makes debugging worse than it should be.
-    topts = (switch, testresdir, forcererun, testfile, postprocess,)
-    test_inp = ((test, topts, old_results) for test in conforming)
+    topts = (testbase, postprocess, switch,)
+    test_inp = ((test, topts, prev_tests, forcererun) for test in tests)
     if nproc == 1:
         all_results = [_run_test(job) for job in test_inp]
 
@@ -452,54 +392,25 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
     t_run = time.time() - t_start
     pu.log_message("=" * WIDTH_TERM, pre="", noisy=True)
 
-    # copy the mathematica notebooks to the output directory
-    _copy_mathematica_nbs(mathnbs, testresdir)
+    if no_write:
+        return
 
-    # all_results is a large list of the summary of every test.
-    # Go through it and use the information to construct the test_res
-    # dictionary of the form:
-    #    test_res["notrun"] = ...
-    #    test_res["pass"] = ...
-    #    test_res["diff"] = ...
-    #    test_res["failed"] = ...
-    for item in all_results:
-        for name, summary in item.items():
-            status = summary["status"]
-            if status not in test_statuses:
-                msg = ("return code {0} from {1} not recognized"
-                       .format(status, name))
-                pu.log_warning(msg)
-                continue
-            tcompletion = summary["completion time"]
-            benchdir = summary["benchmark directory"]
-            keywords = summary["keywords"]
-            html_link = summary["html link"]
-            old = summary.get("old status")
-            test_res[status][name] = {"benchmark directory": benchdir,
-                                      "completion time": tcompletion,
-                                      "keywords": keywords,
-                                      "old status": old,
-                                      "html link": html_link}
-            continue
-        continue
-
-    nnotrun = len(test_res["notrun"])
-    nfail = len(test_res["fail"])
-    npass = len(test_res["pass"])
-    ndiff = len(test_res["diff"])
-    nfailtorun = len(test_res["failed to run"])
-    txtsummary = (
-        "SUMMARY\n" +
-        "{0} benchmarks took {1:.2f}s. total\n".format(len(conforming),
-                                                       t_find + t_run) +
-        "{0} benchmarks took {1:.2f}s. to run\n".format(len(conforming), t_run) +
-        "{0} benchmarks passed\n".format(npass) +
-        "{0} benchmarks diffed\n".format(ndiff) +
-        "{0} benchmarks failed\n".format(nfail) +
-        "{0} benchmarks failed to run\n".format(nfailtorun) +
-        "{0} benchmarks not run\n".format(nnotrun) +
-        "For a summary of which benchmarks passed, diffed, failed, " +
-        "or not run, see\n{0}".format(summhtml))
+    statuses = {}
+    for result in all_results:
+        try:
+            statuses[result.status] += 1
+        except KeyError:
+            statuses[result.status] = 1
+    txtsummary = """\
+SUMMARY
+{0} benchmarks took {1:.2f}s. total
+{0} benchmarks took {2:.2f}s. to run
+""".format(len(tests), t_find+t_run, t_run)
+    for status, n in statuses.items():
+        txtsummary += "\n{0} benchmarks showed '{1}'".format(n, status)
+    txtsummary += """
+For a summary of which benchmarks passed, diffed, failed, or not run, see
+{0}""".format(summhtml)
 
     # Make a long summary including the names of what passed and
     # what didn't as well as system information.
@@ -507,7 +418,7 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
 
     longtxtsummary = (
         "=" * WIDTH_TERM + "\nLONG SUMMARY\n" +
-        "{0} benchmarks took {1:.2f}s.\n".format(len(conforming), t_run) +
+        "{0} benchmarks took {1:.2f}s.\n".format(len(tests), t_run) +
         "{0:^{1}}\n".format("{0:-^30}".format(" system information "),
                             WIDTH_TERM) +
         "   Date complete:    {0:<}\n".format(str_date) +
@@ -516,27 +427,18 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
         "   Platform:         {0:<}\n".format(cfg.OSTYPE) +
         "   Python Version:   {0:<}\n".format(cfg.PYVER))
 
-    # List each category (diff, fail, notrun, and pass) and the tests
-    test_result_statuses = test_res.keys()
-    test_result_statuses.sort()
-    for stat in test_result_statuses:
-        names = test_res[stat].keys()
+    for status, n in statuses.items():
+        _tests = [x for x in all_results if x.status == status]
         header = "{0:-^30}".format(" " +
-                                   stat +
-                                   " ({0}) ".format(len(names)))
+                                   status +
+                                   " ({0}) ".format(n))
         longtxtsummary += "{0:^{1}}\n".format(header, WIDTH_TERM)
-        if len(names) == 0:
+        if len(_tests) == 0:
             continue
         longtxtlist = []
-        for name in names:
-            try:
-                tcmpl = ("{0:.2f}s."
-                         .format(test_res[stat][name]["completion time"]))
-            except ValueError:
-                tcmpl = str(test_res[stat][name]["completion time"])
-
-            longtxtlist.append([tcmpl, name])
-
+        for test in _tests:
+            tcmpl = test.completion_time(f="{0:.2f}s")
+            longtxtlist.append([tcmpl, test.name])
         longtxtlist = sorted(longtxtlist, key=lambda x: x[1])
         for pair in longtxtlist:
             longtxtsummary += "  {0:>8}   {1}\n".format(pair[0], pair[1])
@@ -568,7 +470,7 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
             continue
         continue
 
-    for dirnam, dirs, files in os.walk(testresdir):
+    for dirnam, dirs, files in os.walk(testbase):
         for name in files:
             fbase, fext = os.path.splitext(name)
             delext = [".so", ".pyo", ".pyc"]
@@ -579,160 +481,73 @@ def test_payette(testresdir, args, builtin=False, keywords=[], nokeywords=[],
         continue
 
     # dump results and write html summary
-    dump(test_res, open(respkl, "w"))
-    write_html_summary(summhtml, test_res)
+    dump_results(respkl, all_results)
+    write_html_summary(summhtml, all_results)
 
-    if ndiff and nfail:
-        retval = -1
-    elif ndiff:
-        retval = 1
-    elif nfail:
-        retval = 2
-    elif nfailtorun:
-        retval = 3
-    else:
-        retval = 0
-
-    return retval
+    return
 
 
 def _run_test(args):
-
-    """ run the payette test in py_file """
+    """ run the payette test """
 
     # pass args to local variables
-    py_file, opts, old_results = args
-    py_dir = os.path.dirname(py_file)
-    switch, testresdir, forcererun, testfile, postprocess = opts
-
-    # check for switched materials
-    if switch is not None:
-        switch = [x.lower() for x in switch.split(":")]
-
-    py_module = _get_test_module(py_file)
-
-    # we instantiate the test here to copy files to destination directory
-    test = py_module.Test()
-
-    # directory where test will be run. If the test was taken from the
-    # PC_TESTS directory, we wish to keep the same directory structure in the
-    # TestResults.OSTYPE directory. e.g., if the test came from
-    # PC_TESTS/Regression, we want to run the test in
-    # TestResults.OSTYPE/Regression. But, if the test did not come from the
-    # PC_TESTS directory (user specified additional directories to look for
-    # tests), we try to keep the base directory name of that test. e.g., if
-    # the user asked to look for tests in /some/directory/to/special_tests, we
-    # run the tests in TestResults.OSTYP/special_tests.
-    __test_dir__ = _get_test_module(os.path.join(py_dir, "__test_dir__.py"))
-    try:
-        testbase = __test_dir__.DIRECTORY
-    except AttributeError:
-        testbase = os.path.split(os.path.dirname(py_file))[1]
-
-    benchdir = os.path.join(testresdir, testbase, test.name)
+    test, setup_args, prev_tests, forcererun = args
 
     # check if benchmark has been run
-    ran = [(y, x) for y in old_results for x in old_results[y]
-           if x == test.name]
+    ran = [x for x in prev_tests if x.name == test.name]
+    if not forcererun and ran:
+        prev_test = ran[0]
+        pu.log_message("""\
+{0}{1}{2:>10s}
+Test already ran.  Use -F option to force a rerun
+""".format( test.name, " " * (50 - len(test.name)), test.status),
+                       pre="", noisy=True)
+        if test.old_status is None:
+            test.old_status = prev_test.status
+        return test
 
-    if not (forcererun or testfile) and ran and os.path.isdir(benchdir):
-        pu.log_message(
-            "{0}".format(test.name) +
-            " " * (50 - len(test.name)) +
-            "{0:>10s}".format("notrun\n") +
-            "Test already ran. " +
-            "Use -F option to force a rerun", pre="", noisy=True)
-        result = {test.name: old_results[ran[0][0]][ran[0][1]]}
-        if result[test.name].get("old status") is None:
-            result[test.name]["old status"] = ran[0][0]
-        result[test.name]["status"] = "notrun"
-        return result
+    test.setup_test(*setup_args)
 
-    # Let the user know which test is running
-    pu.log_message(
-        "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
-        "{0:>{1}s}".format("RUNNING", WIDTH_INFO), pre="", noisy=True)
+    try:
+        test.run_test()
+    except PayetteError as error:
+        test.retcode = test.failtoruncode
+        test.status = test.get_status()
+        pu.log_warning(error.message)
+    test.finish_test()
+    return test
 
-    # Create benchmark directory and copy the input and baseline files into the
-    # new directory
-    if os.path.isdir(benchdir):
-        shutil.rmtree(benchdir)
-    os.makedirs(benchdir)
 
-    # copy input file, if any
-    test_files = []
-    if test.infile:
-        infile = os.path.join(benchdir, os.path.basename(test.infile))
-        shutil.copyfile(test.infile, infile)
-        test_files.append(infile)
-
-    # copy the python test file and make it executable
-    test_py_file = os.path.join(benchdir, os.path.basename(py_file))
-    shutil.copyfile(py_file, test_py_file)
-    test_files.append(test_py_file)
-    os.chmod(test_py_file, 0o750)
-
-    # symlink the baseline file
-    if test.baseline:
-        for base_f in test.baseline:
-            source = base_f
-            link_name = os.path.join(benchdir, os.path.basename(base_f))
-            if not os.path.isfile(source):
-                pu.report_error(
-                    "cannot symlink to non-existant file\n" +
-                    "os.symlink({0},{1})".format(repr(source), repr(link_name)))
-            if os.path.isfile(link_name):
-                pu.report_error(
-                    "cannot create symlink when link destination exists\n" +
-                    "os.symlink({0},{1})".format(repr(source), repr(link_name)))
-            os.symlink(
-                base_f,
-                os.path.join(benchdir, os.path.basename(base_f)))
-            continue
-
-    # symlink and auxilary files
-    if test.aux_files:
-        for aux_f in test.aux_files:
-            os.symlink(
-                aux_f,
-                os.path.join(benchdir, os.path.basename(aux_f)))
-            continue
-
-    # check for switching
-    if (test.material is not None and
-        switch is not None and
-            test.material.lower() == switch[0]):
-            # switch the material
-            _switch_materials(files=test_files, switch=switch)
-
-    # write out hidden test file with some relevant info
-    with open(os.path.join(benchdir, TEST_INFO), "w") as fobj:
-        fobj.write("NAME={0}\n".format(test.name))
-        fobj.write("PLATFORM={0}\n".format(cfg.OSTYPE))
-        fobj.write("KEYWORDS={0}\n".format(", ".join(test.keywords)))
-        fobj.write("FILE={0}\n".format(os.path.basename(py_file)))
-
-    # delete the current test instance, and instantiate new from the files
-    # just copied. Move to the new directory and run the test
-    del py_module, test
-    os.chdir(benchdir)
-    result = _run_the_test((test_py_file, postprocess))
-    os.chdir(CWD)
-
-    return result
+def dump_results(fpath, all_results):
+    dump(all_results, open(fpath, "w"))
+    return
+    res = {}
+    for x in all_results:
+        d = {}
+        for k, v in x.__dict__.items():
+            try:
+                if v.__self__ is not None:
+                    continue
+            except AttributeError:
+                pass
+            d[k] = v
+        res[x.name] = d
+    dump(res, open(fpath, "w"))
+    return
 
 
 def write_html_summary(fname, results):
-
     """ write summary of the results dictionary to html file """
-
-    # the results dictionary is of the form
-    # results = { {status: {name: { "benchmark directory":benchdir,
-    #                               "completion time":tcompletion,
-    #                               "keywords":keywords } } } }
     resd = os.path.dirname(fname)
-    npass, nfail, ndiff, nskip = [len(results[x]) for x in
-                                  ["pass", "fail", "diff", "notrun"]]
+
+    # get different status types
+    statuses = {}
+    for result in results:
+        try:
+            statuses[result.status].append(result)
+        except KeyError:
+            statuses[result.status] = [result]
+    statstr = " ".join("{0:3d} {1}".format(len(v), k) for k, v in statuses.items())
     rdir = os.path.dirname(fname)
     with open(fname, "w") as fobj:
         # write header
@@ -741,17 +556,15 @@ def write_html_summary(fname, results):
         fobj.write("<ul>\n")
         fobj.write("<li> Directory: {0} </li>\n".format(resd))
         fobj.write("<li> Options: {0} </li>\n".format(" ".join(sys.argv[1:])))
-        fobj.write(
-            "<li> {0:d} pass, {1:d} diff, {2:d} fail, {3:d} notrun </li>\n"
-            .format(npass, ndiff, nfail, nskip))
+        fobj.write("<li> {0} </li>\n".format(statstr))
         fobj.write("</ul>\n")
 
         # write out details test that fail, diff, pass, notrun
-        for stat in results.keys():
-            fobj.write("<h1>Tests that showed '{0}'</h1>\n<ul>\n".format(stat))
-            for test in results[stat]:
-                tresd = results[stat][test]["benchmark directory"]
-                fobj.write("<li>{0}  {1}</li>\n".format(test, tresd))
+        for status, _tests in statuses.items():
+            fobj.write("<h1>Tests that showed '{0}'</h1>\n<ul>\n".format(status))
+            for test in _tests:
+                tresd = test.results_directory()
+                fobj.write("<li>{0}</li>\n".format(test.name))
                 fobj.write("<ul>\n")
                 fobj.write("<li>Files: \n")
                 files = os.listdir(tresd)
@@ -760,21 +573,9 @@ def write_html_summary(fname, results):
                     fobj.write("<a href='{0}' type='text/plain'>{1}</a> \n"
                                .format(fpath, fnam))
                     continue
-                keywords = "  ".join(results[stat][test]["keywords"])
-                html_link = results[stat][test]["html link"]
-
-                try:
-                    tcompletion = (
-                        "{0:.2f}s."
-                        .format(results[stat][test]["completion time"]))
-                except ValueError:
-                    tcompletion = str(results[stat][test]["completion time"])
-
-                if stat == "notrun":
-                    oldstat = results[stat][test].get("old status")
-                    status = "notrun (old status: {0})".format(oldstat)
-                else:
-                    status = stat
+                keywords = "  ".join(test.keywords)
+                html_link = test.postprocess
+                tcompletion = test.completion_time(f="{0:.2f}s")
 
                 if html_link:
                     if not os.path.isfile(html_link):
@@ -783,6 +584,9 @@ def write_html_summary(fname, results):
                         fobj.write("<li><a href='{0}'>PostProcessing</a>\n"
                                    .format(os.path.join(html_link)))
                 fobj.write("<li>Keywords: {0}\n".format(keywords))
+
+                if status == "NOT RUN":
+                    status = "NOT RUN (old status: {0})".format(test.old_status)
                 fobj.write("<li>Status: {0}\n".format(status))
                 fobj.write("<li>Completion time: {0}\n".format(tcompletion))
                 fobj.write("</ul>\n")
@@ -791,66 +595,6 @@ def write_html_summary(fname, results):
             continue
 
     return
-
-
-def _copy_mathematica_nbs(mathnbs, destdir):
-    """copy the mathematica notebooks to the destination directory"""
-
-    for mtldir, mathnb in mathnbs.items():
-        for item in mathnb:
-            fbase = os.path.basename(item)
-            fold = os.path.join(destdir, mtldir, fbase)
-
-            try:
-                os.remove(fold)
-            except OSError:
-                pass
-
-            if item.endswith(".m"):
-                # don't copy the .m file, but write it, replacing rundir and
-                # demodir with destdir
-                with open(fold, "w") as fobj:
-                    for line in open(item, "r").readlines():
-                        demodir = os.path.join(destdir, mtldir) + os.sep
-                        rundir = os.path.join(destdir, mtldir) + os.sep
-                        if r"$DEMODIR" in line:
-                            line = 'demodir="{0:s}"\n'.format(demodir)
-                        elif r"$RUNDIR" in line:
-                            line = 'rundir="{0:s}"\n'.format(rundir)
-                        fobj.write(line)
-                        continue
-
-                continue
-
-            else:
-                # copy the notebook files
-                shutil.copyfile(item, fold)
-
-            continue
-
-        continue
-
-
-def _switch_materials(files, switch):
-    """switch materials"""
-    pat = re.compile(r"\bconstitutive\s*model\s*{0}"
-                     .format(switch[0]), re.I | re.M)
-    repl = "constitutive model {0}".format(switch[1])
-    for fname in files:
-        lines = open(fname, "r").read()
-        with open(fname, "w") as fobj:
-            fobj.write(pat.sub(repl, lines))
-        continue
-    return
-
-
-def _get_test_module(py_file):
-    py_path = [os.path.dirname(py_file)]
-    py_mod = pu.get_module_name(py_file)
-    fobj, pathname, description = imp.find_module(py_mod, py_path)
-    py_module = imp.load_module(py_mod, fobj, pathname, description)
-    fobj.close()
-    return py_module
 
 
 def rebaseline_tests(args):
@@ -874,11 +618,11 @@ def rebaseline_tests(args):
         errors = 0
         for f in (old, new):
             if not os.path.isfile(f):
-                errors += 1
-                sys.stderr.write("ERROR: {0} not found\n".format(f))
+                pu.file_not_found(f)
             continue
-        if errors:
-            sys.stdout.write("ERROR: Test not rebaselined\n")
+        if pu.errors():
+            pu.report_error("ERROR: Test not rebaselined\n")
+            pu.reset_error_and_warnings()
             continue
         sys.stdout.write("Rebaselining {0}\n".format(os.path.basename(fnam)))
         open(old, "w").write(open(new, "r").read())
@@ -886,151 +630,6 @@ def rebaseline_tests(args):
         continue
     sys.stdout.write("Rebaselining complete\n")
     return
-
-
-def _run_the_test(args):
-    """Run the test in the_test
-
-    """
-    the_test, postprocess = args
-    py_module = _get_test_module(the_test)
-
-    try:
-        test = py_module.Test()
-        istest = True
-    except AttributeError:
-        istest = False
-
-    if not istest:
-        name = os.path.basename(os.path.splitext(the_test))
-        sys.stdout.write("{0} not a test".format(name))
-        keywords = []
-        tcompletion = 0.
-        retcode = "not a test"
-
-    else:
-        name = test.name
-        keywords = test.keywords
-        starttime = time.time()
-        try:
-            testcode = test.runTest()
-        except PayetteError as error:
-            testcode = 66
-            pu.log_warning(error.message)
-
-        retcode = {test.badincode: "bad input", test.passcode: "pass",
-                   test.diffcode: "diff", test.failcode: "fail",
-                   test.failtoruncode: "failed to run"}.get(testcode, "unkown")
-
-        # Print output at completion
-        tcompletion = time.time() - starttime
-        info_string = "{0} ({1:6.02f}s)".format(retcode.upper(), tcompletion)
-        pu.log_message(
-            "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
-            "{0:>{1}s}".format(info_string, WIDTH_INFO), pre="", noisy=True)
-
-        htmlf = None
-        if postprocess or testcode in (test.diffcode, test.failcode):
-            pu.log_message(
-                "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
-                "{0:>{1}s}".format("POSTPROCESSING", WIDTH_INFO),
-                pre="", noisy=True)
-            htmlf = postprocess_test_result(test)
-            pu.log_message(
-                "{0:<{1}}".format(test.name, WIDTH_TERM - WIDTH_INFO) +
-                "{0:>{1}s}".format("POSTPROCESSED", WIDTH_INFO),
-                pre="", noisy=True)
-
-    result = {name: {"status": retcode, "keywords": keywords,
-                     "completion time": tcompletion,
-                     "benchmark directory": os.getcwd(),
-                     "html link": htmlf}}
-
-    return result
-
-
-def postprocess_test_result(test):
-    import matplotlib.pyplot as plt
-    aspect_ratio = 4.0/3.0
-    try:
-        ohead = pu.get_header(test.outfile)
-        odat = pu.read_data(test.outfile)
-    except IOError:
-        pu.log_warning("{0}: no such file or directory".format(test.outfile))
-        return
-    try:
-        ghead = pu.get_header(test.baseline[0])
-        gdat = pu.read_data(test.baseline[0])
-    except IOError:
-        pu.log_warning("{0}: no such file or directory".format(test.outfile))
-        return
-
-    htmlf = os.path.splitext(test.outfile)[0] + ".html"
-    plotd = os.path.splitext(test.outfile)[0] + ".post"
-
-    # Make output directory for plots
-    try: shutil.rmtree(plotd)
-    except OSError: pass
-    os.mkdir(plotd)
-
-    xvar = "TIME"
-    ox = odat[:, ohead.index(xvar)]
-    gx = gdat[:, ghead.index(xvar)]
-
-    plots = []
-    for yvar in [x for x in sorted(ghead) if x not in test.items_to_skip]:
-
-        if yvar == xvar:
-            continue
-
-        name = yvar + ".png"
-        f = os.path.join(plotd, name)
-        gy = gdat[:, ghead.index(yvar)]
-        try:
-            oy = odat[:, ohead.index(yvar)]
-        except ValueError:
-            continue
-
-        plt.clf() # Clear the current figure
-        plt.cla() # Clear the current axes
-        plt.xlabel("TIME")
-        plt.ylabel(yvar)
-
-        plt.plot(gx, gy, ls="-", lw=4, c="orange", label="gold")
-        plt.plot(ox, oy, ls="-", lw=2, c="green", label="out")
-        plt.legend()
-        plt.gcf().set_size_inches(aspect_ratio * 5, 5.)
-        plt.savefig(f, dpi=100)
-        plots.append(f)
-
-    with open(htmlf, "w") as fobj:
-        fobj.write("""\
-<html>
-  <head>
-    <title>{0}</title>
-  </head>
-  <body>
-    <table>
-      <tr>
-""".format(test.name))
-
-        for i, plot in enumerate(plots):
-            name = os.path.basename(plot)
-            if i % 3 == 0 and i != 0:
-                fobj.write("      </tr>\n       <tr>\n")
-            width = str(int(aspect_ratio * 300))
-            height = str(int(300))
-            fobj.write("""\
-        <td>
-          {0}
-          <a href="{1}">
-            <img src="{1}" width="{2}" height="{3}">
-          </a>
-        </td>
-""".format(name, plot, width, height))
-
-        fobj.write("      </tr>\n    </table>\n  </body>\n</html>")
-    return htmlf
 
 
 if __name__ == "__main__":

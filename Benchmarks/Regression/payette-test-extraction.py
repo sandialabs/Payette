@@ -30,6 +30,7 @@
 import os
 import sys
 import subprocess
+import time
 
 import Source.__config__ as cfg
 from Source.Payette_test import PayetteTest
@@ -63,22 +64,28 @@ class Test(PayetteTest):
 
         pass
 
-    def runTest(self):
+    def run_test(self):
         """ run the test """
-
+        d = os.getcwd()
+        os.chdir(self.results_directory())
+        t0 = time.time()
         run_command = self.run_command(self.runcommand, echof=self.outfile)
-
         if run_command != 0:
-            return self.failtoruncode
-
-        diff = self.diff_files(self.baseline, self.outfile)
-        if diff:
-            return self.failcode
-
-        return self.passcode
+            retcode = self.failtoruncode
+        else:
+            diff = self.diff_files(self.baseline, self.outfile)
+            if diff:
+                retcode = self.failcode
+            else:
+                retcode = self.passcode
+        self.retcode = retcode
+        self.status = self.get_status()
+        tc = time.time()
+        self.completion_time(tc - t0)
+        os.chdir(d)
+        return
 
 if __name__ == "__main__":
-    import time
     test = Test()
     if "--cleanup" in sys.argv:
         for ext in ["xout", "diff", "pyc", "echo"]:
@@ -92,7 +99,7 @@ if __name__ == "__main__":
     else:
         t0 = time.time()
         print("%s RUNNING" % test.name)
-        run_test = test.runTest()
+        run_test = test.run_test()
         dtp = time.time() - t0
         if run_test == test.passcode:
             print("%s PASSED(%fs)" % (test.name, dtp))
