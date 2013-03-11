@@ -6,7 +6,7 @@
 # *************************************************************************** #
 
 import sys
-import Source.__config__ as cfg
+from inspect import isfunction, ismodule
 
 # --- runtime configurable options
 DISP = 1
@@ -28,7 +28,6 @@ WRITE_INPUT = False
 WARNING = "warn"
 ERROR = "stop"
 SIMDIR = None
-MTLDB = cfg.MTLDB
 SKIP_ALREADY_RUN = False
 EMIT = None
 CCHAR = ("#", "$")
@@ -40,6 +39,9 @@ EFIELD_SIM = False
 ISTEP = 0
 NSTEPS = 0
 
+if __name__ != "__main__":
+    import Source.__config__ as cfg
+    MTLDB = cfg.MTLDB
 
 def set_command_line_options(opts):
     """Set global Payette options based on options passed to payette
@@ -71,20 +73,17 @@ def set_command_line_options(opts):
 
     """
     module = sys.modules[__name__]
-    global_options = [x for x in dir(module) if x.isupper()]
-
-    for gopt in global_options:
-        val = getattr(module, gopt)
+    global_options = get_global_options()
+    for gopt, val in global_options.items():
         _register_default_option(gopt, val)
         continue
-
-    for opt in dir(opts):
-        if opt.upper() in dir(module):
-            gopt, val = opt.upper(), getattr(opts, opt)
-            setattr(module, gopt, val)
-            _register_default_option(gopt, val)
+    for key, val in opts.__dict__.items():
+        key = key.upper()
+        if key not in global_options:
+            continue
+        setattr(module, key, val)
+        _register_default_option(key, val)
         continue
-
     return
 
 
@@ -190,3 +189,17 @@ def set_number_of_steps(N=0, I=0, done=[0], reset=False):
     sys.modules[__name__].NSTEPS = N
     sys.modules[__name__].ISTEP = I
     return
+
+
+def get_global_options():
+    global_options = {}
+    for k, v in sys.modules[__name__].__dict__.items():
+        if k.startswith("_") or isfunction(v) or ismodule(v):
+            continue
+        global_options[k] = v
+    return global_options
+
+
+if __name__ == "__main__":
+    for k, v in get_global_options().items():
+        print k, v
