@@ -225,7 +225,7 @@ class PayetteTest(object):
             # file
             self.failtol = 3.e6 * self.TOL
 
-        self.test_file = os.path.realpath(getfile(self.__class__))
+        self.test_file = os.path.realpath(getfile(self.__class__)).rstrip("c")
         self.test_file_dir = os.path.dirname(self.test_file)
         self.find_nbs()
         self.checked = True

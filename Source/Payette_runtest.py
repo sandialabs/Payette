@@ -45,7 +45,6 @@ from pickle import dump, load
 import datetime
 import getpass
 import re
-from inspect import getfile
 import optparse
 
 import Source.__config__ as cfg
