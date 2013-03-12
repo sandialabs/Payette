@@ -166,10 +166,19 @@ Payette developers.""".format(self.constitutive_model.name, cfg.LIBRARY)
                                  iv=np.zeros(6),
                                  plot_key="permtv",
                                  units="PERMITTIVITY_UNITS")
+            self.matdat.register("polarization", "Vector",
+                                 iv=np.zeros(3),
+                                 plot_key="mech polrzn",
+                                 units="POLARIZATION_UNITS")
             self.matdat.register("electric field", "Vector",
                                  iv=np.zeros(3),
                                  plot_key="efield",
                                  units="ELECTRIC_FIELD_UNITS")
+            self.matdat.register("electric displacement", "Vector",
+                                 iv=np.zeros(3),
+                                 plot_key="edisp",
+                                 units="POLARIZATION_UNITS")
+
 
         # non-plotable data
         self.matdat.register("prescribed deformation gradient", "Tensor",

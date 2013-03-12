@@ -311,7 +311,7 @@ def write_timing_info(t0, t1, t2, name=None, cout=False):
     texe = t2 - t1
     pu.log_message(
         "\n-------------- {0} timing info --------------".format(name),
-        pre="")
+        pre="", cout=cout)
     pu.log_message("total problem execution time:\t{0:f}".format(texe),
                    pre="", cout=cout)
     pu.log_message("total simulation time:\t\t{0:f}\n".format(ttot), pre="",
