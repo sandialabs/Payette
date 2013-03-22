@@ -38,9 +38,19 @@ import re
 
 # git hash
 GIT = os.path.join(os.path.dirname(os.path.realpath(__file__)), ".git")
-HEAD = os.path.join(
-    GIT, open(os.path.join(GIT, "HEAD")).readlines()[0].split()[1])
-__hash__ = open(HEAD).read().strip()
+# Reads where the HEAD is (reference if on branch, hash if at commit)
+# Should only be one line with terminal '\n' (which is removed)
+githeadref = open(os.path.join(GIT, "HEAD")).readlines()[0].strip()
+
+# If len(githeadref.split()) > 1 then it is a reference; such as
+#   githeadref = 'ref: refs/heads/master'
+# otherwise it is a whole hash; such as
+#   githeadref = 'c48566fd882894e87d2fb4885cf8e104f3f33072'
+if len(githeadref.split()) > 1:
+    git_head = os.path.join(GIT, githeadref.split()[1])
+    __hash__= open(git_head).read().strip()
+else:
+    __hash__ = githeadref
 
 __version_info__ = (1, 3, 0, __hash__[:7])
 __version__ = ".".join(str(x) for x in __version_info__)
