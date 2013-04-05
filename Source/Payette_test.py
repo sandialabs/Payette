@@ -462,11 +462,20 @@ class PayetteTest(object):
                 "{0:<{1}}".format(self.name, WIDTH_TERM - WIDTH_INFO) +
                 "{0:>{1}s}".format("POSTPROCESSING", WIDTH_INFO),
                 pre="", noisy=True)
-            self.postprocess_test_result()
-            pu.log_message(
-                "{0:<{1}}".format(self.name, WIDTH_TERM - WIDTH_INFO) +
-                "{0:>{1}s}".format("POSTPROCESSED", WIDTH_INFO),
-                pre="", noisy=True)
+            # This try-except block is here to catch errors while
+            # postprocessing (like optimization benchmarks that diff).
+            try:
+                self.postprocess_test_result()
+                pu.log_message(
+                    "{0:<{1}}".format(self.name, WIDTH_TERM - WIDTH_INFO) +
+                    "{0:>{1}s}".format("POSTPROCESSED", WIDTH_INFO),
+                    pre="", noisy=True)
+            except:
+                pu.log_message(
+                    "{0:<{1}}".format(self.name, WIDTH_TERM - WIDTH_INFO) +
+                    "{0:>{1}s}".format("ERROR", WIDTH_INFO),
+                    pre="", noisy=True)
+
         os.chdir(self.retdir)
         return
 
@@ -478,6 +487,10 @@ class PayetteTest(object):
             odat = pu.read_data(self.outfile)
         except IOError:
             pu.file_not_found(self.outfile, count=False)
+            return
+        except ValueError:
+            # When loadtxt tries to convert to float and fails
+            # do nothing.
             return
         try:
             ghead = pu.get_header(self.baseline[0])
