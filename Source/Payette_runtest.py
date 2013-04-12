@@ -49,7 +49,6 @@ import optparse
 
 import Source.__config__ as cfg
 import Source.Payette_utils as pu
-import Source.Payette_notify as pn
 from Source.Payette_test import (find_tests, WIDTH_TERM, WIDTH_INFO,
                                  TEST_INFO, RESDIR, CWD, get_test)
 from Source.Payette_utils import PayetteError as PayetteError
@@ -122,12 +121,6 @@ def main(argv, print_help=False):
         default=False,
         help="Generate plots for run tests [default: %default]")
     parser.add_option(
-        "--notify",
-        dest="NOTIFY",
-        action="store_true",
-        default=False,
-        help="email test results to mailing list [default: %default]")
-    parser.add_option(
         "-I",
         dest="IGNOREERROR",
         action="store_true",
@@ -175,14 +168,14 @@ def main(argv, print_help=False):
         keywords=opts.KEYWORDS, nokeywords=opts.NOKEYWORDS,
         spectests=opts.SPECTESTS, benchdirs=opts.BENCHDIRS,
         forcererun=opts.FORCERERUN, nproc=nproc, postprocess=opts.POSTPROCESS,
-        notify=opts.NOTIFY, ignoreerror=opts.IGNOREERROR, switch=opts.SWITCH,
+        ignoreerror=opts.IGNOREERROR, switch=opts.SWITCH,
         rebaseline=opts.REBASELINE, index=opts.INDEX,
         index_name=opts.INDEX_NAME, wipe=opts.WIPE, runcwd=opts.c))
 
 
 def test_payette(args, testbase=None, builtin=False, keywords=[], nokeywords=[],
                  spectests=[], benchdirs=[], forcererun=False, nproc=1,
-                 postprocess=False, notify=False, ignoreerror=False,
+                 postprocess=False, ignoreerror=False,
                  switch=None, rebaseline=False, index=False,
                  index_name=False, wipe=False, runcwd=False):
     """Run the Payette benchmarks.
@@ -212,8 +205,6 @@ def test_payette(args, testbase=None, builtin=False, keywords=[], nokeywords=[],
         number of simultaneous jobs to run
     postprocess : bool {False}
         post process results
-    notify : bool {False}
-        send notification email of results
     ignoreerror : bool {False}
         ignore errors and continue running tests
     switch : str {None}
@@ -445,11 +436,6 @@ For a summary of which benchmarks passed, diffed, failed, or not run, see
         continue
     longtxtsummary += "=" * WIDTH_TERM + "\n"
     # longtxtsummary is finished at this point
-
-    # This sends an email to everyone on the mailing list.
-    if notify:
-        pu.log_message("Sending results to mailing list.", pre="", noisy=True)
-        pn.notify("Payette Benchmarks", longtxtsummary)
 
     pu.log_message(longtxtsummary, pre="", noisy=True)
     pu.log_message("=" * WIDTH_TERM, pre="", noisy=True)

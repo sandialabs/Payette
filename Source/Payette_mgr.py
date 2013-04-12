@@ -289,7 +289,7 @@ def main(argv):
         action="store_true",
         default=ro.PROPORTIONAL,
         help=("Use proportional loading for prescribed stress"
-              "components. [default: %default]"))
+              " components. [default: %default]"))
     parser.add_option(
         "-j", "--nproc",
         dest="nproc",
