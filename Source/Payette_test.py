@@ -274,7 +274,6 @@ class PayetteTest(object):
         with open(echof, "w") as fobj:
             run = subprocess.Popen(cmd, stdout=fobj, stderr=subprocess.STDOUT)
             run.wait()
-            pass
 
         return run.returncode
 
@@ -1364,7 +1363,11 @@ def get_test(py_file):
     if not py_file.endswith(".py"):
         return
     # get and load module
-    py_module = pu.load_module(py_file)
+    try:
+        py_module = pu.load_module(py_file)
+    except ImportError:
+        pu.log_warning("{0}: not importable".format(os.path.basename(py_file)))
+        return
     # check if a payette test class is defined
     fnam = os.path.basename(py_file)
     try:

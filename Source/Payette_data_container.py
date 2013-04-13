@@ -78,6 +78,20 @@ class DataContainer:
 
         pass
 
+    def clear(self):
+        self._plot_keys = []
+        self._xtra_registered = False
+        self._xtra_start, self._xtra_end = None, None
+        self._xtra_names, self._xtra_keys = [], []
+        self._nxtra = 0
+        self._container = {}
+        self._plotable_data = {}
+        self._ireg = 0
+        self._end = 0
+        self._data = []
+        self._ival = []
+        self._names = []
+
     # ------------------------------------------ P U B L I C  M E T H O D S ---
 
     def register(self, name, dtype, iv=None, plot_key=None,

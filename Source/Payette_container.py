@@ -614,6 +614,10 @@ class Payette(object):
                 os.remove(self.name + ".out")
             except OSError:
                 pass
+
+        # remove data containers
+        self.matdat.clear()
+        self.simdat.clear()
         return
 
     def simulation_data(self):
