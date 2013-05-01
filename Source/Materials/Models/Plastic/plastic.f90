@@ -166,28 +166,28 @@ subroutine plastic_rxv(ui, nx, namea, keya, rinit, iadvct)
   nx = 0
 
   ! distortional plastic strain
-  nx = nx + 1
+  nx = nx + 1_ik
   if(nx /= kgam) call bombed("kgam pointer wrong")
   name(nx) = 'distortional plastic strain'
   key(nx) = 'GAM'
   iadvct(nx) = 0        ! input and output
 
   ! nonlocal average of the distortional plastic strain
-  nx = nx + 1
+  nx = nx + 1_ik
   if(nx /= kgamnl) call bombed("kgamnl pointer wrong")
   name(nx) = 'nonlocal average distortional plastic strain'
   key(nx) = 'GAMNL'
   iadvct(nx) = 0        ! input and output
 
   ! plastic volume strain
-  nx = nx + 1
+  nx = nx + 1_ik
   if(nx /= kepv) call bombed("kepv pointer wrong")
   name(nx) = 'plastic volume strain'
   key(nx) = 'EPV'
   iadvct(nx) = 0        ! input and output
 
   ! damage
-  nx = nx + 1
+  nx = nx + 1_ik
   if(nx /= kdmg) call bombed("kdmg pointer wrong")
   name(nx) = 'damage'
   key(nx) = 'DAM'
@@ -195,7 +195,7 @@ subroutine plastic_rxv(ui, nx, namea, keya, rinit, iadvct)
 
   ! -- back stress
   do ij = 1, 6
-     nx = nx + 1
+     nx = nx + 1_ik
      if(nx /= kbs+ij) then
         write(char, "(I1)") ij
         call bombed("kbs + "//char//" pointer wrong")
@@ -206,7 +206,7 @@ subroutine plastic_rxv(ui, nx, namea, keya, rinit, iadvct)
   end do
 
   ! specific energy
-  nx = nx + 1
+  nx = nx + 1_ik
   if(nx /= kenrgy) call bombed("kenrgy pointer wrong")
   name(nx) = 'Specific energy'
   key(nx) = 'ENRGY'
@@ -214,7 +214,7 @@ subroutine plastic_rxv(ui, nx, namea, keya, rinit, iadvct)
   rinit(nx) = ui(ipcv) * ui(ipt0)
 
   ! temperature
-  nx = nx + 1
+  nx = nx + 1_ik
   if(nx /= ktmpr) call bombed("ktmpr pointer wrong")
   name(nx) = 'Temperature'
   key(nx) = 'TMPR'
@@ -222,7 +222,7 @@ subroutine plastic_rxv(ui, nx, namea, keya, rinit, iadvct)
   rinit(nx) = ui(ipt0)
 
   ! density
-  nx = nx + 1
+  nx = nx + 1_ik
   if(nx /= krho) call bombed("krho pointer wrong")
   name(nx) = 'Density'
   key(nx) = 'RHO'
@@ -230,28 +230,28 @@ subroutine plastic_rxv(ui, nx, namea, keya, rinit, iadvct)
   rinit(nx) = ui(ipr0)
 
   ! magnitude of deviatoric stress
-  nx = nx + 1
+  nx = nx + 1_ik
   if(nx /= kr) call bombed("kr pointer wrong")
   name(nx) = "Magnitude of deviatoric stress"
   key(nx) = "R"
   iadvct(nx) = 1
 
   ! magnitude of hydrostatic stress
-  nx = nx + 1
+  nx = nx + 1_ik
   if(nx /= kz) call bombed("kz pointer wrong")
   name(nx) = "Magnitude of hydrostatic stress"
   key(nx) = "Z"
   iadvct(nx) = 1
 
   ! yield surface flag
-  nx = nx + 1
+  nx = nx + 1_ik
   if(nx /= kyld) call bombed("kyld pointer wrong")
   name(nx) = "Yield surface identifier"
   key(nx) = "YLD"
   iadvct(nx) = 1
 
   free: do i = 1, 5
-     nx = nx + 1
+     nx = nx + 1_ik
      write(char, "(I1)") i
      name(nx) = "Free variable "//char
      key(nx) = "FREE0"//char
@@ -388,7 +388,7 @@ subroutine plastic_calc(nc, nx, dt, ui, stressarg, d, xtra)
            ! point at which inelasticity occurs
            elastic = .false.
            ns = 10
-           if(softening) ns = ns * 10
+           if(softening) ns = ns * 10_ik
            go to 15
 
         else
@@ -401,7 +401,7 @@ subroutine plastic_calc(nc, nx, dt, ui, stressarg, d, xtra)
               ! aleviate the problem, if not, quit.
               if(softening) then
                  if(ns < ms) then
-                    ns = ns * 100
+                    ns = ns * 100_ik
                     go to 15
                  else if(ns >= ms) then
                     nlfac = one
