@@ -46,11 +46,13 @@ import datetime
 import getpass
 import re
 import optparse
+from textwrap import fill as textfill
 
 import Source.__config__ as cfg
+import Source.__runopts__ as ro
 import Source.Payette_utils as pu
 from Source.Payette_test import (find_tests, WIDTH_TERM, WIDTH_INFO,
-                                 TEST_INFO, RESDIR, CWD, get_test)
+                                 TEST_INFO, RESDIR, CWD, get_test, TEST_STATUSES)
 from Source.Payette_utils import PayetteError as PayetteError
 from Source.Payette_utils import PassThroughOptionParser
 
@@ -224,6 +226,7 @@ def test_payette(args, testbase=None, builtin=False, keywords=[], nokeywords=[],
     # number of processors
     nproc = min(mp.cpu_count(), nproc)
 
+    ro.set_global_option("VERBOSITY", 0)
     pu.log_message(cfg.INTRO, pre="", noisy=True)
 
     if rebaseline:
@@ -391,16 +394,18 @@ def test_payette(args, testbase=None, builtin=False, keywords=[], nokeywords=[],
             statuses[result.status] += 1
         except KeyError:
             statuses[result.status] = 1
+
     txtsummary = """\
 SUMMARY
 {0} benchmarks took {1:.2f}s. total
 {0} benchmarks took {2:.2f}s. to run
 """.format(len(tests), t_find+t_run, t_run)
+
     for status, n in statuses.items():
-        txtsummary += "\n{0} benchmarks showed '{1}'".format(n, status)
-    txtsummary += """
-For a summary of which benchmarks passed, diffed, failed, or not run, see
-{0}""".format(summhtml)
+        txtsummary += "{0} benchmarks showed '{1}'\n".format(n, status)
+    txtsummary += """\
+For a summary of which benchmarks showed: {1}, see
+{0}""".format(summhtml, textfill(", ".join(["'{0}'".format(x) for x in statuses])))
 
     # Make a long summary including the names of what passed and
     # what didn't as well as system information.
@@ -544,7 +549,10 @@ def write_html_summary(fname, results):
         fobj.write("<li> {0} </li>\n".format(statstr))
         fobj.write("</ul>\n")
 
-        # write out details test that fail, diff, pass, notrun
+        # write out details for different statuses
+        HF = "<h1>Tests that showed '{0}'</h1>\n<ul>\n"
+        for status in [x for x in TEST_STATUSES if x not in statuses]:
+            fobj.write("<h1>Tests that showed '{0}'</h1>\n".format(status))
         for status, _tests in statuses.items():
             fobj.write("<h1>Tests that showed '{0}'</h1>\n<ul>\n".format(status))
             for test in _tests:

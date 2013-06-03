@@ -579,7 +579,8 @@ def solid_driver(the_model, **kwargs):
             matdat.store("pressure", -np.sum(Pc[:3]) / 3.)
 
             # --- write state to file
-            if (nsteps - n) % print_interval == 0:
+            endstep =  abs(t - t_end) / t_end < 1.E-12
+            if (nsteps - n) % print_interval == 0 or endstep:
                 the_model.write_state()
 
             if simdat.SCREENOUT or (2 * n - nsteps) == 0:

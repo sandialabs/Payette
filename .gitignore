@@ -38,6 +38,7 @@ Toolset/__prev_tests__.py
 *.prf
 *.echo
 *.props
+*.cmui
 *.pyc
 *.vtable
 *.math1

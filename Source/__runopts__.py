@@ -72,6 +72,7 @@ def set_command_line_options(opts):
     importing this module.
 
     """
+    from Source.Payette_utils import log_message
     module = sys.modules[__name__]
     global_options = get_global_options()
     for gopt, val in global_options.items():
@@ -81,6 +82,9 @@ def set_command_line_options(opts):
         key = key.upper()
         if key not in global_options:
             continue
+        gval = global_options[key]
+        if val != gval:
+            log_message("Setting {0} = {1}".format(key, val))
         setattr(module, key, val)
         _register_default_option(key, val)
         continue
@@ -115,11 +119,19 @@ def set_control_options(control):
     importing this module.
 
     """
+    from Source.Payette_utils import log_message
     module = sys.modules[__name__]
-    for opt, val in control:
-        gopt = opt.upper()
-        setattr(module, gopt, val)
-        _register_default_option(gopt, val)
+    global_options = get_global_options()
+    for key, val in control:
+        key = key.upper()
+        try:
+            gval = global_options[key]
+            if val != gval:
+                log_message("Setting {0} = {1}".format(key, val))
+        except KeyError:
+            pass
+        setattr(module, key, val)
+        _register_default_option(key, val)
         continue
     return
 

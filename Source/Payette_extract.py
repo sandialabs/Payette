@@ -191,6 +191,7 @@ def extract(passed_args, sep="space", cols=False, silent=True,
 
     # parse the lists and perform operations
     for arg in args:
+        data = []
         outf = arg["file"]
         (fnam, fext) = os.path.splitext(outf)
         header = arg["extract header"]
@@ -202,7 +203,6 @@ def extract(passed_args, sep="space", cols=False, silent=True,
             continue
 
         # open the file and extract only the data that the user asked for
-        data = []
         fobj = open(outf, "r")
         for iline, line in enumerate(fobj):
 

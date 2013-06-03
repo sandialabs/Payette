@@ -118,7 +118,7 @@ class ConstitutiveModelPrototype(object):
         self.registered_param_idxs = []
         self.registered_params_and_aliases = []
         self.parameter_table = {}
-        self.user_input_params = {}
+        self.user_input_params = []
         self.parameter_table_idx_map = {}
         self.nprop = 0
         self.ndc = 0
@@ -359,13 +359,13 @@ class ConstitutiveModelPrototype(object):
         # we have the name and value, now we need to get its position in the
         # ui array
         ignored, not_parseable = [], []
-        for param, param_val in self.user_input_params.items():
+        for (param, param_val) in self.user_input_params:
             # %tjf: ignore units for now
             if param.lower() == "units":
                 continue
 
             for key, val in self.parameter_table.items():
-                if param.lower() in [param] + val["names"]:
+                if param.lower() in val["names"]:
                     param_name = key
                     break
                 continue
@@ -420,7 +420,7 @@ class ConstitutiveModelPrototype(object):
                 # matlabel found, now parse the file for names and values
                 matdat = self.parse_mtldb_file(material=matlabel)
                 for name, val in matdat:
-                    self.user_input_params[name.upper()] = val
+                    self.user_input_params.append((name.upper(), val))
                     continue
 
                 continue
@@ -447,7 +447,7 @@ class ConstitutiveModelPrototype(object):
                     .format(val, name))
                 continue
 
-            self.user_input_params[name.upper()] = val
+            self.user_input_params.append((name.upper(), val))
             continue
 
         if errors:

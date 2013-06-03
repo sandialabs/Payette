@@ -268,6 +268,9 @@ class PayetteConfig:
     # --- visualization
     viz_compatible = False
 
+    # --- file extension for material properties file
+    propext = ".cmui"
+
     def __init__(self, use_env=True, fcompiler="gnu", deployed=False,
                  callback=True):
         """Check prerequisites and initialize the PayetteConfig object

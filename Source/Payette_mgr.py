@@ -672,7 +672,7 @@ def _clean_file_exts(files, cleanall):
     """
 
     pu.log_message("Cleaning Payette output for {0}".format(", ".join(files)))
-    exts = [".log", ".math1", ".math2", ".props", ".echo", ".prf", ".pyc"]
+    exts = [".log", ".math1", ".math2", cfg.PROPEXT, ".echo", ".prf", ".pyc"]
 
     if cleanall:
         exts.extend([".out", ".diff"])

@@ -418,6 +418,7 @@ def elastic_param_conversion(argv):
         ui[NAM_MAP["rho"]] = float(opts.rho)
 
     if any(ui):
+        lui = len([x for x in ui if x is not None])
         if (lui < 2 or lui > 3
             or (lui > 2 and not opts.rho)
             or (lui == 2 and opts.rho)):

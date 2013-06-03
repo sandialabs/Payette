@@ -251,6 +251,10 @@ class Payette(object):
 
         self._setup_files()
 
+        if self.write_input:
+            fpath = os.path.join(self.simdir, self.name + ".inp")
+            self.ui.write_input_file(fpath)
+
         pass
 
     # private methods
@@ -334,7 +338,7 @@ class Payette(object):
         """write the material parameters to a file"""
         cmod = self.material.constitutive_model
         params = cmod.get_parameter_names_and_values(default=False)
-        props_f = os.path.join(self.simdir, self.name + ".props")
+        props_f = os.path.join(self.simdir, self.name + cfg.PROPEXT)
         with open(props_f, "w") as fobj:
             for param, desc, val in params:
                 fobj.write("{0:s} ={1:12.5E}\n".format(param, val))
@@ -597,13 +601,9 @@ class Payette(object):
         if self.extraction_vars:
             self._write_extraction()
 
-        if self.write_input:
-            fpath = os.path.join(self.simdir, self.name + ".inp")
-            self.ui.write_input_file(fpath)
-
         if wipe or wipeall:
             # remove cruft
-            for ext in (".log", ".props", ".math1", ".math2", ".prf", ".xout"):
+            for ext in (".log", cfg.PROPEXT, ".math1", ".math2", ".prf", ".xout"):
                 try:
                     os.remove(self.name + ext)
                 except OSError:

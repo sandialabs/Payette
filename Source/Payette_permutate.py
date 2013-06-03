@@ -43,6 +43,7 @@ import Source.Payette_container as pc
 import Source.Payette_input_parser as pip
 import Source.Payette_sim_index as psi
 import Source.__runopts__ as ro
+from Source.Payette_utils import PayetteError
 
 DN, MN, DP = 10, 100, 10.
 
@@ -536,7 +537,17 @@ def func(args):
     the_model.write_input = True
 
     # run the job
-    solve = the_model.run_job()
+    error = 0
+    try:
+        solve = the_model.run_job()
+
+    except PayetteError as error:
+        solve = {"retcode": 7}
+        pass
+
+    except KeyboardInterrupt:
+        the_model.finish()
+        sys.exit(0)
 
     # store the data to the index
     the_model.finish()
@@ -545,9 +556,6 @@ def func(args):
         retcode = solve["retcode"]
     else:
         retcode = solve
-
-    if retcode != 0:
-        sys.exit("ERROR: simulation failed")
 
     # go back to the base_dir
     os.chdir(base_dir)

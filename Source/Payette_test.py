@@ -88,15 +88,19 @@ class TestLogger(object):
         pass
 
 
+TEST_STATUSES = {"PASS": 0, "BAD INPUT": 1, "DIFF": 2,
+                 "FAIL": 3, "FAILED TO RUN": 4, "NOT RUN": 5}
+
+
 class PayetteTest(object):
 
     TOL = 1.e-6
-    passcode = 0
-    badincode = 1
-    diffcode = 2
-    failcode = 3
-    failtoruncode = 4
-    notruncode = 5
+    passcode = TEST_STATUSES["PASS"]
+    badincode = TEST_STATUSES["BAD INPUT"]
+    diffcode = TEST_STATUSES["DIFF"]
+    failcode = TEST_STATUSES["FAIL"]
+    failtoruncode = TEST_STATUSES["FAILED TO RUN"]
+    notruncode = TEST_STATUSES["NOT RUN"]
 
     def __init__(self, check=True):
         self.name = None
@@ -318,13 +322,13 @@ class PayetteTest(object):
             return self.diffcode
         return self.passcode
 
-    def get_status(self):
-        return {self.passcode: "PASS",
-                self.failcode: "FAIL",
-                self.diffcode: "DIFF",
-                self.failtoruncode: "FAILED TO RUN",
-                self.badincode: "BAD INPUT",
-                self.notruncode: "NOT RUN"}[self.retcode]
+    def get_status(self, retcode=None):
+        if retcode is None:
+            retcode = self.retcode
+        for k, v in TEST_STATUSES.items():
+            if v == retcode:
+                return k
+        return "UNKOWN"
 
     def switch_materials(self, files, switch):
         """switch materials"""
@@ -914,7 +918,7 @@ class PayetteTest(object):
 
     def clean_tracks(self):
         for ext in [".out", ".diff", ".log", ".prf", ".pyc", ".echo",
-                    ".props", ".pyc", ".math1", ".math2"]:
+                    cfg.PROPEXT, ".pyc", ".math1", ".math2"]:
             try:
                 os.remove(self.name + ext)
             except:
@@ -943,7 +947,7 @@ class PayetteTest(object):
             log.error("not out file given")
             pass
 
-        propf = self.name + ".props"
+        propf = self.name + cfg.PROPEXT
         if not os.path.isfile(propf):
             errors += 1
             log.error("{0} not found".format(propf))

@@ -826,7 +826,10 @@ def loadtxt(f, skiprows=0, comments="#"):
     """
     lines = []
     for line in open(f, "r").readlines()[skiprows:]:
-        line = [float(x) for x in line.split(comments, 1)[0].split()]
+        try:
+            line = [float(x) for x in line.split(comments, 1)[0].split()]
+        except ValueError:
+            break
         if not lines:
             ncols = len(line)
         if len(line) < ncols:
