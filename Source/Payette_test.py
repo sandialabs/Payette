@@ -873,12 +873,13 @@ class PayetteTest(object):
                 rmsd, nrmsd = pu.compute_rms(gold[:, 0], gold[:, gidx],
                                              out[:, 0], out[:, oidx])
 
+                minerror = min(rmsd, nrmsd)
                 # For good measure, write both the RMSD and normalized RMSD
-                if nrmsd >= self.failtol:
+                if minerror >= self.failtol:
                     failed.append(val)
                     stat = "FAIL"
 
-                elif nrmsd >= self.difftol:
+                elif minerror >= self.difftol:
                     diffed.append(val)
                     stat = "DIFF"
 
